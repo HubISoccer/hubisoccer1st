@@ -25,7 +25,8 @@ let translations = {};
 
 async function loadLanguage(lang) {
     try {
-        const response = await fetch(`public/lang/${lang}.json`);
+        // Utilisation d'un chemin absolu (commence par /) pour pointer vers la racine du site
+        const response = await fetch(`/public/lang/${lang}.json`);
         if (!response.ok) throw new Error('Langue non trouvée');
         translations = await response.json();
         applyTranslations();
@@ -38,11 +39,9 @@ async function loadLanguage(lang) {
 }
 
 function applyTranslations() {
-    // Traduire les textes des éléments avec data-i18n
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (translations[key]) {
-            // Si l'élément contient du HTML (comme <br>), on utilise innerHTML
             if (el.innerHTML.includes('<')) {
                 el.innerHTML = translations[key];
             } else {
@@ -50,14 +49,10 @@ function applyTranslations() {
             }
         }
     });
-    
-    // Traduire les placeholders (si utilisés)
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const key = el.getAttribute('data-i18n-placeholder');
         if (translations[key]) el.placeholder = translations[key];
     });
-    
-    // Traduire les attributs alt (images)
     document.querySelectorAll('[data-i18n-alt]').forEach(el => {
         const key = el.getAttribute('data-i18n-alt');
         if (translations[key]) el.alt = translations[key];
