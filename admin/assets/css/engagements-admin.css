@@ -1,4 +1,4 @@
-/* ===== STYLES SPECIFIQUES A LA PAGE ADMIN ENGAGEMENTS ===== */
+/* Styles spécifiques à la page engagements */
 .engagements-page {
     --primary: #551B8C;
     --primary-light: #7e3db0;
@@ -15,7 +15,6 @@
     --transition: all 0.3s ease;
 }
 
-/* En-tête de la page */
 .engagements-page h1 {
     color: var(--primary);
     font-size: 2.2rem;
@@ -34,7 +33,6 @@
     border-radius: 2px;
 }
 
-/* Carte principale */
 .engagements-page .admin-card {
     background: var(--white);
     border-radius: 20px;
@@ -47,7 +45,6 @@
     box-shadow: var(--shadow-hover);
 }
 
-/* En-tête de carte avec titre et bouton */
 .engagements-page .card-header {
     display: flex;
     justify-content: space-between;
@@ -68,7 +65,6 @@
     color: var(--gold);
 }
 
-/* Bouton Ajouter */
 .engagements-page .btn-add {
     background: var(--primary);
     color: white;
@@ -90,7 +86,6 @@
     box-shadow: 0 8px 20px rgba(85,27,140,0.3);
 }
 
-/* Liste des éléments */
 .engagements-page .admin-list {
     display: flex;
     flex-direction: column;
@@ -161,7 +156,6 @@
     color: white;
 }
 
-/* Modale */
 .engagements-page .admin-modal {
     display: none;
     position: fixed;
@@ -213,7 +207,6 @@
     padding-left: 15px;
 }
 
-/* Formulaire dans la modale */
 .engagements-page .form-group {
     margin-bottom: 20px;
 }
@@ -258,7 +251,6 @@
     box-shadow: 0 5px 15px rgba(85,27,140,0.3);
 }
 
-/* Message "aucune donnée" */
 .engagements-page .no-data {
     text-align: center;
     color: var(--gray);
@@ -266,16 +258,6 @@
     font-size: 1.1rem;
 }
 
-/* Pied de page admin */
-.engagements-page .admin-footer {
-    text-align: center;
-    margin-top: 40px;
-    padding: 20px;
-    color: var(--gray);
-    border-top: 1px solid var(--light-gray);
-}
-
-/* Responsive */
 @media (max-width: 768px) {
     .engagements-page h1 {
         font-size: 1.8rem;
@@ -292,9 +274,4 @@
     .engagements-page .list-item .actions {
         align-self: flex-end;
     }
-}
-.admin-logo {
-    height: 40px;
-    width: auto;
-    object-fit: contain;
 }
