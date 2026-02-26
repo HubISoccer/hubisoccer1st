@@ -1,53 +1,61 @@
-// Configuration de l'API (à remplacer par l'URL de ton backend)
-const API_BASE_URL = 'https://ton-backend.com';
+// Données par défaut pour les engagements
+const defaultEngagements = [
+    { titre: "Vérification Académique", description: "Obligation de diplôme ou d'apprentissage. Nous luttons contre la précarité des sportifs en fin de carrière." },
+    { titre: "Protection FIFA", description: "Intermédiation exclusive via des agents licenciés. Respect strict du règlement sur le transfert des mineurs." },
+    { titre: "Audit APDP", description: "Vos données et celles des joueurs sont protégées selon les lois de la République du Bénin." }
+];
 
-async function loadEngagements() {
+// Données par défaut pour les rôles
+const defaultRoles = [
+    { titre: "Espace Joueur", description: "Gérez votre CV, vos stats et votre visibilité.", lien: "public/pages/premier-pas.html", icone: "🏃" },
+    { titre: "Scouting", description: "Découvrez les talents vérifiés par nos soins.", lien: "public/pages/scouting.html", icone: "💼" },
+    { titre: "Le Processus", description: "Comment nous sécurisons votre avenir pro.", lien: "public/pages/processus.html", icone: "🛡️" }
+];
+
+// Initialiser localStorage avec les valeurs par défaut si vides
+if (!localStorage.getItem('engagements')) {
+    localStorage.setItem('engagements', JSON.stringify(defaultEngagements));
+}
+if (!localStorage.getItem('roles')) {
+    localStorage.setItem('roles', JSON.stringify(defaultRoles));
+}
+
+// Fonction pour afficher les engagements
+function loadEngagements() {
     const container = document.getElementById('engagementsContainer');
     if (!container) return;
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/engagements`);
-        if (!response.ok) throw new Error('Erreur réseau');
-        const engagements = await response.json();
-        let html = '';
-        engagements.forEach(e => {
-            html += `
-                <div class="concept-card">
-                    <h3>${e.titre}</h3>
-                    <p>${e.description}</p>
-                </div>
-            `;
-        });
-        container.innerHTML = html || '<p>Aucun engagement.</p>';
-    } catch (error) {
-        console.error('Erreur chargement engagements:', error);
-        container.innerHTML = '<p>Erreur de chargement.</p>';
-    }
+    const engagements = JSON.parse(localStorage.getItem('engagements')) || [];
+    let html = '';
+    engagements.forEach(e => {
+        html += `
+            <div class="concept-card">
+                <h3>${e.titre}</h3>
+                <p>${e.description}</p>
+            </div>
+        `;
+    });
+    container.innerHTML = html || '<p>Aucun engagement.</p>';
 }
 
-async function loadRoles() {
+// Fonction pour afficher les rôles
+function loadRoles() {
     const container = document.getElementById('rolesContainer');
     if (!container) return;
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/roles`);
-        if (!response.ok) throw new Error('Erreur réseau');
-        const roles = await response.json();
-        let html = '';
-        roles.forEach(r => {
-            html += `
-                <a href="${r.lien}" class="role-card">
-                    <div class="role-icon">${r.icone}</div>
-                    <h3>${r.titre}</h3>
-                    <p>${r.description}</p>
-                </a>
-            `;
-        });
-        container.innerHTML = html || '<p>Aucun rôle.</p>';
-    } catch (error) {
-        console.error('Erreur chargement rôles:', error);
-        container.innerHTML = '<p>Erreur de chargement.</p>';
-    }
+    const roles = JSON.parse(localStorage.getItem('roles')) || [];
+    let html = '';
+    roles.forEach(r => {
+        html += `
+            <a href="${r.lien}" class="role-card">
+                <div class="role-icon">${r.icone}</div>
+                <h3>${r.titre}</h3>
+                <p>${r.description}</p>
+            </a>
+        `;
+    });
+    container.innerHTML = html || '<p>Aucun rôle.</p>';
 }
 
+// Chargement au démarrage
 document.addEventListener('DOMContentLoaded', () => {
     loadEngagements();
     loadRoles();
