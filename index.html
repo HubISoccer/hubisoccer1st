@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="titre_page">HubISoccer | Le talent de la rue, le futur du football</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="public/css/style.css">
+</head>
+<body>
+    <nav>
+        <a href="./" class="logo-link">
+            <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+        </a>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+                <option value="lin">🇨🇬 Lingala</option>
+                <option value="wol">🇸🇳 Wolof</option>
+                <option value="diou">🇨🇮 Dioula</option>
+                <option value="ha">🇳🇬 Hausa</option>
+                <option value="sw">🇰🇪 Kiswahili</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="pt">🇵🇹 Português</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="ar">🇸🇦 العربية</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="ja">🇯🇵 日本語</option>
+                <option value="tr">🇹🇷 Türkçe</option>
+                <option value="ko">🇰🇷 한국어</option>
+                <option value="hi">🇮🇳 हिन्दी</option>
+                <option value="nl">🇳🇱 Nederlands</option>
+                <option value="pl">🇵🇱 Polski</option>
+                <option value="vi">🇻🇳 Tiếng Việt</option>
+            </select>
+
+            <button class="menu-toggle" id="menuToggle">
+                <span></span><span></span><span></span>
+            </button>
+
+            <div class="nav-links" id="navLinks">
+                <a href="public/e-marketing-hubisoccer/emarket-index.html" data-i18n="hub_market">HUBISOCCER MARKET</a>
+                <a href="public/pages/community/hub-community.html" data-i18n="hub_community">Hub Community</a>
+                <a href="public/pages/scouting.html" data-i18n="scouting">Scouting</a>
+                <a href="public/pages/processus.html" data-i18n="processus">Processus</a>
+                <a href="public/pages/affiliation.html" data-i18n="affiliation">AFFILIATION</a>
+                <a href="public/pages/parrain.html" data-i18n="parrain">PARRAIN</a>
+                <a href="public/pages/tournoi.html" data-i18n="tournoi_public">Tournoi Public</a>
+                <a href="public/auth/login.html" class="btn-auth" data-i18n="connexion">Connexion</a>
+                <a href="public/auth/signup.html" class="btn-auth gold" data-i18n="inscrire">S'inscrire</a>
+            </div>
+        </div>
+    </nav>
+
+    <header>
+        <div class="badge-double-projet" data-i18n="sport_etudes">Sport + Études + Métier</div>
+        <h1 data-i18n="talent_rue">LE TALENT DE LA RUE,<br>LE FUTUR DU FOOTBALL.</h1>
+        <p data-i18n="description">HubISoccer transforme la détection de rue en opportunité professionnelle. Nous certifions le parcours académique des talents et les connectons aux agents agréés.</p>
+        <div class="cta-group">
+            <a href="public/pages/scouting.html" class="btn-main btn-filled" data-i18n="reseau_scouting">Réseau Scouting</a>
+            <a href="public/pages/tournoi.html" class="btn-main btn-border" data-i18n="tournoi">Tournoi HubISoccer</a>
+        </div>
+    </header>
+
+    <section class="concept-section">
+        <h2 data-i18n="engagement_ethique">NOTRE ENGAGEMENT ÉTHIQUE & JURIDIQUE</h2>
+        <div class="concept-grid" id="engagementsContainer"></div>
+    </section>
+
+    <section class="portail-selection">
+        <h2 data-i18n="hub_inspiration">THE HUB OF INSPIRATION OF SOCCER</h2>
+        <p data-i18n="tournoi_desc">Tournoi HubISoccer. Connectez-vous à votre destin footballistique mondial.</p>
+        <div class="roles-grid" id="rolesContainer"></div>
+    </section>
+
+    <footer>
+        <div class="compliance-badges">
+            <div class="badge-item" data-i18n="footer_conformite">Conformité APDP Bénin</div>
+            <div class="badge-item" data-i18n="footer_reglementation">Règlementation FIFA</div>
+            <div class="badge-item" data-i18n="footer_double_projet">Double Projet Sport-Études</div>
+        </div>
+        <div class="contact-box">
+            <a href="tel:+2290197208188" class="contact-item" data-i18n="contact_tel">📞 +229 01 97 20 81 88</a>
+            <a href="mailto:contact@hubisoccer.com" class="contact-item" data-i18n="contact_email">📧 hubisoccer@gmail.com</a>
+        </div>
+        <div class="legal">
+            <p><strong>HubISoccer - The Hub of Inspiration of Soccer</strong></p>
+            <p data-i18n="rccm">RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+            <p data-i18n="copyright">© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script src="public/js/main.js"></script>
+    <script src="public/js/index.js"></script>
+</body>
+</html>
