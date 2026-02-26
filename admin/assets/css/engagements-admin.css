@@ -293,3 +293,8 @@
         align-self: flex-end;
     }
 }
+.admin-logo {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+}
