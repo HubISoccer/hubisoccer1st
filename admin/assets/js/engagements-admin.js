@@ -1,4 +1,4 @@
-// Données par défaut
+// D EGA.js
 const defaultEngagements = [
     {
         titre: "Vérification Académique",
