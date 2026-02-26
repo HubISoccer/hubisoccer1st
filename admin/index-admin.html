@@ -8,6 +8,47 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="../public/css/style.css">
     <link rel="stylesheet" href="assets/css/admin.css">
+    <style>
+        /* Styles spécifiques au tableau de bord */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+        .dashboard-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px 20px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(85,27,140,0.1);
+            border-color: #ffcc00;
+        }
+        .dashboard-card i {
+            font-size: 3rem;
+            color: #551B8C;
+            margin-bottom: 15px;
+        }
+        .dashboard-card h3 {
+            font-size: 1.2rem;
+            color: #551B8C;
+            margin-bottom: 8px;
+        }
+        .dashboard-card p {
+            font-size: 0.9rem;
+            color: #6c757d;
+            line-height: 1.5;
+        }
+    </style>
 </head>
 <body>
     <nav class="admin-nav">
@@ -35,52 +76,14 @@
                 <h3>Rôles / Portails</h3>
                 <p>Gérer les rôles (espace joueur, scouting, processus)</p>
             </a>
-            <a href="users-admin.html" class="dashboard-card">
-                <i class="fas fa-user-friends"></i>
-                <h3>Utilisateurs</h3>
-                <p>Gérer les comptes joueurs, coachs, agents</p>
-            </a>
-            <a href="posts-admin.html" class="dashboard-card">
-                <i class="fas fa-newspaper"></i>
-                <h3>Posts</h3>
-                <p>Modérer les publications de la communauté</p>
-            </a>
-            <a href="comments-admin.html" class="dashboard-card">
-                <i class="fas fa-comments"></i>
-                <h3>Commentaires</h3>
-                <p>Gérer les commentaires sur les posts</p>
-            </a>
-            <a href="products-admin.html" class="dashboard-card">
-                <i class="fas fa-box-open"></i>
-                <h3>Produits</h3>
-                <p>Gérer le catalogue de l'e-market</p>
-            </a>
-            <a href="affiliates-admin.html" class="dashboard-card">
-                <i class="fas fa-hand-holding-usd"></i>
-                <h3>Affiliés</h3>
-                <p>Gérer les ambassadeurs et leurs gains</p>
-            </a>
-            <a href="sponsors-admin.html" class="dashboard-card">
-                <i class="fas fa-hand-holding-heart"></i>
-                <h3>Parrains</h3>
-                <p>Gérer les parrainages et appels aux dons</p>
-            </a>
-            <a href="tournaments-admin.html" class="dashboard-card">
-                <i class="fas fa-trophy"></i>
-                <h3>Tournois</h3>
-                <p>Gérer les tournois et inscriptions</p>
-            </a>
-            <a href="settings-admin.html" class="dashboard-card">
-                <i class="fas fa-cog"></i>
-                <h3>Paramètres</h3>
-                <p>Configurer le site</p>
-            </a>
+            <!-- Ajoute d'autres cartes au besoin -->
         </div>
     </div>
 
     <footer class="admin-footer">
         <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
     </footer>
+
     <script src="../public/js/main.js"></script>
     <script src="assets/js/index-admin.js"></script>
 </body>
