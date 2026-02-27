@@ -6,7 +6,6 @@
     <title>Administration HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles communs (à mettre dans un fichier séparé plus tard) -->
     <style>
         * {
             margin: 0;
@@ -31,28 +30,6 @@
             position: sticky;
             top: 0;
             z-index: 100;
-.header-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-.btn-refresh {
-    background: #17a2b8;
-    color: white;
-    border: none;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: var(--transition);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.btn-refresh:hover {
-    background: #138496;
-    transform: rotate(180deg);
-}
         }
         .admin-nav-left {
             display: flex;
@@ -144,7 +121,7 @@
         .dashboard-card:hover i {
             transform: scale(1.1) translateZ(20px);
         }
-        .dashboard-card h3 {
+        .dashboard-card h2 {
             font-size: 1.3rem;
             color: #551B8C;
             margin-bottom: 8px;
@@ -155,18 +132,25 @@
             color: #6c757d;
             line-height: 1.5;
         }
-        /* Badge de notification optionnel */
-        .card-badge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #FFCC00;
-            color: black;
-            font-size: 0.7rem;
-            font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 30px;
-            border: 2px solid white;
+        /* Bouton de rafraîchissement (exemple, si utilisé) */
+        .btn-refresh {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 10px rgba(23,162,184,0.2);
+        }
+        .btn-refresh:hover {
+            background: #138496;
+            transform: rotate(180deg);
         }
         /* Footer admin */
         .admin-footer {
@@ -195,13 +179,6 @@
             <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="admin-logo">
             <span class="admin-title">Administration</span>
         </div>
-<div class="card-header">
-    <h2><i class="fas fa-user-plus"></i> Liste des inscriptions</h2>
-    <div class="header-actions">
-        <button class="btn-refresh" onclick="loadInscriptions()" title="Actualiser"><i class="fas fa-sync-alt"></i></button>
-        <!-- autres boutons -->
-    </div>
-</div>
         <div class="admin-nav-right">
             <a href="administration.html" class="active">Tableau de bord</a>
             <a href="#" id="logoutAdmin">Déconnexion</a>
@@ -217,115 +194,115 @@
             <!-- Carte pour la gestion des engagements (page d'accueil) -->
             <a href="engagements-admin.html" class="dashboard-card">
                 <i class="fas fa-handshake"></i>
-                <h3>Engagements</h3>
+                <h2>Engagements</h2>
                 <p>Gérer les engagements éthiques affichés sur la page d'accueil</p>
             </a>
             <!-- Carte pour la gestion des rôles (page d'accueil) -->
             <a href="roles-admin.html" class="dashboard-card">
                 <i class="fas fa-users-cog"></i>
-                <h3>Rôles / Portails</h3>
+                <h2>Rôles / Portails</h2>
                 <p>Gérer les rôles (espace joueur, scouting, processus) sur l'accueil</p>
             </a>
             <!-- Carte pour la gestion du scouting (joueurs) -->
             <a href="scouting-admin.html" class="dashboard-card">
                 <i class="fas fa-futbol"></i>
-                <h3>Scouting</h3>
+                <h2>Scouting</h2>
                 <p>Gérer les joueurs affichés dans la page Scouting</p>
             </a>
             <!-- Carte pour la gestion du processus -->
             <a href="processus-admin.html" class="dashboard-card">
                 <i class="fas fa-timeline"></i>
-                <h3>Processus</h3>
+                <h2>Processus</h2>
                 <p>Modifier les étapes et statistiques du processus</p>
             </a>
             <!-- Carte pour la gestion des affiliés -->
             <a href="affiliates-admin.html" class="dashboard-card">
                 <i class="fas fa-hand-holding-usd"></i>
-                <h3>Affiliés</h3>
+                <h2>Affiliés</h2>
                 <p>Gérer les ambassadeurs, leurs gains et demandes de paiement</p>
             </a>
             <!-- Carte pour la gestion des parrains -->
             <a href="parrain-admin.html" class="dashboard-card">
                 <i class="fas fa-hand-holding-heart"></i>
-                <h3>Parrains</h3>
+                <h2>Parrains</h2>
                 <p>Gérer les joueurs à soutenir et les appels aux dons</p>
             </a>
             <!-- Carte pour la gestion des tournois et lives -->
             <a href="tournois-admin.html" class="dashboard-card">
                 <i class="fas fa-trophy"></i>
-                <h3>Tournois & Lives</h3>
+                <h2>Tournois & Lives</h2>
                 <p>Gérer les tournois, résultats et diffusions en direct</p>
             </a>
             <!-- Carte pour la gestion de la communauté -->
             <a href="community-admin.html" class="dashboard-card">
                 <i class="fas fa-newspaper"></i>
-                <h3>Communauté</h3>
+                <h2>Communauté</h2>
                 <p>Modérer les posts et commentaires publics</p>
             </a>
             <!-- Carte pour la gestion de l'e-market -->
             <a href="products-admin.html" class="dashboard-card">
                 <i class="fas fa-box-open"></i>
-                <h3>E-Market</h3>
+                <h2>E-Market</h2>
                 <p>Gérer les produits, stocks et commandes</p>
             </a>
             <!-- Carte pour la gestion des inscriptions (Premier Pas) -->
             <a href="inscriptions-admin.html" class="dashboard-card">
                 <i class="fas fa-user-plus"></i>
-                <h3>Inscriptions</h3>
+                <h2>Inscriptions</h2>
                 <p>Suivre et valider les demandes "Premier Pas"</p>
             </a>
             <!-- Carte pour la gestion des examens -->
             <a href="examens-admin.html" class="dashboard-card">
                 <i class="fas fa-graduation-cap"></i>
-                <h3>Examens</h3>
+                <h2>Examens</h2>
                 <p>Noter les épreuves et gérer les résultats</p>
             </a>
             <!-- Carte pour la gestion des messages aux joueurs -->
             <a href="messages-admin.html" class="dashboard-card">
                 <i class="fas fa-envelope"></i>
-                <h3>Messages</h3>
+                <h2>Messages</h2>
                 <p>Envoyer des notifications aux joueurs (suivi)</p>
             </a>
-            <!-- Carte pour la gestion des utilisateurs (si authentification) -->
+            <!-- Carte pour la gestion des utilisateurs -->
             <a href="users-admin.html" class="dashboard-card">
                 <i class="fas fa-users"></i>
-                <h3>Utilisateurs</h3>
+                <h2>Utilisateurs</h2>
                 <p>Gérer les comptes (joueurs, coachs, agents, admins)</p>
             </a>
             <!-- Carte pour les paramètres généraux -->
             <a href="settings-admin.html" class="dashboard-card">
                 <i class="fas fa-cog"></i>
-                <h3>Paramètres</h3>
+                <h2>Paramètres</h2>
                 <p>Configurer le site (informations générales, etc.)</p>
             </a>
             <!-- Carte pour les partenaires -->
             <a href="partenaires-admin.html" class="dashboard-card">
                 <i class="fas fa-handshake"></i>
-                <h3>Partenaires</h3>
+                <h2>Partenaires</h2>
                 <p>Gérer la liste des partenaires affichés</p>
             </a>
             <!-- Carte pour les actualités -->
             <a href="actualites-admin.html" class="dashboard-card">
                 <i class="fas fa-calendar-alt"></i>
-                <h3>Actualités</h3>
+                <h2>Actualités</h2>
                 <p>Publier et gérer les articles de blog</p>
             </a>
             <!-- Carte pour les résultats de tournois -->
             <a href="resultats-admin.html" class="dashboard-card">
                 <i class="fas fa-chart-line"></i>
-                <h3>Résultats</h3>
+                <h2>Résultats</h2>
                 <p>Mettre à jour les classements des tournois</p>
             </a>
             <!-- Carte pour la FAQ -->
             <a href="faq-admin.html" class="dashboard-card">
                 <i class="fas fa-question-circle"></i>
-                <h3>FAQ</h3>
+                <h2>FAQ</h2>
                 <p>Gérer les questions fréquentes</p>
             </a>
-            <!-- Carte pour les mentions légales / CGU (peut être statique) -->
+            <!-- Carte pour les mentions légales / CGU -->
             <a href="legal-admin.html" class="dashboard-card">
                 <i class="fas fa-file-alt"></i>
-                <h3>Mentions légales</h3>
+                <h2>Mentions légales</h2>
                 <p>Modifier les textes juridiques</p>
             </a>
         </div>
@@ -336,7 +313,7 @@
         <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
     </footer>
 
-    <!-- Script pour la déconnexion (simple) -->
+    <!-- Script pour la déconnexion -->
     <script>
         document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
             e.preventDefault();
@@ -345,6 +322,5 @@
             }
         });
     </script>
-    <!-- Vous pouvez ajouter d'autres scripts globaux si nécessaire -->
 </body>
 </html>
