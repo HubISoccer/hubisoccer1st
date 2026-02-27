@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Messages | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="stylesheet" href="assets/css/messages-admin.css">
+</head>
+<body>
+    <nav class="admin-nav">
+        <div class="admin-nav-left">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="admin-logo">
+            <span class="admin-title">Administration</span>
+        </div>
+        <div class="admin-nav-right">
+            <a href="administration.html">Tableau de bord</a>
+            <a href="messages-admin.html" class="active">Messages</a>
+            <a href="#" id="logoutAdmin">Déconnexion</a>
+        </div>
+    </nav>
+
+    <div class="admin-container messages-page">
+        <h1>Gestion des messages aux joueurs</h1>
+
+        <!-- Formulaire d'envoi -->
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-paper-plane"></i> Envoyer un message</h2>
+            </div>
+            <form id="messageForm">
+                <div class="form-group">
+                    <label>Joueur</label>
+                    <select id="playerSelect" required>
+                        <option value="">Sélectionnez un joueur</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Type de message</label>
+                    <select id="messageType">
+                        <option value="info">Information</option>
+                        <option value="warning">Avertissement</option>
+                        <option value="success">Succès</option>
+                        <option value="error">Erreur</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Message</label>
+                    <textarea id="messageText" rows="4" required placeholder="Écrivez votre message..."></textarea>
+                </div>
+                <button type="submit" class="btn-submit"><i class="fas fa-paper-plane"></i> Envoyer</button>
+            </form>
+        </div>
+
+        <!-- Historique des messages envoyés -->
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-history"></i> Historique des messages</h2>
+            </div>
+            <div id="messagesHistory" class="admin-list"></div>
+        </div>
+    </div>
+
+    <footer class="admin-footer">
+        <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
+    </footer>
+
+    <script src="../public/js/main.js"></script>
+    <script src="assets/js/messages-admin.js"></script>
+</body>
+</html>
