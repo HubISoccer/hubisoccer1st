@@ -25,7 +25,7 @@ let translations = {};
 
 async function loadLanguage(lang) {
     try {
-        // Utilisation d'un chemin absolu (commence par /) pour pointer vers la racine du site
+        // Chemin absolu pour pointer vers la racine du site
         const response = await fetch(`/public/lang/${lang}.json`);
         if (!response.ok) throw new Error('Langue non trouvée');
         translations = await response.json();
@@ -33,7 +33,7 @@ async function loadLanguage(lang) {
         localStorage.setItem('hubiLang', lang);
     } catch (error) {
         console.error('Erreur chargement langue:', error);
-        // Fallback vers français si la langue n'existe pas
+        // Fallback vers français
         if (lang !== 'fr') loadLanguage('fr');
     }
 }
@@ -49,10 +49,12 @@ function applyTranslations() {
             }
         }
     });
+    // Traduire les placeholders si utilisés
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const key = el.getAttribute('data-i18n-placeholder');
         if (translations[key]) el.placeholder = translations[key];
     });
+    // Traduire les attributs alt
     document.querySelectorAll('[data-i18n-alt]').forEach(el => {
         const key = el.getAttribute('data-i18n-alt');
         if (translations[key]) el.alt = translations[key];
