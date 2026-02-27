@@ -1,1 +1,72 @@
-hkkkk
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Examens | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="stylesheet" href="assets/css/examens-admin.css">
+</head>
+<body>
+    <nav class="admin-nav">
+        <div class="admin-nav-left">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="admin-logo">
+            <span class="admin-title">Administration</span>
+        </div>
+        <div class="admin-nav-right">
+            <a href="administration.html">Tableau de bord</a>
+            <a href="examens-admin.html" class="active">Examens</a>
+            <a href="#" id="logoutAdmin">Déconnexion</a>
+        </div>
+    </nav>
+
+    <div class="admin-container examens-page">
+        <h1>Gestion des examens</h1>
+
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-graduation-cap"></i> Soumissions d'examens</h2>
+            </div>
+            <div id="submissionsList" class="admin-list"></div>
+        </div>
+    </div>
+
+    <!-- Modale de correction -->
+    <div id="correctionModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3 id="modalTitle">Correction de l'examen</h3>
+            <div id="modalDetails" class="modal-details"></div>
+            <form id="correctionForm">
+                <input type="hidden" id="submissionId">
+                <div class="form-group">
+                    <label>Note QCM (sur 10)</label>
+                    <input type="number" id="noteQcm" min="0" max="10" step="0.5" required>
+                </div>
+                <div class="form-group">
+                    <label>Note rédaction (sur 20)</label>
+                    <input type="number" id="noteRedac" min="0" max="20" step="0.5" required>
+                </div>
+                <div class="form-group">
+                    <label>Note finale (calculée automatiquement)</label>
+                    <input type="number" id="noteFinale" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Commentaire (optionnel)</label>
+                    <textarea id="commentaire" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn-submit">Enregistrer la note</button>
+            </form>
+        </div>
+    </div>
+
+    <footer class="admin-footer">
+        <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
+    </footer>
+
+    <script src="../public/js/main.js"></script>
+    <script src="assets/js/examens-admin.js"></script>
+</body>
+</html>
