@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Paramètres | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="stylesheet" href="assets/css/settings-admin.css">
+</head>
+<body>
+    <nav class="admin-nav">
+        <div class="admin-nav-left">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="admin-logo">
+            <span class="admin-title">Administration</span>
+        </div>
+        <div class="admin-nav-right">
+            <a href="administration.html">Tableau de bord</a>
+            <a href="settings-admin.html" class="active">Paramètres</a>
+            <a href="#" id="logoutAdmin">Déconnexion</a>
+        </div>
+    </nav>
+
+    <div class="admin-container settings-page">
+        <h1>Paramètres généraux du site</h1>
+
+        <form id="settingsForm">
+            <!-- Section Informations générales -->
+            <div class="settings-card">
+                <h2><i class="fas fa-info-circle"></i> Informations générales</h2>
+                <div class="form-group">
+                    <label>Nom du site</label>
+                    <input type="text" id="siteName" placeholder="HubISoccer">
+                </div>
+                <div class="form-group">
+                    <label>Slogan</label>
+                    <input type="text" id="siteSlogan" placeholder="Le talent de la rue, le futur du football">
+                </div>
+                <div class="form-group">
+                    <label>Description (meta)</label>
+                    <textarea id="siteDescription" rows="2" placeholder="Description pour les moteurs de recherche"></textarea>
+                </div>
+            </div>
+
+            <!-- Section Contact -->
+            <div class="settings-card">
+                <h2><i class="fas fa-address-card"></i> Coordonnées</h2>
+                <div class="form-group">
+                    <label>Email de contact</label>
+                    <input type="email" id="contactEmail" placeholder="contact@hubisoccer.com">
+                </div>
+                <div class="form-group">
+                    <label>Téléphone</label>
+                    <input type="text" id="contactPhone" placeholder="+229 01 97 20 81 88">
+                </div>
+                <div class="form-group">
+                    <label>Adresse</label>
+                    <input type="text" id="contactAddress" placeholder="Bénin">
+                </div>
+            </div>
+
+            <!-- Section Réseaux sociaux -->
+            <div class="settings-card">
+                <h2><i class="fas fa-share-alt"></i> Réseaux sociaux</h2>
+                <div class="form-group">
+                    <label><i class="fab fa-facebook"></i> Facebook</label>
+                    <input type="url" id="socialFacebook" placeholder="https://facebook.com/hubisoccer">
+                </div>
+                <div class="form-group">
+                    <label><i class="fab fa-instagram"></i> Instagram</label>
+                    <input type="url" id="socialInstagram" placeholder="https://instagram.com/hubisoccer">
+                </div>
+                <div class="form-group">
+                    <label><i class="fab fa-twitter"></i> Twitter</label>
+                    <input type="url" id="socialTwitter" placeholder="https://twitter.com/hubisoccer">
+                </div>
+                <div class="form-group">
+                    <label><i class="fab fa-youtube"></i> YouTube</label>
+                    <input type="url" id="socialYoutube" placeholder="https://youtube.com/hubisoccer">
+                </div>
+            </div>
+
+            <!-- Section Apparence -->
+            <div class="settings-card">
+                <h2><i class="fas fa-palette"></i> Apparence</h2>
+                <div class="form-group">
+                    <label>Couleur primaire</label>
+                    <input type="color" id="primaryColor" value="#551B8C">
+                </div>
+                <div class="form-group">
+                    <label>Couleur secondaire (or)</label>
+                    <input type="color" id="secondaryColor" value="#FFCC00">
+                </div>
+                <div class="form-group">
+                    <label>Logo (chemin)</label>
+                    <input type="text" id="logoPath" placeholder="../public/img/logo-navbar.png">
+                </div>
+                <div class="form-group">
+                    <label>Favicon (chemin)</label>
+                    <input type="text" id="faviconPath" placeholder="../public/img/favicon.ico">
+                </div>
+            </div>
+
+            <!-- Section RCCM / IFU (pour mentions légales) -->
+            <div class="settings-card">
+                <h2><i class="fas fa-file-invoice"></i> Informations légales</h2>
+                <div class="form-group">
+                    <label>RCCM</label>
+                    <input type="text" id="legalRccm" placeholder="RB/ABC/24 A 111814">
+                </div>
+                <div class="form-group">
+                    <label>IFU</label>
+                    <input type="text" id="legalIfu" placeholder="0201910800236">
+                </div>
+            </div>
+
+            <!-- Bouton de sauvegarde -->
+            <button type="submit" class="btn-save"><i class="fas fa-save"></i> Enregistrer les paramètres</button>
+        </form>
+    </div>
+
+    <footer class="admin-footer">
+        <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
+    </footer>
+
+    <script src="../public/js/main.js"></script>
+    <script src="assets/js/settings-admin.js"></script>
+</body>
+</html>
