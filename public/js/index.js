@@ -5,7 +5,7 @@ const defaultEngagements = [
     { titre: "Audit APDP", description: "Vos données et celles des joueurs sont protégées selon les lois de la République du Bénin." }
 ];
 
-// Données par défaut pour les rôles
+// Données par défaut pour les rôles (liens vers les pages à la racine)
 const defaultRoles = [
     { titre: "Espace Joueur", description: "Gérez votre CV, vos stats et votre visibilité.", lien: "premier-pas.html", icone: "🏃" },
     { titre: "Scouting", description: "Découvrez les talents vérifiés par nos soins.", lien: "scouting.html", icone: "💼" },
