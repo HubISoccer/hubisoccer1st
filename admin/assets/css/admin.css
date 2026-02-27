@@ -83,6 +83,121 @@ body {
     color: #6c757d;
     border-top: 1px solid #e9ecef;
 }
+/* ===== MODALES AMÉLIORÉES ===== */
+.admin-modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.6);
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+}
+.admin-modal.active {
+    display: flex;
+}
+.modal-content {
+    background: white;
+    border-radius: 25px;
+    padding: 30px;
+    width: 90%;
+    max-width: 550px;
+    position: relative;
+    box-shadow: 0 30px 60px rgba(85,27,140,0.3);
+    border: 1px solid var(--gold);
+    animation: modalSlideIn 0.3s ease;
+}
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.close {
+    position: absolute;
+    top: 20px;
+    right: 25px;
+    font-size: 2rem;
+    cursor: pointer;
+    color: var(--gray);
+    transition: var(--transition);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #f1f5f9;
+}
+.close:hover {
+    color: var(--primary);
+    background: #e2e8f0;
+    transform: rotate(90deg);
+}
+.modal-content h3 {
+    color: var(--primary);
+    font-size: 1.8rem;
+    margin-bottom: 25px;
+    border-left: 5px solid var(--gold);
+    padding-left: 20px;
+}
+.modal-content .form-group {
+    margin-bottom: 20px;
+}
+.modal-content label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--dark);
+    font-size: 0.95rem;
+}
+.modal-content input,
+.modal-content select,
+.modal-content textarea {
+    width: 100%;
+    padding: 14px 18px;
+    border: 2px solid var(--light-gray);
+    border-radius: 15px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    transition: var(--transition);
+    background: #fafafa;
+}
+.modal-content input:focus,
+.modal-content select:focus,
+.modal-content textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(85,27,140,0.1);
+    background: white;
+}
+.modal-content .btn-submit {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-top: 15px;
+    box-shadow: 0 10px 20px rgba(85,27,140,0.2);
+}
+.modal-content .btn-submit:hover {
+    background: var(--primary-light);
+    transform: translateY(-3px);
+    box-shadow: 0 15px 30px rgba(85,27,140,0.3);
+}
 /* Responsive */
 @media (max-width: 768px) {
     .admin-nav {
