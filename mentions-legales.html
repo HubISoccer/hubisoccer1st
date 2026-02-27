@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mentions légales | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="public/css/style.css">
+    <style>
+        .legal-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .legal-container h1 {
+            color: var(--primary);
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--gold);
+            padding-left: 20px;
+        }
+        .legal-container h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin: 30px 0 15px;
+        }
+        .legal-container p {
+            color: var(--dark);
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        .legal-container ul {
+            margin-bottom: 20px;
+            padding-left: 20px;
+        }
+        .legal-container li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation (copier-coller la même navbar que sur les autres pages) -->
+    <nav>
+        <a href="index.html" class="logo-link">
+            <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+        </a>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <!-- autres langues -->
+            </select>
+            <button class="menu-toggle" id="menuToggle">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="scouting.html">Scouting</a>
+                <a href="processus.html">Processus</a>
+                <a href="affiliation.html">Affiliation</a>
+                <a href="parrain.html">Parrain</a>
+                <a href="tournoi.html">Tournois</a>
+                <a href="hub-community.html">Community</a>
+                <a href="e-marketing-hubisoccer.html">Market</a>
+                <a href="public/auth/login.html" class="btn-auth">Connexion</a>
+                <a href="public/auth/signup.html" class="btn-auth gold">Inscription</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="legal-container">
+        <h1>Mentions légales</h1>
+        <p>Conformément aux dispositions de la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique, il est porté à la connaissance des utilisateurs du site HubISoccer les présentes mentions légales.</p>
+
+        <h2>Éditeur du site</h2>
+        <p>
+            <strong>HubISoccer</strong><br>
+            RCCM : RB/ABC/24 A 111814<br>
+            IFU : 0201910800236<br>
+            Email : <a href="mailto:contact@hubisoccer.com">contact@hubisoccer.com</a><br>
+            Téléphone : +229 01 97 20 81 88<br>
+            Adresse : Bénin
+        </p>
+
+        <h2>Directeur de la publication</h2>
+        <p>Ozawa, Président de HubISoccer</p>
+
+        <h2>Hébergement</h2>
+        <p>
+            <strong>GitHub Pages</strong><br>
+            GitHub Inc.<br>
+            88 Colin P Kelly Jr St, San Francisco, CA 94107, États-Unis<br>
+            <a href="https://pages.github.com" target="_blank">https://pages.github.com</a>
+        </p>
+
+        <h2>Propriété intellectuelle</h2>
+        <p>L'ensemble du contenu du site HubISoccer (textes, images, vidéos, logos, etc.) est protégé par le droit d'auteur et la propriété intellectuelle. Toute reproduction, représentation, modification ou adaptation, partielle ou intégrale, sans autorisation préalable est interdite.</p>
+
+        <h2>Données personnelles</h2>
+        <p>Les informations recueillies via les formulaires d'inscription sont destinées à HubISoccer pour la gestion des comptes utilisateurs et l'amélioration des services. Conformément à la loi informatique et libertés, vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Pour l'exercer, contactez-nous à <a href="mailto:contact@hubisoccer.com">contact@hubisoccer.com</a>.</p>
+
+        <h2>Cookies</h2>
+        <p>Le site utilise des cookies pour améliorer l'expérience utilisateur (mémorisation de la langue, etc.). En naviguant sur le site, vous acceptez l'utilisation de ces cookies.</p>
+    </main>
+
+    <!-- Footer (identique aux autres pages) -->
+    <footer>
+        <div class="compliance-badges">
+            <div class="badge-item">Conformité APDP Bénin</div>
+            <div class="badge-item">Règlementation FIFA</div>
+            <div class="badge-item">Double Projet Sport-Études</div>
+        </div>
+        <div class="contact-box">
+            <a href="tel:+2290197208188" class="contact-item">📞 +229 01 97 20 81 88</a>
+            <a href="mailto:contact@hubisoccer.com" class="contact-item">📧 hubisoccer@gmail.com</a>
+        </div>
+        <div class="legal">
+            <p><strong>HubISoccer - The Hub of Inspiration of Soccer</strong></p>
+            <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+            <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script src="public/js/main.js"></script>
+</body>
+</html>
