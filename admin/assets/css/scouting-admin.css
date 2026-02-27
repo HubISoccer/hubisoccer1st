@@ -1,0 +1,290 @@
+/* ===== PAGE ADMIN SCOUTING ===== */
+.scouting-page {
+    --primary: #551B8C;
+    --primary-light: #7e3db0;
+    --primary-dark: #3d1266;
+    --gold: #FFCC00;
+    --gold-dark: #e6b800;
+    --bg-light: #F0F8FF;
+    --white: #ffffff;
+    --dark: #1a1a1a;
+    --gray: #6c757d;
+    --light-gray: #e9ecef;
+    --shadow: 0 10px 30px rgba(0,0,0,0.05);
+    --shadow-hover: 0 15px 40px rgba(85,27,140,0.15);
+    --transition: all 0.3s ease;
+}
+
+.scouting-page h1 {
+    color: var(--primary);
+    font-size: 2.2rem;
+    margin-bottom: 30px;
+    position: relative;
+    padding-bottom: 10px;
+}
+.scouting-page h1::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 80px;
+    height: 4px;
+    background: var(--gold);
+    border-radius: 2px;
+}
+
+.scouting-page .admin-card {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    transition: var(--transition);
+}
+.scouting-page .admin-card:hover {
+    box-shadow: var(--shadow-hover);
+}
+
+.scouting-page .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+.scouting-page .card-header h2 {
+    color: var(--primary);
+    font-size: 1.6rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.scouting-page .card-header h2 i {
+    color: var(--gold);
+}
+
+.scouting-page .btn-add {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    box-shadow: 0 4px 10px rgba(85,27,140,0.2);
+}
+.scouting-page .btn-add:hover {
+    background: var(--primary-light);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(85,27,140,0.3);
+}
+
+.scouting-page .admin-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.scouting-page .list-item {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 5px solid var(--gold);
+    transition: var(--transition);
+    border: 1px solid var(--light-gray);
+}
+.scouting-page .list-item:hover {
+    transform: translateX(5px);
+    box-shadow: var(--shadow);
+    border-color: var(--primary);
+}
+.scouting-page .list-item .info {
+    flex: 1;
+}
+.scouting-page .list-item .info strong {
+    color: var(--primary);
+    font-size: 1.1rem;
+    display: block;
+    margin-bottom: 5px;
+}
+.scouting-page .list-item .info .details {
+    color: var(--gray);
+    font-size: 0.9rem;
+    margin-top: 5px;
+    line-height: 1.5;
+}
+.scouting-page .list-item .info .details span {
+    display: inline-block;
+    background: rgba(255,204,0,0.1);
+    padding: 3px 8px;
+    border-radius: 5px;
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+.scouting-page .list-item .actions {
+    display: flex;
+    gap: 10px;
+}
+.scouting-page .list-item .actions button {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: var(--transition);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.scouting-page .list-item .actions button.edit {
+    color: var(--primary);
+    background: rgba(85,27,140,0.1);
+}
+.scouting-page .list-item .actions button.edit:hover {
+    background: var(--primary);
+    color: white;
+}
+.scouting-page .list-item .actions button.delete {
+    color: #dc3545;
+    background: rgba(220,53,69,0.1);
+}
+.scouting-page .list-item .actions button.delete:hover {
+    background: #dc3545;
+    color: white;
+}
+
+/* Modale */
+.scouting-page .admin-modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+}
+.scouting-page .admin-modal.active {
+    display: flex;
+}
+.scouting-page .modal-content {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 30px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    box-shadow: 0 20px 40px rgba(85,27,140,0.2);
+    border: 1px solid var(--gold);
+    animation: modalFadeIn 0.3s ease;
+}
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+.scouting-page .close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 2rem;
+    cursor: pointer;
+    color: var(--gray);
+    transition: var(--transition);
+}
+.scouting-page .close:hover {
+    color: var(--primary);
+}
+.scouting-page .modal-content h3 {
+    color: var(--primary);
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+    border-left: 5px solid var(--gold);
+    padding-left: 15px;
+}
+
+.scouting-page .form-group {
+    margin-bottom: 20px;
+}
+.scouting-page .form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--dark);
+}
+.scouting-page .form-group input,
+.scouting-page .form-group select,
+.scouting-page .form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid var(--light-gray);
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    transition: var(--transition);
+}
+.scouting-page .form-group input:focus,
+.scouting-page .form-group select:focus,
+.scouting-page .form-group textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(85,27,140,0.1);
+}
+.scouting-page .btn-submit {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-top: 10px;
+}
+.scouting-page .btn-submit:hover {
+    background: var(--primary-light);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(85,27,140,0.3);
+}
+
+.scouting-page .no-data {
+    text-align: center;
+    color: var(--gray);
+    padding: 40px;
+    font-size: 1.1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .scouting-page h1 {
+        font-size: 1.8rem;
+    }
+    .scouting-page .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .scouting-page .list-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    .scouting-page .list-item .actions {
+        align-self: flex-end;
+    }
+}
