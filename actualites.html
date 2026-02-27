@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actualités | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="public/css/style.css">
+    <style>
+        .actualites-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .actualites-container h1 {
+            color: var(--primary);
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--gold);
+            padding-left: 20px;
+        }
+        .article {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--light-gray);
+            margin-bottom: 30px;
+            transition: var(--transition);
+        }
+        .article:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+        .article-date {
+            color: var(--gold);
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+        .article-title {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin: 10px 0;
+        }
+        .article-excerpt {
+            color: var(--dark);
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        .article-link {
+            color: var(--primary);
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .article-link:hover {
+            color: var(--gold);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation identique -->
+    <nav>
+        <a href="index.html" class="logo-link">
+            <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+        </a>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+            <button class="menu-toggle" id="menuToggle">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="scouting.html">Scouting</a>
+                <a href="processus.html">Processus</a>
+                <a href="affiliation.html">Affiliation</a>
+                <a href="parrain.html">Parrain</a>
+                <a href="tournoi.html">Tournois</a>
+                <a href="hub-community.html">Community</a>
+                <a href="e-marketing-hubisoccer.html">Market</a>
+                <a href="public/auth/login.html" class="btn-auth">Connexion</a>
+                <a href="public/auth/signup.html" class="btn-auth gold">Inscription</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="actualites-container">
+        <h1>Actualités</h1>
+
+        <div class="article">
+            <div class="article-date">15 Mars 2026</div>
+            <h2 class="article-title">Lancement du tournoi de Cotonou</h2>
+            <p class="article-excerpt">Plus de 200 jeunes talents attendus pour la 3e édition du tournoi de détection. Les inscriptions sont ouvertes jusqu'au 10 avril.</p>
+            <a href="#" class="article-link">Lire la suite <i class="fas fa-arrow-right"></i></a>
+        </div>
+
+        <div class="article">
+            <div class="article-date">10 Mars 2026</div>
+            <h2 class="article-title">Nouveau partenariat avec l'académie Diambars</h2>
+            <p class="article-excerpt">HubISoccer s'associe à l'académie Diambars pour offrir des bourses de formation aux meilleurs talents détectés lors des tournois.</p>
+            <a href="#" class="article-link">Lire la suite <i class="fas fa-arrow-right"></i></a>
+        </div>
+
+        <div class="article">
+            <div class="article-date">5 Mars 2026</div>
+            <h2 class="article-title">Témoignage : Koffi, du quartier à la sélection nationale</h2>
+            <p class="article-excerpt">Découvrez le parcours inspirant de Koffi, repéré via HubISoccer et aujourd'hui international espoir.</p>
+            <a href="#" class="article-link">Lire la suite <i class="fas fa-arrow-right"></i></a>
+        </div>
+    </main>
+
+    <!-- Footer identique -->
+    <footer>
+        <div class="compliance-badges">
+            <div class="badge-item">Conformité APDP Bénin</div>
+            <div class="badge-item">Règlementation FIFA</div>
+            <div class="badge-item">Double Projet Sport-Études</div>
+        </div>
+        <div class="contact-box">
+            <a href="tel:+2290197208188" class="contact-item">📞 +229 01 97 20 81 88</a>
+            <a href="mailto:contact@hubisoccer.com" class="contact-item">📧 hubisoccer@gmail.com</a>
+        </div>
+        <div class="legal">
+            <p><strong>HubISoccer - The Hub of Inspiration of Soccer</strong></p>
+            <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+            <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script src="public/js/main.js"></script>
+</body>
+</html>
