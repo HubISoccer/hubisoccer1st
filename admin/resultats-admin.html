@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Résultats | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="stylesheet" href="assets/css/resultats-admin.css">
+</head>
+<body>
+    <nav class="admin-nav">
+        <div class="admin-nav-left">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="admin-logo">
+            <span class="admin-title">Administration</span>
+        </div>
+        <div class="admin-nav-right">
+            <a href="administration.html">Tableau de bord</a>
+            <a href="resultats-admin.html" class="active">Résultats</a>
+            <a href="#" id="logoutAdmin">Déconnexion</a>
+        </div>
+    </nav>
+
+    <div class="admin-container resultats-page">
+        <h1>Gestion des résultats de tournois</h1>
+
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-trophy"></i> Résultats</h2>
+                <button class="btn-add" id="addResultatBtn"><i class="fas fa-plus"></i> Ajouter un résultat</button>
+            </div>
+            <div id="resultatsList" class="admin-list"></div>
+        </div>
+    </div>
+
+    <!-- Modale d'ajout/édition -->
+    <div id="resultatModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3 id="modalTitle">Ajouter un résultat</h3>
+            <form id="resultatForm">
+                <input type="hidden" id="resultatId">
+                <div class="form-group">
+                    <label>Nom du tournoi</label>
+                    <input type="text" id="tournoi" required>
+                </div>
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="text" id="date" placeholder="ex: 15-20 Mars 2026" required>
+                </div>
+                <div class="form-group">
+                    <label>Vainqueur</label>
+                    <input type="text" id="vainqueur" required>
+                </div>
+                <div class="form-group">
+                    <label>Deuxième</label>
+                    <input type="text" id="deuxieme" required>
+                </div>
+                <div class="form-group">
+                    <label>Troisième</label>
+                    <input type="text" id="troisieme" required>
+                </div>
+                <div class="form-group">
+                    <label>Classement complet (optionnel)</label>
+                    <textarea id="classement" rows="4" placeholder="4. Nom ...&#10;5. Nom ..."></textarea>
+                </div>
+                <button type="submit" class="btn-submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <footer class="admin-footer">
+        <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
+    </footer>
+
+    <script src="../public/js/main.js"></script>
+    <script src="assets/js/resultats-admin.js"></script>
+</body>
+</html>
