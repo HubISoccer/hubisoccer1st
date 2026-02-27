@@ -1,0 +1,1 @@
+            <a href="inscriptions-admin.html" class="dashboard-card">
