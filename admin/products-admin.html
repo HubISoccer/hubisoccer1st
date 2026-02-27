@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Produits | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="stylesheet" href="assets/css/products-admin.css">
+</head>
+<body>
+    <nav class="admin-nav">
+        <div class="admin-nav-left">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="admin-logo">
+            <span class="admin-title">Administration</span>
+        </div>
+        <div class="admin-nav-right">
+            <a href="administration.html">Tableau de bord</a>
+            <a href="products-admin.html" class="active">Produits</a>
+            <a href="#" id="logoutAdmin">Déconnexion</a>
+        </div>
+    </nav>
+
+    <div class="admin-container products-page">
+        <h1>Gestion des produits (e-market)</h1>
+
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-box"></i> Liste des produits</h2>
+                <button class="btn-add" id="addProductBtn"><i class="fas fa-plus"></i> Ajouter un produit</button>
+            </div>
+            <div id="productsList" class="admin-list"></div>
+        </div>
+    </div>
+
+    <!-- Modale d'ajout/édition -->
+    <div id="productModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3 id="modalTitle">Ajouter un produit</h3>
+            <form id="productForm">
+                <input type="hidden" id="productId">
+                <div class="form-group">
+                    <label>Nom</label>
+                    <input type="text" id="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="description" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Prix (FCFA)</label>
+                    <input type="number" id="price" required>
+                </div>
+                <div class="form-group">
+                    <label>Image (chemin)</label>
+                    <input type="text" id="image" placeholder="ex: public/img/ebook-cover.png" required>
+                </div>
+                <div class="form-group">
+                    <label>Catégorie</label>
+                    <select id="category" required>
+                        <option value="pack">Pack</option>
+                        <option value="kit">Kit</option>
+                        <option value="sac">Sac</option>
+                        <option value="maillot">Maillot</option>
+                        <option value="nutrition">Nutrition</option>
+                        <option value="goodie">Goodie</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Stock</label>
+                    <select id="stock" required>
+                        <option value="true">En stock</option>
+                        <option value="false">Épuisé</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Mis en avant ?</label>
+                    <select id="featured" required>
+                        <option value="true">Oui</option>
+                        <option value="false">Non</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <footer class="admin-footer">
+        <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
+    </footer>
+
+    <script src="../public/js/main.js"></script>
+    <script src="assets/js/products-admin.js"></script>
+</body>
+</html>
