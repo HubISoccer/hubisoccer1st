@@ -31,6 +31,28 @@
             position: sticky;
             top: 0;
             z-index: 100;
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.btn-refresh {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-refresh:hover {
+    background: #138496;
+    transform: rotate(180deg);
+}
         }
         .admin-nav-left {
             display: flex;
@@ -173,6 +195,13 @@
             <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="admin-logo">
             <span class="admin-title">Administration</span>
         </div>
+<div class="card-header">
+    <h2><i class="fas fa-user-plus"></i> Liste des inscriptions</h2>
+    <div class="header-actions">
+        <button class="btn-refresh" onclick="loadInscriptions()" title="Actualiser"><i class="fas fa-sync-alt"></i></button>
+        <!-- autres boutons -->
+    </div>
+</div>
         <div class="admin-nav-right">
             <a href="administration.html" class="active">Tableau de bord</a>
             <a href="#" id="logoutAdmin">Déconnexion</a>
