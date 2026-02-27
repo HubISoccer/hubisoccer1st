@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Suivi | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="public/css/style.css">
+    <link rel="stylesheet" href="public/css/suivi.css">
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo-link">
+            <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+        </a>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <!-- autres langues -->
+            </select>
+            <button class="menu-toggle" id="menuToggle">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="scouting.html">Scouting</a>
+                <a href="processus.html">Processus</a>
+                <a href="affiliation.html">Affiliation</a>
+                <a href="parrain.html">Parrain</a>
+                <a href="tournoi.html">Tournois</a>
+                <a href="hub-community.html">Community</a>
+                <a href="e-marketing-hubisoccer.html">Market</a>
+                <a href="public/auth/login.html" class="btn-auth">Connexion</a>
+                <a href="public/auth/signup.html" class="btn-auth gold">Inscription</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="suivi-container" id="suiviContainer">
+        <div class="loading">Chargement de votre dossier...</div>
+    </main>
+
+    <!-- Modale d'édition -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeEditModal()">&times;</span>
+            <h3>Modifier mes informations</h3>
+            <form id="editForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label>Nom complet</label>
+                    <input type="text" id="editNom" required>
+                </div>
+                <div class="form-group">
+                    <label>Date de naissance</label>
+                    <input type="date" id="editDateNaissance" required>
+                </div>
+                <div class="form-group">
+                    <label>Poste</label>
+                    <select id="editPoste" required>
+                        <option value="">-- Choisir --</option>
+                        <option>Gardien de But</option>
+                        <option>Défenseur Central</option>
+                        <option>Latéral</option>
+                        <option>Milieu Défensif</option>
+                        <option>Milieu Offensif</option>
+                        <option>Attaquant / Ailier</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Diplôme / Formation</label>
+                    <input type="text" id="editDiplome" required>
+                </div>
+                <div class="form-group">
+                    <label>Téléphone</label>
+                    <input type="tel" id="editTelephone" required>
+                </div>
+                <button type="submit" class="btn-submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <div class="compliance-badges">
+            <div class="badge-item">Conformité APDP Bénin</div>
+            <div class="badge-item">Règlementation FIFA</div>
+            <div class="badge-item">Double Projet Sport-Études</div>
+        </div>
+        <div class="contact-box">
+            <a href="tel:+2290197208188" class="contact-item">📞 +229 01 97 20 81 88</a>
+            <a href="mailto:contact@hubisoccer.com" class="contact-item">📧 hubisoccer@gmail.com</a>
+        </div>
+        <div class="legal">
+            <p><strong>HubISoccer - The Hub of Inspiration of Soccer</strong></p>
+            <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+            <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script src="public/js/main.js"></script>
+    <script src="public/js/suivi.js"></script>
+</body>
+</html>
