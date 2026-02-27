@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Affiliation - Devenez Ambassadeur | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="public/css/style.css">
+    <link rel="stylesheet" href="public/css/affiliation.css">
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo-link">
+            <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+        </a>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+                <!-- autres langues -->
+            </select>
+            <button class="menu-toggle" id="menuToggle">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="scouting.html">Scouting</a>
+                <a href="processus.html">Processus</a>
+                <a href="affiliation.html" class="active">Affiliation</a>
+                <a href="parrain.html">Parrain</a>
+                <a href="tournoi.html">Tournois</a>
+                <a href="hub-community.html">Community</a>
+                <a href="e-marketing-hubisoccer.html">Market</a>
+                <a href="affilie-login.html" class="btn-auth">Espace Affilié</a>
+                <a href="public/auth/login.html" class="btn-auth">Connexion</a>
+                <a href="public/auth/signup.html" class="btn-auth gold">Inscription</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="affiliation-container">
+        <header class="affiliation-header" style="background: linear-gradient(rgba(0,0,0,0.6), rgba(85,27,140,0.8)), url('public/img/stade-cotonou.jpg') center/cover no-repeat;">
+            <h1>Programme Ambassadeur <span class="highlight">HubISoccer</span></h1>
+            <p>Gagnez de l'argent en partageant notre mission et en détectant des talents.</p>
+        </header>
+
+        <!-- Lien vers espace affilié -->
+        <div class="affilie-link" style="text-align: center; margin: 20px 0 10px;">
+            <p style="background: #f0f8ff; padding: 10px 20px; border-radius: 50px; display: inline-block;">
+                🔗 Déjà affilié ? <a href="affilie-login.html" style="color: var(--primary); font-weight: 700; text-decoration: underline;">Connectez-vous à votre espace</a>
+            </p>
+        </div>
+
+        <section class="steps-section">
+            <h2>Comment ça marche ?</h2>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <i class="fas fa-link"></i>
+                    <h3>Générez votre lien</h3>
+                    <p>Créez votre lien d'affiliation personnalisé en entrant vos informations.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <i class="fas fa-share-alt"></i>
+                    <h3>Partagez-le</h3>
+                    <p>Diffusez votre lien sur WhatsApp, Facebook, TikTok, ou à vos contacts.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <i class="fas fa-coins"></i>
+                    <h3>Gagnez des commissions</h3>
+                    <p>Chaque personne qui s'inscrit ou achète via votre lien vous rapporte une commission.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="generator-section">
+            <h2><i class="fas fa-magic"></i> Créez votre lien d'affiliation</h2>
+            <div class="generator-card">
+                <form id="affiliationForm">
+                    <div class="form-group">
+                        <label>Je souhaite recommander :</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="type" value="joueur" checked> Un joueur (lien vers inscription joueur)</label>
+                            <label><input type="radio" name="type" value="produit"> Un produit de la boutique</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Votre pays</label>
+                        <select id="pays" required>
+                            <option value="">Sélectionnez</option>
+                            <option value="Bénin">Bénin</option>
+                            <option value="Togo">Togo</option>
+                            <option value="Côte d'Ivoire">Côte d'Ivoire</option>
+                            <option value="Sénégal">Sénégal</option>
+                            <option value="France">France</option>
+                            <option value="Autre">Autre</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nom et prénom</label>
+                        <input type="text" id="nom" placeholder="Ex: Koffi SOGLO" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Numéro WhatsApp</label>
+                        <input type="tel" id="telephone" placeholder="+229 01 00 00 00 00" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Moyen de paiement</label>
+                        <select id="paiement" required>
+                            <option value="mobile_money">Mobile Money (rapide : 0-72h)</option>
+                            <option value="autre">Autre (jusqu'à 15 jours)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-generate"><i class="fas fa-cog"></i> Générer mon lien</button>
+                </form>
+
+                <div id="resultArea" class="result-area" style="display: none;">
+                    <p>Votre lien d'affiliation :</p>
+                    <div class="link-box">
+                        <span id="affLink"></span>
+                        <button id="copyBtn"><i class="fas fa-copy"></i> Copier</button>
+                    </div>
+                    <p class="info-note">💡 Toute inscription ou achat via ce lien sera tracé. Vous pourrez suivre vos gains dans votre espace.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="dashboard-sim">
+            <h2><i class="fas fa-chart-line"></i> Simulation de gains</h2>
+            <p>Voici un aperçu de ce que vous pourriez gagner (10% par vente).</p>
+            <div class="sim-grid">
+                <div class="sim-card">
+                    <span class="sim-number">10</span>
+                    <span class="sim-label">Ventes</span>
+                    <span class="sim-amount">1 000 FCFA</span>
+                </div>
+                <div class="sim-card">
+                    <span class="sim-number">25</span>
+                    <span class="sim-label">Ventes</span>
+                    <span class="sim-amount">2 500 FCFA</span>
+                </div>
+                <div class="sim-card">
+                    <span class="sim-number">50</span>
+                    <span class="sim-label">Ventes</span>
+                    <span class="sim-amount">5 000 FCFA</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="faq-section">
+            <h2><i class="fas fa-question-circle"></i> Questions fréquentes</h2>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Qui peut devenir ambassadeur ?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">Toute personne passionnée de football peut devenir ambassadeur, sans condition.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Comment sont calculées les commissions ?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">10% du montant de chaque vente (guide, produit, inscription) générée via votre lien.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Quand et comment suis-je payé ?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">Les gains sont versés selon le moyen choisi : Mobile Money sous 72h, autres sous 15 jours.</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="compliance-badges">
+            <div class="badge-item">Conformité APDP Bénin</div>
+            <div class="badge-item">Règlementation FIFA</div>
+            <div class="badge-item">Double Projet Sport-Études</div>
+        </div>
+        <div class="contact-box">
+            <a href="tel:+2290197208188" class="contact-item">📞 +229 01 97 20 81 88</a>
+            <a href="mailto:contact@hubisoccer.com" class="contact-item">📧 hubisoccer@gmail.com</a>
+        </div>
+        <div class="legal">
+            <p><strong>HubISoccer - The Hub of Inspiration of Soccer</strong></p>
+            <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+            <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script src="public/js/main.js"></script>
+    <script src="public/js/affiliation.js"></script>
+</body>
+</html>
