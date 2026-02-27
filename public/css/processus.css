@@ -1,0 +1,205 @@
+/* ===== PAGE PROCESSUS ===== */
+:root {
+    --processus-primary: #551B8C;
+    --processus-accent: #FFCC00;
+    --processus-dark: #1a1a1a;
+    --processus-gray: #6c757d;
+    --processus-light: #f8f9fa;
+    --processus-border: #e9ecef;
+    --processus-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    --processus-shadow-hover: 0 15px 40px rgba(85,27,140,0.15);
+    --transition: all 0.3s ease;
+}
+
+/* En-tête */
+.processus-header {
+    padding: 100px 20px;
+    text-align: center;
+    color: white;
+    margin-bottom: 60px;
+}
+
+.processus-title {
+    font-size: clamp(2.5rem, 8vw, 4rem);
+    font-weight: 800;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    animation: fadeInUp 1s;
+}
+
+.processus-title .highlight {
+    color: var(--processus-accent);
+}
+
+.processus-subtitle {
+    font-size: 1.3rem;
+    max-width: 700px;
+    margin: 20px auto 0;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Timeline */
+.processus-timeline {
+    position: relative;
+    max-width: 800px;
+    margin: 0 auto 80px;
+    padding: 20px;
+}
+
+.processus-timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 40px;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(to bottom, var(--processus-primary), var(--processus-accent));
+    border-radius: 2px;
+    transform: translateX(-50%);
+}
+
+.timeline-item {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 50px;
+    position: relative;
+    align-items: flex-start;
+}
+
+.timeline-icon {
+    width: 60px;
+    height: 60px;
+    background: var(--processus-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    border: 4px solid var(--processus-accent);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    z-index: 2;
+    flex-shrink: 0;
+}
+
+.timeline-content {
+    flex: 1;
+    background: white;
+    padding: 25px 30px;
+    border-radius: 15px;
+    box-shadow: var(--processus-shadow);
+    border: 1px solid var(--processus-border);
+    transition: var(--transition);
+}
+
+.timeline-content:hover {
+    transform: translateX(5px);
+    box-shadow: var(--processus-shadow-hover);
+    border-color: var(--processus-accent);
+}
+
+.timeline-content h2 {
+    font-size: 1.5rem;
+    color: var(--processus-primary);
+    margin-bottom: 10px;
+}
+
+.timeline-content p {
+    color: var(--processus-gray);
+    line-height: 1.6;
+}
+
+/* Section statistiques */
+.stats-section {
+    max-width: 1200px;
+    margin: 0 auto 80px;
+    padding: 0 20px;
+    text-align: center;
+}
+
+.stats-section h2 {
+    font-size: 2.5rem;
+    color: var(--processus-primary);
+    margin-bottom: 40px;
+    position: relative;
+    display: inline-block;
+}
+
+.stats-section h2::after {
+    content: '';
+    display: block;
+    width: 80px;
+    height: 4px;
+    background: var(--processus-accent);
+    margin: 10px auto 0;
+    border-radius: 2px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 25px;
+}
+
+.stat-item {
+    background: white;
+    padding: 30px 20px;
+    border-radius: 15px;
+    box-shadow: var(--processus-shadow);
+    border: 1px solid var(--processus-border);
+    transition: var(--transition);
+}
+
+.stat-item:hover {
+    transform: translateY(-5px);
+    border-color: var(--processus-accent);
+    box-shadow: var(--processus-shadow-hover);
+}
+
+.stat-number {
+    display: block;
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: var(--processus-primary);
+    line-height: 1;
+    margin-bottom: 10px;
+}
+
+.stat-label {
+    font-size: 1.1rem;
+    color: var(--processus-gray);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .processus-title {
+        font-size: 2rem;
+    }
+    .processus-timeline::before {
+        left: 30px;
+    }
+    .timeline-item {
+        gap: 20px;
+    }
+    .timeline-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+    .timeline-content {
+        padding: 20px;
+    }
+    .timeline-content h2 {
+        font-size: 1.3rem;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
