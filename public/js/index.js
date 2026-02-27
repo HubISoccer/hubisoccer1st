@@ -7,9 +7,9 @@ const defaultEngagements = [
 
 // Données par défaut pour les rôles
 const defaultRoles = [
-    { titre: "Espace Joueur", description: "Gérez votre CV, vos stats et votre visibilité.", lien: "public/pages/premier-pas.html", icone: "🏃" },
-    { titre: "Scouting", description: "Découvrez les talents vérifiés par nos soins.", lien: "public/pages/scouting.html", icone: "💼" },
-    { titre: "Le Processus", description: "Comment nous sécurisons votre avenir pro.", lien: "public/pages/processus.html", icone: "🛡️" }
+    { titre: "Espace Joueur", description: "Gérez votre CV, vos stats et votre visibilité.", lien: "premier-pas.html", icone: "🏃" },
+    { titre: "Scouting", description: "Découvrez les talents vérifiés par nos soins.", lien: "scouting.html", icone: "💼" },
+    { titre: "Le Processus", description: "Comment nous sécurisons votre avenir pro.", lien: "processus.html", icone: "🛡️" }
 ];
 
 // Initialiser localStorage avec les valeurs par défaut si vides
