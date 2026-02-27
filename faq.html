@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="public/css/style.css">
+    <style>
+        .faq-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .faq-container h1 {
+            color: var(--primary);
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--gold);
+            padding-left: 20px;
+        }
+        .faq-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .faq-item {
+            background: white;
+            border-radius: 15px;
+            border: 1px solid var(--light-gray);
+            overflow: hidden;
+        }
+        .faq-question {
+            padding: 20px;
+            background: #f8f9fa;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: var(--primary);
+            transition: background 0.3s;
+        }
+        .faq-question:hover {
+            background: #e9ecef;
+        }
+        .faq-question i {
+            transition: transform 0.3s;
+        }
+        .faq-question.active i {
+            transform: rotate(180deg);
+        }
+        .faq-answer {
+            padding: 0 20px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            background: white;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        .faq-answer.show {
+            padding: 0 20px 20px 20px;
+            max-height: 300px;
+            border-top: 1px solid var(--light-gray);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation identique -->
+    <nav>
+        <a href="index.html" class="logo-link">
+            <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+        </a>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+            <button class="menu-toggle" id="menuToggle">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="scouting.html">Scouting</a>
+                <a href="processus.html">Processus</a>
+                <a href="affiliation.html">Affiliation</a>
+                <a href="parrain.html">Parrain</a>
+                <a href="tournoi.html">Tournois</a>
+                <a href="hub-community.html">Community</a>
+                <a href="e-marketing-hubisoccer.html">Market</a>
+                <a href="public/auth/login.html" class="btn-auth">Connexion</a>
+                <a href="public/auth/signup.html" class="btn-auth gold">Inscription</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="faq-container">
+        <h1>Foire aux questions</h1>
+        <div class="faq-list">
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Comment créer un compte joueur ?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Rendez-vous sur la page "Premier Pas", remplissez le formulaire avec vos informations personnelles, téléchargez vos justificatifs et validez. Votre dossier sera examiné par notre équipe.
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Quels sont les documents requis pour l'inscription ?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Vous devez fournir une pièce d'identité (CIP, passeport, acte de naissance) et un justificatif de votre parcours scolaire ou professionnel (diplôme, attestation, etc.).
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Comment fonctionne l'affiliation ?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Générez votre lien d'affiliation sur la page "Affiliation", partagez-le, et vous recevrez une commission pour chaque inscription ou achat validé via votre lien. Connectez-vous à votre espace affilié pour suivre vos gains.
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Comment passer l'examen de qualification ?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Après validation de votre inscription "Premier Pas", vous recevrez un ID. Rendez-vous sur la page "Examen", saisissez votre ID, puis répondez aux 12 questions. L'évaluation prendra au maximum 1h.
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Comment suivre mon dossier ?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Utilisez le lien de suivi fourni après votre inscription. Vous pouvez y voir le statut de votre dossier, modifier vos informations (si en attente) et recevoir des notifications.
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Quels sont les moyens de paiement acceptés ?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Pour les achats sur l'e-market, nous acceptons Mobile Money (MTN, Moov) et virement bancaire. Pour les commissions des affiliés, le paiement se fait par Mobile Money ou selon le moyen choisi.
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer identique -->
+    <footer>
+        <div class="compliance-badges">
+            <div class="badge-item">Conformité APDP Bénin</div>
+            <div class="badge-item">Règlementation FIFA</div>
+            <div class="badge-item">Double Projet Sport-Études</div>
+        </div>
+        <div class="contact-box">
+            <a href="tel:+2290197208188" class="contact-item">📞 +229 01 97 20 81 88</a>
+            <a href="mailto:contact@hubisoccer.com" class="contact-item">📧 hubisoccer@gmail.com</a>
+        </div>
+        <div class="legal">
+            <p><strong>HubISoccer - The Hub of Inspiration of Soccer</strong></p>
+            <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+            <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script src="public/js/main.js"></script>
+    <script>
+        // Script pour la FAQ (accordéon)
+        document.querySelectorAll('.faq-question').forEach(question => {
+            question.addEventListener('click', () => {
+                const answer = question.nextElementSibling;
+                const icon = question.querySelector('i');
+                question.classList.toggle('active');
+                answer.classList.toggle('show');
+                if (answer.classList.contains('show')) {
+                    answer.style.maxHeight = answer.scrollHeight + 'px';
+                } else {
+                    answer.style.maxHeight = '0';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
