@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premier Pas - Inscription Joueur | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="public/css/style.css">
+    <link rel="stylesheet" href="public/css/premier-pas.css">
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo-link">
+            <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+        </a>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+                <!-- autres langues -->
+            </select>
+            <button class="menu-toggle" id="menuToggle">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="scouting.html">Scouting</a>
+                <a href="processus.html">Processus</a>
+                <a href="affiliation.html">Affiliation</a>
+                <a href="parrain.html">Parrain</a>
+                <a href="tournoi.html">Tournois</a>
+                <a href="hub-community.html">Community</a>
+                <a href="e-marketing-hubisoccer.html">Market</a>
+                <a href="public/auth/login.html" class="btn-auth">Connexion</a>
+                <a href="public/auth/signup.html" class="btn-auth gold">Inscription</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Carrousel -->
+    <header class="step-hero" id="heroCarousel">
+        <div class="carousel-slide active" style="background-image: url('public/img/pas1.jpg');"></div>
+        <div class="carousel-slide" style="background-image: url('public/img/pas2.jpg');"></div>
+        <div class="carousel-slide" style="background-image: url('public/img/pas3.jpg');"></div>
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h1 class="glitch" data-text="Premier Pas vers le Futur">Premier Pas vers le Futur</h1>
+            <p class="hero-subtitle">L'adhésion officielle au programme HubISoccer. Nous certifions ton talent uniquement si ton parcours scolaire ou professionnel est prouvé.</p>
+        </div>
+        <div class="carousel-indicators">
+            <span class="indicator active" data-index="0"></span>
+            <span class="indicator" data-index="1"></span>
+            <span class="indicator" data-index="2"></span>
+        </div>
+    </header>
+
+    <section class="benefits-container">
+        <div class="benefit-card">
+            <div class="benefit-icon">🆔</div>
+            <h3>Identité Numérique</h3>
+            <p>Ton inscription crée ton passeport sportif HubISoccer. Indispensable pour participer aux tournois et détections.</p>
+        </div>
+        <div class="benefit-card">
+            <div class="benefit-icon">⚖️</div>
+            <h3>Éthique Sportive</h3>
+            <p>Nous protégeons tes droits. Chaque étape est transparente et respecte les normes juridiques du Bénin.</p>
+        </div>
+        <div class="benefit-card">
+            <div class="benefit-icon">📈</div>
+            <h3>Visibilité Mondiale</h3>
+            <p>Une fois validé, ton profil devient accessible aux agents licenciés FIFA et aux investisseurs de la plateforme.</p>
+        </div>
+    </section>
+
+    <section class="registration-section">
+        <div class="form-container">
+            <h2>Dossier d'Adhésion <span class="highlight">(Joueur & Parent)</span></h2>
+            <form id="premierPasForm">
+                <div class="section-title">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Informations Personnelles</span>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nom complet <span class="required">*</span></label>
+                        <input type="text" id="nom" placeholder="Ex: Jean SOGLO" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Date de Naissance <span class="required">*</span></label>
+                        <input type="date" id="dateNaissance" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Poste de Prédilection <span class="required">*</span></label>
+                    <select id="poste" required>
+                        <option value="">-- Choisir un poste --</option>
+                        <option>Gardien de But</option>
+                        <option>Défenseur Central</option>
+                        <option>Latéral</option>
+                        <option>Milieu Défensif</option>
+                        <option>Milieu Offensif</option>
+                        <option>Attaquant / Ailier</option>
+                    </select>
+                </div>
+
+                <div class="section-title">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Code d'inscription</span>
+                </div>
+                <div class="form-group">
+                    <label>Code du tournoi (optionnel)</label>
+                    <input type="text" id="codeTournoi" placeholder="Ex: COTONOU2026">
+                    <small class="field-note">Si vous vous inscrivez pour un tournoi spécifique, saisissez le code correspondant.</small>
+                </div>
+
+                <!-- SECTION AFFILIATION -->
+                <div class="section-title">
+                    <i class="fas fa-link"></i>
+                    <span>Parrainage / Affiliation</span>
+                </div>
+                <div class="form-group">
+                    <label>Êtes-vous affilié(e) ?</label>
+                    <div class="radio-group-affiliation">
+                        <label class="radio-option">
+                            <input type="radio" name="affiliation" value="oui" id="affOui"> 
+                            <span class="radio-btn oui">Oui</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="affiliation" value="non" id="affNon" checked> 
+                            <span class="radio-btn non">Non</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group" id="affiliateIdGroup" style="display: none;">
+                    <label>ID de votre parrain</label>
+                    <input type="text" id="affiliateId" readonly class="affiliate-input" value="">
+                </div>
+
+                <div class="section-title">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span>Parcours Académique & Métier (Double Projet)</span>
+                </div>
+                <div class="form-group">
+                    <label>Dernier diplôme obtenu ou Formation en cours <span class="required">*</span></label>
+                    <input type="text" id="diplome" placeholder="Ex: BEPC, BAC ou Apprenti Menuisier" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Attestation de Scolarité ou Diplôme <span class="required">*</span></label>
+                    <div class="file-upload-box">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span>Cliquez pour télécharger (PDF, JPG, PNG)</span>
+                        <input type="file" id="diplomeFile" accept=".jpg,.png,.pdf" required>
+                    </div>
+                    <p class="file-note">Document obligatoire pour justifier votre "Double Projet".</p>
+                </div>
+
+                <div class="section-title">
+                    <i class="fas fa-id-card"></i>
+                    <span>Identité & Justificatifs</span>
+                </div>
+                <div class="form-group">
+                    <label>Pièce d'Identité <span class="required">*</span></label>
+                    <div class="file-upload-box">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span>Cliquez pour télécharger (PDF, JPG, PNG)</span>
+                        <input type="file" id="pieceIdentite" accept=".jpg,.png,.pdf" required>
+                    </div>
+                    <p class="file-note">CIP, Acte de Naissance ou Carte Scolaire (photo claire ou scan).</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Téléphone Contact <span class="required">*</span></label>
+                    <input type="tel" id="telephone" placeholder="+229 01 00 00 00 00" required>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="certifie" required>
+                    <label for="certifie">Je certifie l'exactitude des documents fournis. Toute fraude entraînera une exclusion définitive.</label>
+                </div>
+
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-paper-plane"></i>
+                    Valider mon Premier Pas
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <footer>
+        <div class="compliance-badges">
+            <div class="badge-item">Conformité APDP Bénin</div>
+            <div class="badge-item">Règlementation FIFA</div>
+            <div class="badge-item">Double Projet Sport-Études</div>
+        </div>
+        <div class="contact-box">
+            <a href="tel:+2290197208188" class="contact-item">📞 +229 01 97 20 81 88</a>
+            <a href="mailto:contact@hubisoccer.com" class="contact-item">📧 hubisoccer@gmail.com</a>
+        </div>
+        <div class="legal">
+            <p><strong>HubISoccer - The Hub of Inspiration of Soccer</strong></p>
+            <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+            <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <!-- MODALE DE CONFIRMATION -->
+    <div id="successModal" class="modal success-modal">
+        <div class="modal-content success-content">
+            <div class="modal-header">
+                <span class="close-modal" onclick="closeSuccessModal()">&times;</span>
+                <i class="fas fa-check-circle success-icon"></i>
+                <h2>Inscription envoyée !</h2>
+            </div>
+            <div class="modal-body">
+                <p>Votre soumission est en attente de vérification et de validation par l'équipe HubISoccer.</p>
+                <p>Veuillez copier et garder précieusement le lien ci-dessous. Il vous permettra de suivre le statut de votre soumission pour la suite du programme.</p>
+                <div class="tracking-link-box">
+                    <span id="trackingLink"></span>
+                    <button id="copyTrackingBtn" class="btn-copy-link"><i class="fas fa-copy"></i> Copier</button>
+                </div>
+                <p class="info-note">Merci de votre confiance !</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-close-modal" onclick="closeSuccessModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="public/js/main.js"></script>
+    <script src="public/js/premier-pas.js"></script>
+</body>
+</html>
