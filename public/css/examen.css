@@ -1,0 +1,150 @@
+/* ===== PAGE EXAMEN ===== */
+:root {
+    --primary: #551B8C;
+    --primary-light: #7e3db0;
+    --primary-dark: #3d1266;
+    --gold: #FFCC00;
+    --gold-dark: #e6b800;
+    --success: #28a745;
+    --danger: #dc3545;
+    --warning: #ffc107;
+    --gray: #6c757d;
+    --light-gray: #e9ecef;
+    --dark: #1a1a1a;
+    --shadow: 0 10px 30px rgba(0,0,0,0.05);
+    --shadow-hover: 0 15px 40px rgba(85,27,140,0.15);
+    --transition: all 0.3s ease;
+}
+
+.examen-container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.examen-card {
+    background: white;
+    border-radius: 30px;
+    padding: 40px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    animation: fadeInUp 0.8s ease;
+}
+
+.examen-card h1 {
+    font-size: 2rem;
+    color: var(--primary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.examen-card .subtitle {
+    color: var(--gray);
+    margin-bottom: 30px;
+    font-size: 1rem;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--dark);
+}
+
+.form-group .required {
+    color: var(--danger);
+}
+
+.form-group input {
+    width: 100%;
+    padding: 15px 18px;
+    border: 2px solid var(--light-gray);
+    border-radius: 12px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    transition: var(--transition);
+    background: #fafafa;
+}
+
+.form-group input:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(85,27,140,0.1);
+    background: white;
+}
+
+.field-note {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--gray);
+    margin-top: 5px;
+    font-style: italic;
+}
+
+.btn-submit {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: 0 10px 20px rgba(85,27,140,0.2);
+    margin-bottom: 20px;
+}
+
+.btn-submit:hover {
+    background: var(--primary-light);
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px rgba(85,27,140,0.3);
+}
+
+.info-box {
+    background: #f0f8ff;
+    border-left: 5px solid var(--primary);
+    padding: 15px 20px;
+    border-radius: 10px;
+    color: var(--dark);
+    font-size: 0.9rem;
+}
+
+.info-box i {
+    color: var(--primary);
+    margin-right: 8px;
+}
+
+/* Message d'erreur */
+.error-message {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #f5c6cb;
+}
+
+.error-message i {
+    font-size: 1.5rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .examen-card {
+        padding: 25px;
+    }
+    .examen-card h1 {
+        font-size: 1.6rem;
+    }
+}
