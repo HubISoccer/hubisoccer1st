@@ -1,1 +1,57 @@
-            <a href="inscriptions-admin.html" class="dashboard-card">
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Inscriptions | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="stylesheet" href="assets/css/inscriptions-admin.css">
+</head>
+<body>
+    <nav class="admin-nav">
+        <div class="admin-nav-left">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="admin-logo">
+            <span class="admin-title">Administration</span>
+        </div>
+        <div class="admin-nav-right">
+            <a href="administration.html">Tableau de bord</a>
+            <a href="inscriptions-admin.html" class="active">Inscriptions</a>
+            <a href="#" id="logoutAdmin">Déconnexion</a>
+        </div>
+    </nav>
+
+    <div class="admin-container inscriptions-page">
+        <h1>Gestion des inscriptions "Premier Pas"</h1>
+
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-user-plus"></i> Liste des inscriptions</h2>
+                <!-- Pas de bouton ajouter, les inscriptions viennent du formulaire public -->
+            </div>
+            <div id="inscriptionsList" class="admin-list"></div>
+        </div>
+    </div>
+
+    <!-- Modale de détails / validation -->
+    <div id="inscriptionModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3 id="modalTitle">Détails de l'inscription</h3>
+            <div id="modalDetails" class="modal-details"></div>
+            <div class="modal-actions">
+                <button class="btn-valid" id="modalValid">✓ Valider</button>
+                <button class="btn-reject" id="modalReject">✗ Rejeter</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="admin-footer">
+        <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
+    </footer>
+
+    <script src="../public/js/main.js"></script>
+    <script src="assets/js/inscriptions-admin.js"></script>
+</body>
+</html>
