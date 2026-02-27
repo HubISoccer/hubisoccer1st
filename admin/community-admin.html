@@ -1,1 +1,68 @@
-community-admin
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Communauté | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="stylesheet" href="assets/css/community-admin.css">
+</head>
+<body>
+    <nav class="admin-nav">
+        <div class="admin-nav-left">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="admin-logo">
+            <span class="admin-title">Administration</span>
+        </div>
+        <div class="admin-nav-right">
+            <a href="administration.html">Tableau de bord</a>
+            <a href="community-admin.html" class="active">Communauté</a>
+            <a href="#" id="logoutAdmin">Déconnexion</a>
+        </div>
+    </nav>
+
+    <div class="admin-container community-page">
+        <h1>Gestion de la communauté</h1>
+
+        <!-- Section Posts -->
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-newspaper"></i> Posts</h2>
+                <button class="btn-add" onclick="openModal('post')"><i class="fas fa-plus"></i> Ajouter un post</button>
+            </div>
+            <div id="postsList" class="admin-list"></div>
+        </div>
+
+        <!-- Section Commentaires -->
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-comments"></i> Commentaires</h2>
+                <button class="btn-add" onclick="openModal('comment')"><i class="fas fa-plus"></i> Ajouter un commentaire</button>
+            </div>
+            <div id="commentsList" class="admin-list"></div>
+        </div>
+    </div>
+
+    <!-- Modale d'ajout/édition -->
+    <div id="itemModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3 id="modalTitle">Ajouter</h3>
+            <form id="itemForm">
+                <input type="hidden" id="itemType">
+                <input type="hidden" id="itemId">
+                <div id="dynamicFields"></div>
+                <button type="submit" class="btn-submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <footer class="admin-footer">
+        <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
+    </footer>
+
+    <script src="../public/js/main.js"></script>
+    <script src="assets/js/community-admin.js"></script>
+</body>
+</html>
