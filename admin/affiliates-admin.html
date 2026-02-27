@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Affiliés | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="stylesheet" href="assets/css/affiliates-admin.css">
+</head>
+<body>
+    <nav class="admin-nav">
+        <div class="admin-nav-left">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="admin-logo">
+            <span class="admin-title">Administration</span>
+        </div>
+        <div class="admin-nav-right">
+            <a href="administration.html">Tableau de bord</a>
+            <a href="affiliates-admin.html" class="active">Affiliés</a>
+            <a href="#" id="logoutAdmin">Déconnexion</a>
+        </div>
+    </nav>
+
+    <div class="admin-container affiliates-page">
+        <h1>Gestion des affiliés</h1>
+
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-hand-holding-usd"></i> Liste des ambassadeurs</h2>
+                <!-- Pas de bouton "Ajouter" car les affiliés sont créés via le formulaire public -->
+            </div>
+            <div id="affiliatesList" class="admin-list"></div>
+        </div>
+    </div>
+
+    <!-- Modale d'édition -->
+    <div id="affiliateModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3 id="modalTitle">Modifier l'affilié</h3>
+            <form id="affiliateForm">
+                <input type="hidden" id="affiliateId">
+                <div class="form-group">
+                    <label>ID</label>
+                    <input type="text" id="displayId" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Nom</label>
+                    <input type="text" id="nom" required>
+                </div>
+                <div class="form-group">
+                    <label>Pays</label>
+                    <input type="text" id="pays" required>
+                </div>
+                <div class="form-group">
+                    <label>Téléphone</label>
+                    <input type="text" id="telephone" required>
+                </div>
+                <div class="form-group">
+                    <label>Moyen de paiement</label>
+                    <select id="paiement" required>
+                        <option value="mobile_money">Mobile Money</option>
+                        <option value="autre">Autre</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="type" required>
+                        <option value="joueur">Joueur</option>
+                        <option value="produit">Produit</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Statut</label>
+                    <select id="valide" required>
+                        <option value="false">En attente</option>
+                        <option value="true">Validé</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Parrainages</label>
+                    <input type="number" id="count" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Gains (FCFA)</label>
+                    <input type="text" id="gains" readonly>
+                </div>
+                <button type="submit" class="btn-submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modale d'envoi de message -->
+    <div id="messageModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeMessageModal()">&times;</span>
+            <h3>Envoyer un message à l'affilié</h3>
+            <form id="messageForm">
+                <input type="hidden" id="messageAffiliateId">
+                <div class="form-group">
+                    <label>Message</label>
+                    <textarea id="messageText" rows="5" required placeholder="Écrivez votre message ici..."></textarea>
+                </div>
+                <button type="submit" class="btn-submit"><i class="fas fa-paper-plane"></i> Envoyer</button>
+            </form>
+        </div>
+    </div>
+
+    <footer class="admin-footer">
+        <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
+    </footer>
+
+    <script src="../public/js/main.js"></script>
+    <script src="assets/js/affiliates-admin.js"></script>
+</body>
+</html>
