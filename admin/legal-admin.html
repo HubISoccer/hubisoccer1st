@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - FAQ | HubISoccer</title>
+    <title>Admin - Mentions légales | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="assets/css/admin.css">
-    <link rel="stylesheet" href="assets/css/faq-admin.css">
+    <link rel="stylesheet" href="assets/css/legal-admin.css">
 </head>
 <body>
     <nav class="admin-nav">
@@ -17,41 +17,67 @@
         </div>
         <div class="admin-nav-right">
             <a href="administration.html">Tableau de bord</a>
-            <a href="faq-admin.html" class="active">FAQ</a>
+            <a href="legal-admin.html" class="active">Mentions légales</a>
             <a href="#" id="logoutAdmin">Déconnexion</a>
         </div>
     </nav>
 
-    <div class="admin-container faq-page">
-        <h1>Gestion de la FAQ</h1>
+    <div class="admin-container legal-page">
+        <h1>Gestion des mentions légales et CGU</h1>
 
-        <div class="admin-card">
-            <div class="card-header">
-                <h2><i class="fas fa-question-circle"></i> Questions fréquentes</h2>
-                <button class="btn-add" id="addFaqBtn"><i class="fas fa-plus"></i> Ajouter une question</button>
+        <form id="legalForm">
+            <!-- Section Mentions légales -->
+            <div class="legal-card">
+                <h2><i class="fas fa-file-contract"></i> Mentions légales</h2>
+                <div class="form-group">
+                    <label>Éditeur du site</label>
+                    <input type="text" id="editeur" placeholder="HubISoccer">
+                </div>
+                <div class="form-group">
+                    <label>RCCM</label>
+                    <input type="text" id="rccm" placeholder="RB/ABC/24 A 111814">
+                </div>
+                <div class="form-group">
+                    <label>IFU</label>
+                    <input type="text" id="ifu" placeholder="0201910800236">
+                </div>
+                <div class="form-group">
+                    <label>Email de contact</label>
+                    <input type="email" id="email" placeholder="contact@hubisoccer.com">
+                </div>
+                <div class="form-group">
+                    <label>Téléphone</label>
+                    <input type="text" id="telephone" placeholder="+229 01 97 20 81 88">
+                </div>
+                <div class="form-group">
+                    <label>Adresse</label>
+                    <input type="text" id="adresse" placeholder="Bénin">
+                </div>
+                <div class="form-group">
+                    <label>Directeur de la publication</label>
+                    <input type="text" id="directeur" placeholder="Ozawa">
+                </div>
+                <div class="form-group">
+                    <label>Hébergeur</label>
+                    <input type="text" id="hebergeur" placeholder="GitHub Pages">
+                </div>
+                <div class="form-group">
+                    <label>Texte des mentions légales (HTML autorisé)</label>
+                    <textarea id="mentionsText" rows="8" placeholder="Contenu complet des mentions légales..."></textarea>
+                </div>
             </div>
-            <div id="faqList" class="admin-list"></div>
-        </div>
-    </div>
 
-    <!-- Modale d'ajout/édition -->
-    <div id="faqModal" class="admin-modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h3 id="modalTitle">Ajouter une question</h3>
-            <form id="faqForm">
-                <input type="hidden" id="faqId">
+            <!-- Section CGU -->
+            <div class="legal-card">
+                <h2><i class="fas fa-file-signature"></i> Conditions générales d'utilisation</h2>
                 <div class="form-group">
-                    <label>Question</label>
-                    <input type="text" id="question" required>
+                    <label>Texte des CGU (HTML autorisé)</label>
+                    <textarea id="cguText" rows="12" placeholder="Contenu des CGU..."></textarea>
                 </div>
-                <div class="form-group">
-                    <label>Réponse</label>
-                    <textarea id="reponse" rows="4" required></textarea>
-                </div>
-                <button type="submit" class="btn-submit">Enregistrer</button>
-            </form>
-        </div>
+            </div>
+
+            <button type="submit" class="btn-save"><i class="fas fa-save"></i> Enregistrer les modifications</button>
+        </form>
     </div>
 
     <footer class="admin-footer">
@@ -59,6 +85,6 @@
     </footer>
 
     <script src="../public/js/main.js"></script>
-    <script src="assets/js/faq-admin.js"></script>
+    <script src="assets/js/legal-admin.js"></script>
 </body>
 </html>
