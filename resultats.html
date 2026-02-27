@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Résultats des tournois | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="public/css/style.css">
+    <style>
+        .resultats-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .resultats-container h1 {
+            color: var(--primary);
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--gold);
+            padding-left: 20px;
+        }
+        .tournoi-result {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--light-gray);
+            margin-bottom: 30px;
+        }
+        .tournoi-result h2 {
+            color: var(--primary);
+            font-size: 1.6rem;
+            margin-bottom: 15px;
+        }
+        .tournoi-date {
+            color: var(--gold);
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .podium {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            margin: 30px 0;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .podium-item {
+            text-align: center;
+            width: 120px;
+        }
+        .podium-item .place {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        .podium-item .nom {
+            font-weight: 600;
+            margin: 10px 0 5px;
+        }
+        .podium-item .club {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+        .podium-1 .place { color: gold; }
+        .podium-2 .place { color: silver; }
+        .podium-3 .place { color: #cd7f32; }
+        .autres-resultats {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px dashed var(--light-gray);
+        }
+        .autres-resultats h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        .autres-resultats ul {
+            list-style: none;
+            padding: 0;
+        }
+        .autres-resultats li {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--light-gray);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation identique -->
+    <nav>
+        <a href="index.html" class="logo-link">
+            <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+        </a>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+            <button class="menu-toggle" id="menuToggle">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="scouting.html">Scouting</a>
+                <a href="processus.html">Processus</a>
+                <a href="affiliation.html">Affiliation</a>
+                <a href="parrain.html">Parrain</a>
+                <a href="tournoi.html">Tournois</a>
+                <a href="hub-community.html">Community</a>
+                <a href="e-marketing-hubisoccer.html">Market</a>
+                <a href="public/auth/login.html" class="btn-auth">Connexion</a>
+                <a href="public/auth/signup.html" class="btn-auth gold">Inscription</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="resultats-container">
+        <h1>Résultats des tournois</h1>
+
+        <div class="tournoi-result">
+            <h2>Tournoi de Cotonou 2026</h2>
+            <div class="tournoi-date">15-20 Mars 2026</div>
+            <div class="podium">
+                <div class="podium-item podium-2">
+                    <div class="place">🥈</div>
+                    <div class="nom">Moussa Diallo</div>
+                    <div class="club">AS Dragons</div>
+                </div>
+                <div class="podium-item podium-1">
+                    <div class="place">🥇</div>
+                    <div class="nom">Koffi Soglo</div>
+                    <div class="club">Académie Foot</div>
+                </div>
+                <div class="podium-item podium-3">
+                    <div class="place">🥉</div>
+                    <div class="nom">Aminata Traoré</div>
+                    <div class="club">Diambars</div>
+                </div>
+            </div>
+            <div class="autres-resultats">
+                <h3>Classement complet</h3>
+                <ul>
+                    <li><span>4. Jean-Baptiste Zinsou</span> <span>ASEC</span></li>
+                    <li><span>5. Fatou Dieng</span> <span>Génération Foot</span></li>
+                    <li><span>6. Ibrahim Maïga</span> <span>Stade Malien</span></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="tournoi-result">
+            <h2>Parakou Youth Cup 2026</h2>
+            <div class="tournoi-date">10-15 Avril 2026</div>
+            <p class="podium-place">Résultats à venir (tournoi en cours)</p>
+        </div>
+    </main>
+
+    <!-- Footer identique -->
+    <footer>
+        <div class="compliance-badges">
+            <div class="badge-item">Conformité APDP Bénin</div>
+            <div class="badge-item">Règlementation FIFA</div>
+            <div class="badge-item">Double Projet Sport-Études</div>
+        </div>
+        <div class="contact-box">
+            <a href="tel:+2290197208188" class="contact-item">📞 +229 01 97 20 81 88</a>
+            <a href="mailto:contact@hubisoccer.com" class="contact-item">📧 hubisoccer@gmail.com</a>
+        </div>
+        <div class="legal">
+            <p><strong>HubISoccer - The Hub of Inspiration of Soccer</strong></p>
+            <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+            <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script src="public/js/main.js"></script>
+</body>
+</html>
