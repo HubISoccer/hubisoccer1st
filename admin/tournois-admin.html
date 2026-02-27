@@ -1,1 +1,135 @@
-h
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Tournois & Lives | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="stylesheet" href="assets/css/tournois-admin.css">
+</head>
+<body>
+    <nav class="admin-nav">
+        <div class="admin-nav-left">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="admin-logo">
+            <span class="admin-title">Administration</span>
+        </div>
+        <div class="admin-nav-right">
+            <a href="administration.html">Tableau de bord</a>
+            <a href="tournois-admin.html" class="active">Tournois & Lives</a>
+            <a href="#" id="logoutAdmin">Déconnexion</a>
+        </div>
+    </nav>
+
+    <div class="admin-container tournois-page">
+        <h1>Gestion des tournois et lives</h1>
+
+        <!-- Section Live en direct -->
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-broadcast-tower"></i> Live en direct</h2>
+                <button class="btn-edit-live" id="editLiveBtn"><i class="fas fa-edit"></i> Modifier le live</button>
+            </div>
+            <div id="liveInfo" class="live-info-display">
+                <!-- Affiché dynamiquement -->
+            </div>
+        </div>
+
+        <!-- Section Tournois -->
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-trophy"></i> Tournois</h2>
+                <button class="btn-add" id="addTournoiBtn"><i class="fas fa-plus"></i> Ajouter un tournoi</button>
+            </div>
+            <div id="tournoisList" class="admin-list"></div>
+        </div>
+    </div>
+
+    <!-- Modale d'édition du live -->
+    <div id="liveModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeLiveModal()">&times;</span>
+            <h3>Modifier le live en direct</h3>
+            <form id="liveForm">
+                <div class="form-group">
+                    <label>Titre du live</label>
+                    <input type="text" id="liveTitre" required>
+                </div>
+                <div class="form-group">
+                    <label>URL de la vidéo (embed YouTube)</label>
+                    <input type="url" id="liveUrl" placeholder="https://www.youtube.com/embed/..." required>
+                </div>
+                <div class="form-group">
+                    <label>Statut</label>
+                    <select id="liveActif">
+                        <option value="true">Actif (en direct)</option>
+                        <option value="false">Inactif</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nombre de viewers (simulation)</label>
+                    <input type="number" id="liveViewers" value="156">
+                </div>
+                <button type="submit" class="btn-submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modale d'ajout/édition d'un tournoi -->
+    <div id="tournoiModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeTournoiModal()">&times;</span>
+            <h3 id="tournoiModalTitle">Ajouter un tournoi</h3>
+            <form id="tournoiForm">
+                <input type="hidden" id="tournoiId">
+                <div class="form-group">
+                    <label>Titre</label>
+                    <input type="text" id="titre" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="description" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="text" id="date" placeholder="ex: 15-20 Mars 2026" required>
+                </div>
+                <div class="form-group">
+                    <label>Lieu</label>
+                    <input type="text" id="lieu" placeholder="ex: Stade de l'Amitié, Bénin" required>
+                </div>
+                <div class="form-group">
+                    <label>Catégories</label>
+                    <input type="text" id="categories" placeholder="ex: U17 & 18-23 ans" required>
+                </div>
+                <div class="form-group">
+                    <label>Code d'inscription</label>
+                    <input type="text" id="code" required>
+                </div>
+                <div class="form-group">
+                    <label>Image (chemin)</label>
+                    <input type="text" id="image" placeholder="ex: public/img/tou1.jpg" required>
+                </div>
+                <div class="form-group">
+                    <label>Badge (statut)</label>
+                    <select id="badge">
+                        <option value="À venir">À venir</option>
+                        <option value="Bientôt">Bientôt</option>
+                        <option value="Complet">Complet</option>
+                        <option value="Terminé">Terminé</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <footer class="admin-footer">
+        <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
+    </footer>
+
+    <script src="../public/js/main.js"></script>
+    <script src="assets/js/tournois-admin.js"></script>
+</body>
+</html>
