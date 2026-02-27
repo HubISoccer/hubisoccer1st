@@ -94,10 +94,8 @@ form.addEventListener('submit', (e) => {
     const newItem = { titre, description };
 
     if (index === '') {
-        // Ajout
         engagements.push(newItem);
     } else {
-        // Modification
         engagements[index] = newItem;
     }
 
