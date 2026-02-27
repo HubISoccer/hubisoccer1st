@@ -1,21 +1,21 @@
-// Données par défaut
+// Données par défaut (liens corrigés : plus de 'public/pages/')
 const defaultRoles = [
     {
         titre: "Espace Joueur",
         description: "Gérez votre CV, vos stats et votre visibilité.",
-        lien: "premier-pas.html",   // CORRIGÉ (plus de public/pages/)
+        lien: "premier-pas.html",
         icone: "🏃"
     },
     {
         titre: "Scouting",
         description: "Découvrez les talents vérifiés par nos soins.",
-        lien: "scouting.html",       // CORRIGÉ
+        lien: "scouting.html",
         icone: "💼"
     },
     {
         titre: "Le Processus",
         description: "Comment nous sécurisons votre avenir pro.",
-        lien: "processus.html",      // CORRIGÉ
+        lien: "processus.html",
         icone: "🛡️"
     }
 ];
@@ -109,10 +109,8 @@ form.addEventListener('submit', (e) => {
     const newItem = { titre, description, lien, icone };
 
     if (index === '') {
-        // Ajout
         roles.push(newItem);
     } else {
-        // Modification
         roles[index] = newItem;
     }
 
