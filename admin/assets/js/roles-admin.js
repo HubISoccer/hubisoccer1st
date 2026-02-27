@@ -3,19 +3,19 @@ const defaultRoles = [
     {
         titre: "Espace Joueur",
         description: "Gérez votre CV, vos stats et votre visibilité.",
-        lien: "public/pages/premier-pas.html",
+        lien: "premier-pas.html",   // CORRIGÉ (plus de public/pages/)
         icone: "🏃"
     },
     {
         titre: "Scouting",
         description: "Découvrez les talents vérifiés par nos soins.",
-        lien: "public/pages/scouting.html",
+        lien: "scouting.html",       // CORRIGÉ
         icone: "💼"
     },
     {
         titre: "Le Processus",
         description: "Comment nous sécurisons votre avenir pro.",
-        lien: "public/pages/processus.html",
+        lien: "processus.html",      // CORRIGÉ
         icone: "🛡️"
     }
 ];
