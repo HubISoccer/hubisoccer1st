@@ -207,6 +207,15 @@
     color: white;
     transform: scale(1.1);
 }
+.inscriptions-page .list-item .actions button.delete {
+    color: #6c757d;
+    background: rgba(108,117,125,0.1);
+}
+.inscriptions-page .list-item .actions button.delete:hover {
+    background: #6c757d;
+    color: white;
+    transform: scale(1.1);
+}
 
 /* Modale améliorée */
 .inscriptions-page .admin-modal {
@@ -230,7 +239,7 @@
     border-radius: 25px;
     padding: 30px;
     width: 90%;
-    max-width: 550px;
+    max-width: 700px;
     position: relative;
     box-shadow: 0 30px 60px rgba(85,27,140,0.3);
     border: 1px solid var(--gold);
@@ -277,17 +286,57 @@
 .inscriptions-page .modal-details {
     margin-bottom: 20px;
     background: #f8fafc;
-    padding: 20px;
+    padding: 25px;
     border-radius: 15px;
-    max-height: 300px;
+    max-height: 400px;
     overflow-y: auto;
 }
-.inscriptions-page .modal-details p {
-    margin: 8px 0;
-    line-height: 1.6;
+.inscriptions-page .modal-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px 20px;
 }
-.inscriptions-page .modal-details strong {
+.inscriptions-page .detail-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    padding: 12px 15px;
+    border-radius: 12px;
+    border: 1px solid var(--light-gray);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+.inscriptions-page .detail-item .detail-icon {
+    font-size: 1.5rem;
+    min-width: 35px;
+    text-align: center;
+}
+.inscriptions-page .detail-item strong {
     color: var(--primary);
+    margin-right: 5px;
+}
+.inscriptions-page .detail-status {
+    margin-top: 20px;
+    text-align: center;
+}
+.inscriptions-page .status-badge {
+    display: inline-block;
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-weight: 700;
+    font-size: 1rem;
+}
+.inscriptions-page .status-badge.en_attente {
+    background: #fff3cd;
+    color: #856404;
+}
+.inscriptions-page .status-badge.valide {
+    background: #d4edda;
+    color: #155724;
+}
+.inscriptions-page .status-badge.refuse {
+    background: #f8d7da;
+    color: #721c24;
 }
 .inscriptions-page .modal-actions {
     display: flex;
@@ -297,22 +346,22 @@
 }
 .inscriptions-page .modal-actions button {
     flex: 1;
-    padding: 14px;
+    padding: 14px 20px;
     border: none;
     border-radius: 50px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: var(--transition);
-    font-size: 1rem;
+    font-size: 1.1rem;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 .inscriptions-page .btn-valid {
     background: #28a745;
     color: white;
-    box-shadow: 0 5px 15px rgba(40,167,69,0.2);
 }
 .inscriptions-page .btn-valid:hover {
     background: #218838;
@@ -322,7 +371,6 @@
 .inscriptions-page .btn-reject {
     background: #dc3545;
     color: white;
-    box-shadow: 0 5px 15px rgba(220,53,69,0.2);
 }
 .inscriptions-page .btn-reject:hover {
     background: #c82333;
@@ -352,5 +400,8 @@
     }
     .inscriptions-page .list-item .actions {
         align-self: flex-end;
+    }
+    .inscriptions-page .modal-details-grid {
+        grid-template-columns: 1fr;
     }
 }
