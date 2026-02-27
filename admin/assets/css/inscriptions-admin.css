@@ -65,6 +65,32 @@
     color: var(--gold);
 }
 
+/* Bouton de rafraîchissement */
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+.btn-refresh {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 10px rgba(23,162,184,0.2);
+}
+.btn-refresh:hover {
+    background: #138496;
+    transform: rotate(180deg);
+}
+
+/* Liste des inscriptions */
 .inscriptions-page .admin-list {
     display: flex;
     flex-direction: column;
@@ -72,7 +98,7 @@
 }
 .inscriptions-page .list-item {
     background: #f8fafc;
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 20px;
     display: flex;
     justify-content: space-between;
@@ -82,6 +108,7 @@
     border: 1px solid var(--light-gray);
     flex-wrap: wrap;
     gap: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
 }
 .inscriptions-page .list-item:hover {
     transform: translateX(5px);
@@ -139,18 +166,19 @@
     justify-content: flex-end;
 }
 .inscriptions-page .list-item .actions button {
-    background: none;
+    background: white;
     border: none;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     cursor: pointer;
-    padding: 8px;
-    border-radius: 8px;
-    transition: var(--transition);
-    width: 40px;
-    height: 40px;
+    padding: 10px;
+    border-radius: 12px;
+    transition: all 0.2s;
+    width: 45px;
+    height: 45px;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 .inscriptions-page .list-item .actions button.view {
     color: #17a2b8;
@@ -159,6 +187,7 @@
 .inscriptions-page .list-item .actions button.view:hover {
     background: #17a2b8;
     color: white;
+    transform: scale(1.1);
 }
 .inscriptions-page .list-item .actions button.valid {
     color: #28a745;
@@ -167,6 +196,7 @@
 .inscriptions-page .list-item .actions button.valid:hover {
     background: #28a745;
     color: white;
+    transform: scale(1.1);
 }
 .inscriptions-page .list-item .actions button.reject {
     color: #dc3545;
@@ -175,9 +205,10 @@
 .inscriptions-page .list-item .actions button.reject:hover {
     background: #dc3545;
     color: white;
+    transform: scale(1.1);
 }
 
-/* Modale */
+/* Modale améliorée */
 .inscriptions-page .admin-modal {
     display: none;
     position: fixed;
@@ -186,7 +217,7 @@
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0,0,0,0.5);
+    background-color: rgba(0,0,0,0.6);
     align-items: center;
     justify-content: center;
     backdrop-filter: blur(5px);
@@ -195,81 +226,108 @@
     display: flex;
 }
 .inscriptions-page .modal-content {
-    background: var(--white);
-    border-radius: 20px;
+    background: white;
+    border-radius: 25px;
     padding: 30px;
     width: 90%;
-    max-width: 500px;
+    max-width: 550px;
     position: relative;
-    box-shadow: 0 20px 40px rgba(85,27,140,0.2);
+    box-shadow: 0 30px 60px rgba(85,27,140,0.3);
     border: 1px solid var(--gold);
-    animation: modalFadeIn 0.3s ease;
-    max-height: 80vh;
-    overflow-y: auto;
+    animation: modalSlideIn 0.3s ease;
 }
-@keyframes modalFadeIn {
-    from { opacity: 0; transform: scale(0.9); }
-    to { opacity: 1; transform: scale(1); }
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 .inscriptions-page .close {
     position: absolute;
-    top: 15px;
-    right: 20px;
+    top: 20px;
+    right: 25px;
     font-size: 2rem;
     cursor: pointer;
     color: var(--gray);
     transition: var(--transition);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #f1f5f9;
 }
 .inscriptions-page .close:hover {
     color: var(--primary);
+    background: #e2e8f0;
+    transform: rotate(90deg);
 }
 .inscriptions-page .modal-content h3 {
     color: var(--primary);
     font-size: 1.8rem;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
     border-left: 5px solid var(--gold);
-    padding-left: 15px;
+    padding-left: 20px;
 }
-
 .inscriptions-page .modal-details {
     margin-bottom: 20px;
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 15px;
+    max-height: 300px;
+    overflow-y: auto;
 }
 .inscriptions-page .modal-details p {
-    margin: 10px 0;
-    line-height: 1.5;
+    margin: 8px 0;
+    line-height: 1.6;
 }
 .inscriptions-page .modal-details strong {
-    color: var(--dark);
+    color: var(--primary);
 }
 .inscriptions-page .modal-actions {
     display: flex;
-    gap: 10px;
+    gap: 15px;
     justify-content: center;
+    margin-top: 20px;
 }
 .inscriptions-page .modal-actions button {
     flex: 1;
-    padding: 12px;
+    padding: 14px;
     border: none;
-    border-radius: 8px;
+    border-radius: 50px;
     font-weight: 600;
     cursor: pointer;
     transition: var(--transition);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 .inscriptions-page .btn-valid {
     background: #28a745;
     color: white;
+    box-shadow: 0 5px 15px rgba(40,167,69,0.2);
 }
 .inscriptions-page .btn-valid:hover {
     background: #218838;
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(40,167,69,0.3);
 }
 .inscriptions-page .btn-reject {
     background: #dc3545;
     color: white;
+    box-shadow: 0 5px 15px rgba(220,53,69,0.2);
 }
 .inscriptions-page .btn-reject:hover {
     background: #c82333;
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(220,53,69,0.3);
 }
 
 .inscriptions-page .no-data {
