@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nos partenaires | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="public/css/style.css">
+    <style>
+        .partenaires-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .partenaires-container h1 {
+            color: var(--primary);
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--gold);
+            padding-left: 20px;
+        }
+        .partenaires-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        .partenaire-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--light-gray);
+            transition: var(--transition);
+        }
+        .partenaire-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+        .partenaire-logo {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 15px;
+            background: #f8f9fa;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: var(--primary);
+        }
+        .partenaire-nom {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        .partenaire-description {
+            font-size: 0.9rem;
+            color: var(--gray);
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation identique -->
+    <nav>
+        <a href="index.html" class="logo-link">
+            <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+        </a>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+            <button class="menu-toggle" id="menuToggle">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="scouting.html">Scouting</a>
+                <a href="processus.html">Processus</a>
+                <a href="affiliation.html">Affiliation</a>
+                <a href="parrain.html">Parrain</a>
+                <a href="tournoi.html">Tournois</a>
+                <a href="hub-community.html">Community</a>
+                <a href="e-marketing-hubisoccer.html">Market</a>
+                <a href="public/auth/login.html" class="btn-auth">Connexion</a>
+                <a href="public/auth/signup.html" class="btn-auth gold">Inscription</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="partenaires-container">
+        <h1>Nos partenaires</h1>
+        <p>Ils nous soutiennent et partagent notre vision de révéler les talents du football.</p>
+
+        <div class="partenaires-grid">
+            <div class="partenaire-card">
+                <div class="partenaire-logo">⚽</div>
+                <div class="partenaire-nom">Académie Diambars</div>
+                <div class="partenaire-description">Centre de formation de renom au Sénégal, partenaire pour le suivi des jeunes talents.</div>
+            </div>
+            <div class="partenaire-card">
+                <div class="partenaire-logo">🏆</div>
+                <div class="partenaire-nom">Fédération Béninoise de Football</div>
+                <div class="partenaire-description">Soutien institutionnel et cadre réglementaire pour nos tournois.</div>
+            </div>
+            <div class="partenaire-card">
+                <div class="partenaire-logo">📱</div>
+                <div class="partenaire-nom">Mobile Money Africa</div>
+                <div class="partenaire-description">Solution de paiement pour les transactions sur l'e-market.</div>
+            </div>
+            <div class="partenaire-card">
+                <div class="partenaire-logo">🎓</div>
+                <div class="partenaire-nom">Université de Cotonou</div>
+                <div class="partenaire-description">Partenariat pour le double projet sport-études.</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer identique -->
+    <footer>
+        <div class="compliance-badges">
+            <div class="badge-item">Conformité APDP Bénin</div>
+            <div class="badge-item">Règlementation FIFA</div>
+            <div class="badge-item">Double Projet Sport-Études</div>
+        </div>
+        <div class="contact-box">
+            <a href="tel:+2290197208188" class="contact-item">📞 +229 01 97 20 81 88</a>
+            <a href="mailto:contact@hubisoccer.com" class="contact-item">📧 hubisoccer@gmail.com</a>
+        </div>
+        <div class="legal">
+            <p><strong>HubISoccer - The Hub of Inspiration of Soccer</strong></p>
+            <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+            <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script src="public/js/main.js"></script>
+</body>
+</html>
