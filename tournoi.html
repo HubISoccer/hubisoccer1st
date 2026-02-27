@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournois & Lives | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="public/css/style.css">
+    <link rel="stylesheet" href="public/css/tournoi.css">
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo-link">
+            <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+        </a>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+                <!-- autres langues -->
+            </select>
+            <button class="menu-toggle" id="menuToggle">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="scouting.html">Scouting</a>
+                <a href="processus.html">Processus</a>
+                <a href="affiliation.html">Affiliation</a>
+                <a href="parrain.html">Parrain</a>
+                <a href="tournoi.html" class="active">Tournois</a>
+                <a href="hub-community.html">Community</a>
+                <a href="e-marketing-hubisoccer.html">Market</a>
+                <a href="public/auth/login.html" class="btn-auth">Connexion</a>
+                <a href="public/auth/signup.html" class="btn-auth gold">Inscription</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="tournoi-container">
+        <!-- En-tête -->
+        <header class="tournoi-header" style="background: linear-gradient(rgba(0,0,0,0.5), rgba(85,27,140,0.7)), url('public/img/stade-cotonou.jpg') center/cover no-repeat;">
+            <h1>Tournois <span class="highlight">HubISoccer</span></h1>
+            <p class="subtitle">L'arène où naissent les futures légendes du football mondial.</p>
+        </header>
+
+        <!-- Section Lives -->
+        <section class="live-section">
+            <h2><i class="fas fa-broadcast-tower"></i> Lives en direct</h2>
+            <div id="liveContainer" class="live-container">
+                <!-- Injecté par JS -->
+            </div>
+        </section>
+
+        <!-- Section Tournois -->
+        <section class="tournois-section">
+            <h2><i class="fas fa-trophy"></i> Tournois à venir</h2>
+            <div class="tournoi-grid" id="tournoiGrid">
+                <!-- Tournois statiques -->
+                <div class="tournoi-card">
+                    <div class="card-image">
+                        <img src="public/img/tou1.jpg" alt="Tournoi Cotonou">
+                        <div class="card-badge">À venir</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Édition Spéciale : Détection Cotonou 2026</h3>
+                        <p class="tournoi-desc">Participez au plus grand rassemblement de talents en Afrique de l'Ouest. Plus de 50 recruteurs internationaux présents.</p>
+                        <div class="tournoi-meta">
+                            <span><i class="fas fa-calendar-alt"></i> 15-20 Mars 2026</span>
+                            <span><i class="fas fa-map-marker-alt"></i> Stade de l'Amitié, Bénin</span>
+                            <span><i class="fas fa-users"></i> U17 & 18-23 ans</span>
+                        </div>
+                        <div class="tournoi-code">
+                            <span class="code-label">Code d'inscription :</span>
+                            <div class="code-box">
+                                <span class="code">COTONOU2026</span>
+                                <button class="copy-btn" data-code="COTONOU2026"><i class="fas fa-copy"></i> Copier</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tournoi-card">
+                    <div class="card-image">
+                        <img src="public/img/tou2.jpg" alt="Tournoi Parakou">
+                        <div class="card-badge">Bientôt</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Parakou Youth Cup 2026</h3>
+                        <p class="tournoi-desc">Un tournoi dédié aux jeunes espoirs du football. Détection par des scouts européens.</p>
+                        <div class="tournoi-meta">
+                            <span><i class="fas fa-calendar-alt"></i> 10-15 Avril 2026</span>
+                            <span><i class="fas fa-map-marker-alt"></i> Stade Municipal, Parakou</span>
+                            <span><i class="fas fa-users"></i> U15 & U17</span>
+                        </div>
+                        <div class="tournoi-code">
+                            <span class="code-label">Code d'inscription :</span>
+                            <div class="code-box">
+                                <span class="code">PARAKOU2026</span>
+                                <button class="copy-btn" data-code="PARAKOU2026"><i class="fas fa-copy"></i> Copier</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tournoi-card">
+                    <div class="card-image">
+                        <img src="public/img/tou3.jpg" alt="Tournoi Elite">
+                        <div class="card-badge">Complet</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Benin Elite Showcase</h3>
+                        <p class="tournoi-desc">Le rendez-vous des meilleurs talents béninois. Avec la participation de clubs professionnels.</p>
+                        <div class="tournoi-meta">
+                            <span><i class="fas fa-calendar-alt"></i> 5-10 Mai 2026</span>
+                            <span><i class="fas fa-map-marker-alt"></i> Complexe Sportif, Porto-Novo</span>
+                            <span><i class="fas fa-users"></i> 18-23 ans</span>
+                        </div>
+                        <div class="tournoi-code">
+                            <span class="code-label">Code d'inscription :</span>
+                            <div class="code-box">
+                                <span class="code">ELITE2026</span>
+                                <button class="copy-btn" data-code="ELITE2026"><i class="fas fa-copy"></i> Copier</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section information -->
+        <div class="tournoi-info">
+            <h3>Comment participer ?</h3>
+            <p>1. Choisissez un tournoi.<br>
+            2. Copiez le code d'inscription.<br>
+            3. Rendez-vous sur la page <a href="premier-pas.html">Premier Pas</a> pour valider votre inscription.</p>
+        </div>
+    </main>
+
+    <footer>
+        <div class="compliance-badges">
+            <div class="badge-item">Conformité APDP Bénin</div>
+            <div class="badge-item">Règlementation FIFA</div>
+            <div class="badge-item">Double Projet Sport-Études</div>
+        </div>
+        <div class="contact-box">
+            <a href="tel:+2290197208188" class="contact-item">📞 +229 01 97 20 81 88</a>
+            <a href="mailto:contact@hubisoccer.com" class="contact-item">📧 hubisoccer@gmail.com</a>
+        </div>
+        <div class="legal">
+            <p><strong>HubISoccer - The Hub of Inspiration of Soccer</strong></p>
+            <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+            <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script src="public/js/main.js"></script>
+    <script src="public/js/tournoi.js"></script>
+</body>
+</html>
