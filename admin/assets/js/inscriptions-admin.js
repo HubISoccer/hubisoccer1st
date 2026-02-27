@@ -109,9 +109,6 @@ window.updateStatus = (index, newStatut) => {
         }
     }
 
-    // Si refusé, on peut éventuellement décrémenter si on avait déjà compté (cas où on change d'avis)
-    // Mais on ne gère pas ici.
-
     loadInscriptions();
     closeModal();
 };
