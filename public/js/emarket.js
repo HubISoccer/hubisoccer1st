@@ -1,3 +1,11 @@
+// ===== GESTION DE L'AFFILIATION =====
+// Récupérer le paramètre 'ref' dans l'URL et le stocker dans sessionStorage
+const urlParams = new URLSearchParams(window.location.search);
+const affiliateRef = urlParams.get('ref');
+if (affiliateRef) {
+    sessionStorage.setItem('affiliateRef', affiliateRef);
+}
+
 // ===== DONNÉES DES PRODUITS =====
 const defaultProducts = [
     {
@@ -83,9 +91,15 @@ const defaultProducts = [
     // Ajoute d'autres produits si nécessaire
 ];
 
-// Initialiser localStorage
+// Initialiser localStorage avec les produits par défaut
 if (!localStorage.getItem('emarket_products')) {
     localStorage.setItem('emarket_products', JSON.stringify(defaultProducts));
+}
+if (!localStorage.getItem('emarket_cart')) {
+    localStorage.setItem('emarket_cart', JSON.stringify([]));
+}
+if (!localStorage.getItem('emarket_orders')) {
+    localStorage.setItem('emarket_orders', JSON.stringify([]));
 }
 
 // Éléments DOM
@@ -99,27 +113,6 @@ function updateCartCount() {
     const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
     cartCountSpan.textContent = totalItems;
     localStorage.setItem('emarket_cart', JSON.stringify(cart));
-}
-
-// Fonction pour afficher les produits
-function renderProducts() {
-    const products = JSON.parse(localStorage.getItem('emarket_products')) || [];
-
-    // Produits en vedette (featured)
-    const featured = products.filter(p => p.featured);
-    let featuredHtml = '';
-    featured.forEach(p => {
-        featuredHtml += renderProductCard(p);
-    });
-    featuredContainer.innerHTML = featuredHtml || '<p>Aucun pack vedette.</p>';
-
-    // Tous les produits (sauf ceux déjà affichés en vedette, mais on peut tout montrer)
-    const others = products.filter(p => !p.featured);
-    let othersHtml = '';
-    others.forEach(p => {
-        othersHtml += renderProductCard(p);
-    });
-    allProductsContainer.innerHTML = othersHtml || '<p>Aucun produit.</p>';
 }
 
 // Génère le HTML d'une carte produit
@@ -152,6 +145,27 @@ function renderProductCard(product) {
     `;
 }
 
+// Fonction pour afficher les produits
+function renderProducts() {
+    const products = JSON.parse(localStorage.getItem('emarket_products')) || [];
+
+    // Produits en vedette
+    const featured = products.filter(p => p.featured);
+    let featuredHtml = '';
+    featured.forEach(p => {
+        featuredHtml += renderProductCard(p);
+    });
+    featuredContainer.innerHTML = featuredHtml || '<p>Aucun pack vedette.</p>';
+
+    // Tous les produits (sauf ceux déjà affichés en vedette, mais on peut tout montrer)
+    const others = products.filter(p => !p.featured);
+    let othersHtml = '';
+    others.forEach(p => {
+        othersHtml += renderProductCard(p);
+    });
+    allProductsContainer.innerHTML = othersHtml || '<p>Aucun produit.</p>';
+}
+
 // Ajouter au panier
 function addToCart(productId) {
     const products = JSON.parse(localStorage.getItem('emarket_products')) || [];
@@ -175,6 +189,33 @@ function addToCart(productId) {
     }
 }
 
+// Fonction de passage de commande (simulée)
+function checkout() {
+    if (cart.length === 0) {
+        alert('Votre panier est vide.');
+        return;
+    }
+    const affiliateRef = sessionStorage.getItem('affiliateRef');
+    const order = {
+        id: Date.now(),
+        items: cart,
+        total: cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+        affiliate: affiliateRef || null, // ← ici on lie l'affilié
+        date: new Date().toISOString(),
+        statut: 'en_attente' // en attente de validation par l'admin
+    };
+    // Sauvegarder la commande
+    let orders = JSON.parse(localStorage.getItem('emarket_orders')) || [];
+    orders.push(order);
+    localStorage.setItem('emarket_orders', JSON.stringify(orders));
+    // Vider le panier
+    cart = [];
+    localStorage.setItem('emarket_cart', JSON.stringify(cart));
+    updateCartCount();
+    alert('Commande enregistrée ! En attente de validation.');
+    // Optionnel : rediriger vers une page de confirmation
+}
+
 // Écouteurs d'événements
 document.addEventListener('click', (e) => {
     const addBtn = e.target.closest('.btn-add-cart');
@@ -187,11 +228,18 @@ document.addEventListener('click', (e) => {
     if (detailsBtn) {
         const productId = detailsBtn.dataset.id;
         alert(`Fiche détaillée du produit ${productId} (à venir)`);
-        // Rediriger vers une page de détail si elle existe
     }
     const cartFloat = e.target.closest('.cart-float');
     if (cartFloat) {
-        alert('Fonction panier à développer (afficher le contenu)');
+        // Afficher le contenu du panier (simplifié)
+        let message = 'Votre panier :\n';
+        cart.forEach(item => {
+            message += `- ${item.name} x${item.quantity} = ${item.price * item.quantity} FCFA\n`;
+        });
+        message += `\nTotal : ${cart.reduce((sum, item) => sum + item.price * item.quantity, 0)} FCFA`;
+        if (confirm(message + '\n\nPasser la commande ?')) {
+            checkout();
+        }
     }
 });
 
