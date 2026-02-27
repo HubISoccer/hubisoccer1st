@@ -25,6 +25,29 @@ body {
     align-items: center;
     gap: 15px;
 }
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.btn-refresh {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-refresh:hover {
+    background: #138496;
+    transform: rotate(180deg);
+}
+
 .admin-logo {
     height: 40px;
     width: auto;
@@ -72,26 +95,4 @@ body {
     .admin-logo {
         height: 30px;
     }
-}
-.header-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-.btn-refresh {
-    background: #17a2b8;
-    color: white;
-    border: none;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: var(--transition);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.btn-refresh:hover {
-    background: #138496;
-    transform: rotate(180deg);
 }
