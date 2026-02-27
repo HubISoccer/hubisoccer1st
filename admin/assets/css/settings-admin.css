@@ -1,0 +1,130 @@
+/* ===== PAGE ADMIN PARAMÈTRES ===== */
+.settings-page {
+    --primary: #551B8C;
+    --primary-light: #7e3db0;
+    --primary-dark: #3d1266;
+    --gold: #FFCC00;
+    --gold-dark: #e6b800;
+    --bg-light: #F0F8FF;
+    --white: #ffffff;
+    --dark: #1a1a1a;
+    --gray: #6c757d;
+    --light-gray: #e9ecef;
+    --shadow: 0 10px 30px rgba(0,0,0,0.05);
+    --shadow-hover: 0 15px 40px rgba(85,27,140,0.15);
+    --transition: all 0.3s ease;
+}
+
+.settings-page h1 {
+    color: var(--primary);
+    font-size: 2.2rem;
+    margin-bottom: 30px;
+    position: relative;
+    padding-bottom: 10px;
+}
+.settings-page h1::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 80px;
+    height: 4px;
+    background: var(--gold);
+    border-radius: 2px;
+}
+
+/* Cartes de paramètres */
+.settings-card {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    transition: var(--transition);
+    margin-bottom: 30px;
+}
+.settings-card:hover {
+    box-shadow: var(--shadow-hover);
+}
+
+.settings-card h2 {
+    color: var(--primary);
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 2px solid var(--gold);
+    padding-bottom: 10px;
+}
+.settings-card h2 i {
+    color: var(--gold);
+}
+
+/* Formulaire */
+.settings-page .form-group {
+    margin-bottom: 20px;
+}
+.settings-page .form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--dark);
+}
+.settings-page .form-group input[type="text"],
+.settings-page .form-group input[type="email"],
+.settings-page .form-group input[type="url"],
+.settings-page .form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid var(--light-gray);
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    transition: var(--transition);
+}
+.settings-page .form-group input:focus,
+.settings-page .form-group textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(85,27,140,0.1);
+}
+.settings-page .form-group input[type="color"] {
+    width: 100%;
+    height: 50px;
+    border: 2px solid var(--light-gray);
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+/* Bouton de sauvegarde */
+.settings-page .btn-save {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: 0 10px 20px rgba(85,27,140,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+.settings-page .btn-save:hover {
+    background: var(--primary-light);
+    transform: translateY(-3px);
+    box-shadow: 0 15px 30px rgba(85,27,140,0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .settings-page h1 {
+        font-size: 1.8rem;
+    }
+}
