@@ -26,7 +26,7 @@ let translations = {};
 async function loadLanguage(lang) {
     try {
         // Chemin absolu incluant le nom du dépôt
-        const response = await fetch(`hubisoccer1st/public/lang/${lang}.json`);
+        const response = await fetch(`../lang/${lang}.json`);
         if (!response.ok) throw new Error('Langue non trouvée');
         translations = await response.json();
         applyTranslations();
