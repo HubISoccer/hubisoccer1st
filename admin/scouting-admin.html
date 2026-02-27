@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Scouting | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="stylesheet" href="assets/css/scouting-admin.css">
+</head>
+<body>
+    <nav class="admin-nav">
+        <div class="admin-nav-left">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="admin-logo">
+            <span class="admin-title">Administration</span>
+        </div>
+        <div class="admin-nav-right">
+            <a href="administration.html">Tableau de bord</a>
+            <a href="scouting-admin.html" class="active">Scouting</a>
+            <a href="#" id="logoutAdmin">Déconnexion</a>
+        </div>
+    </nav>
+
+    <div class="admin-container scouting-page">
+        <h1>Gestion des joueurs (Scouting)</h1>
+
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-futbol"></i> Liste des joueurs</h2>
+                <button class="btn-add" id="addPlayerBtn"><i class="fas fa-plus"></i> Ajouter un joueur</button>
+            </div>
+            <div id="playersList" class="admin-list"></div>
+        </div>
+    </div>
+
+    <!-- Modale d'ajout/édition -->
+    <div id="playerModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3 id="modalTitle">Ajouter un joueur</h3>
+            <form id="playerForm">
+                <input type="hidden" id="playerId">
+                
+                <div class="form-group">
+                    <label>Nom complet</label>
+                    <input type="text" id="nom" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Poste</label>
+                    <input type="text" id="poste" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Âge</label>
+                    <input type="number" id="age" required min="10" max="50">
+                </div>
+
+                <div class="form-group">
+                    <label>Pays</label>
+                    <input type="text" id="pays" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Continent</label>
+                    <select id="continent" required>
+                        <option value="">Sélectionnez</option>
+                        <option value="Afrique">Afrique</option>
+                        <option value="Europe">Europe</option>
+                        <option value="Amérique">Amérique</option>
+                        <option value="Asie">Asie</option>
+                        <option value="Océanie">Océanie</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Catégorie</label>
+                    <select id="categorie" required>
+                        <option value="">Sélectionnez</option>
+                        <option value="mineur">U17 (Mineur)</option>
+                        <option value="adulte">18+ (Adulte)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Club actuel</label>
+                    <input type="text" id="club" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Certification (diplôme/formation)</label>
+                    <input type="text" id="cert" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Image (chemin)</label>
+                    <input type="text" id="image" placeholder="ex: public/img/player-placeholder.jpg" required>
+                </div>
+
+                <button type="submit" class="btn-submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <footer class="admin-footer">
+        <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
+    </footer>
+
+    <script src="../public/js/main.js"></script>
+    <script src="assets/js/scouting-admin.js"></script>
+</body>
+</html>
