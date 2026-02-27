@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion Affilié | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="public/css/style.css">
+    <link rel="stylesheet" href="public/css/affilie.css">
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo-link">
+            <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+        </a>
+        <div class="nav-right">
+            <button class="menu-toggle" id="menuToggle">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="affiliation.html">Devenir affilié</a>
+                <a href="affilie-login.html" class="active">Espace Affilié</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="affilie-container">
+        <div class="login-card">
+            <h1><i class="fas fa-hand-holding-usd"></i> Espace Affilié</h1>
+            <p>Connectez-vous avec votre ID d'affilié ou votre email.</p>
+
+            <form id="affilieLoginForm">
+                <div class="form-group">
+                    <label>ID d'affilié ou email</label>
+                    <input type="text" id="loginId" placeholder="Ex: aff_123456 ou email@exemple.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Mot de passe</label>
+                    <input type="password" id="password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-login"><i class="fas fa-sign-in-alt"></i> Se connecter</button>
+            </form>
+
+            <p class="register-link">Pas encore affilié ? <a href="affiliation.html">Générez votre lien</a></p>
+        </div>
+    </main>
+
+    <footer>
+        <div class="legal">
+            <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script src="public/js/main.js"></script>
+    <script src="public/js/affilie-login.js"></script>
+</body>
+</html>
