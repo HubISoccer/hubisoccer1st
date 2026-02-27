@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parrainage - Soutenez les talents | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="public/css/style.css">
+    <link rel="stylesheet" href="public/css/parrain.css">
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo-link">
+            <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+        </a>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+                <option value="lin">🇨🇬 Lingala</option>
+                <option value="wol">🇸🇳 Wolof</option>
+                <option value="diou">🇨🇮 Dioula</option>
+                <option value="ha">🇳🇬 Hausa</option>
+                <option value="sw">🇰🇪 Kiswahili</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="pt">🇵🇹 Português</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="ar">🇸🇦 العربية</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="ja">🇯🇵 日本語</option>
+                <option value="tr">🇹🇷 Türkçe</option>
+                <option value="ko">🇰🇷 한국어</option>
+                <option value="hi">🇮🇳 हिन्दी</option>
+                <option value="nl">🇳🇱 Nederlands</option>
+                <option value="pl">🇵🇱 Polski</option>
+                <option value="vi">🇻🇳 Tiếng Việt</option>
+            </select>
+            <button class="menu-toggle" id="menuToggle">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="scouting.html">Scouting</a>
+                <a href="processus.html">Processus</a>
+                <a href="affiliation.html">Affiliation</a>
+                <a href="parrain.html" class="active">Parrain</a>
+                <a href="tournoi.html">Tournois</a>
+                <a href="hub-community.html">Community</a>
+                <a href="e-marketing-hubisoccer.html">Market</a>
+                <a href="public/auth/login.html" class="btn-auth">Connexion</a>
+                <a href="public/auth/signup.html" class="btn-auth gold">Inscription</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="parrain-container">
+        <header class="parrain-header" style="background: linear-gradient(rgba(0,0,0,0.6), rgba(85,27,140,0.8)), url('public/img/stade-cotonou.jpg') center/cover no-repeat;">
+            <h1>Devenez <span class="highlight">Parrain</span></h1>
+            <p>Soutenez les talents et contribuez au développement du football.</p>
+        </header>
+
+        <div class="filters-section">
+            <div class="filter-group">
+                <select id="filterType">
+                    <option value="all">Tous les besoins</option>
+                    <option value="joueur">Joueurs</option>
+                    <option value="tournoi">Tournois & événements</option>
+                    <option value="infra">Infrastructures</option>
+                </select>
+                <select id="filterRegion">
+                    <option value="all">Toutes les régions</option>
+                    <option value="benin">Bénin</option>
+                    <option value="togo">Togo</option>
+                    <option value="civ">Côte d'Ivoire</option>
+                    <option value="senegal">Sénégal</option>
+                </select>
+                <input type="text" id="searchInput" placeholder="Rechercher...">
+                <button class="btn-filter" id="applyFilters"><i class="fas fa-filter"></i> Filtrer</button>
+            </div>
+        </div>
+
+        <section class="besoins-section">
+            <h2><i class="fas fa-futbol"></i> Joueurs à soutenir</h2>
+            <div class="cards-grid" id="joueursGrid"></div>
+        </section>
+
+        <section class="dons-section">
+            <h2><i class="fas fa-hand-holding-heart"></i> Appels aux dons</h2>
+            <div class="cards-grid" id="donsGrid"></div>
+        </section>
+
+        <section class="devenir-acteur">
+            <h2><i class="fas fa-users"></i> Devenir acteur</h2>
+            <div class="acteur-options">
+                <div class="acteur-card">
+                    <i class="fas fa-user-tie"></i>
+                    <h3>Agent</h3>
+                    <p>Vous souhaitez représenter un joueur ? Postulez pour devenir agent agréé.</p>
+                    <button class="btn-acteur" data-role="agent">Devenir agent</button>
+                </div>
+                <div class="acteur-card">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <h3>Coach</h3>
+                    <p>Vous êtes entraîneur et cherchez à intégrer un club ? Contactez-nous.</p>
+                    <button class="btn-acteur" data-role="coach">Devenir coach</button>
+                </div>
+                <div class="acteur-card">
+                    <i class="fas fa-school"></i>
+                    <h3>Académie</h3>
+                    <p>Vous représentez une académie et souhaitez recruter des talents ?</p>
+                    <button class="btn-acteur" data-role="academie">Contacter</button>
+                </div>
+                <div class="acteur-card">
+                    <i class="fas fa-building"></i>
+                    <h3>Club</h3>
+                    <p>Vous cherchez à recruter des joueurs ? Laissez-nous vos besoins.</p>
+                    <button class="btn-acteur" data-role="club">Recruter</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="temoignages">
+            <h2><i class="fas fa-quote-right"></i> Ils ont parrainé</h2>
+            <div class="temoignages-grid" id="temoignagesList"></div>
+        </section>
+    </main>
+
+    <div id="contactModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <h3>Contact</h3>
+            <form id="contactForm">
+                <div class="form-group">
+                    <label>Votre nom</label>
+                    <input type="text" id="contactName" required>
+                </div>
+                <div class="form-group">
+                    <label>Votre email</label>
+                    <input type="email" id="contactEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Message</label>
+                    <textarea id="contactMessage" rows="4" required></textarea>
+                </div>
+                <button type="submit" class="btn-submit">Envoyer</button>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <div class="compliance-badges">
+            <div class="badge-item">Conformité APDP Bénin</div>
+            <div class="badge-item">Règlementation FIFA</div>
+            <div class="badge-item">Double Projet Sport-Études</div>
+        </div>
+        <div class="contact-box">
+            <a href="tel:+2290197208188" class="contact-item">📞 +229 01 97 20 81 88</a>
+            <a href="mailto:contact@hubisoccer.com" class="contact-item">📧 hubisoccer@gmail.com</a>
+        </div>
+        <div class="legal">
+            <p><strong>HubISoccer - The Hub of Inspiration of Soccer</strong></p>
+            <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+            <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script src="public/js/main.js"></script>
+    <script src="public/js/parrain.js"></script>
+</body>
+</html>
