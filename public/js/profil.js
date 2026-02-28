@@ -1,13 +1,27 @@
+// ===== INITIALISATION SUPABASE =====
+const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
 // Récupérer l'ID du joueur depuis l'URL
 function getPlayerId() {
     const params = new URLSearchParams(window.location.search);
     return params.get('id');
 }
 
-// Charger les données du joueur depuis localStorage
-function getPlayerData(playerId) {
-    const players = JSON.parse(localStorage.getItem('scouting_players')) || [];
-    return players.find(p => p.id === playerId) || null;
+// Charger les données du joueur
+async function getPlayerData(playerId) {
+    const { data: player, error } = await supabaseClient
+        .from('joueurs')
+        .select('*')
+        .eq('id', playerId)
+        .single();
+
+    if (error) {
+        console.error('Erreur chargement joueur:', error);
+        return null;
+    }
+    return player;
 }
 
 // Construire l'affichage du profil
@@ -23,13 +37,13 @@ function renderPlayerProfile(player) {
         return;
     }
 
-    // Simuler des données supplémentaires (à remplacer par des vraies données)
+    // Simuler des données supplémentaires (à remplacer par des vraies données plus tard)
     const stats = {
         matchs: 34,
         buts: 12,
         passes: 8,
-        nationalite: player.country,
-        club: player.club || 'Non renseigné',
+        nationalite: player.pays,
+        club: player.club,
         taille: '1,82 m',
         poids: '74 kg',
         pied: 'Droit'
@@ -38,15 +52,15 @@ function renderPlayerProfile(player) {
     const html = `
         <div class="player-card-hero">
             <div class="hero-img">
-                <img src="${player.img}" alt="${player.name}" onerror="this.src='public/img/player-placeholder.jpg'">
+                <img src="${player.img}" alt="${player.nom}" onerror="this.src='public/img/player-placeholder.jpg'">
             </div>
             <div class="hero-details">
                 <span class="hub-id">HUBI-${player.id}</span>
-                <h1>${player.name}</h1>
-                <p class="country"><i class="fas fa-map-marker-alt"></i> ${player.country}</p>
+                <h1>${player.nom}</h1>
+                <p class="country"><i class="fas fa-map-marker-alt"></i> ${player.pays}</p>
                 <div class="stats-grid">
                     <div class="stat-box"><span class="stat-label">Âge</span><span class="stat-value">${player.age} ans</span></div>
-                    <div class="stat-box"><span class="stat-label">Poste</span><span class="stat-value">${player.pos}</span></div>
+                    <div class="stat-box"><span class="stat-label">Poste</span><span class="stat-value">${player.poste}</span></div>
                     <div class="stat-box"><span class="stat-label">Club</span><span class="stat-value">${stats.club}</span></div>
                     <div class="stat-box"><span class="stat-label">Nationalité</span><span class="stat-value">${stats.nationalite}</span></div>
                 </div>
@@ -70,7 +84,7 @@ function renderPlayerProfile(player) {
                     <span>${player.cert}</span>
                 </div>
             </div>
-            <a href="mailto:recrutement@hubisoccer.com?subject=Recrutement%20${player.name}" class="btn-contact-pro">
+            <a href="mailto:recrutement@hubisoccer.com?subject=Recrutement%20${player.nom}" class="btn-contact-pro">
                 <i class="fas fa-envelope"></i> Contacter pour recrutement
             </a>
         </div>
@@ -80,7 +94,7 @@ function renderPlayerProfile(player) {
 }
 
 // Initialisation
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const playerId = getPlayerId();
     if (!playerId) {
         document.getElementById('profilContent').innerHTML = `
@@ -92,6 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    const player = getPlayerData(playerId);
+    const player = await getPlayerData(playerId);
     renderPlayerProfile(player);
 });
