@@ -1,12 +1,15 @@
-// ===== GESTION DE L'AFFILIATION =====
-// Récupérer le paramètre 'ref' dans l'URL et le stocker dans sessionStorage
+// ===== INITIALISATION SUPABASE =====
+const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+// ===== RÉCUPÉRATION DU PARRAIN (ref) DANS L'URL =====
 const urlParams = new URLSearchParams(window.location.search);
-const affiliateRef = urlParams.get('ref');
-if (affiliateRef) {
-    sessionStorage.setItem('affiliateRef', affiliateRef);
+const ref = urlParams.get('ref');
+if (ref) {
+    sessionStorage.setItem('affiliateRef', ref);
 }
 
-// ===== GESTION DU FORMULAIRE =====
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('premierPasForm');
     const affOui = document.getElementById('affOui');
@@ -17,33 +20,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // Pré-remplir le champ d'affiliation si un ref est présent dans l'URL
     const storedRef = sessionStorage.getItem('affiliateRef');
     if (storedRef) {
-        if (affOui) affOui.checked = true;
-        if (affiliateIdInput) affiliateIdInput.value = storedRef;
-        if (affiliateIdGroup) affiliateIdGroup.style.display = 'block';
+        affOui.checked = true;
+        affiliateIdInput.value = storedRef;
+        affiliateIdGroup.style.display = 'block';
     } else {
-        if (affNon) affNon.checked = true;
-        if (affiliateIdGroup) affiliateIdGroup.style.display = 'none';
+        affNon.checked = true;
+        affiliateIdGroup.style.display = 'none';
     }
 
     // Afficher/masquer le champ d'affiliation selon le choix
-    if (affOui) {
-        affOui.addEventListener('change', function() {
-            if (this.checked) {
-                affiliateIdGroup.style.display = 'block';
-                // Recharger la valeur stockée si elle existe
-                const ref = sessionStorage.getItem('affiliateRef');
-                if (ref) affiliateIdInput.value = ref;
-            }
-        });
-    }
-    if (affNon) {
-        affNon.addEventListener('change', function() {
-            if (this.checked) {
-                affiliateIdGroup.style.display = 'none';
-                affiliateIdInput.value = '';
-            }
-        });
-    }
+    affOui.addEventListener('change', function() {
+        if (this.checked) {
+            affiliateIdGroup.style.display = 'block';
+            const ref = sessionStorage.getItem('affiliateRef');
+            if (ref) affiliateIdInput.value = ref;
+        }
+    });
+    affNon.addEventListener('change', function() {
+        if (this.checked) {
+            affiliateIdGroup.style.display = 'none';
+            affiliateIdInput.value = '';
+        }
+    });
 
     // Gestion du carrousel (si présent)
     initCarousel();
@@ -52,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initFileUploads();
 
     // Soumission du formulaire
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const nom = document.getElementById('nom').value.trim();
@@ -75,25 +73,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const pieceFileName = pieceFile ? pieceFile.name : '';
 
         const inscription = {
-            id: Date.now(),
+            id: Date.now(), // ID unique basé sur le timestamp
             nom,
             dateNaissance,
             poste,
             codeTournoi: codeTournoi || '',
             diplome,
             telephone,
-            certifie,
             diplomeFileName,
             pieceFileName,
-            affilié: affiliationValue, // ← ici on lie l'affilié
+            affilié: affiliationValue,
             statut: 'en_attente',
             dateSoumission: new Date().toLocaleString('fr-FR')
         };
 
-        let inscriptions = JSON.parse(localStorage.getItem('premiers_pas_inscriptions')) || [];
-        inscriptions.push(inscription);
-        localStorage.setItem('premiers_pas_inscriptions', JSON.stringify(inscriptions));
+        // Insertion dans Supabase
+        const { error } = await supabaseClient
+            .from('inscriptions')
+            .insert([inscription]);
 
+        if (error) {
+            console.error('Erreur lors de l\'inscription :', error);
+            alert('Une erreur est survenue. Veuillez réessayer.');
+            return;
+        }
+
+        // Si tout va bien, afficher la modale avec le lien de suivi
         const trackingUrl = `suivi.html?id=${inscription.id}`;
         showSuccessModal(trackingUrl);
         form.reset();
@@ -108,7 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== FONCTIONS ANNEXES =====
 function initCarousel() {
-    // Code du carrousel (si présent dans la page)
     const slides = document.querySelectorAll('.carousel-slide');
     const indicators = document.querySelectorAll('.indicator');
     let currentSlide = 0;
