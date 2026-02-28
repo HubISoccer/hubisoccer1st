@@ -3,7 +3,7 @@ const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-const COMMISSION = 100; // FCFA par parrainage validé
+const COMMISSION = 100;
 
 // Éléments DOM
 const affiliatesList = document.getElementById('affiliatesList');
@@ -159,11 +159,11 @@ window.closeMessageModal = () => {
 
 messageForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const affId = messageAffiliateId.value; // variable locale
+    const affId = messageAffiliateId.value; // ID de l'affilié
     const message = messageText.value.trim();
     if (!message || !affId) return;
 
-    // Insertion avec le nom exact de la colonne : affiliateid (tout minuscule)
+    // Insertion avec le nom exact de la colonne (affiliateid)
     const { error } = await supabaseClient
         .from('affiliate_messages')
         .insert([{ affiliateid: affId, message }]);
