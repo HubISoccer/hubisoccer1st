@@ -1,23 +1,22 @@
-// ===== DONNÉES STATIQUES (à remplacer par des appels API) =====
-const engagementsData = [
-    { titre: "Vérification Académique", description: "Obligation de diplôme ou d'apprentissage. Nous luttons contre la précarité des sportifs en fin de carrière." },
-    { titre: "Protection FIFA", description: "Intermédiation exclusive via des agents licenciés. Respect strict du règlement sur le transfert des mineurs." },
-    { titre: "Audit APDP", description: "Vos données et celles des joueurs sont protégées selon les lois de la République du Bénin." }
-];
+// Initialisation du client Supabase
+const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-const rolesData = [
-    { titre: "Espace Joueur", description: "Gérez votre CV, vos stats et votre visibilité.", lien: "premier-pas.html", icone: "🏃" },
-    { titre: "Scouting", description: "Découvrez les talents vérifiés par nos soins.", lien: "scouting.html", icone: "💼" },
-    { titre: "Le Processus", description: "Comment nous sécurisons votre avenir pro.", lien: "processus.html", icone: "🛡️" }
-];
-
-// ===== FONCTIONS D'AFFICHAGE =====
-function loadEngagements() {
+// Fonction pour charger les engagements
+async function loadEngagements() {
     const container = document.getElementById('engagementsContainer');
     if (!container) return;
 
-    // Simule un appel API (remplacer par fetch plus tard)
-    const engagements = engagementsData;
+    const { data: engagements, error } = await supabase
+        .from('engagements')
+        .select('titre, description');
+
+    if (error) {
+        console.error('Erreur chargement engagements:', error);
+        container.innerHTML = '<p>Erreur de chargement.</p>';
+        return;
+    }
 
     let html = '';
     engagements.forEach(e => {
@@ -31,12 +30,20 @@ function loadEngagements() {
     container.innerHTML = html || '<p>Aucun engagement.</p>';
 }
 
-function loadRoles() {
+// Fonction pour charger les rôles
+async function loadRoles() {
     const container = document.getElementById('rolesContainer');
     if (!container) return;
 
-    // Simule un appel API
-    const roles = rolesData;
+    const { data: roles, error } = await supabase
+        .from('roles')
+        .select('titre, description, lien, icone');
+
+    if (error) {
+        console.error('Erreur chargement rôles:', error);
+        container.innerHTML = '<p>Erreur de chargement.</p>';
+        return;
+    }
 
     let html = '';
     roles.forEach(r => {
@@ -51,7 +58,7 @@ function loadRoles() {
     container.innerHTML = html || '<p>Aucun rôle.</p>';
 }
 
-// ===== CHARGEMENT AU DÉMARRAGE =====
+// Chargement au démarrage
 document.addEventListener('DOMContentLoaded', () => {
     loadEngagements();
     loadRoles();
