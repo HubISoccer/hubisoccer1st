@@ -1,15 +1,4 @@
-/* ===== PAGE PROFIL JOUEUR ===== */
-:root {
-    --profil-primary: #551B8C;
-    --profil-accent: #FFCC00;
-    --profil-dark: #1a1a1a;
-    --profil-gray: #6c757d;
-    --profil-light: #f8f9fa;
-    --profil-border: #e9ecef;
-    --profil-shadow: 0 15px 40px rgba(0,0,0,0.1);
-    --transition: all 0.3s ease;
-}
-
+/* ===== PAGE PROFIL ===== */
 .profil-container {
     max-width: 1000px;
     margin: 40px auto;
@@ -19,18 +8,17 @@
 .loading {
     text-align: center;
     font-size: 1.2rem;
-    color: var(--profil-gray);
+    color: var(--gray);
     padding: 60px 0;
 }
 
-/* Carte principale */
 .player-card-hero {
     background: white;
     border-radius: 30px;
     overflow: hidden;
     display: flex;
     flex-wrap: wrap;
-    box-shadow: var(--profil-shadow);
+    box-shadow: var(--shadow);
     margin-bottom: 30px;
 }
 
@@ -56,7 +44,7 @@
 }
 
 .hub-id {
-    color: var(--profil-accent);
+    color: var(--gold);
     font-weight: 700;
     letter-spacing: 1px;
     margin-bottom: 10px;
@@ -65,20 +53,19 @@
 
 .hero-details h1 {
     font-size: 2.5rem;
-    color: var(--profil-primary);
+    color: var(--primary);
     margin: 0 0 5px;
 }
 
 .hero-details .country {
     font-size: 1.2rem;
-    color: var(--profil-gray);
+    color: var(--gray);
     margin-bottom: 20px;
     display: flex;
     align-items: center;
     gap: 5px;
 }
 
-/* Grille des statistiques */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -87,10 +74,10 @@
 }
 
 .stat-box {
-    background: var(--profil-light);
+    background: var(--bg-light);
     padding: 15px;
     border-radius: 12px;
-    border-left: 4px solid var(--profil-accent);
+    border-left: 4px solid var(--gold);
 }
 
 .stat-label {
@@ -104,11 +91,10 @@
 .stat-value {
     font-size: 1.1rem;
     font-weight: 700;
-    color: var(--profil-primary);
+    color: var(--primary);
     display: block;
 }
 
-/* Section vidéo */
 .video-section {
     margin-top: 30px;
     border-radius: 20px;
@@ -124,20 +110,19 @@
     border: none;
 }
 
-/* Section certification */
 .cert-section {
     background: white;
     border-radius: 30px;
     padding: 30px;
-    box-shadow: var(--profil-shadow);
+    box-shadow: var(--shadow);
     margin-top: 30px;
 }
 
 .cert-section h2 {
-    color: var(--profil-primary);
+    color: var(--primary);
     margin-bottom: 20px;
     font-size: 1.8rem;
-    border-left: 5px solid var(--profil-accent);
+    border-left: 5px solid var(--gold);
     padding-left: 15px;
 }
 
@@ -148,7 +133,7 @@
     background: #fff9eb;
     padding: 20px;
     border-radius: 15px;
-    border: 1px dashed var(--profil-accent);
+    border: 1px dashed var(--gold);
     margin-bottom: 20px;
 }
 
@@ -157,7 +142,7 @@
 }
 
 .cert-item strong {
-    color: var(--profil-primary);
+    color: var(--primary);
     display: block;
     margin-bottom: 5px;
 }
@@ -166,7 +151,6 @@
     color: #b8860b;
 }
 
-/* Stats supplémentaires */
 .stats-secondary {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -174,11 +158,10 @@
     margin: 20px 0;
 }
 
-/* Bouton de contact */
 .btn-contact-pro {
     display: block;
     width: 100%;
-    background: var(--profil-primary);
+    background: var(--primary);
     color: white;
     text-align: center;
     padding: 18px;
@@ -193,12 +176,11 @@
 }
 
 .btn-contact-pro:hover {
-    background: #7e3db0;
+    background: var(--primary-light);
     transform: translateY(-3px);
     box-shadow: 0 10px 25px rgba(85,27,140,0.3);
 }
 
-/* Message d'erreur */
 .error-message {
     text-align: center;
     color: #dc3545;
@@ -207,7 +189,7 @@
 }
 
 .error-message a {
-    color: var(--profil-primary);
+    color: var(--primary);
     text-decoration: none;
     font-weight: 600;
 }
@@ -216,7 +198,6 @@
     text-decoration: underline;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     .player-card-hero {
         flex-direction: column;
