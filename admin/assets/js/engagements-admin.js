@@ -1,7 +1,6 @@
-// ===== INITIALISATION SUPABASE =====
 const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // Éléments DOM
 const engagementsList = document.getElementById('engagementsList');
@@ -14,7 +13,7 @@ const descriptionInput = document.getElementById('description');
 
 // Charger les engagements
 async function loadEngagements() {
-    const { data: engagements, error } = await supabase
+    const { data: engagements, error } = await supabaseClient
         .from('engagements')
         .select('*')
         .order('id');
@@ -59,7 +58,7 @@ function openAddModal() {
 
 // Éditer un engagement
 window.editEngagement = async (id) => {
-    const { data: item, error } = await supabase
+    const { data: item, error } = await supabaseClient
         .from('engagements')
         .select('*')
         .eq('id', id)
@@ -80,7 +79,7 @@ window.editEngagement = async (id) => {
 // Supprimer un engagement
 window.deleteEngagement = async (id) => {
     if (!confirm('Supprimer cet engagement ?')) return;
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('engagements')
         .delete()
         .eq('id', id);
@@ -106,7 +105,7 @@ form.addEventListener('submit', async (e) => {
 
     if (id === '') {
         // Ajout
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('engagements')
             .insert([{ titre, description }]);
         if (error) {
@@ -117,7 +116,7 @@ form.addEventListener('submit', async (e) => {
         }
     } else {
         // Modification
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('engagements')
             .update({ titre, description })
             .eq('id', id);
