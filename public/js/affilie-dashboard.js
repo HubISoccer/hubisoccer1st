@@ -16,12 +16,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Afficher le nom
     document.getElementById('affilieNom').textContent = currentAffiliate.nom || 'Affilié';
 
-    // Récupérer les inscriptions et les commandes (via le champ affilié)
-    // Pour l'instant, on ne peut pas compter facilement car il faudrait croiser avec d'autres tables
-    // On va compter simplement le nombre de personnes affiliées via cet ID dans les tables concernées
-    // Pour la démo, on va utiliser des données fictives ou compter depuis une table "conversions"
-    // En attendant, on va afficher des valeurs de test
-
     // Compter le nombre d'inscriptions avec cet affilié
     const { data: inscriptions, error: err1 } = await supabaseClient
         .from('inscriptions')
@@ -31,11 +25,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalInscriptions = inscriptions ? inscriptions.length : 0;
     const validatedInscriptions = inscriptions ? inscriptions.filter(ins => ins.statut === 'valide').length : 0;
 
-    // Compter les achats (si table orders avec champ affilié)
-    // Pour l'instant, on n'a pas de lien, on va juste utiliser les inscriptions
     const totalAffilies = totalInscriptions; // + achats plus tard
     const validatedAffilies = validatedInscriptions;
-
     const gains = validatedAffilies * COMMISSION;
 
     document.getElementById('totalAffilies').textContent = totalAffilies;
@@ -51,11 +42,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (err2) console.error('Erreur chargement demandes:', err2);
 
-    // Récupérer les messages de l'admin
+    // Récupérer les messages de l'admin (colonne en minuscules : affiliateid)
     const { data: messages, error: err3 } = await supabaseClient
         .from('affiliate_messages')
         .select('*')
-        .eq('affiliateId', currentAffiliate.id)
+        .eq('affiliateid', currentAffiliate.id)  // ← CORRIGÉ : minuscules
         .order('date', { ascending: false });
 
     if (err3) console.error('Erreur chargement messages:', err3);
@@ -123,7 +114,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert('Erreur lors de la création de la demande : ' + error.message);
         } else {
             closeModal();
-            // Recharger la page pour voir la nouvelle demande
             location.reload();
         }
     });
@@ -145,8 +135,7 @@ function renderPaymentRequests(requests) {
 
     let html = '';
     requests.forEach(req => {
-        let statusClass = '';
-        let statusText = '';
+        let statusClass = '', statusText = '';
         switch (req.status) {
             case 'en_attente':
                 statusClass = 'pending';
