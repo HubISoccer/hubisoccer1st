@@ -159,14 +159,14 @@ window.closeMessageModal = () => {
 
 messageForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const affiliateId = messageAffiliateId.value;
+    const affId = messageAffiliateId.value; // variable locale
     const message = messageText.value.trim();
-    if (!message) return;
+    if (!message || !affId) return;
 
-    // Insertion dans la table affiliate_messages avec le nom correct de la colonne (affiliateid)
+    // Insertion avec le nom exact de la colonne : affiliateid (tout minuscule)
     const { error } = await supabaseClient
         .from('affiliate_messages')
-        .insert([{ affiliateid: affiliateId, message }]); // ← correction ici
+        .insert([{ affiliateid: affId, message }]);
 
     if (error) {
         alert('Erreur envoi message : ' + error.message);
