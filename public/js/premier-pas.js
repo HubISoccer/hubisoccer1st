@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
 
         const nom = document.getElementById('nom').value.trim();
-        const dateNaissance = document.getElementById('dateNaissance').value;
+        const dateNaissance = document.getElementById('dateNaissance').value; // champ HTML
         const poste = document.getElementById('poste').value;
         const codeTournoi = document.getElementById('codeTournoi').value.trim();
         const diplome = document.getElementById('diplome').value.trim();
@@ -72,20 +72,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const diplomeFileName = diplomeFile ? diplomeFile.name : '';
         const pieceFileName = pieceFile ? pieceFile.name : '';
 
+        // Construction de l'objet avec les noms exacts des colonnes (issus de la capture)
         const inscription = {
-            id: Date.now(), // ID unique basé sur le timestamp
+            id: Date.now(),
             nom,
-            dateNaissance,
+            datenaissance: dateNaissance,           // correspond à la colonne 'datenaissance'
             poste,
-            codeTournoi: codeTournoi || '',
+            codetournoi: codeTournoi || '',         // correspond à 'codetournoi'
             diplome,
             telephone,
-            diplomeFileName,
-            pieceFileName,
-            affilié: affiliationValue,
+            diplomefilename: diplomeFileName,       // correspond à 'diplomefilename'
+            piecefilename: pieceFileName,           // correspond à 'piecefilename'
+            "affilié": affiliationValue,             // la colonne a un accent, on met des guillemets
             statut: 'en_attente',
-            dateSoumission: new Date().toLocaleString('fr-FR')
+            datesoumission: new Date().toLocaleString('fr-FR') // correspond à 'datesoumission'
         };
+
+        console.log('Données envoyées :', inscription); // Pour déboguer
 
         // Insertion dans Supabase
         const { error } = await supabaseClient
