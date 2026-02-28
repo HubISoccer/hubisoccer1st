@@ -1,46 +1,7 @@
-// ===== DONNÉES DES JOUEURS =====
-const defaultPlayers = [
-    {
-        id: 'j1',
-        name: 'Koffi B.',
-        pos: 'Attaquant',
-        age: 19,
-        country: 'Bénin',
-        continent: 'Afrique',
-        cat: 'adulte',
-        club: 'AS Dragons',
-        cert: 'BEPC validé',
-        img: 'public/img/pas1.jpg'
-    },
-    {
-        id: 'j2',
-        name: 'Moussa D.',
-        pos: 'Milieu',
-        age: 17,
-        country: 'Sénégal',
-        continent: 'Afrique',
-        cat: 'mineur',
-        club: 'Diambars',
-        cert: 'Formation académique',
-        img: 'public/img/pas2.jpg'
-    },
-    {
-        id: 'j3',
-        name: 'Aminata Diallo',
-        pos: 'Défenseur',
-        age: 22,
-        country: 'Côte d\'Ivoire',
-        continent: 'Afrique',
-        cat: 'adulte',
-        club: 'ASEC Mimosas',
-        cert: 'BAC + études sport',
-        img: 'public/img/pas3.jpg'
-    }
-];
-
-if (!localStorage.getItem('scouting_players')) {
-    localStorage.setItem('scouting_players', JSON.stringify(defaultPlayers));
-}
+// ===== INITIALISATION SUPABASE =====
+const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // Éléments DOM
 const playersGrid = document.getElementById('playersGrid');
@@ -50,7 +11,42 @@ const categoryFilter = document.getElementById('categoryFilter');
 const countrySearch = document.getElementById('countrySearch');
 const searchBtn = document.getElementById('searchBtn');
 
-// Fonction de rendu
+let allPlayers = []; // Pour stocker tous les joueurs
+
+// Charger tous les joueurs
+async function loadAllPlayers() {
+    const { data: players, error } = await supabaseClient
+        .from('joueurs')
+        .select('*')
+        .order('id');
+
+    if (error) {
+        console.error('Erreur chargement joueurs:', error);
+        playersGrid.innerHTML = '<p class="no-results">Erreur de chargement.</p>';
+        return;
+    }
+
+    allPlayers = players || [];
+    renderPlayers(allPlayers);
+}
+
+// Filtrer les joueurs
+function filterPlayers() {
+    const continent = continentFilter.value;
+    const category = categoryFilter.value;
+    const search = countrySearch.value.toLowerCase().trim();
+
+    const filtered = allPlayers.filter(p => {
+        const matchContinent = continent === 'all' || p.continent === continent;
+        const matchCategory = category === 'all' || p.cat === category;
+        const matchSearch = !search || p.pays.toLowerCase().includes(search) || p.nom.toLowerCase().includes(search);
+        return matchContinent && matchCategory && matchSearch;
+    });
+
+    renderPlayers(filtered);
+}
+
+// Afficher les joueurs
 function renderPlayers(players) {
     if (players.length === 0) {
         playersGrid.innerHTML = '<p class="no-results">Aucun joueur trouvé.</p>';
@@ -65,14 +61,14 @@ function renderPlayers(players) {
         html += `
             <div class="player-card">
                 <div class="card-image">
-                    <img src="${p.img}" alt="${p.name}" onerror="this.src='public/img/player-placeholder.jpg'">
+                    <img src="${p.img}" alt="${p.nom}" onerror="this.src='public/img/player-placeholder.jpg'">
                     <span class="card-badge ${badgeClass}">${badgeText}</span>
                 </div>
                 <div class="card-content">
-                    <h3>${p.name}</h3>
-                    <p>${p.pos}</p>
+                    <h3>${p.nom}</h3>
+                    <p>${p.poste}</p>
                     <div class="card-meta">
-                        <span><i class="fas fa-map-marker-alt"></i> ${p.country}</span>
+                        <span><i class="fas fa-map-marker-alt"></i> ${p.pays}</span>
                         <span><i class="fas fa-calendar-alt"></i> ${p.age} ans</span>
                         <span><i class="fas fa-futbol"></i> ${p.club}</span>
                     </div>
@@ -88,34 +84,11 @@ function renderPlayers(players) {
     resultCount.textContent = `${players.length} joueur${players.length > 1 ? 's' : ''}`;
 }
 
-// Charger tous les joueurs
-function loadAllPlayers() {
-    const players = JSON.parse(localStorage.getItem('scouting_players')) || [];
-    renderPlayers(players);
-}
-
-// Filtrer les joueurs
-function filterPlayers() {
-    const continent = continentFilter.value;
-    const category = categoryFilter.value;
-    const search = countrySearch.value.toLowerCase().trim();
-    const players = JSON.parse(localStorage.getItem('scouting_players')) || [];
-
-    const filtered = players.filter(p => {
-        const matchContinent = continent === 'all' || p.continent === continent;
-        const matchCategory = category === 'all' || p.cat === category;
-        const matchSearch = !search || p.country.toLowerCase().includes(search) || p.name.toLowerCase().includes(search);
-        return matchContinent && matchCategory && matchSearch;
-    });
-
-    renderPlayers(filtered);
-}
-
 // Écouteurs d'événements
 searchBtn.addEventListener('click', filterPlayers);
 continentFilter.addEventListener('change', filterPlayers);
 categoryFilter.addEventListener('change', filterPlayers);
 countrySearch.addEventListener('input', filterPlayers);
 
-// Initialisation
+// Chargement initial
 loadAllPlayers();
