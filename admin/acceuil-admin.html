@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Accueil | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="stylesheet" href="assets/css/acceuil-admin.css">
+</head>
+<body>
+    <nav class="admin-nav">
+        <div class="admin-nav-left">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="admin-logo">
+            <span class="admin-title">Administration</span>
+        </div>
+        <div class="admin-nav-right">
+            <a href="administration.html">Tableau de bord</a>
+            <a href="acceuil-admin.html" class="active">Accueil</a>
+            <a href="#" id="logoutAdmin">Déconnexion</a>
+        </div>
+    </nav>
+
+    <div class="admin-container acceuil-page">
+        <h1>Gestion de la page d'accueil</h1>
+
+        <!-- Section Engagements -->
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-handshake"></i> Engagements éthiques</h2>
+                <button class="btn-add" id="addEngagementBtn"><i class="fas fa-plus"></i> Ajouter</button>
+            </div>
+            <div id="engagementsList" class="admin-list"></div>
+        </div>
+
+        <!-- Section Rôles / Portails -->
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-users-cog"></i> Rôles / Portails</h2>
+                <button class="btn-add" id="addRoleBtn"><i class="fas fa-plus"></i> Ajouter</button>
+            </div>
+            <div id="rolesList" class="admin-list"></div>
+        </div>
+    </div>
+
+    <!-- Modale pour les engagements -->
+    <div id="engagementModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('engagement')">&times;</span>
+            <h3 id="engagementModalTitle">Ajouter un engagement</h3>
+            <form id="engagementForm">
+                <input type="hidden" id="engagementId">
+                <div class="form-group">
+                    <label>Titre</label>
+                    <input type="text" id="engagementTitre" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="engagementDescription" rows="4" required></textarea>
+                </div>
+                <button type="submit" class="btn-submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modale pour les rôles -->
+    <div id="roleModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('role')">&times;</span>
+            <h3 id="roleModalTitle">Ajouter un rôle</h3>
+            <form id="roleForm">
+                <input type="hidden" id="roleId">
+                <div class="form-group">
+                    <label>Titre</label>
+                    <input type="text" id="roleTitre" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="roleDescription" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Lien (URL)</label>
+                    <input type="text" id="roleLien" placeholder="ex: premier-pas.html" required>
+                </div>
+                <div class="form-group">
+                    <label>Icône (emoji)</label>
+                    <input type="text" id="roleIcone" placeholder="ex: 🏃" required>
+                </div>
+                <button type="submit" class="btn-submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <footer class="admin-footer">
+        <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
+    </footer>
+
+    <script src="../public/js/main.js"></script>
+    <script src="assets/js/acceuil-admin.js"></script>
+</body>
+</html>
