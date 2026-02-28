@@ -1,16 +1,4 @@
 /* ===== ESPACE AFFILIÉ ===== */
-:root {
-    --aff-primary: #551B8C;
-    --aff-accent: #FFCC00;
-    --aff-dark: #1a1a1a;
-    --aff-gray: #6c757d;
-    --aff-light: #f8f9fa;
-    --aff-border: #e9ecef;
-    --aff-shadow: 0 10px 30px rgba(0,0,0,0.05);
-    --aff-shadow-hover: 0 15px 40px rgba(85,27,140,0.15);
-    --transition: all 0.3s ease;
-}
-
 .affilie-container {
     max-width: 900px;
     margin: 40px auto;
@@ -22,22 +10,22 @@
     background: white;
     border-radius: 20px;
     padding: 40px;
-    box-shadow: var(--aff-shadow);
-    border: 1px solid var(--aff-border);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
     max-width: 450px;
     margin: 0 auto;
 }
 
 .login-card h1 {
     font-size: 2rem;
-    color: var(--aff-primary);
+    color: var(--primary);
     margin-bottom: 10px;
     text-align: center;
 }
 
 .login-card p {
     text-align: center;
-    color: var(--aff-gray);
+    color: var(--gray);
     margin-bottom: 30px;
 }
 
@@ -49,14 +37,14 @@
     display: block;
     font-weight: 600;
     margin-bottom: 5px;
-    color: var(--aff-dark);
+    color: var(--dark);
 }
 
 .form-group input,
 .form-group select {
     width: 100%;
     padding: 12px 15px;
-    border: 2px solid var(--aff-border);
+    border: 2px solid var(--light-gray);
     border-radius: 8px;
     font-family: 'Poppins', sans-serif;
     transition: var(--transition);
@@ -64,14 +52,14 @@
 
 .form-group input:focus,
 .form-group select:focus {
-    border-color: var(--aff-primary);
+    border-color: var(--primary);
     outline: none;
 }
 
 .btn-login {
     width: 100%;
     padding: 14px;
-    background: var(--aff-primary);
+    background: var(--primary);
     color: white;
     border: none;
     border-radius: 8px;
@@ -85,7 +73,7 @@
 }
 
 .btn-login:hover {
-    background: #7e3db0;
+    background: var(--primary-light);
     transform: translateY(-2px);
 }
 
@@ -95,7 +83,7 @@
 }
 
 .register-link a {
-    color: var(--aff-accent);
+    color: var(--gold);
     font-weight: 600;
     text-decoration: none;
 }
@@ -107,7 +95,7 @@
 
 .dashboard-header h1 {
     font-size: 2.2rem;
-    color: var(--aff-primary);
+    color: var(--primary);
     margin-bottom: 5px;
 }
 
@@ -123,19 +111,19 @@
     border-radius: 15px;
     padding: 25px;
     text-align: center;
-    box-shadow: var(--aff-shadow);
-    border: 1px solid var(--aff-border);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
     transition: var(--transition);
 }
 
 .stat-card:hover {
     transform: translateY(-5px);
-    border-color: var(--aff-accent);
+    border-color: var(--gold);
 }
 
 .stat-card i {
     font-size: 2.5rem;
-    color: var(--aff-accent);
+    color: var(--gold);
     margin-bottom: 10px;
 }
 
@@ -143,12 +131,12 @@
     display: block;
     font-size: 2rem;
     font-weight: 800;
-    color: var(--aff-primary);
+    color: var(--primary);
     line-height: 1.2;
 }
 
 .stat-label {
-    color: var(--aff-gray);
+    color: var(--gray);
     font-size: 0.9rem;
 }
 
@@ -157,15 +145,15 @@
     border-radius: 20px;
     padding: 30px;
     margin-bottom: 30px;
-    box-shadow: var(--aff-shadow);
-    border: 1px solid var(--aff-border);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
 }
 
 .section h2 {
     font-size: 1.6rem;
-    color: var(--aff-primary);
+    color: var(--primary);
     margin-bottom: 20px;
-    border-left: 5px solid var(--aff-accent);
+    border-left: 5px solid var(--gold);
     padding-left: 15px;
 }
 
@@ -175,7 +163,7 @@
 }
 
 .request-item {
-    background: var(--aff-light);
+    background: var(--bg-light);
     border-radius: 10px;
     padding: 15px;
     margin-bottom: 10px;
@@ -222,7 +210,7 @@
 }
 
 .btn-new-request {
-    background: var(--aff-accent);
+    background: var(--gold);
     color: black;
     border: none;
     padding: 12px 25px;
@@ -236,7 +224,7 @@
 }
 
 .btn-new-request:hover {
-    background: #e6b800;
+    background: var(--gold-dark);
     transform: translateY(-2px);
 }
 
@@ -248,7 +236,7 @@
 
 .notification {
     background: #f0f8ff;
-    border-left: 4px solid var(--aff-primary);
+    border-left: 4px solid var(--primary);
     padding: 12px 15px;
     margin-bottom: 8px;
     border-radius: 8px;
@@ -258,7 +246,7 @@
 }
 
 .notification.info {
-    border-left-color: var(--aff-primary);
+    border-left-color: var(--primary);
 }
 .notification.warning {
     border-left-color: #ffc107;
@@ -268,7 +256,7 @@
 }
 
 .notification small {
-    color: var(--aff-gray);
+    color: var(--gray);
     font-size: 0.7rem;
 }
 
@@ -299,7 +287,13 @@
     max-width: 500px;
     position: relative;
     box-shadow: 0 20px 40px rgba(85,27,140,0.2);
-    border: 1px solid var(--aff-accent);
+    border: 1px solid var(--gold);
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 .close-modal {
@@ -308,23 +302,23 @@
     right: 20px;
     font-size: 2rem;
     cursor: pointer;
-    color: var(--aff-gray);
+    color: var(--gray);
     transition: color 0.3s;
 }
 
 .close-modal:hover {
-    color: var(--aff-primary);
+    color: var(--primary);
 }
 
 .modal-content h3 {
-    color: var(--aff-primary);
+    color: var(--primary);
     margin-bottom: 20px;
 }
 
 .btn-submit {
     width: 100%;
     padding: 14px;
-    background: var(--aff-primary);
+    background: var(--primary);
     color: white;
     border: none;
     border-radius: 8px;
@@ -335,7 +329,7 @@
 }
 
 .btn-submit:hover {
-    background: #7e3db0;
+    background: var(--primary-light);
 }
 
 /* Responsive */
