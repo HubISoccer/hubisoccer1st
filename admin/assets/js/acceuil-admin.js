@@ -1,47 +1,7 @@
-// ===== DONNÉES PAR DÉFAUT =====
-const defaultEngagements = [
-    {
-        titre: "Vérification Académique",
-        description: "Obligation de diplôme ou d'apprentissage. Nous luttons contre la précarité des sportifs en fin de carrière."
-    },
-    {
-        titre: "Protection FIFA",
-        description: "Intermédiation exclusive via des agents licenciés. Respect strict du règlement sur le transfert des mineurs."
-    },
-    {
-        titre: "Audit APDP",
-        description: "Vos données et celles des joueurs sont protégées selon les lois de la République du Bénin."
-    }
-];
-
-const defaultRoles = [
-    {
-        titre: "Espace Joueur",
-        description: "Gérez votre CV, vos stats et votre visibilité.",
-        lien: "premier-pas.html",
-        icone: "🏃"
-    },
-    {
-        titre: "Scouting",
-        description: "Découvrez les talents vérifiés par nos soins.",
-        lien: "scouting.html",
-        icone: "💼"
-    },
-    {
-        titre: "Le Processus",
-        description: "Comment nous sécurisons votre avenir pro.",
-        lien: "processus.html",
-        icone: "🛡️"
-    }
-];
-
-// Initialiser localStorage si vide
-if (!localStorage.getItem('engagements')) {
-    localStorage.setItem('engagements', JSON.stringify(defaultEngagements));
-}
-if (!localStorage.getItem('roles')) {
-    localStorage.setItem('roles', JSON.stringify(defaultRoles));
-}
+// ===== INITIALISATION SUPABASE =====
+const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // ===== ÉLÉMENTS DOM =====
 const engagementsList = document.getElementById('engagementsList');
@@ -66,19 +26,28 @@ const roleLien = document.getElementById('roleLien');
 const roleIcone = document.getElementById('roleIcone');
 
 // ===== FONCTIONS POUR LES ENGAGEMENTS =====
-function loadEngagements() {
-    const engagements = JSON.parse(localStorage.getItem('engagements')) || [];
+async function loadEngagements() {
+    const { data: engagements, error } = await supabase
+        .from('engagements')
+        .select('*');
+
+    if (error) {
+        console.error('Erreur chargement engagements:', error);
+        engagementsList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        return;
+    }
+
     let html = '';
-    engagements.forEach((item, index) => {
+    engagements.forEach((item) => {
         html += `
-            <div class="list-item" data-index="${index}">
+            <div class="list-item" data-id="${item.id}">
                 <div class="info">
                     <strong>${item.titre}</strong><br>
                     <small>${item.description}</small>
                 </div>
                 <div class="actions">
-                    <button class="edit" onclick="editEngagement(${index})"><i class="fas fa-edit"></i></button>
-                    <button class="delete" onclick="deleteEngagement(${index})"><i class="fas fa-trash"></i></button>
+                    <button class="edit" onclick="editEngagement(${item.id})"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="deleteEngagement(${item.id})"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
@@ -94,58 +63,89 @@ function openAddEngagementModal() {
     engagementModal.classList.add('active');
 }
 
-window.editEngagement = (index) => {
-    const engagements = JSON.parse(localStorage.getItem('engagements'));
-    const item = engagements[index];
+async function editEngagement(id) {
+    const { data: item, error } = await supabase
+        .from('engagements')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error) {
+        alert('Erreur lors du chargement de l\'engagement');
+        return;
+    }
+
     engagementModalTitle.textContent = 'Modifier un engagement';
-    engagementId.value = index;
+    engagementId.value = item.id;
     engagementTitre.value = item.titre;
     engagementDescription.value = item.description;
     engagementModal.classList.add('active');
-};
+}
+window.editEngagement = editEngagement;
 
-window.deleteEngagement = (index) => {
+async function deleteEngagement(id) {
     if (!confirm('Supprimer cet engagement ?')) return;
-    const engagements = JSON.parse(localStorage.getItem('engagements'));
-    engagements.splice(index, 1);
-    localStorage.setItem('engagements', JSON.stringify(engagements));
-    loadEngagements();
-};
+    const { error } = await supabase
+        .from('engagements')
+        .delete()
+        .eq('id', id);
 
-engagementForm.addEventListener('submit', (e) => {
+    if (error) {
+        alert('Erreur lors de la suppression');
+    } else {
+        loadEngagements();
+    }
+}
+window.deleteEngagement = deleteEngagement;
+
+engagementForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const index = engagementId.value;
+    const id = engagementId.value;
     const titre = engagementTitre.value;
     const description = engagementDescription.value;
-    const engagements = JSON.parse(localStorage.getItem('engagements')) || [];
 
-    const newItem = { titre, description };
-
-    if (index === '') {
-        engagements.push(newItem);
+    if (id === '') {
+        // Ajout
+        const { error } = await supabase
+            .from('engagements')
+            .insert([{ titre, description }]);
+        if (error) alert('Erreur lors de l\'ajout');
     } else {
-        engagements[index] = newItem;
+        // Modification
+        const { error } = await supabase
+            .from('engagements')
+            .update({ titre, description })
+            .eq('id', id);
+        if (error) alert('Erreur lors de la modification');
     }
-    localStorage.setItem('engagements', JSON.stringify(engagements));
     closeModal('engagement');
     loadEngagements();
 });
 
 // ===== FONCTIONS POUR LES RÔLES =====
-function loadRoles() {
-    const roles = JSON.parse(localStorage.getItem('roles')) || [];
+async function loadRoles() {
+    const { data: roles, error } = await supabase
+        .from('roles')
+        .select('*');
+
+    if (error) {
+        console.error('Erreur chargement rôles:', error);
+        rolesList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        return;
+    }
+
     let html = '';
-    roles.forEach((item, index) => {
+    roles.forEach((item) => {
         html += `
-            <div class="list-item" data-index="${index}">
+            <div class="list-item" data-id="${item.id}">
                 <div class="info">
                     <strong>${item.titre}</strong>
                     <small>${item.description}</small>
                     <div class="details">Lien: ${item.lien} | Icône: ${item.icone}</div>
                 </div>
                 <div class="actions">
-                    <button class="edit" onclick="editRole(${index})"><i class="fas fa-edit"></i></button>
-                    <button class="delete" onclick="deleteRole(${index})"><i class="fas fa-trash"></i></button>
+                    <button class="edit" onclick="editRole(${item.id})"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="deleteRole(${item.id})"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
@@ -163,43 +163,65 @@ function openAddRoleModal() {
     roleModal.classList.add('active');
 }
 
-window.editRole = (index) => {
-    const roles = JSON.parse(localStorage.getItem('roles'));
-    const item = roles[index];
+async function editRole(id) {
+    const { data: item, error } = await supabase
+        .from('roles')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error) {
+        alert('Erreur lors du chargement du rôle');
+        return;
+    }
+
     roleModalTitle.textContent = 'Modifier un rôle';
-    roleId.value = index;
+    roleId.value = item.id;
     roleTitre.value = item.titre;
     roleDescription.value = item.description;
     roleLien.value = item.lien;
     roleIcone.value = item.icone;
     roleModal.classList.add('active');
-};
+}
+window.editRole = editRole;
 
-window.deleteRole = (index) => {
+async function deleteRole(id) {
     if (!confirm('Supprimer ce rôle ?')) return;
-    const roles = JSON.parse(localStorage.getItem('roles'));
-    roles.splice(index, 1);
-    localStorage.setItem('roles', JSON.stringify(roles));
-    loadRoles();
-};
+    const { error } = await supabase
+        .from('roles')
+        .delete()
+        .eq('id', id);
 
-roleForm.addEventListener('submit', (e) => {
+    if (error) {
+        alert('Erreur lors de la suppression');
+    } else {
+        loadRoles();
+    }
+}
+window.deleteRole = deleteRole;
+
+roleForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const index = roleId.value;
+    const id = roleId.value;
     const titre = roleTitre.value;
     const description = roleDescription.value;
     const lien = roleLien.value;
     const icone = roleIcone.value;
-    const roles = JSON.parse(localStorage.getItem('roles')) || [];
 
-    const newItem = { titre, description, lien, icone };
-
-    if (index === '') {
-        roles.push(newItem);
+    if (id === '') {
+        // Ajout
+        const { error } = await supabase
+            .from('roles')
+            .insert([{ titre, description, lien, icone }]);
+        if (error) alert('Erreur lors de l\'ajout');
     } else {
-        roles[index] = newItem;
+        // Modification
+        const { error } = await supabase
+            .from('roles')
+            .update({ titre, description, lien, icone })
+            .eq('id', id);
+        if (error) alert('Erreur lors de la modification');
     }
-    localStorage.setItem('roles', JSON.stringify(roles));
     closeModal('role');
     loadRoles();
 });
