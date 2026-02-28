@@ -29,11 +29,17 @@ const roleIcone = document.getElementById('roleIcone');
 async function loadEngagements() {
     const { data: engagements, error } = await supabase
         .from('engagements')
-        .select('*');
+        .select('*')
+        .order('id');
 
     if (error) {
         console.error('Erreur chargement engagements:', error);
         engagementsList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        return;
+    }
+
+    if (!engagements || engagements.length === 0) {
+        engagementsList.innerHTML = '<p class="no-data">Aucun engagement. Cliquez sur "Ajouter" pour en créer un.</p>';
         return;
     }
 
@@ -46,13 +52,13 @@ async function loadEngagements() {
                     <small>${item.description}</small>
                 </div>
                 <div class="actions">
-                    <button class="edit" onclick="editEngagement(${item.id})"><i class="fas fa-edit"></i></button>
-                    <button class="delete" onclick="deleteEngagement(${item.id})"><i class="fas fa-trash"></i></button>
+                    <button class="edit" onclick="editEngagement(${item.id})" title="Modifier"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="deleteEngagement(${item.id})" title="Supprimer"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
     });
-    engagementsList.innerHTML = html || '<p class="no-data">Aucun engagement.</p>';
+    engagementsList.innerHTML = html;
 }
 
 function openAddEngagementModal() {
@@ -84,14 +90,14 @@ async function editEngagement(id) {
 window.editEngagement = editEngagement;
 
 async function deleteEngagement(id) {
-    if (!confirm('Supprimer cet engagement ?')) return;
+    if (!confirm('Supprimer cet engagement définitivement ?')) return;
     const { error } = await supabase
         .from('engagements')
         .delete()
         .eq('id', id);
 
     if (error) {
-        alert('Erreur lors de la suppression');
+        alert('Erreur lors de la suppression : ' + error.message);
     } else {
         loadEngagements();
     }
@@ -109,28 +115,42 @@ engagementForm.addEventListener('submit', async (e) => {
         const { error } = await supabase
             .from('engagements')
             .insert([{ titre, description }]);
-        if (error) alert('Erreur lors de l\'ajout');
+        if (error) {
+            alert('Erreur lors de l\'ajout : ' + error.message);
+        } else {
+            closeModal('engagement');
+            loadEngagements();
+        }
     } else {
         // Modification
         const { error } = await supabase
             .from('engagements')
             .update({ titre, description })
             .eq('id', id);
-        if (error) alert('Erreur lors de la modification');
+        if (error) {
+            alert('Erreur lors de la modification : ' + error.message);
+        } else {
+            closeModal('engagement');
+            loadEngagements();
+        }
     }
-    closeModal('engagement');
-    loadEngagements();
 });
 
 // ===== FONCTIONS POUR LES RÔLES =====
 async function loadRoles() {
     const { data: roles, error } = await supabase
         .from('roles')
-        .select('*');
+        .select('*')
+        .order('id');
 
     if (error) {
         console.error('Erreur chargement rôles:', error);
         rolesList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        return;
+    }
+
+    if (!roles || roles.length === 0) {
+        rolesList.innerHTML = '<p class="no-data">Aucun rôle. Cliquez sur "Ajouter" pour en créer un.</p>';
         return;
     }
 
@@ -144,13 +164,13 @@ async function loadRoles() {
                     <div class="details">Lien: ${item.lien} | Icône: ${item.icone}</div>
                 </div>
                 <div class="actions">
-                    <button class="edit" onclick="editRole(${item.id})"><i class="fas fa-edit"></i></button>
-                    <button class="delete" onclick="deleteRole(${item.id})"><i class="fas fa-trash"></i></button>
+                    <button class="edit" onclick="editRole(${item.id})" title="Modifier"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="deleteRole(${item.id})" title="Supprimer"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
     });
-    rolesList.innerHTML = html || '<p class="no-data">Aucun rôle.</p>';
+    rolesList.innerHTML = html;
 }
 
 function openAddRoleModal() {
@@ -186,14 +206,14 @@ async function editRole(id) {
 window.editRole = editRole;
 
 async function deleteRole(id) {
-    if (!confirm('Supprimer ce rôle ?')) return;
+    if (!confirm('Supprimer ce rôle définitivement ?')) return;
     const { error } = await supabase
         .from('roles')
         .delete()
         .eq('id', id);
 
     if (error) {
-        alert('Erreur lors de la suppression');
+        alert('Erreur lors de la suppression : ' + error.message);
     } else {
         loadRoles();
     }
@@ -213,17 +233,25 @@ roleForm.addEventListener('submit', async (e) => {
         const { error } = await supabase
             .from('roles')
             .insert([{ titre, description, lien, icone }]);
-        if (error) alert('Erreur lors de l\'ajout');
+        if (error) {
+            alert('Erreur lors de l\'ajout : ' + error.message);
+        } else {
+            closeModal('role');
+            loadRoles();
+        }
     } else {
         // Modification
         const { error } = await supabase
             .from('roles')
             .update({ titre, description, lien, icone })
             .eq('id', id);
-        if (error) alert('Erreur lors de la modification');
+        if (error) {
+            alert('Erreur lors de la modification : ' + error.message);
+        } else {
+            closeModal('role');
+            loadRoles();
+        }
     }
-    closeModal('role');
-    loadRoles();
 });
 
 // ===== GESTION DES MODALES =====
