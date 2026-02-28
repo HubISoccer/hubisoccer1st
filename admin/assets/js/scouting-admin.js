@@ -1,49 +1,9 @@
-// ===== DONNÉES PAR DÉFAUT =====
-const defaultPlayers = [
-    {
-        id: 'j1',
-        name: 'Koffi B.',
-        pos: 'Attaquant',
-        age: 19,
-        country: 'Bénin',
-        continent: 'Afrique',
-        cat: 'adulte',
-        club: 'AS Dragons',
-        cert: 'BEPC validé',
-        img: 'public/img/pas1.jpg'
-    },
-    {
-        id: 'j2',
-        name: 'Moussa D.',
-        pos: 'Milieu',
-        age: 17,
-        country: 'Sénégal',
-        continent: 'Afrique',
-        cat: 'mineur',
-        club: 'Diambars',
-        cert: 'Formation académique',
-        img: 'public/img/pas2.jpg'
-    },
-    {
-        id: 'j3',
-        name: 'Aminata Diallo',
-        pos: 'Défenseur',
-        age: 22,
-        country: 'Côte d\'Ivoire',
-        continent: 'Afrique',
-        cat: 'adulte',
-        club: 'ASEC Mimosas',
-        cert: 'BAC + études sport',
-        img: 'public/img/pas3.jpg'
-    }
-];
+// ===== INITIALISATION SUPABASE =====
+const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-// Initialisation localStorage
-if (!localStorage.getItem('scouting_players')) {
-    localStorage.setItem('scouting_players', JSON.stringify(defaultPlayers));
-}
-
-// ===== ÉLÉMENTS DOM =====
+// Éléments DOM
 const playersList = document.getElementById('playersList');
 const modal = document.getElementById('playerModal');
 const modalTitle = document.getElementById('modalTitle');
@@ -57,38 +17,53 @@ const continentSelect = document.getElementById('continent');
 const categorieSelect = document.getElementById('categorie');
 const clubInput = document.getElementById('club');
 const certInput = document.getElementById('cert');
-const imageInput = document.getElementById('image');
+const imgInput = document.getElementById('img');
 
-// ===== FONCTIONS D'AFFICHAGE =====
-function loadPlayers() {
-    const players = JSON.parse(localStorage.getItem('scouting_players')) || [];
+// Charger les joueurs
+async function loadPlayers() {
+    const { data: players, error } = await supabaseClient
+        .from('joueurs')
+        .select('*')
+        .order('id');
+
+    if (error) {
+        console.error('Erreur chargement joueurs:', error);
+        playersList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        return;
+    }
+
+    if (!players || players.length === 0) {
+        playersList.innerHTML = '<p class="no-data">Aucun joueur. Cliquez sur "Ajouter" pour en créer un.</p>';
+        return;
+    }
+
     let html = '';
-    players.forEach((item, index) => {
+    players.forEach(item => {
         html += `
-            <div class="list-item" data-index="${index}">
+            <div class="list-item" data-id="${item.id}">
                 <div class="info">
-                    <strong>${item.name}</strong>
+                    <strong>${item.nom}</strong>
                     <div class="details">
-                        <span>${item.pos}</span>
+                        <span>${item.poste}</span>
                         <span>${item.age} ans</span>
-                        <span>${item.country}</span>
+                        <span>${item.pays}</span>
                         <span>${item.continent}</span>
                         <span>${item.cat === 'mineur' ? 'U17' : '18+'}</span>
                         <span>${item.club}</span>
-                        <span>${item.cert}</span>
                     </div>
+                    <small>${item.cert}</small>
                 </div>
                 <div class="actions">
-                    <button class="edit" onclick="editPlayer(${index})"><i class="fas fa-edit"></i></button>
-                    <button class="delete" onclick="deletePlayer(${index})"><i class="fas fa-trash"></i></button>
+                    <button class="edit" onclick="editPlayer(${item.id})"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="deletePlayer(${item.id})"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
     });
-    playersList.innerHTML = html || '<p class="no-data">Aucun joueur.</p>';
+    playersList.innerHTML = html;
 }
 
-// ===== OUVERTURE MODALE AJOUT =====
+// Ouvrir modale ajout
 function openAddModal() {
     modalTitle.textContent = 'Ajouter un joueur';
     playerId.value = '';
@@ -100,76 +75,101 @@ function openAddModal() {
     categorieSelect.value = '';
     clubInput.value = '';
     certInput.value = '';
-    imageInput.value = 'public/img/player-placeholder.jpg';
+    imgInput.value = 'public/img/player-placeholder.jpg';
     modal.classList.add('active');
 }
 
-// ===== ÉDITION =====
-window.editPlayer = (index) => {
-    const players = JSON.parse(localStorage.getItem('scouting_players'));
-    const item = players[index];
+// Éditer un joueur
+window.editPlayer = async (id) => {
+    const { data: item, error } = await supabaseClient
+        .from('joueurs')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error) {
+        alert('Erreur chargement joueur');
+        return;
+    }
+
     modalTitle.textContent = 'Modifier un joueur';
-    playerId.value = index;
-    nomInput.value = item.name;
-    posteInput.value = item.pos;
+    playerId.value = item.id;
+    nomInput.value = item.nom;
+    posteInput.value = item.poste;
     ageInput.value = item.age;
-    paysInput.value = item.country;
+    paysInput.value = item.pays;
     continentSelect.value = item.continent;
     categorieSelect.value = item.cat;
     clubInput.value = item.club;
     certInput.value = item.cert;
-    imageInput.value = item.img;
+    imgInput.value = item.img;
     modal.classList.add('active');
 };
 
-// ===== FERMETURE MODALE =====
+// Supprimer un joueur
+window.deletePlayer = async (id) => {
+    if (!confirm('Supprimer ce joueur ?')) return;
+    const { error } = await supabaseClient
+        .from('joueurs')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        alert('Erreur suppression : ' + error.message);
+    } else {
+        loadPlayers();
+    }
+};
+
+// Fermer modale
 window.closeModal = () => {
     modal.classList.remove('active');
 };
 
-// ===== SUPPRESSION =====
-window.deletePlayer = (index) => {
-    if (!confirm('Supprimer ce joueur ?')) return;
-    const players = JSON.parse(localStorage.getItem('scouting_players'));
-    players.splice(index, 1);
-    localStorage.setItem('scouting_players', JSON.stringify(players));
-    loadPlayers();
-};
-
-// ===== GESTION DU FORMULAIRE =====
-form.addEventListener('submit', (e) => {
+// Soumission formulaire
+form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const index = playerId.value;
-    const players = JSON.parse(localStorage.getItem('scouting_players')) || [];
+    const id = playerId.value;
+    const nom = nomInput.value;
+    const poste = posteInput.value;
+    const age = parseInt(ageInput.value);
+    const pays = paysInput.value;
+    const continent = continentSelect.value;
+    const cat = categorieSelect.value;
+    const club = clubInput.value;
+    const cert = certInput.value;
+    const img = imgInput.value;
 
-    const newPlayer = {
-        id: index === '' ? 'j' + Date.now() : players[index].id,
-        name: nomInput.value,
-        pos: posteInput.value,
-        age: parseInt(ageInput.value),
-        country: paysInput.value,
-        continent: continentSelect.value,
-        cat: categorieSelect.value,
-        club: clubInput.value,
-        cert: certInput.value,
-        img: imageInput.value
-    };
-
-    if (index === '') {
-        players.push(newPlayer);
+    if (id === '') {
+        // Ajout
+        const { error } = await supabaseClient
+            .from('joueurs')
+            .insert([{ nom, poste, age, pays, continent, cat, club, cert, img }]);
+        if (error) {
+            alert('Erreur ajout : ' + error.message);
+        } else {
+            closeModal();
+            loadPlayers();
+        }
     } else {
-        players[index] = newPlayer;
+        // Modification
+        const { error } = await supabaseClient
+            .from('joueurs')
+            .update({ nom, poste, age, pays, continent, cat, club, cert, img })
+            .eq('id', id);
+        if (error) {
+            alert('Erreur modification : ' + error.message);
+        } else {
+            closeModal();
+            loadPlayers();
+        }
     }
-
-    localStorage.setItem('scouting_players', JSON.stringify(players));
-    closeModal();
-    loadPlayers();
 });
 
-// ===== BOUTON D'AJOUT =====
+// Bouton ajout
 document.getElementById('addPlayerBtn').addEventListener('click', openAddModal);
 
-// ===== DÉCONNEXION =====
+// Déconnexion
 document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     e.preventDefault();
     if (confirm('Déconnexion ?')) {
@@ -177,5 +177,5 @@ document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     }
 });
 
-// ===== CHARGEMENT INITIAL =====
+// Chargement initial
 loadPlayers();
