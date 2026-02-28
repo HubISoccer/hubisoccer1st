@@ -163,10 +163,10 @@ messageForm.addEventListener('submit', async (e) => {
     const message = messageText.value.trim();
     if (!message) return;
 
-    // Enregistrer le message dans la table affiliate_messages
+    // Insertion dans la table affiliate_messages avec le nom correct de la colonne (affiliateid)
     const { error } = await supabaseClient
         .from('affiliate_messages')
-        .insert([{ affiliateId, message }]);
+        .insert([{ affiliateid: affiliateId, message }]); // ← correction ici
 
     if (error) {
         alert('Erreur envoi message : ' + error.message);
@@ -178,9 +178,6 @@ messageForm.addEventListener('submit', async (e) => {
 
 // Générer lien de paiement
 window.generatePaymentLink = (affiliateId) => {
-    // Récupérer l'affilié pour calculer le gain
-    // (on pourrait le faire en passant par l'objet déjà chargé, mais pour simplifier on recrée le lien)
-    // Ici on utilise un lien factice vers une page de paiement à créer plus tard
     const paymentUrl = `${window.location.origin}/hubisoccer1st/admin/paiement.html?aff=${encodeURIComponent(affiliateId)}`;
     navigator.clipboard.writeText(paymentUrl).then(() => {
         alert(`Lien de paiement copié : ${paymentUrl}`);
