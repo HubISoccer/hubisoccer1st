@@ -1,11 +1,10 @@
-/* ===== PAGE ADMIN SCOUTING ===== */
+/* Styles spécifiques à la page admin Scouting */
 .scouting-page {
     --primary: #551B8C;
     --primary-light: #7e3db0;
     --primary-dark: #3d1266;
     --gold: #FFCC00;
     --gold-dark: #e6b800;
-    --bg-light: #F0F8FF;
     --white: #ffffff;
     --dark: #1a1a1a;
     --gray: #6c757d;
@@ -39,12 +38,7 @@
     padding: 25px;
     box-shadow: var(--shadow);
     border: 1px solid var(--light-gray);
-    transition: var(--transition);
 }
-.scouting-page .admin-card:hover {
-    box-shadow: var(--shadow-hover);
-}
-
 .scouting-page .card-header {
     display: flex;
     justify-content: space-between;
@@ -64,7 +58,6 @@
 .scouting-page .card-header h2 i {
     color: var(--gold);
 }
-
 .scouting-page .btn-add {
     background: var(--primary);
     color: white;
@@ -85,7 +78,6 @@
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(85,27,140,0.3);
 }
-
 .scouting-page .admin-list {
     display: flex;
     flex-direction: column;
@@ -99,8 +91,9 @@
     justify-content: space-between;
     align-items: center;
     border-left: 5px solid var(--gold);
-    transition: var(--transition);
     border: 1px solid var(--light-gray);
+    flex-wrap: wrap;
+    gap: 15px;
 }
 .scouting-page .list-item:hover {
     transform: translateX(5px);
@@ -108,7 +101,8 @@
     border-color: var(--primary);
 }
 .scouting-page .list-item .info {
-    flex: 1;
+    flex: 2;
+    min-width: 300px;
 }
 .scouting-page .list-item .info strong {
     color: var(--primary);
@@ -119,16 +113,16 @@
 .scouting-page .list-item .info .details {
     color: var(--gray);
     font-size: 0.9rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
     margin-top: 5px;
-    line-height: 1.5;
 }
 .scouting-page .list-item .info .details span {
-    display: inline-block;
-    background: rgba(255,204,0,0.1);
-    padding: 3px 8px;
-    border-radius: 5px;
-    margin-right: 5px;
-    margin-bottom: 5px;
+    background: rgba(85,27,140,0.05);
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--light-gray);
 }
 .scouting-page .list-item .actions {
     display: flex;
@@ -164,8 +158,6 @@
     background: #dc3545;
     color: white;
 }
-
-/* Modale */
 .scouting-page .admin-modal {
     display: none;
     position: fixed;
@@ -216,7 +208,6 @@
     border-left: 5px solid var(--gold);
     padding-left: 15px;
 }
-
 .scouting-page .form-group {
     margin-bottom: 20px;
 }
@@ -262,15 +253,12 @@
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(85,27,140,0.3);
 }
-
 .scouting-page .no-data {
     text-align: center;
     color: var(--gray);
     padding: 40px;
     font-size: 1.1rem;
 }
-
-/* Responsive */
 @media (max-width: 768px) {
     .scouting-page h1 {
         font-size: 1.8rem;
@@ -282,7 +270,6 @@
     .scouting-page .list-item {
         flex-direction: column;
         align-items: flex-start;
-        gap: 15px;
     }
     .scouting-page .list-item .actions {
         align-self: flex-end;
