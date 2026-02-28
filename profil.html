@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="public/css/profil.css">
 </head>
 <body>
-    <!-- Navigation identique aux autres pages -->
+    <!-- Navigation -->
     <nav>
         <a href="index.html" class="logo-link">
             <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
@@ -19,10 +19,7 @@
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
-                <option value="yo">🇳🇬 Yoruba</option>
-                <option value="fon">🇧🇯 Fon</option>
-                <option value="mina">🇹🇬 Mina</option>
-                <!-- Ajoute les autres langues si nécessaire -->
+                <!-- autres langues -->
             </select>
             <button class="menu-toggle" id="menuToggle">
                 <span></span><span></span><span></span>
@@ -42,12 +39,10 @@
         </div>
     </nav>
 
-    <!-- Conteneur principal -->
     <main class="profil-container" id="profilContent">
         <div class="loading">Chargement du profil...</div>
     </main>
 
-    <!-- Pied de page -->
     <footer>
         <div class="compliance-badges">
             <div class="badge-item">Conformité APDP Bénin</div>
@@ -65,6 +60,7 @@
         </div>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="public/js/main.js"></script>
     <script src="public/js/profil.js"></script>
 </body>
