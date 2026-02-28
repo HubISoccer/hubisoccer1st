@@ -10,6 +10,102 @@ if (ref) {
     sessionStorage.setItem('affiliateRef', ref);
 }
 
+// ===== FONCTIONS =====
+function initCarousel() {
+    const slides = document.querySelectorAll('.carousel-slide');
+    const indicators = document.querySelectorAll('.indicator');
+    let currentSlide = 0;
+    let slideInterval;
+
+    function showSlide(index) {
+        if (index < 0) index = slides.length - 1;
+        if (index >= slides.length) index = 0;
+        slides.forEach(slide => slide.classList.remove('active'));
+        slides[index].classList.add('active');
+        indicators.forEach(ind => ind.classList.remove('active'));
+        indicators[index].classList.add('active');
+        currentSlide = index;
+    }
+
+    function nextSlide() {
+        showSlide(currentSlide + 1);
+    }
+
+    function startCarousel() {
+        slideInterval = setInterval(nextSlide, 5000);
+    }
+
+    function stopCarousel() {
+        clearInterval(slideInterval);
+    }
+
+    if (slides.length > 0) {
+        showSlide(0);
+        startCarousel();
+        const hero = document.getElementById('heroCarousel');
+        if (hero) {
+            hero.addEventListener('mouseenter', stopCarousel);
+            hero.addEventListener('mouseleave', startCarousel);
+        }
+        indicators.forEach((indicator, index) => {
+            indicator.addEventListener('click', () => {
+                stopCarousel();
+                showSlide(index);
+                startCarousel();
+            });
+        });
+    }
+}
+
+function initFileUploads() {
+    const fileUploads = document.querySelectorAll('.file-upload-box');
+    fileUploads.forEach(box => {
+        const input = box.querySelector('input[type="file"]');
+        const icon = box.querySelector('i');
+        const text = box.querySelector('span');
+
+        if (input) {
+            input.addEventListener('change', function(e) {
+                if (this.files && this.files[0]) {
+                    const fileName = this.files[0].name;
+                    text.textContent = fileName;
+                    icon.style.color = 'var(--primary)';
+                    box.style.borderColor = 'var(--primary)';
+                } else {
+                    text.textContent = 'Cliquez pour télécharger';
+                    icon.style.color = 'var(--gold)';
+                    box.style.borderColor = 'var(--gold)';
+                }
+            });
+        }
+    });
+}
+
+function resetFileUploads() {
+    document.querySelectorAll('.file-upload-box').forEach(box => {
+        const span = box.querySelector('span');
+        if (span) span.textContent = 'Cliquez pour télécharger';
+        box.style.borderColor = '#ffcc00';
+    });
+}
+
+function showSuccessModal(url) {
+    const modal = document.getElementById('successModal');
+    const linkSpan = document.getElementById('trackingLink');
+    if (modal && linkSpan) {
+        linkSpan.textContent = url;
+        modal.classList.add('active');
+    } else {
+        alert(`Inscription enregistrée ! Suivez votre dossier ici : ${url}`);
+    }
+}
+
+window.closeSuccessModal = () => {
+    const modal = document.getElementById('successModal');
+    if (modal) modal.classList.remove('active');
+};
+
+// ===== INITIALISATION AU CHARGEMENT =====
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('premierPasForm');
     const affOui = document.getElementById('affOui');
@@ -43,10 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Gestion du carrousel
+    // Initialiser le carrousel et la gestion des fichiers
     initCarousel();
-
-    // Gestion des fichiers uploadés
     initFileUploads();
 
     // Soumission du formulaire
@@ -72,6 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const diplomeFileName = diplomeFile ? diplomeFile.name : '';
         const pieceFileName = pieceFile ? pieceFile.name : '';
 
+        // Construction de l'objet avec les noms exacts des colonnes
         const inscription = {
             id: Date.now(),
             nom,
@@ -84,11 +179,12 @@ document.addEventListener('DOMContentLoaded', () => {
             piecefilename: pieceFileName,
             "affilié": affiliationValue,
             statut: 'en_attente',
-            datesoumission: new Date().toISOString()  // ← format ISO accepté par PostgreSQL
+            datesoumission: new Date().toISOString()
         };
 
         console.log('Données envoyées :', inscription);
 
+        // Insertion dans Supabase
         const { error } = await supabaseClient
             .from('inscriptions')
             .insert([inscription]);
@@ -109,5 +205,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
-// ... (le reste des fonctions annexes inchangé)
