@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Gestion du carrousel (si présent)
+    // Gestion du carrousel
     initCarousel();
 
     // Gestion des fichiers uploadés
@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        // Récupération des valeurs du formulaire
         const nom = document.getElementById('nom').value.trim();
         const dateNaissance = document.getElementById('dateNaissance').value; // champ HTML
         const poste = document.getElementById('poste').value;
@@ -62,30 +63,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const certifie = document.getElementById('certifie').checked;
         const affiliationValue = affOui.checked ? affiliateIdInput.value : null;
 
+        // Validation
         if (!nom || !dateNaissance || !poste || !diplome || !telephone || !certifie) {
             alert('Veuillez remplir tous les champs obligatoires.');
             return;
         }
 
+        // Fichiers (on ne garde que les noms, car on ne peut pas uploader dans cette table)
         const diplomeFile = document.getElementById('diplomeFile').files[0];
         const pieceFile = document.getElementById('pieceIdentite').files[0];
         const diplomeFileName = diplomeFile ? diplomeFile.name : '';
         const pieceFileName = pieceFile ? pieceFile.name : '';
 
-        // Construction de l'objet avec les noms exacts des colonnes (issus de la capture)
+        // Construction de l'objet avec les noms exacts des colonnes (issus de la base)
         const inscription = {
-            id: Date.now(),
-            nom,
-            datenaissance: dateNaissance,           // correspond à la colonne 'datenaissance'
-            poste,
-            codetournoi: codeTournoi || '',         // correspond à 'codetournoi'
-            diplome,
-            telephone,
-            diplomefilename: diplomeFileName,       // correspond à 'diplomefilename'
-            piecefilename: pieceFileName,           // correspond à 'piecefilename'
-            "affilié": affiliationValue,             // la colonne a un accent, on met des guillemets
+            id: Date.now(),                          // nombre
+            nom: nom,
+            datenaissance: dateNaissance,            // colonne en minuscules
+            poste: poste,
+            codetournoi: codeTournoi || '',          // colonne en minuscules
+            diplome: diplome,
+            telephone: telephone,
+            diplomefilename: diplomeFileName,        // colonne en minuscules
+            piecefilename: pieceFileName,            // colonne en minuscules
+            "affilié": affiliationValue,              // colonne avec accent, entre guillemets
             statut: 'en_attente',
-            datesoumission: new Date().toLocaleString('fr-FR') // correspond à 'datesoumission'
+            datesoumission: new Date().toLocaleString('fr-FR')
         };
 
         console.log('Données envoyées :', inscription); // Pour déboguer
@@ -101,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Si tout va bien, afficher la modale avec le lien de suivi
+        // Succès : afficher la modale avec le lien de suivi
         const trackingUrl = `suivi.html?id=${inscription.id}`;
         showSuccessModal(trackingUrl);
         form.reset();
