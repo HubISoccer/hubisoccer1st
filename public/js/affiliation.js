@@ -1,8 +1,19 @@
-// Fonction pour sauvegarder un affilié avec toutes ses données
-function saveAffiliate(data) {
-    let affiliates = JSON.parse(localStorage.getItem('affiliates')) || [];
-    affiliates.push(data);
-    localStorage.setItem('affiliates', JSON.stringify(affiliates));
+// ===== INITIALISATION SUPABASE =====
+const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+// Fonction pour sauvegarder un affilié
+async function saveAffiliate(data) {
+    const { error } = await supabaseClient
+        .from('affiliates')
+        .insert([data]);
+    if (error) {
+        console.error('Erreur sauvegarde affilié:', error);
+        alert('Erreur lors de l\'enregistrement. Veuillez réessayer.');
+        return false;
+    }
+    return true;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -11,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const affLinkSpan = document.getElementById('affLink');
     const copyBtn = document.getElementById('copyBtn');
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const type = document.querySelector('input[name="type"]:checked')?.value;
@@ -25,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Générer un identifiant unique pour cet affilié
         const affiliateId = 'aff_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
 
         const affiliate = {
@@ -34,14 +46,16 @@ document.addEventListener('DOMContentLoaded', () => {
             nom,
             telephone,
             paiement,
-            date: new Date().toISOString(),
-            count: 0, // nombre de parrainages (inscriptions ou achats validés)
-            valide: false // statut de validation par l'admin
+            count: 0,
+            valide: false,
+            created_at: new Date().toISOString()
         };
 
-        saveAffiliate(affiliate);
+        const success = await saveAffiliate(affiliate);
+        if (!success) return;
 
-        const baseUrl = window.location.origin + '/hubisoccer1st'; // À adapter si besoin
+        // Construire le lien d'affiliation
+        const baseUrl = window.location.origin + '/hubisoccer1st';
         let targetPath;
         if (type === 'joueur') {
             targetPath = '/premier-pas.html';
@@ -50,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const link = `${baseUrl}${targetPath}?ref=${encodeURIComponent(affiliateId)}`;
 
+        // Afficher le lien
         affLinkSpan.textContent = link;
         resultArea.style.display = 'block';
     });
@@ -69,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Fonction FAQ (à garder si utilisée)
+// Fonction FAQ (à garder)
 function toggleFaq(element) {
     const answer = element.nextElementSibling;
     const icon = element.querySelector('i');
