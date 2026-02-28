@@ -1,29 +1,7 @@
-// Données par défaut (liens corrigés : plus de 'public/pages/')
-const defaultRoles = [
-    {
-        titre: "Espace Joueur",
-        description: "Gérez votre CV, vos stats et votre visibilité.",
-        lien: "premier-pas.html",
-        icone: "🏃"
-    },
-    {
-        titre: "Scouting",
-        description: "Découvrez les talents vérifiés par nos soins.",
-        lien: "scouting.html",
-        icone: "💼"
-    },
-    {
-        titre: "Le Processus",
-        description: "Comment nous sécurisons votre avenir pro.",
-        lien: "processus.html",
-        icone: "🛡️"
-    }
-];
-
-// Initialiser localStorage si vide
-if (!localStorage.getItem('roles')) {
-    localStorage.setItem('roles', JSON.stringify(defaultRoles));
-}
+// ===== INITIALISATION SUPABASE =====
+const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // Éléments DOM
 const rolesList = document.getElementById('rolesList');
@@ -36,29 +14,44 @@ const descriptionInput = document.getElementById('description');
 const lienInput = document.getElementById('lien');
 const iconeInput = document.getElementById('icone');
 
-// Charger et afficher les rôles
-function loadRoles() {
-    const roles = JSON.parse(localStorage.getItem('roles')) || [];
+// Charger les rôles
+async function loadRoles() {
+    const { data: roles, error } = await supabase
+        .from('roles')
+        .select('*')
+        .order('id');
+
+    if (error) {
+        console.error('Erreur chargement rôles:', error);
+        rolesList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        return;
+    }
+
+    if (!roles || roles.length === 0) {
+        rolesList.innerHTML = '<p class="no-data">Aucun rôle. Cliquez sur "Ajouter" pour en créer un.</p>';
+        return;
+    }
+
     let html = '';
-    roles.forEach((item, index) => {
+    roles.forEach(item => {
         html += `
-            <div class="list-item" data-index="${index}">
+            <div class="list-item" data-id="${item.id}">
                 <div class="info">
                     <strong>${item.titre}</strong>
                     <small>${item.description}</small>
                     <div class="details">Lien: ${item.lien} | Icône: ${item.icone}</div>
                 </div>
                 <div class="actions">
-                    <button class="edit" onclick="editRole(${index})"><i class="fas fa-edit"></i></button>
-                    <button class="delete" onclick="deleteRole(${index})"><i class="fas fa-trash"></i></button>
+                    <button class="edit" onclick="editRole(${item.id})"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="deleteRole(${item.id})"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
     });
-    rolesList.innerHTML = html || '<p class="no-data">Aucun rôle.</p>';
+    rolesList.innerHTML = html;
 }
 
-// Ouvrir la modale pour ajouter
+// Ouvrir modale ajout
 function openAddModal() {
     modalTitle.textContent = 'Ajouter un rôle';
     idInput.value = '';
@@ -69,12 +62,21 @@ function openAddModal() {
     modal.classList.add('active');
 }
 
-// Ouvrir la modale pour éditer
-window.editRole = (index) => {
-    const roles = JSON.parse(localStorage.getItem('roles'));
-    const item = roles[index];
+// Éditer un rôle
+window.editRole = async (id) => {
+    const { data: item, error } = await supabase
+        .from('roles')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error) {
+        alert('Erreur chargement rôle');
+        return;
+    }
+
     modalTitle.textContent = 'Modifier un rôle';
-    idInput.value = index;
+    idInput.value = item.id;
     titreInput.value = item.titre;
     descriptionInput.value = item.description;
     lienInput.value = item.lien;
@@ -82,44 +84,62 @@ window.editRole = (index) => {
     modal.classList.add('active');
 };
 
-// Fermer la modale
+// Supprimer un rôle
+window.deleteRole = async (id) => {
+    if (!confirm('Supprimer ce rôle ?')) return;
+    const { error } = await supabase
+        .from('roles')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        alert('Erreur suppression : ' + error.message);
+    } else {
+        loadRoles();
+    }
+};
+
+// Fermer modale
 window.closeModal = () => {
     modal.classList.remove('active');
 };
 
-// Supprimer un rôle
-window.deleteRole = (index) => {
-    if (!confirm('Supprimer ce rôle ?')) return;
-    const roles = JSON.parse(localStorage.getItem('roles'));
-    roles.splice(index, 1);
-    localStorage.setItem('roles', JSON.stringify(roles));
-    loadRoles();
-};
-
-// Gestion du formulaire
-form.addEventListener('submit', (e) => {
+// Soumission formulaire
+form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const index = idInput.value;
+    const id = idInput.value;
     const titre = titreInput.value;
     const description = descriptionInput.value;
     const lien = lienInput.value;
     const icone = iconeInput.value;
-    const roles = JSON.parse(localStorage.getItem('roles')) || [];
 
-    const newItem = { titre, description, lien, icone };
-
-    if (index === '') {
-        roles.push(newItem);
+    if (id === '') {
+        // Ajout
+        const { error } = await supabase
+            .from('roles')
+            .insert([{ titre, description, lien, icone }]);
+        if (error) {
+            alert('Erreur ajout : ' + error.message);
+        } else {
+            closeModal();
+            loadRoles();
+        }
     } else {
-        roles[index] = newItem;
+        // Modification
+        const { error } = await supabase
+            .from('roles')
+            .update({ titre, description, lien, icone })
+            .eq('id', id);
+        if (error) {
+            alert('Erreur modification : ' + error.message);
+        } else {
+            closeModal();
+            loadRoles();
+        }
     }
-
-    localStorage.setItem('roles', JSON.stringify(roles));
-    closeModal();
-    loadRoles();
 });
 
-// Bouton d'ajout
+// Bouton ajout
 document.getElementById('addRoleBtn').addEventListener('click', openAddModal);
 
 // Déconnexion
