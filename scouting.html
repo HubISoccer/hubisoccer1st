@@ -6,12 +6,11 @@
     <title>Scouting | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles globaux et spécifiques -->
     <link rel="stylesheet" href="public/css/style.css">
     <link rel="stylesheet" href="public/css/scouting.css">
 </head>
 <body>
-    <!-- Navigation (identique aux autres pages) -->
+    <!-- Navigation -->
     <nav>
         <a href="index.html" class="logo-link">
             <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
@@ -20,28 +19,7 @@
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
-                <option value="yo">🇳🇬 Yoruba</option>
-                <option value="fon">🇧🇯 Fon</option>
-                <option value="mina">🇹🇬 Mina</option>
-                <option value="lin">🇨🇬 Lingala</option>
-                <option value="wol">🇸🇳 Wolof</option>
-                <option value="diou">🇨🇮 Dioula</option>
-                <option value="ha">🇳🇬 Hausa</option>
-                <option value="sw">🇰🇪 Kiswahili</option>
-                <option value="es">🇪🇸 Español</option>
-                <option value="pt">🇵🇹 Português</option>
-                <option value="de">🇩🇪 Deutsch</option>
-                <option value="it">🇮🇹 Italiano</option>
-                <option value="ar">🇸🇦 العربية</option>
-                <option value="zh">🇨🇳 中文</option>
-                <option value="ru">🇷🇺 Русский</option>
-                <option value="ja">🇯🇵 日本語</option>
-                <option value="tr">🇹🇷 Türkçe</option>
-                <option value="ko">🇰🇷 한국어</option>
-                <option value="hi">🇮🇳 हिन्दी</option>
-                <option value="nl">🇳🇱 Nederlands</option>
-                <option value="pl">🇵🇱 Polski</option>
-                <option value="vi">🇻🇳 Tiếng Việt</option>
+                <!-- autres langues -->
             </select>
             <button class="menu-toggle" id="menuToggle">
                 <span></span><span></span><span></span>
@@ -62,28 +40,28 @@
     </nav>
 
     <!-- En-tête de la page -->
-    <header class="scouting-header" style="background: linear-gradient(135deg, rgba(85,27,140,0.8), rgba(0,0,0,0.8)), url('public/img/stade-cotonou.jpg') center/cover no-repeat;">
-        <h1 class="scouting-title">Découvrez les <span class="highlight">talents</span> de demain</h1>
-        <p class="scouting-subtitle">Filtrez par pays, catégorie et découvrez les profils vérifiés par HubISoccer.</p>
+    <header class="scouting-header" style="background: linear-gradient(rgba(0,0,0,0.5), rgba(85,27,140,0.7)), url('public/img/stade-cotonou.jpg') center/cover no-repeat;">
+        <h1>Scouting <span class="highlight">HubISoccer</span></h1>
+        <p>Découvrez les talents du monde entier, vérifiés et certifiés.</p>
     </header>
 
     <!-- Filtres -->
     <div class="filters-section">
-        <div class="filters-container">
-            <select id="continentFilter" class="filter-select">
+        <div class="filter-group">
+            <select id="continentFilter">
                 <option value="all">Tous les continents</option>
                 <option value="Afrique">Afrique</option>
                 <option value="Europe">Europe</option>
                 <option value="Amérique">Amérique</option>
                 <option value="Asie">Asie</option>
             </select>
-            <select id="categoryFilter" class="filter-select">
+            <select id="categoryFilter">
                 <option value="all">Toutes catégories</option>
                 <option value="mineur">U17 (Mineur)</option>
                 <option value="adulte">18+ (Adulte)</option>
             </select>
-            <input type="text" id="countrySearch" class="filter-input" placeholder="Pays (ex: Bénin, Brésil...)" autocomplete="off">
-            <button class="filter-btn" id="searchBtn"><i class="fas fa-search"></i> Rechercher</button>
+            <input type="text" id="countrySearch" placeholder="Pays (ex: Bénin, Brésil...)" autocomplete="off">
+            <button class="btn-filter" id="searchBtn"><i class="fas fa-search"></i> Rechercher</button>
         </div>
     </div>
 
@@ -96,7 +74,7 @@
     <!-- Grille des joueurs -->
     <div class="players-grid" id="playersGrid"></div>
 
-    <!-- Pied de page -->
+    <!-- Footer -->
     <footer>
         <div class="compliance-badges">
             <div class="badge-item">Conformité APDP Bénin</div>
@@ -115,6 +93,7 @@
     </footer>
 
     <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="public/js/main.js"></script>
     <script src="public/js/scouting.js"></script>
 </body>
