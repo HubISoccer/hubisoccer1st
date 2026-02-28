@@ -1,7 +1,6 @@
-// ===== INITIALISATION SUPABASE =====
 const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // Éléments DOM
 const rolesList = document.getElementById('rolesList');
@@ -16,7 +15,7 @@ const iconeInput = document.getElementById('icone');
 
 // Charger les rôles
 async function loadRoles() {
-    const { data: roles, error } = await supabase
+    const { data: roles, error } = await supabaseClient
         .from('roles')
         .select('*')
         .order('id');
@@ -64,7 +63,7 @@ function openAddModal() {
 
 // Éditer un rôle
 window.editRole = async (id) => {
-    const { data: item, error } = await supabase
+    const { data: item, error } = await supabaseClient
         .from('roles')
         .select('*')
         .eq('id', id)
@@ -87,7 +86,7 @@ window.editRole = async (id) => {
 // Supprimer un rôle
 window.deleteRole = async (id) => {
     if (!confirm('Supprimer ce rôle ?')) return;
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('roles')
         .delete()
         .eq('id', id);
@@ -115,7 +114,7 @@ form.addEventListener('submit', async (e) => {
 
     if (id === '') {
         // Ajout
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('roles')
             .insert([{ titre, description, lien, icone }]);
         if (error) {
@@ -126,7 +125,7 @@ form.addEventListener('submit', async (e) => {
         }
     } else {
         // Modification
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('roles')
             .update({ titre, description, lien, icone })
             .eq('id', id);
