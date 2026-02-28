@@ -1,7 +1,11 @@
-// ===== CONSTANTES =====
+// ===== INITIALISATION SUPABASE =====
+const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
 const COMMISSION = 100; // FCFA par parrainage validé
 
-// ===== ÉLÉMENTS DOM =====
+// Éléments DOM
 const affiliatesList = document.getElementById('affiliatesList');
 const modal = document.getElementById('affiliateModal');
 const modalTitle = document.getElementById('modalTitle');
@@ -23,46 +27,69 @@ const messageForm = document.getElementById('messageForm');
 const messageAffiliateId = document.getElementById('messageAffiliateId');
 const messageText = document.getElementById('messageText');
 
-// ===== CHARGEMENT DES AFFILIÉS =====
-function loadAffiliates() {
-    const affiliates = JSON.parse(localStorage.getItem('affiliates')) || [];
+// Charger les affiliés
+async function loadAffiliates() {
+    const { data: affiliates, error } = await supabaseClient
+        .from('affiliates')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Erreur chargement affiliés:', error);
+        affiliatesList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        return;
+    }
+
+    if (!affiliates || affiliates.length === 0) {
+        affiliatesList.innerHTML = '<p class="no-data">Aucun affilié.</p>';
+        return;
+    }
+
     let html = '';
-    affiliates.forEach((aff, index) => {
+    affiliates.forEach(aff => {
         const gains = (aff.count || 0) * COMMISSION;
         const statut = aff.valide ? 'Validé' : 'En attente';
         const statutClass = aff.valide ? 'actif' : 'inactif';
         html += `
-            <div class="list-item" data-index="${index}">
+            <div class="list-item" data-id="${aff.id}">
                 <div class="info">
-                    <strong>${aff.nom || 'Nom inconnu'}</strong>
+                    <strong>${aff.nom}</strong>
                     <div class="details">
-                        <span>ID: ${aff.id}</span>
                         <span>${aff.type === 'joueur' ? 'Joueur' : 'Produit'}</span>
-                        <span>${aff.pays || '?'}</span>
-                        <span>${aff.telephone || '?'}</span>
+                        <span>${aff.pays}</span>
+                        <span>${aff.telephone}</span>
                         <span>${aff.paiement === 'mobile_money' ? 'Mobile Money' : 'Autre'}</span>
                     </div>
                     <span class="status ${statutClass}">${statut}</span>
                     <span class="gains">Gains: ${gains} FCFA (${aff.count || 0} parrainages)</span>
                 </div>
                 <div class="actions">
-                    <button class="edit" onclick="editAffiliate(${index})" title="Modifier"><i class="fas fa-edit"></i></button>
-                    <button class="delete" onclick="deleteAffiliate(${index})" title="Supprimer"><i class="fas fa-trash"></i></button>
+                    <button class="edit" onclick="editAffiliate('${aff.id}')" title="Modifier"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="deleteAffiliate('${aff.id}')" title="Supprimer"><i class="fas fa-trash"></i></button>
                     <button class="message" onclick="openMessageModal('${aff.id}')" title="Envoyer un message"><i class="fas fa-envelope"></i></button>
                     <button class="payment" onclick="generatePaymentLink('${aff.id}')" title="Générer lien de paiement"><i class="fas fa-money-bill-wave"></i></button>
                 </div>
             </div>
         `;
     });
-    affiliatesList.innerHTML = html || '<p class="no-data">Aucun affilié pour le moment.</p>';
+    affiliatesList.innerHTML = html;
 }
 
-// ===== ÉDITION =====
-window.editAffiliate = (index) => {
-    const affiliates = JSON.parse(localStorage.getItem('affiliates'));
-    const aff = affiliates[index];
+// Éditer un affilié
+window.editAffiliate = async (id) => {
+    const { data: aff, error } = await supabaseClient
+        .from('affiliates')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error) {
+        alert('Erreur chargement affilié');
+        return;
+    }
+
     modalTitle.textContent = 'Modifier l\'affilié';
-    affiliateId.value = index;
+    affiliateId.value = aff.id;
     displayId.value = aff.id;
     nomInput.value = aff.nom || '';
     paysInput.value = aff.pays || '';
@@ -75,39 +102,51 @@ window.editAffiliate = (index) => {
     modal.classList.add('active');
 };
 
-// ===== FERMETURE MODALE PRINCIPALE =====
+// Supprimer un affilié
+window.deleteAffiliate = async (id) => {
+    if (!confirm('Supprimer cet affilié définitivement ?')) return;
+    const { error } = await supabaseClient
+        .from('affiliates')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        alert('Erreur suppression : ' + error.message);
+    } else {
+        loadAffiliates();
+    }
+};
+
+// Fermer modale principale
 window.closeModal = () => {
     modal.classList.remove('active');
 };
 
-// ===== SUPPRESSION =====
-window.deleteAffiliate = (index) => {
-    if (!confirm('Supprimer cet affilié définitivement ?')) return;
-    let affiliates = JSON.parse(localStorage.getItem('affiliates')) || [];
-    affiliates.splice(index, 1);
-    localStorage.setItem('affiliates', JSON.stringify(affiliates));
-    loadAffiliates();
-};
-
-// ===== GESTION DU FORMULAIRE D'ÉDITION =====
-form.addEventListener('submit', (e) => {
+// Soumission formulaire d'édition
+form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const index = affiliateId.value;
-    let affiliates = JSON.parse(localStorage.getItem('affiliates')) || [];
-    
-    affiliates[index].nom = nomInput.value;
-    affiliates[index].pays = paysInput.value;
-    affiliates[index].telephone = telephoneInput.value;
-    affiliates[index].paiement = paiementSelect.value;
-    affiliates[index].type = typeSelect.value;
-    affiliates[index].valide = valideSelect.value === 'true';
+    const id = affiliateId.value;
+    const nom = nomInput.value;
+    const pays = paysInput.value;
+    const telephone = telephoneInput.value;
+    const paiement = paiementSelect.value;
+    const type = typeSelect.value;
+    const valide = valideSelect.value === 'true';
 
-    localStorage.setItem('affiliates', JSON.stringify(affiliates));
-    closeModal();
-    loadAffiliates();
+    const { error } = await supabaseClient
+        .from('affiliates')
+        .update({ nom, pays, telephone, paiement, type, valide })
+        .eq('id', id);
+
+    if (error) {
+        alert('Erreur modification : ' + error.message);
+    } else {
+        closeModal();
+        loadAffiliates();
+    }
 });
 
-// ===== GESTION DES MESSAGES =====
+// Gestion des messages
 window.openMessageModal = (affiliateId) => {
     messageAffiliateId.value = affiliateId;
     messageText.value = '';
@@ -118,34 +157,31 @@ window.closeMessageModal = () => {
     messageModal.classList.remove('active');
 };
 
-messageForm.addEventListener('submit', (e) => {
+messageForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const affiliateId = messageAffiliateId.value;
     const message = messageText.value.trim();
     if (!message) return;
 
-    // Récupérer les messages existants
-    let messages = JSON.parse(localStorage.getItem('affiliate_messages')) || [];
-    messages.push({
-        id: Date.now(),
-        affiliateId: affiliateId,
-        message: message,
-        date: new Date().toISOString(),
-        lu: false
-    });
-    localStorage.setItem('affiliate_messages', JSON.stringify(messages));
-    alert('✅ Message envoyé à l\'affilié.');
-    closeMessageModal();
+    // Enregistrer le message dans la table affiliate_messages
+    const { error } = await supabaseClient
+        .from('affiliate_messages')
+        .insert([{ affiliateId, message }]);
+
+    if (error) {
+        alert('Erreur envoi message : ' + error.message);
+    } else {
+        alert('✅ Message envoyé à l\'affilié.');
+        closeMessageModal();
+    }
 });
 
-// ===== GÉNÉRATION LIEN DE PAIEMENT =====
+// Générer lien de paiement
 window.generatePaymentLink = (affiliateId) => {
-    const affiliates = JSON.parse(localStorage.getItem('affiliates')) || [];
-    const aff = affiliates.find(a => a.id === affiliateId);
-    if (!aff) return;
-    const gain = (aff.count || 0) * COMMISSION;
-    // Créer un lien vers la page de paiement (à créer ultérieurement)
-    const paymentUrl = `${window.location.origin}/hubisoccer1st/admin/paiement.html?aff=${encodeURIComponent(affiliateId)}&montant=${gain}`;
+    // Récupérer l'affilié pour calculer le gain
+    // (on pourrait le faire en passant par l'objet déjà chargé, mais pour simplifier on recrée le lien)
+    // Ici on utilise un lien factice vers une page de paiement à créer plus tard
+    const paymentUrl = `${window.location.origin}/hubisoccer1st/admin/paiement.html?aff=${encodeURIComponent(affiliateId)}`;
     navigator.clipboard.writeText(paymentUrl).then(() => {
         alert(`Lien de paiement copié : ${paymentUrl}`);
     }).catch(() => {
@@ -153,7 +189,7 @@ window.generatePaymentLink = (affiliateId) => {
     });
 };
 
-// ===== DÉCONNEXION =====
+// Déconnexion
 document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     e.preventDefault();
     if (confirm('Déconnexion ?')) {
@@ -161,5 +197,5 @@ document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     }
 });
 
-// ===== CHARGEMENT INITIAL =====
+// Chargement initial
 loadAffiliates();
