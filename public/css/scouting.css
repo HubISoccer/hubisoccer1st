@@ -1,79 +1,59 @@
 /* ===== PAGE SCOUTING ===== */
-:root {
-    --scouting-primary: #551B8C;
-    --scouting-accent: #FFCC00;
-    --scouting-dark: #1a1a1a;
-    --scouting-gray: #6c757d;
-    --scouting-light: #f8f9fa;
-    --scouting-border: #e9ecef;
-    --scouting-shadow: 0 10px 30px rgba(0,0,0,0.05);
-    --scouting-shadow-hover: 0 15px 40px rgba(85,27,140,0.15);
-    --transition: all 0.3s ease;
-}
-
-/* En-tête */
 .scouting-header {
     padding: 100px 20px;
     text-align: center;
-    color: white;
+    border-radius: 20px;
     margin-bottom: 40px;
+    color: white;
 }
-
-.scouting-title {
-    font-size: clamp(2.5rem, 8vw, 4rem);
+.scouting-header h1 {
+    font-size: 3rem;
     font-weight: 800;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
     animation: fadeInUp 1s;
 }
-
-.scouting-title .highlight {
-    color: var(--scouting-accent);
+.scouting-header .highlight {
+    color: #FFCC00;
 }
-
-.scouting-subtitle {
+.scouting-header p {
     font-size: 1.3rem;
     max-width: 700px;
-    margin: 20px auto 0;
+    margin: 0 auto;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
-
-/* Filtres */
 .filters-section {
     background: white;
-    border-radius: 20px;
-    padding: 25px;
+    border-radius: 15px;
+    padding: 20px;
     max-width: 1000px;
     margin: 0 auto 40px;
-    box-shadow: var(--scouting-shadow);
-    border: 1px solid var(--scouting-border);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
 }
-
-.filters-container {
+.filter-group {
     display: flex;
     gap: 15px;
     flex-wrap: wrap;
-    justify-content: center;
+    align-items: center;
 }
-
-.filter-select, .filter-input {
+.filter-group select,
+.filter-group input {
     flex: 1 1 200px;
-    padding: 12px 15px;
-    border: 2px solid var(--scouting-border);
+    padding: 12px;
+    border: 2px solid var(--light-gray);
     border-radius: 10px;
     font-family: 'Poppins', sans-serif;
     font-size: 0.95rem;
     transition: var(--transition);
-    background: white;
 }
-
-.filter-select:focus, .filter-input:focus {
-    border-color: var(--scouting-primary);
+.filter-group select:focus,
+.filter-group input:focus {
+    border-color: var(--primary);
     outline: none;
     box-shadow: 0 0 0 3px rgba(85,27,140,0.1);
 }
-
-.filter-btn {
-    background: var(--scouting-primary);
+.btn-filter {
+    background: var(--primary);
     color: white;
     border: none;
     padding: 12px 30px;
@@ -86,14 +66,11 @@
     gap: 8px;
     white-space: nowrap;
 }
-
-.filter-btn:hover {
-    background: #7e3db0;
+.btn-filter:hover {
+    background: var(--primary-light);
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(85,27,140,0.3);
 }
-
-/* En-tête des résultats */
 .results-header {
     max-width: 1200px;
     margin: 30px auto 20px;
@@ -104,28 +81,23 @@
     flex-wrap: wrap;
     gap: 15px;
 }
-
 .results-header h2 {
     font-size: 1.8rem;
-    color: var(--scouting-primary);
+    color: var(--primary);
     display: flex;
     align-items: center;
     gap: 10px;
 }
-
 .results-header h2 i {
-    color: var(--scouting-accent);
+    color: var(--gold);
 }
-
 #resultCount {
-    background: var(--scouting-light);
+    background: var(--light-gray);
     padding: 5px 15px;
     border-radius: 30px;
     font-weight: 500;
-    color: var(--scouting-gray);
+    color: var(--gray);
 }
-
-/* Grille des joueurs */
 .players-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -134,41 +106,34 @@
     margin: 0 auto 50px;
     padding: 0 20px;
 }
-
-/* Carte joueur */
 .player-card {
     background: white;
     border-radius: 15px;
     overflow: hidden;
-    box-shadow: var(--scouting-shadow);
-    border: 1px solid var(--scouting-border);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
     transition: var(--transition);
     display: flex;
     flex-direction: column;
 }
-
 .player-card:hover {
     transform: translateY(-8px);
-    box-shadow: var(--scouting-shadow-hover);
+    box-shadow: var(--shadow-hover);
 }
-
 .card-image {
     position: relative;
     height: 200px;
     overflow: hidden;
 }
-
 .card-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     transition: transform 0.5s ease;
 }
-
 .player-card:hover .card-image img {
     transform: scale(1.05);
 }
-
 .card-badge {
     position: absolute;
     top: 10px;
@@ -180,34 +145,28 @@
     color: white;
     z-index: 2;
 }
-
 .card-badge.mineur {
     background: #e67e22;
 }
-
 .card-badge.adulte {
     background: #27ae60;
 }
-
 .card-content {
     padding: 20px;
     flex: 1;
     display: flex;
     flex-direction: column;
 }
-
 .card-content h3 {
     font-size: 1.2rem;
-    color: var(--scouting-primary);
+    color: var(--primary);
     margin-bottom: 5px;
 }
-
 .card-content p {
     font-size: 0.9rem;
-    color: var(--scouting-gray);
+    color: var(--gray);
     margin-bottom: 10px;
 }
-
 .card-meta {
     display: flex;
     flex-wrap: wrap;
@@ -215,7 +174,6 @@
     margin-bottom: 15px;
     font-size: 0.8rem;
 }
-
 .card-meta span {
     background: #f0f0f0;
     padding: 4px 8px;
@@ -224,28 +182,24 @@
     align-items: center;
     gap: 5px;
 }
-
 .card-meta i {
-    color: var(--scouting-accent);
+    color: var(--gold);
 }
-
 .card-cert {
     background: #fff9eb;
     padding: 8px 10px;
     border-radius: 8px;
     font-size: 0.8rem;
     margin-bottom: 15px;
-    border: 1px dashed var(--scouting-accent);
+    border: 1px dashed var(--gold);
     color: #b8860b;
 }
-
 .card-cert i {
     margin-right: 5px;
-    color: var(--scouting-accent);
+    color: var(--gold);
 }
-
 .btn-view {
-    background: var(--scouting-primary);
+    background: var(--primary);
     color: white;
     text-align: center;
     padding: 10px;
@@ -255,29 +209,26 @@
     transition: var(--transition);
     margin-top: auto;
 }
-
 .btn-view:hover {
-    background: #7e3db0;
+    background: var(--primary-light);
 }
-
-/* Message aucun résultat */
 .no-results {
     grid-column: 1 / -1;
     text-align: center;
     padding: 60px 20px;
-    color: var(--scouting-gray);
+    color: var(--gray);
     font-size: 1.2rem;
 }
-
-/* Responsive */
 @media (max-width: 768px) {
-    .scouting-title {
+    .scouting-header h1 {
         font-size: 2rem;
     }
-    .filters-container {
+    .filter-group {
         flex-direction: column;
     }
-    .filter-select, .filter-input, .filter-btn {
+    .filter-group select,
+    .filter-group input,
+    .btn-filter {
         width: 100%;
     }
     .results-header {
