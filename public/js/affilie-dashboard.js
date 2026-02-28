@@ -1,4 +1,11 @@
-document.addEventListener('DOMContentLoaded', () => {
+// ===== INITIALISATION SUPABASE =====
+const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+const COMMISSION = 100; // FCFA par affilié validé
+
+document.addEventListener('DOMContentLoaded', async () => {
     // Vérifier si un affilié est connecté
     const currentAffiliate = JSON.parse(sessionStorage.getItem('currentAffiliate'));
     if (!currentAffiliate) {
@@ -9,65 +16,82 @@ document.addEventListener('DOMContentLoaded', () => {
     // Afficher le nom
     document.getElementById('affilieNom').textContent = currentAffiliate.nom || 'Affilié';
 
-    // Récupérer les données
-    const affiliates = JSON.parse(localStorage.getItem('affiliates')) || [];
-    const premiersPas = JSON.parse(localStorage.getItem('premiers_pas_inscriptions')) || [];
-    const eMarketPurchases = JSON.parse(localStorage.getItem('emarket_purchases')) || [];
+    // Récupérer les inscriptions et les commandes (via le champ affilié)
+    // Pour l'instant, on ne peut pas compter facilement car il faudrait croiser avec d'autres tables
+    // On va compter simplement le nombre de personnes affiliées via cet ID dans les tables concernées
+    // Pour la démo, on va utiliser des données fictives ou compter depuis une table "conversions"
+    // En attendant, on va afficher des valeurs de test
 
-    // Compter le nombre de personnes affiliées via cet affilié
-    const affilieId = currentAffiliate.id;
-    // Inscriptions joueurs
-    const joueursAffilies = premiersPas.filter(ins => ins.affilié === affilieId);
-    // Achats produits
-    const achatsAffilies = eMarketPurchases.filter(p => p.affilié === affilieId);
-    const totalAffilies = joueursAffilies.length + achatsAffilies.length;
-    const validatedAffilies = joueursAffilies.filter(ins => ins.statut === 'valide').length +
-                              achatsAffilies.filter(p => p.statut === 'valide').length;
+    // Compter le nombre d'inscriptions avec cet affilié
+    const { data: inscriptions, error: err1 } = await supabaseClient
+        .from('inscriptions')
+        .select('*')
+        .eq('affilié', currentAffiliate.id);
 
-    // Gains : commission de 100 FCFA par validation
-    const COMMISSION = 100;
+    const totalInscriptions = inscriptions ? inscriptions.length : 0;
+    const validatedInscriptions = inscriptions ? inscriptions.filter(ins => ins.statut === 'valide').length : 0;
+
+    // Compter les achats (si table orders avec champ affilié)
+    // Pour l'instant, on n'a pas de lien, on va juste utiliser les inscriptions
+    const totalAffilies = totalInscriptions; // + achats plus tard
+    const validatedAffilies = validatedInscriptions;
+
     const gains = validatedAffilies * COMMISSION;
 
     document.getElementById('totalAffilies').textContent = totalAffilies;
     document.getElementById('validatedAffilies').textContent = validatedAffilies;
     document.getElementById('totalGains').textContent = gains.toLocaleString() + ' FCFA';
 
-    // Gestion des demandes de paiement
-    const paymentRequests = JSON.parse(localStorage.getItem('payment_requests')) || [];
-    const myRequests = paymentRequests.filter(req => req.affilieId === affilieId);
+    // Récupérer les demandes de paiement
+    const { data: paymentRequests, error: err2 } = await supabaseClient
+        .from('payment_requests')
+        .select('*')
+        .eq('affilieId', currentAffiliate.id)
+        .order('date', { ascending: false });
 
-    // Gestion des messages de l'admin
-    const allMessages = JSON.parse(localStorage.getItem('affiliate_messages')) || [];
-    const myMessages = allMessages.filter(msg => msg.affiliateId === affilieId);
+    if (err2) console.error('Erreur chargement demandes:', err2);
 
-    // Notifications
+    // Récupérer les messages de l'admin
+    const { data: messages, error: err3 } = await supabaseClient
+        .from('affiliate_messages')
+        .select('*')
+        .eq('affiliateId', currentAffiliate.id)
+        .order('date', { ascending: false });
+
+    if (err3) console.error('Erreur chargement messages:', err3);
+
+    // Construire les notifications
     const notifications = [];
 
-    myMessages.forEach(msg => {
-        notifications.push({
-            type: 'info',
-            message: `📨 Message de l'admin : ${msg.message}`,
-            date: msg.date
-        });
-    });
-
-    myRequests.forEach(req => {
-        if (req.status === 'approuvé') {
+    if (messages) {
+        messages.forEach(msg => {
             notifications.push({
                 type: 'info',
-                message: `✅ Votre demande de ${req.amount} FCFA a été approuvée.`,
-                date: req.date
+                message: `📨 Message de l'admin : ${msg.message}`,
+                date: msg.date
             });
-        } else if (req.status === 'refusé') {
-            notifications.push({
-                type: 'error',
-                message: `❌ Votre demande de ${req.amount} FCFA a été refusée. Motif : ${req.reason || 'Non spécifié'}`,
-                date: req.date
-            });
-        }
-    });
+        });
+    }
 
-    renderPaymentRequests(myRequests);
+    if (paymentRequests) {
+        paymentRequests.forEach(req => {
+            if (req.status === 'approuvé') {
+                notifications.push({
+                    type: 'info',
+                    message: `✅ Votre demande de ${req.amount} FCFA a été approuvée.`,
+                    date: req.date
+                });
+            } else if (req.status === 'refusé') {
+                notifications.push({
+                    type: 'error',
+                    message: `❌ Votre demande de ${req.amount} FCFA a été refusée. Motif : ${req.reason || 'Non spécifié'}`,
+                    date: req.date
+                });
+            }
+        });
+    }
+
+    renderPaymentRequests(paymentRequests || []);
     renderNotifications(notifications);
 
     // Nouvelle demande
@@ -75,15 +99,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('requestModal').classList.add('active');
     });
 
-    document.getElementById('paymentRequestForm').addEventListener('submit', (e) => {
+    document.getElementById('paymentRequestForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const amount = parseInt(document.getElementById('requestAmount').value);
         const method = document.getElementById('paymentMethod').value;
         const details = document.getElementById('paymentDetails').value.trim();
 
         const newRequest = {
-            id: Date.now(),
-            affilieId: affilieId,
+            affilieId: currentAffiliate.id,
             amount: amount,
             method: method,
             details: details,
@@ -92,21 +115,17 @@ document.addEventListener('DOMContentLoaded', () => {
             reason: ''
         };
 
-        paymentRequests.push(newRequest);
-        localStorage.setItem('payment_requests', JSON.stringify(paymentRequests));
+        const { error } = await supabaseClient
+            .from('payment_requests')
+            .insert([newRequest]);
 
-        closeModal();
-        // Recharger la liste des demandes et les notifications
-        const updatedRequests = paymentRequests.filter(req => req.affilieId === affilieId);
-        renderPaymentRequests(updatedRequests);
-
-        const newNotifications = [];
-        myMessages.forEach(msg => newNotifications.push({ type: 'info', message: `📨 Message de l'admin : ${msg.message}`, date: msg.date }));
-        updatedRequests.forEach(req => {
-            if (req.status === 'approuvé') newNotifications.push({ type: 'info', message: `✅ Votre demande de ${req.amount} FCFA a été approuvée.`, date: req.date });
-            else if (req.status === 'refusé') newNotifications.push({ type: 'error', message: `❌ Votre demande de ${req.amount} FCFA a été refusée. Motif : ${req.reason || 'Non spécifié'}`, date: req.date });
-        });
-        renderNotifications(newNotifications);
+        if (error) {
+            alert('Erreur lors de la création de la demande : ' + error.message);
+        } else {
+            closeModal();
+            // Recharger la page pour voir la nouvelle demande
+            location.reload();
+        }
     });
 
     // Déconnexion
@@ -125,7 +144,7 @@ function renderPaymentRequests(requests) {
     }
 
     let html = '';
-    requests.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(req => {
+    requests.forEach(req => {
         let statusClass = '';
         let statusText = '';
         switch (req.status) {
@@ -164,7 +183,7 @@ function renderNotifications(notifications) {
     }
 
     let html = '';
-    notifications.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(n => {
+    notifications.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(n => {
         html += `
             <div class="notification ${n.type}">
                 <span>${n.message}</span>
