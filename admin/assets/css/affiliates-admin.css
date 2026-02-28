@@ -1,11 +1,10 @@
-/* ===== PAGE ADMIN AFFILIÉS ===== */
+/* Styles spécifiques à la page admin Affiliés */
 .affiliates-page {
     --primary: #551B8C;
     --primary-light: #7e3db0;
     --primary-dark: #3d1266;
     --gold: #FFCC00;
     --gold-dark: #e6b800;
-    --bg-light: #F0F8FF;
     --white: #ffffff;
     --dark: #1a1a1a;
     --gray: #6c757d;
@@ -39,12 +38,7 @@
     padding: 25px;
     box-shadow: var(--shadow);
     border: 1px solid var(--light-gray);
-    transition: var(--transition);
 }
-.affiliates-page .admin-card:hover {
-    box-shadow: var(--shadow-hover);
-}
-
 .affiliates-page .card-header {
     display: flex;
     justify-content: space-between;
@@ -64,8 +58,6 @@
 .affiliates-page .card-header h2 i {
     color: var(--gold);
 }
-
-/* Liste des affiliés (sous forme de cartes) */
 .affiliates-page .admin-list {
     display: flex;
     flex-direction: column;
@@ -79,7 +71,6 @@
     justify-content: space-between;
     align-items: center;
     border-left: 5px solid var(--gold);
-    transition: var(--transition);
     border: 1px solid var(--light-gray);
     flex-wrap: wrap;
     gap: 15px;
@@ -102,10 +93,10 @@
 .affiliates-page .list-item .info .details {
     color: var(--gray);
     font-size: 0.9rem;
-    line-height: 1.5;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    margin-top: 5px;
 }
 .affiliates-page .list-item .info .details span {
     background: rgba(85,27,140,0.05);
@@ -136,13 +127,11 @@
 .affiliates-page .list-item .actions {
     display: flex;
     gap: 10px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
 }
 .affiliates-page .list-item .actions button {
     background: none;
     border: none;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     cursor: pointer;
     padding: 8px;
     border-radius: 8px;
@@ -185,8 +174,6 @@
     background: #28a745;
     color: white;
 }
-
-/* Modale */
 .affiliates-page .admin-modal {
     display: none;
     position: fixed;
@@ -237,7 +224,6 @@
     border-left: 5px solid var(--gold);
     padding-left: 15px;
 }
-
 .affiliates-page .form-group {
     margin-bottom: 20px;
 }
@@ -265,10 +251,6 @@
     outline: none;
     box-shadow: 0 0 0 3px rgba(85,27,140,0.1);
 }
-.affiliates-page .form-group input[readonly] {
-    background: #f0f0f0;
-    cursor: not-allowed;
-}
 .affiliates-page .btn-submit {
     width: 100%;
     padding: 14px;
@@ -287,18 +269,19 @@
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(85,27,140,0.3);
 }
-
 .affiliates-page .no-data {
     text-align: center;
     color: var(--gray);
     padding: 40px;
     font-size: 1.1rem;
 }
-
-/* Responsive */
 @media (max-width: 768px) {
     .affiliates-page h1 {
         font-size: 1.8rem;
+    }
+    .affiliates-page .card-header {
+        flex-direction: column;
+        align-items: flex-start;
     }
     .affiliates-page .list-item {
         flex-direction: column;
