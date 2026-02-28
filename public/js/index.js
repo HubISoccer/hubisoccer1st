@@ -1,15 +1,15 @@
 // Initialisation du client Supabase
 const supabaseUrl = 'https://fvkmjrkxkdqzjyaolqwf.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2a21qcmt4a2Rxemp5YW9scXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMjk3ODgsImV4cCI6MjA4NzgwNTc4OH0.AZ1IZXy72RHvZcjh9o2YhFcOhpA35W1EMeCJeA4XTVM';
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-// Fonction pour charger les engagements depuis Supabase
+// Fonction pour charger les engagements
 async function loadEngagements() {
     const container = document.getElementById('engagementsContainer');
     if (!container) return;
 
     try {
-        const { data: engagements, error } = await supabase
+        const { data: engagements, error } = await supabaseClient
             .from('engagements')
             .select('titre, description');
 
@@ -31,13 +31,13 @@ async function loadEngagements() {
     }
 }
 
-// Fonction pour charger les rôles depuis Supabase
+// Fonction pour charger les rôles
 async function loadRoles() {
     const container = document.getElementById('rolesContainer');
     if (!container) return;
 
     try {
-        const { data: roles, error } = await supabase
+        const { data: roles, error } = await supabaseClient
             .from('roles')
             .select('titre, description, lien, icone');
 
