@@ -1,14 +1,14 @@
-// Initialisation du client Supabase
+// Initialisation du client Supabase (avec tes nouvelles clés)
 const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // Fonction pour charger les engagements
 async function loadEngagements() {
     const container = document.getElementById('engagementsContainer');
     if (!container) return;
 
-    const { data: engagements, error } = await supabase
+    const { data: engagements, error } = await supabaseClient
         .from('engagements')
         .select('titre, description');
 
@@ -35,7 +35,7 @@ async function loadRoles() {
     const container = document.getElementById('rolesContainer');
     if (!container) return;
 
-    const { data: roles, error } = await supabase
+    const { data: roles, error } = await supabaseClient
         .from('roles')
         .select('titre, description, lien, icone');
 
