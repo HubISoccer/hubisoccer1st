@@ -1,6 +1,6 @@
 // Initialisation Supabase
-const supabaseUrl = 'https://wxlpcf1anihqwumjwpj.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6ICJ1dWlkZXIiLCJhZG9iZXIiOjAsImFkdmVyYWdlIjpbeyJtYXBwLWRvd24iOnsicmFtZSI6WyJpby1hcHBlbmRlZCIsImV4cCI6MTMxNDE2NTEyNSwiZXhwIjoxNTUxOTQ1MjIyfQ%3D%3D&s=2023-12-31T10:00:00.000Z';
+const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
 // Gestion du compteur de commentaires pour les visiteurs
