@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>En savoir plus | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="public/css/style.css">
+    <style>
+        .esp-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .esp-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        .esp-header h1 {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        .esp-header p {
+            font-size: 1.2rem;
+            color: var(--gray);
+        }
+        .esp-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+        .esp-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px 20px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--light-gray);
+            transition: var(--transition);
+            text-decoration: none;
+            color: var(--dark);
+            display: block;
+        }
+        .esp-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--gold);
+            box-shadow: var(--shadow-hover);
+        }
+        .esp-card i {
+            font-size: 3rem;
+            color: var(--gold);
+            margin-bottom: 15px;
+        }
+        .esp-card h3 {
+            font-size: 1.5rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        .esp-card p {
+            font-size: 0.95rem;
+            color: var(--gray);
+            line-height: 1.5;
+        }
+        @media (max-width: 768px) {
+            .esp-header h1 { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo-link">
+            <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+        </a>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <!-- autres langues si besoin -->
+            </select>
+            <button class="menu-toggle" id="menuToggle">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Accueil</a>
+                <a href="scouting.html">Scouting</a>
+                <a href="processus.html">Processus</a>
+                <a href="affiliation.html">Affiliation</a>
+                <a href="parrain.html">Parrain</a>
+                <a href="tournoi.html">Tournois</a>
+                <a href="hub-community.html">Community</a>
+                <a href="e-marketing-hubisoccer.html">Market</a>
+                <a href="esp.html" class="active">En savoir plus</a>
+                <a href="public/auth/login.html" class="btn-auth">Connexion</a>
+                <a href="public/auth/signup.html" class="btn-auth gold">Inscription</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="esp-container">
+        <div class="esp-header">
+            <h1>En savoir plus sur HubISoccer</h1>
+            <p>Toutes les informations utiles pour mieux nous connaître.</p>
+        </div>
+
+        <div class="esp-grid">
+            <a href="faq.html" class="esp-card">
+                <i class="fas fa-question-circle"></i>
+                <h3>FAQ</h3>
+                <p>Questions fréquentes sur le fonctionnement de la plateforme.</p>
+            </a>
+            <a href="cgu.html" class="esp-card">
+                <i class="fas fa-file-contract"></i>
+                <h3>CGU</h3>
+                <p>Conditions générales d'utilisation du site.</p>
+            </a>
+            <a href="mentions-legales.html" class="esp-card">
+                <i class="fas fa-gavel"></i>
+                <h3>Mentions légales</h3>
+                <p>Informations juridiques et éditeur du site.</p>
+            </a>
+            <a href="contact.html" class="esp-card">
+                <i class="fas fa-envelope"></i>
+                <h3>Contact</h3>
+                <p>Comment nous joindre par email ou téléphone.</p>
+            </a>
+            <a href="partenaires.html" class="esp-card">
+                <i class="fas fa-handshake"></i>
+                <h3>Partenaires</h3>
+                <p>Nos partenaires et soutiens.</p>
+            </a>
+            <a href="actualites.html" class="esp-card">
+                <i class="fas fa-newspaper"></i>
+                <h3>Actualités</h3>
+                <p>Les dernières nouvelles du projet.</p>
+            </a>
+            <a href="resultats.html" class="esp-card">
+                <i class="fas fa-chart-line"></i>
+                <h3>Résultats</h3>
+                <p>Classements et résultats des tournois.</p>
+            </a>
+        </div>
+    </main>
+
+    <footer>
+        <div class="compliance-badges">
+            <div class="badge-item">Conformité APDP Bénin</div>
+            <div class="badge-item">Règlementation FIFA</div>
+            <div class="badge-item">Double Projet Sport-Études</div>
+        </div>
+        <div class="contact-box">
+            <a href="tel:+2290197208188" class="contact-item">📞 +229 01 97 20 81 88</a>
+            <a href="mailto:contact@hubisoccer.com" class="contact-item">📧 hubisoccer@gmail.com</a>
+        </div>
+        <div class="legal">
+            <p><strong>HubISoccer - The Hub of Inspiration of Soccer</strong></p>
+            <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+            <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script src="public/js/main.js"></script>
+</body>
+</html>
