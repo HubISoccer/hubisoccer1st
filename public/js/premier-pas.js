@@ -6,9 +6,7 @@ const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 // ===== RÉCUPÉRATION DU PARRAIN (ref) DANS L'URL =====
 const urlParams = new URLSearchParams(window.location.search);
 const ref = urlParams.get('ref');
-if (ref) {
-    sessionStorage.setItem('affiliateRef', ref);
-}
+if (ref) sessionStorage.setItem('affiliateRef', ref);
 
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('premierPasForm');
@@ -17,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const affiliateIdGroup = document.getElementById('affiliateIdGroup');
     const affiliateIdInput = document.getElementById('affiliateId');
 
-    // Pré-remplir le champ d'affiliation si un ref est présent
+    // Pré-remplir si un ref est présent
     const storedRef = sessionStorage.getItem('affiliateRef');
     if (storedRef) {
         affOui.checked = true;
@@ -29,17 +27,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     affOui.addEventListener('change', function() {
+        affiliateIdGroup.style.display = this.checked ? 'block' : 'none';
         if (this.checked) {
-            affiliateIdGroup.style.display = 'block';
             const ref = sessionStorage.getItem('affiliateRef');
             if (ref) affiliateIdInput.value = ref;
         }
     });
     affNon.addEventListener('change', function() {
-        if (this.checked) {
-            affiliateIdGroup.style.display = 'none';
-            affiliateIdInput.value = '';
-        }
+        affiliateIdGroup.style.display = 'none';
+        affiliateIdInput.value = '';
     });
 
     initCarousel();
@@ -66,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const pieceFile = document.getElementById('pieceIdentite').files[0];
         const inscriptionId = Date.now(); // ID unique
 
-        // Upload des fichiers (si présents)
+        // Upload des fichiers
         let diplomePath = '';
         let piecePath = '';
 
@@ -107,14 +103,12 @@ document.addEventListener('DOMContentLoaded', () => {
             codetournoi: codeTournoi || '',
             diplome,
             telephone,
-            diplomefilename: diplomePath,   // chemin du fichier
-            piecefilename: piecePath,       // chemin du fichier
+            diplomefilename: diplomePath,
+            piecefilename: piecePath,
             "affilié": affiliationValue,
             statut: 'en_attente',
             datesoumission: new Date().toISOString()
         };
-
-        console.log('Données envoyées :', inscription);
 
         const { error } = await supabaseClient
             .from('inscriptions')
@@ -138,13 +132,90 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ===== FONCTIONS ANNEXES =====
-function initCarousel() { /* ... */ }
-function initFileUploads() { /* ... */ }
-function resetFileUploads() { /* ... */ }
-function showSuccessModal(url) { /* ... */ }
-window.closeSuccessModal = () => { /* ... */ }
+function initCarousel() {
+    const slides = document.querySelectorAll('.carousel-slide');
+    const indicators = document.querySelectorAll('.indicator');
+    let currentSlide = 0;
+    let slideInterval;
 
-// Copie du lien de suivi
+    function showSlide(index) {
+        if (index < 0) index = slides.length - 1;
+        if (index >= slides.length) index = 0;
+        slides.forEach(slide => slide.classList.remove('active'));
+        slides[index].classList.add('active');
+        indicators.forEach(ind => ind.classList.remove('active'));
+        indicators[index].classList.add('active');
+        currentSlide = index;
+    }
+
+    function nextSlide() { showSlide(currentSlide + 1); }
+    function startCarousel() { slideInterval = setInterval(nextSlide, 5000); }
+    function stopCarousel() { clearInterval(slideInterval); }
+
+    if (slides.length > 0) {
+        showSlide(0);
+        startCarousel();
+        const hero = document.getElementById('heroCarousel');
+        if (hero) {
+            hero.addEventListener('mouseenter', stopCarousel);
+            hero.addEventListener('mouseleave', startCarousel);
+        }
+        indicators.forEach((indicator, index) => {
+            indicator.addEventListener('click', () => {
+                stopCarousel();
+                showSlide(index);
+                startCarousel();
+            });
+        });
+    }
+}
+
+function initFileUploads() {
+    document.querySelectorAll('.file-upload-box').forEach(box => {
+        const input = box.querySelector('input[type="file"]');
+        const icon = box.querySelector('i');
+        const text = box.querySelector('span');
+        if (input) {
+            input.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const fileName = this.files[0].name;
+                    text.textContent = fileName;
+                    icon.style.color = 'var(--primary)';
+                    box.style.borderColor = 'var(--primary)';
+                } else {
+                    text.textContent = 'Cliquez pour télécharger';
+                    icon.style.color = 'var(--gold)';
+                    box.style.borderColor = 'var(--gold)';
+                }
+            });
+        }
+    });
+}
+
+function resetFileUploads() {
+    document.querySelectorAll('.file-upload-box').forEach(box => {
+        const span = box.querySelector('span');
+        if (span) span.textContent = 'Cliquez pour télécharger';
+        box.style.borderColor = '#ffcc00';
+    });
+}
+
+function showSuccessModal(url) {
+    const modal = document.getElementById('successModal');
+    const linkSpan = document.getElementById('trackingLink');
+    if (modal && linkSpan) {
+        linkSpan.textContent = url;
+        modal.classList.add('active');
+    } else {
+        alert(`Inscription enregistrée ! Suivez votre dossier ici : ${url}`);
+    }
+}
+
+window.closeSuccessModal = () => {
+    document.getElementById('successModal')?.classList.remove('active');
+};
+
+// Gestion de la copie du lien de suivi
 document.addEventListener('click', (e) => {
     if (e.target.closest('#copyTrackingBtn')) {
         const link = document.getElementById('trackingLink')?.textContent;
@@ -159,6 +230,3 @@ document.addEventListener('click', (e) => {
         }
     }
 });
-
-// N'oublie pas de copier les fonctions annexes si elles manquent (car dans le code précédent elles étaient définies). 
-// Je les ai omises pour la lisibilité, mais tu dois les conserver.
