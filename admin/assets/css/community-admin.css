@@ -1,11 +1,10 @@
-/* ===== PAGE ADMIN COMMUNAUTÉ ===== */
+/* Styles spécifiques à la page admin Communauté */
 .community-page {
     --primary: #551B8C;
     --primary-light: #7e3db0;
     --primary-dark: #3d1266;
     --gold: #FFCC00;
     --gold-dark: #e6b800;
-    --bg-light: #F0F8FF;
     --white: #ffffff;
     --dark: #1a1a1a;
     --gray: #6c757d;
@@ -39,13 +38,8 @@
     padding: 25px;
     box-shadow: var(--shadow);
     border: 1px solid var(--light-gray);
-    transition: var(--transition);
     margin-bottom: 30px;
 }
-.community-page .admin-card:hover {
-    box-shadow: var(--shadow-hover);
-}
-
 .community-page .card-header {
     display: flex;
     justify-content: space-between;
@@ -65,7 +59,6 @@
 .community-page .card-header h2 i {
     color: var(--gold);
 }
-
 .community-page .btn-add {
     background: var(--primary);
     color: white;
@@ -86,7 +79,6 @@
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(85,27,140,0.3);
 }
-
 .community-page .admin-list {
     display: flex;
     flex-direction: column;
@@ -100,7 +92,6 @@
     justify-content: space-between;
     align-items: center;
     border-left: 5px solid var(--gold);
-    transition: var(--transition);
     border: 1px solid var(--light-gray);
     flex-wrap: wrap;
     gap: 15px;
@@ -123,10 +114,10 @@
 .community-page .list-item .info .details {
     color: var(--gray);
     font-size: 0.9rem;
-    line-height: 1.5;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    margin-top: 5px;
 }
 .community-page .list-item .info .details span {
     background: rgba(85,27,140,0.05);
@@ -137,24 +128,16 @@
 .community-page .list-item .info .meta {
     color: var(--dark);
     font-size: 0.85rem;
-    margin-top: 8px;
-    display: flex;
-    gap: 15px;
-}
-.community-page .list-item .info .meta i {
-    color: var(--gold);
-    margin-right: 3px;
+    margin-top: 5px;
 }
 .community-page .list-item .actions {
     display: flex;
     gap: 10px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
 }
 .community-page .list-item .actions button {
     background: none;
     border: none;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     cursor: pointer;
     padding: 8px;
     border-radius: 8px;
@@ -181,16 +164,14 @@
     background: #dc3545;
     color: white;
 }
-.community-page .list-item .actions button.comments {
+.community-page .list-item .actions button.view-comments {
     color: #17a2b8;
     background: rgba(23,162,184,0.1);
 }
-.community-page .list-item .actions button.comments:hover {
+.community-page .list-item .actions button.view-comments:hover {
     background: #17a2b8;
     color: white;
 }
-
-/* Modale */
 .community-page .admin-modal {
     display: none;
     position: fixed;
@@ -212,13 +193,11 @@
     border-radius: 20px;
     padding: 30px;
     width: 90%;
-    max-width: 600px;
+    max-width: 500px;
     position: relative;
     box-shadow: 0 20px 40px rgba(85,27,140,0.2);
     border: 1px solid var(--gold);
     animation: modalFadeIn 0.3s ease;
-    max-height: 80vh;
-    overflow-y: auto;
 }
 @keyframes modalFadeIn {
     from { opacity: 0; transform: scale(0.9); }
@@ -243,7 +222,6 @@
     border-left: 5px solid var(--gold);
     padding-left: 15px;
 }
-
 .community-page .form-group {
     margin-bottom: 20px;
 }
@@ -289,15 +267,12 @@
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(85,27,140,0.3);
 }
-
 .community-page .no-data {
     text-align: center;
     color: var(--gray);
     padding: 40px;
     font-size: 1.1rem;
 }
-
-/* Responsive */
 @media (max-width: 768px) {
     .community-page h1 {
         font-size: 1.8rem;
