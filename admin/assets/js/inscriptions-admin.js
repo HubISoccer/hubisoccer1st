@@ -5,12 +5,14 @@ const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 const COMMISSION = 100;
 
+// Éléments DOM
 const inscriptionsList = document.getElementById('inscriptionsList');
 const modal = document.getElementById('inscriptionModal');
 const modalTitle = document.getElementById('modalTitle');
 const modalDetails = document.getElementById('modalDetails');
 let currentInscriptionId = null;
 
+// ===== CHARGEMENT DES INSCRIPTIONS =====
 async function loadInscriptions() {
     const { data: inscriptions, error } = await supabaseClient
         .from('inscriptions')
@@ -33,10 +35,21 @@ async function loadInscriptions() {
         const statut = ins.statut || 'en_attente';
         let statutClass = '', statutText = '';
         switch (statut) {
-            case 'en_attente': statutClass = 'en_attente'; statutText = 'En attente'; break;
-            case 'valide': statutClass = 'valide'; statutText = 'Validé'; break;
-            case 'refuse': statutClass = 'refuse'; statutText = 'Refusé'; break;
-            default: statutClass = 'en_attente'; statutText = statut;
+            case 'en_attente':
+                statutClass = 'en_attente';
+                statutText = 'En attente';
+                break;
+            case 'valide':
+                statutClass = 'valide';
+                statutText = 'Validé';
+                break;
+            case 'refuse':
+                statutClass = 'refuse';
+                statutText = 'Refusé';
+                break;
+            default:
+                statutClass = 'en_attente';
+                statutText = statut;
         }
 
         const dateNaissance = ins.datenaissance ? new Date(ins.datenaissance).toLocaleDateString('fr-FR') : '??';
@@ -67,6 +80,7 @@ async function loadInscriptions() {
     inscriptionsList.innerHTML = html;
 }
 
+// ===== VOIR DÉTAILS =====
 window.viewInscription = async (id) => {
     const { data: ins, error } = await supabaseClient
         .from('inscriptions')
@@ -90,7 +104,7 @@ window.viewInscription = async (id) => {
     const pieceUrl = ins.piecefilename ? baseStorageUrl + ins.piecefilename : null;
 
     const diplomeLink = diplomeUrl ? `<a href="${diplomeUrl}" target="_blank" class="download-link">📄 Télécharger le diplôme</a>` : 'Aucun';
-    const pieceLink = pieceUrl ? `<a href="${pieceUrl}" target="_blank" class="download-link">🪪 Télécharger la pièce d\'identité</a>` : 'Aucun';
+    const pieceLink = pieceUrl ? `<a href="${pieceUrl}" target="_blank" class="download-link">🪪 Télécharger la pièce d'identité</a>` : 'Aucun';
 
     modalDetails.innerHTML = `
         <div class="modal-details-grid">
@@ -113,8 +127,62 @@ window.viewInscription = async (id) => {
     modal.classList.add('active');
 };
 
-window.closeModal = () => modal.classList.remove('active');
+// ===== MODIFIER UNE INSCRIPTION =====
+window.editInscription = async (id) => {
+    // Pour l'instant, on redirige vers une page d'édition ou on ouvre une modale
+    // On va simplement afficher une alerte pour dire que c'est en développement
+    alert('Fonction de modification en cours de développement. Vous pouvez modifier directement dans la base de données.');
+    // Plus tard, on pourra ouvrir une modale avec les champs pré-remplis
+};
 
+// ===== SUPPRIMER UNE INSCRIPTION (avec suppression des fichiers) =====
+window.deleteInscription = async (id) => {
+    if (!confirm('Supprimer définitivement cette inscription et tous ses fichiers associés ?')) return;
+
+    // Récupérer l'inscription pour connaître les noms des fichiers
+    const { data: ins, error: fetchError } = await supabaseClient
+        .from('inscriptions')
+        .select('diplomefilename, piecefilename')
+        .eq('id', id)
+        .single();
+
+    if (fetchError) {
+        alert('Erreur lors de la récupération des informations');
+        return;
+    }
+
+    // Supprimer les fichiers du bucket (si ils existent)
+    if (ins.diplomefilename) {
+        await supabaseClient.storage
+            .from('documents')
+            .remove([ins.diplomefilename]);
+    }
+    if (ins.piecefilename) {
+        await supabaseClient.storage
+            .from('documents')
+            .remove([ins.piecefilename]);
+    }
+
+    // Supprimer l'enregistrement de la table
+    const { error: deleteError } = await supabaseClient
+        .from('inscriptions')
+        .delete()
+        .eq('id', id);
+
+    if (deleteError) {
+        alert('Erreur lors de la suppression : ' + deleteError.message);
+    } else {
+        loadInscriptions(); // Recharger la liste
+        closeModal(); // Fermer la modale si elle était ouverte
+    }
+};
+
+// ===== FERMER LA MODALE =====
+window.closeModal = () => {
+    modal.classList.remove('active');
+};
+
+// ===== VALIDER / REJETER =====
 window.updateStatus = async (id, newStatut) => {
     if (!confirm(`Passer cette inscription en "${newStatut}" ?`)) return;
 
@@ -124,22 +192,30 @@ window.updateStatus = async (id, newStatut) => {
         .eq('id', id)
         .single();
 
-    if (fetchError) { alert('Erreur'); return; }
+    if (fetchError) {
+        alert('Erreur lors de la récupération de l\'inscription');
+        return;
+    }
 
     const { error: updateError } = await supabaseClient
         .from('inscriptions')
         .update({ statut: newStatut })
         .eq('id', id);
 
-    if (updateError) { alert('Erreur mise à jour'); return; }
+    if (updateError) {
+        alert('Erreur lors de la mise à jour : ' + updateError.message);
+        return;
+    }
 
     if (newStatut === 'valide' && ins.affilié) {
-        const { data: aff } = await supabaseClient
+        // Incrémenter le compteur de l'affilié
+        const { data: aff, error: affError } = await supabaseClient
             .from('affiliates')
             .select('count')
             .eq('id', ins.affilié)
             .single();
-        if (aff) {
+
+        if (!affError && aff) {
             const newCount = (aff.count || 0) + 1;
             await supabaseClient
                 .from('affiliates')
@@ -147,25 +223,18 @@ window.updateStatus = async (id, newStatut) => {
                 .eq('id', ins.affilié);
         }
     }
+
     closeModal();
     loadInscriptions();
 };
 
-window.deleteInscription = async (id) => {
-    if (!confirm('Supprimer définitivement cette inscription ?')) return;
-    const { error } = await supabaseClient
-        .from('inscriptions')
-        .delete()
-        .eq('id', id);
-    if (error) alert('Erreur suppression');
-    else loadInscriptions();
-};
-
-window.editInscription = (id) => alert('Fonction de modification à venir');
-
+// ===== DÉCONNEXION =====
 document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     e.preventDefault();
-    if (confirm('Déconnexion ?')) window.location.href = '../../index.html';
+    if (confirm('Déconnexion ?')) {
+        window.location.href = '../../index.html';
+    }
 });
 
+// ===== CHARGEMENT INITIAL =====
 loadInscriptions();
