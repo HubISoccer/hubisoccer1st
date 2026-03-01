@@ -72,6 +72,8 @@ async function loadInscriptions() {
                     <button class="view" onclick="viewInscription('${ins.id}')" title="Voir détails"><i class="fas fa-eye"></i></button>
                     <button class="valid" onclick="updateStatus('${ins.id}', 'valide')" title="Valider"><i class="fas fa-check"></i></button>
                     <button class="reject" onclick="updateStatus('${ins.id}', 'refuse')" title="Rejeter"><i class="fas fa-times"></i></button>
+                    <button class="edit" onclick="editInscription('${ins.id}')" title="Modifier"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="deleteInscription('${ins.id}')" title="Supprimer"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
@@ -96,7 +98,10 @@ window.viewInscription = async (id) => {
     const statut = ins.statut || 'en_attente';
     const dateNaissance = ins.datenaissance ? new Date(ins.datenaissance).toLocaleDateString('fr-FR') : 'Non renseignée';
     const dateSoumission = ins.datesoumission ? new Date(ins.datesoumission).toLocaleString('fr-FR') : 'Non renseignée';
-    const documents = `${ins.diplomefilename ? '✅ Diplôme' : '❌ Diplôme'} | ${ins.piecefilename ? '✅ Pièce' : '❌ Pièce'}`;
+
+    // Affichage des documents avec noms de fichiers (cliquables si on avait un lien)
+    const diplomeLink = ins.diplomefilename ? `<a href="#" onclick="alert('Téléchargement non disponible')">${ins.diplomefilename}</a>` : 'Aucun';
+    const pieceLink = ins.piecefilename ? `<a href="#" onclick="alert('Téléchargement non disponible')">${ins.piecefilename}</a>` : 'Aucun';
 
     modalDetails.innerHTML = `
         <div class="modal-details-grid">
@@ -107,7 +112,8 @@ window.viewInscription = async (id) => {
             <div class="detail-item"><span class="detail-icon">📞</span> <strong>Téléphone :</strong> ${ins.telephone}</div>
             <div class="detail-item"><span class="detail-icon">🎓</span> <strong>Diplôme :</strong> ${ins.diplome}</div>
             <div class="detail-item"><span class="detail-icon">🏆</span> <strong>Code tournoi :</strong> ${ins.codetournoi || '-'}</div>
-            <div class="detail-item"><span class="detail-icon">📎</span> <strong>Documents :</strong> ${documents}</div>
+            <div class="detail-item"><span class="detail-icon">📄</span> <strong>Fichier diplôme :</strong> ${diplomeLink}</div>
+            <div class="detail-item"><span class="detail-icon">🪪</span> <strong>Pièce d'identité :</strong> ${pieceLink}</div>
             <div class="detail-item"><span class="detail-icon">🔗</span> <strong>Affilié :</strong> ${ins.affilié || '-'}</div>
             <div class="detail-item"><span class="detail-icon">⏰</span> <strong>Soumission :</strong> ${dateSoumission}</div>
         </div>
@@ -166,6 +172,26 @@ window.updateStatus = async (id, newStatut) => {
 
     closeModal();
     loadInscriptions();
+};
+
+// Supprimer une inscription
+window.deleteInscription = async (id) => {
+    if (!confirm('Supprimer définitivement cette inscription ?')) return;
+    const { error } = await supabaseClient
+        .from('inscriptions')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        alert('Erreur suppression : ' + error.message);
+    } else {
+        loadInscriptions();
+    }
+};
+
+// Modifier une inscription (à implémenter plus tard)
+window.editInscription = (id) => {
+    alert('Fonction de modification à venir');
 };
 
 // Déconnexion
