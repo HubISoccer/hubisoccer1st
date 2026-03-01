@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    // Récupérer les données de l'inscription
     const { data: inscription, error } = await supabaseClient
         .from('inscriptions')
         .select('*')
@@ -25,6 +26,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    // Récupérer les messages pour ce joueur
+    const { data: messages, error: msgError } = await supabaseClient
+        .from('player_messages')
+        .select('*')
+        .eq('playerid', inscriptionId)
+        .order('date', { ascending: false });
+
+    if (msgError) console.error('Erreur chargement messages:', msgError);
+
     const dateNaissance = inscription.datenaissance ? new Date(inscription.datenaissance).toLocaleDateString('fr-FR') : 'Non renseignée';
     const dateSoumission = inscription.datesoumission ? new Date(inscription.datesoumission).toLocaleString('fr-FR') : 'Non renseignée';
     const statut = inscription.statut || 'en_attente';
@@ -35,6 +45,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }[statut] || statut;
 
     const documents = `${inscription.diplomefilename ? '✅ Diplôme' : '❌ Diplôme'} | ${inscription.piecefilename ? '✅ Pièce' : '❌ Pièce'}`;
+
+    // Générer le HTML des messages
+    let messagesHtml = '';
+    if (messages && messages.length > 0) {
+        messagesHtml = '<h3>📩 Messages de l\'administrateur</h3>';
+        messages.forEach(msg => {
+            const dateMsg = new Date(msg.date).toLocaleString('fr-FR');
+            messagesHtml += `
+                <div class="message-item ${msg.type}">
+                    <p>${msg.message}</p>
+                    <small>${dateMsg}</small>
+                </div>
+            `;
+        });
+    } else {
+        messagesHtml = '<p class="no-messages">Aucun message pour le moment.</p>';
+    }
 
     const html = `
         <div class="suivi-card">
@@ -54,6 +81,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="info-item"><span class="label">Affilié :</span> <span class="value">${inscription.affilié || '-'}</span></div>
                 <div class="info-item"><span class="label">Date soumission :</span> <span class="value">${dateSoumission}</span></div>
             </div>
+            <div class="messages-section">
+                ${messagesHtml}
+            </div>
             <div class="actions">
                 <button id="copyLinkBtn" class="btn-copy"><i class="fas fa-copy"></i> Copier le lien de suivi</button>
             </div>
@@ -62,11 +92,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     container.innerHTML = html;
 
-    // Attacher l'événement après l'insertion du HTML
+    // Attacher l'événement de copie
     const copyBtn = document.getElementById('copyLinkBtn');
     if (copyBtn) {
         copyBtn.addEventListener('click', () => {
-            const link = window.location.href; // L'URL complète de la page
+            const link = window.location.href;
             navigator.clipboard.writeText(link).then(() => {
                 alert('✅ Lien copié !');
             }).catch(() => {
