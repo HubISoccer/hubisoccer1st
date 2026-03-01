@@ -1,27 +1,27 @@
-// ===== INITIALISATION SUPABASE =====
+// Initialisation Supabase
 const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
 // Éléments DOM
 const postsList = document.getElementById('postsList');
 const commentsList = document.getElementById('commentsList');
-const postModal = document.getElementById('postModal');
+const modal = document.getElementById('itemModal');
 const modalTitle = document.getElementById('modalTitle');
-const postForm = document.getElementById('postForm');
-const postId = document.getElementById('postId');
-const authorName = document.getElementById('authorName');
-const authorHandle = document.getElementById('authorHandle');
-const authorAvatar = document.getElementById('authorAvatar');
-const content = document.getElementById('content');
-const mediaUrl = document.getElementById('mediaUrl');
-const mediaType = document.getElementById('mediaType');
+const itemForm = document.getElementById('itemForm');
+const itemType = document.getElementById('itemType');
+const itemId = document.getElementById('itemId');
+const dynamicFields = document.getElementById('dynamicFields');
 
-// Charger les posts
+// ===== CHARGEMENT DES POSTS =====
 async function loadPosts() {
-    const { data: posts, error } = await supabaseClient
+    const { data: posts, error } = await supabase
         .from('posts')
-        .select('*')
+        .select(`
+            *,
+            users (nom),
+            comments (count)
+        `)
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -30,47 +30,40 @@ async function loadPosts() {
         return;
     }
 
-    if (!posts || posts.length === 0) {
-        postsList.innerHTML = '<p class="no-data">Aucun post.</p>';
-        return;
-    }
-
     let html = '';
-    posts.forEach(p => {
+    posts.forEach((post, index) => {
         html += `
-            <div class="list-item" data-id="${p.id}">
+            <div class="list-item" data-id="${post.id}">
                 <div class="info">
-                    <strong>${p.author_name}</strong> ${p.author_handle ? `(${p.author_handle})` : ''}
-                    <div class="details">
-                        <span>${p.content.substring(0, 60)}...</span>
-                    </div>
+                    <strong>${post.users?.nom || 'Anonyme'}</strong>
+                    <div class="details">${post.content.substring(0, 100)}...</div>
                     <div class="meta">
-                        Likes: ${p.likes_count} | Dislikes: ${p.dislikes_count} | Commentaires: ${p.comments_count}
+                        <span><i class="fas fa-thumbs-up"></i> ${post.likes_count || 0}</span>
+                        <span><i class="fas fa-comment"></i> ${post.comments?.length || 0}</span>
+                        <span><i class="fas fa-share"></i> ${post.shares || 0}</span>
                     </div>
                 </div>
                 <div class="actions">
-                    <button class="edit" onclick="editPost(${p.id})"><i class="fas fa-edit"></i></button>
-                    <button class="delete" onclick="deletePost(${p.id})"><i class="fas fa-trash"></i></button>
-                    <button class="view-comments" onclick="viewComments(${p.id})" title="Voir commentaires"><i class="fas fa-comments"></i></button>
+                    <button class="edit" onclick="editPost('${post.id}')"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="deletePost('${post.id}')"><i class="fas fa-trash"></i></button>
+                    <button class="comments" onclick="viewComments('${post.id}')" title="Voir les commentaires"><i class="fas fa-comments"></i></button>
                 </div>
             </div>
         `;
     });
-    postsList.innerHTML = html;
+    postsList.innerHTML = html || '<p class="no-data">Aucun post.</p>';
 }
 
-// Charger tous les commentaires (ou ceux d'un post spécifique)
-async function loadComments(postId = null) {
-    let query = supabaseClient
+// ===== CHARGEMENT DES COMMENTAIRES =====
+async function loadComments() {
+    const { data: comments, error } = await supabase
         .from('comments')
-        .select('*, posts(author_name)')
+        .select(`
+            *,
+            users (nom),
+            posts (id, content)
+        `)
         .order('created_at', { ascending: false });
-
-    if (postId) {
-        query = query.eq('post_id', postId);
-    }
-
-    const { data: comments, error } = await query;
 
     if (error) {
         console.error('Erreur chargement commentaires:', error);
@@ -78,153 +71,184 @@ async function loadComments(postId = null) {
         return;
     }
 
-    if (!comments || comments.length === 0) {
-        commentsList.innerHTML = '<p class="no-data">Aucun commentaire.</p>';
-        return;
-    }
-
     let html = '';
-    comments.forEach(c => {
+    comments.forEach((comment, index) => {
         html += `
-            <div class="list-item" data-id="${c.id}">
+            <div class="list-item" data-id="${comment.id}">
                 <div class="info">
-                    <strong>${c.author_name}</strong> sur le post de ${c.posts?.author_name || 'inconnu'}
-                    <div class="details">${c.content}</div>
-                    <small>${new Date(c.created_at).toLocaleString('fr-FR')}</small>
+                    <strong>${comment.users?.nom || 'Anonyme'}</strong>
+                    <div class="details">${comment.content}</div>
+                    <small>Post: ${comment.posts?.content?.substring(0, 50)}...</small>
                 </div>
                 <div class="actions">
-                    <button class="delete" onclick="deleteComment(${c.id})"><i class="fas fa-trash"></i></button>
+                    <button class="edit" onclick="editComment('${comment.id}')"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="deleteComment('${comment.id}')"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
     });
-    commentsList.innerHTML = html;
+    commentsList.innerHTML = html || '<p class="no-data">Aucun commentaire.</p>';
 }
 
-// Ouvrir modale ajout post
+// ===== OUVERTURE MODALE AJOUT POST =====
 function openAddPostModal() {
+    itemType.value = 'post';
+    itemId.value = '';
     modalTitle.textContent = 'Ajouter un post';
-    postId.value = '';
-    authorName.value = '';
-    authorHandle.value = '';
-    authorAvatar.value = '../public/img/user-default.jpg';
-    content.value = '';
-    mediaUrl.value = '';
-    mediaType.value = '';
-    postModal.classList.add('active');
+    dynamicFields.innerHTML = `
+        <div class="form-group"><label>Auteur (ID utilisateur)</label><input type="number" id="userId" required></div>
+        <div class="form-group"><label>Contenu</label><textarea id="content" rows="4" required></textarea></div>
+        <div class="form-group"><label>Média (JSON, optionnel)</label><input type="text" id="media" placeholder='{"type":"image","url":"..."}'></div>
+    `;
+    modal.classList.add('active');
 }
 
-// Éditer un post
-window.editPost = async (id) => {
-    const { data: p, error } = await supabaseClient
+// ===== OUVERTURE MODALE AJOUT COMMENTAIRE =====
+function openAddCommentModal() {
+    itemType.value = 'comment';
+    itemId.value = '';
+    modalTitle.textContent = 'Ajouter un commentaire';
+    dynamicFields.innerHTML = `
+        <div class="form-group"><label>Post ID</label><input type="number" id="postId" required></div>
+        <div class="form-group"><label>Auteur (ID utilisateur)</label><input type="number" id="userId" required></div>
+        <div class="form-group"><label>Contenu</label><textarea id="content" rows="3" required></textarea></div>
+        <div class="form-group"><label>Parent ID (pour répondre)</label><input type="number" id="parentId" placeholder="Optionnel"></div>
+    `;
+    modal.classList.add('active');
+}
+
+// ===== ÉDITION POST =====
+window.editPost = async (postId) => {
+    const { data: post, error } = await supabase
         .from('posts')
         .select('*')
-        .eq('id', id)
+        .eq('id', postId)
         .single();
 
-    if (error) {
-        alert('Erreur chargement post');
-        return;
-    }
+    if (error) return;
 
+    itemType.value = 'post';
+    itemId.value = postId;
     modalTitle.textContent = 'Modifier un post';
-    postId.value = p.id;
-    authorName.value = p.author_name;
-    authorHandle.value = p.author_handle || '';
-    authorAvatar.value = p.author_avatar || '../public/img/user-default.jpg';
-    content.value = p.content;
-    mediaUrl.value = p.media_url || '';
-    mediaType.value = p.media_type || '';
-    postModal.classList.add('active');
+    dynamicFields.innerHTML = `
+        <div class="form-group"><label>Auteur (ID utilisateur)</label><input type="number" id="userId" value="${post.user_id}" required></div>
+        <div class="form-group"><label>Contenu</label><textarea id="content" rows="4" required>${post.content}</textarea></div>
+        <div class="form-group"><label>Média (JSON)</label><input type="text" id="media" value='${JSON.stringify(post.media_url) || ''}'></div>
+    `;
+    modal.classList.add('active');
 };
 
-// Supprimer un post
-window.deletePost = async (id) => {
-    if (!confirm('Supprimer ce post ?')) return;
-    const { error } = await supabaseClient
+// ===== ÉDITION COMMENTAIRE =====
+window.editComment = async (commentId) => {
+    const { data: comment, error } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('id', commentId)
+        .single();
+
+    if (error) return;
+
+    itemType.value = 'comment';
+    itemId.value = commentId;
+    modalTitle.textContent = 'Modifier un commentaire';
+    dynamicFields.innerHTML = `
+        <div class="form-group"><label>Post ID</label><input type="number" id="postId" value="${comment.post_id}" required></div>
+        <div class="form-group"><label>Auteur (ID utilisateur)</label><input type="number" id="userId" value="${comment.user_id}" required></div>
+        <div class="form-group"><label>Contenu</label><textarea id="content" rows="3" required>${comment.content}</textarea></div>
+        <div class="form-group"><label>Parent ID</label><input type="number" id="parentId" value="${comment.parent_id || ''}"></div>
+    `;
+    modal.classList.add('active');
+};
+
+// ===== SUPPRESSION =====
+window.deletePost = async (postId) => {
+    if (!confirm('Supprimer ce post et tous ses commentaires ?')) return;
+    const { error } = await supabase
         .from('posts')
         .delete()
-        .eq('id', id);
-    if (error) {
-        alert('Erreur suppression : ' + error.message);
-    } else {
-        loadPosts();
-        loadComments(); // recharger les commentaires
-    }
+        .eq('id', postId);
+    if (!error) loadPosts();
 };
 
-// Voir les commentaires d'un post
-window.viewComments = (postId) => {
-    loadComments(postId);
-    // Optionnel : faire défiler jusqu'à la section commentaires
-};
-
-// Supprimer un commentaire
-window.deleteComment = async (id) => {
+window.deleteComment = async (commentId) => {
     if (!confirm('Supprimer ce commentaire ?')) return;
-    const { error } = await supabaseClient
+    const { error } = await supabase
         .from('comments')
         .delete()
-        .eq('id', id);
-    if (error) {
-        alert('Erreur suppression : ' + error.message);
-    } else {
-        loadComments();
-    }
+        .eq('id', commentId);
+    if (!error) loadComments();
 };
 
-// Fermer modale
+// ===== FERMETURE MODALE =====
 window.closeModal = () => {
-    postModal.classList.remove('active');
+    modal.classList.remove('active');
 };
 
-// Soumission formulaire post
-postForm.addEventListener('submit', async (e) => {
+// ===== GESTION DU FORMULAIRE =====
+itemForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const id = postId.value;
-    const postData = {
-        author_name: authorName.value,
-        author_handle: authorHandle.value || null,
-        author_avatar: authorAvatar.value,
-        content: content.value,
-        media_url: mediaUrl.value || null,
-        media_type: mediaType.value || null,
-        likes_count: 0,
-        dislikes_count: 0,
-        comments_count: 0,
-        shares_count: 0
-    };
+    const type = itemType.value;
+    const id = itemId.value;
+    const userId = document.getElementById('userId')?.value;
+    const content = document.getElementById('content')?.value;
 
-    if (id === '') {
-        // Ajout
-        const { error } = await supabaseClient
-            .from('posts')
-            .insert([postData]);
-        if (error) {
-            alert('Erreur ajout : ' + error.message);
+    if (type === 'post') {
+        const media = document.getElementById('media')?.value;
+        const mediaUrl = media ? JSON.parse(media) : null;
+        
+        if (id === '') {
+            // Ajout
+            const { error } = await supabase
+                .from('posts')
+                .insert([{
+                    user_id: userId,
+                    content: content,
+                    media_url: mediaUrl
+                }]);
         } else {
-            closeModal();
-            loadPosts();
+            // Modification
+            const { error } = await supabase
+                .from('posts')
+                .update({
+                    content: content,
+                    media_url: mediaUrl
+                })
+                .eq('id', id);
         }
-    } else {
-        // Modification
-        const { error } = await supabaseClient
-            .from('posts')
-            .update(postData)
-            .eq('id', id);
-        if (error) {
-            alert('Erreur modification : ' + error.message);
+        closeModal();
+        loadPosts();
+    } else if (type === 'comment') {
+        const postId = document.getElementById('postId')?.value;
+        const parentId = document.getElementById('parentId')?.value || null;
+        
+        if (id === '') {
+            const { error } = await supabase
+                .from('comments')
+                .insert([{
+                    post_id: postId,
+                    user_id: userId,
+                    content: content,
+                    parent_id: parentId
+                }]);
         } else {
-            closeModal();
-            loadPosts();
+            const { error } = await supabase
+                .from('comments')
+                .update({
+                    content: content,
+                    parent_id: parentId
+                })
+                .eq('id', id);
         }
+        closeModal();
+        loadComments();
     }
 });
 
-// Bouton ajout
+// ===== BOUTONS D'AJOUT =====
 document.getElementById('addPostBtn').addEventListener('click', openAddPostModal);
+document.getElementById('addCommentBtn').addEventListener('click', openAddCommentModal);
 
-// Déconnexion
+// ===== DÉCONNEXION =====
 document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     e.preventDefault();
     if (confirm('Déconnexion ?')) {
@@ -232,6 +256,12 @@ document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     }
 });
 
-// Chargement initial
+// ===== CHARGEMENT INITIAL =====
 loadPosts();
 loadComments();
+
+// Fonction pour visualiser les commentaires (peut être améliorée)
+window.viewComments = (postId) => {
+    // On pourrait ouvrir une modale avec les commentaires, mais pour l'instant on se contente de les afficher dans la section commentaires
+    alert('Les commentaires de ce post sont listés dans la section "Commentaires" ci-dessous.');
+};
