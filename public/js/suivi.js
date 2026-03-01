@@ -8,7 +8,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const inscriptionId = urlParams.get('id');
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const container = document.getElementById('inscriptionDetails'); // Doit exister dans le HTML
+    const container = document.getElementById('inscriptionDetails');
     if (!inscriptionId) {
         container.innerHTML = '<p class="error-message">❌ Aucun identifiant de suivi fourni.</p>';
         return;
@@ -62,12 +62,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     container.innerHTML = html;
 
-    document.getElementById('copyLinkBtn').addEventListener('click', () => {
-        const link = window.location.href;
-        navigator.clipboard.writeText(link).then(() => {
-            alert('✅ Lien copié !');
-        }).catch(() => {
-            alert('❌ Erreur de copie');
+    // Attacher l'événement après l'insertion du HTML
+    const copyBtn = document.getElementById('copyLinkBtn');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+            const link = window.location.href; // L'URL complète de la page
+            navigator.clipboard.writeText(link).then(() => {
+                alert('✅ Lien copié !');
+            }).catch(() => {
+                alert('❌ Erreur de copie');
+            });
         });
-    });
+    }
 });
