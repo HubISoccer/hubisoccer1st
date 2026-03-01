@@ -1,7 +1,7 @@
-// Initialisation Supabase
+// Initialisation Supabase (avec un nom différent pour éviter le conflit)
 const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // Éléments DOM
 const postsList = document.getElementById('postsList');
@@ -15,7 +15,7 @@ const dynamicFields = document.getElementById('dynamicFields');
 
 // ===== CHARGEMENT DES POSTS =====
 async function loadPosts() {
-    const { data: posts, error } = await supabase
+    const { data: posts, error } = await supabaseClient
         .from('posts')
         .select(`
             *,
@@ -56,7 +56,7 @@ async function loadPosts() {
 
 // ===== CHARGEMENT DES COMMENTAIRES =====
 async function loadComments() {
-    const { data: comments, error } = await supabase
+    const { data: comments, error } = await supabaseClient
         .from('comments')
         .select(`
             *,
@@ -119,7 +119,7 @@ function openAddCommentModal() {
 
 // ===== ÉDITION POST =====
 window.editPost = async (postId) => {
-    const { data: post, error } = await supabase
+    const { data: post, error } = await supabaseClient
         .from('posts')
         .select('*')
         .eq('id', postId)
@@ -140,7 +140,7 @@ window.editPost = async (postId) => {
 
 // ===== ÉDITION COMMENTAIRE =====
 window.editComment = async (commentId) => {
-    const { data: comment, error } = await supabase
+    const { data: comment, error } = await supabaseClient
         .from('comments')
         .select('*')
         .eq('id', commentId)
@@ -163,7 +163,7 @@ window.editComment = async (commentId) => {
 // ===== SUPPRESSION =====
 window.deletePost = async (postId) => {
     if (!confirm('Supprimer ce post et tous ses commentaires ?')) return;
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('posts')
         .delete()
         .eq('id', postId);
@@ -172,7 +172,7 @@ window.deletePost = async (postId) => {
 
 window.deleteComment = async (commentId) => {
     if (!confirm('Supprimer ce commentaire ?')) return;
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('comments')
         .delete()
         .eq('id', commentId);
@@ -198,7 +198,7 @@ itemForm.addEventListener('submit', async (e) => {
         
         if (id === '') {
             // Ajout
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('posts')
                 .insert([{
                     user_id: userId,
@@ -207,7 +207,7 @@ itemForm.addEventListener('submit', async (e) => {
                 }]);
         } else {
             // Modification
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('posts')
                 .update({
                     content: content,
@@ -222,7 +222,7 @@ itemForm.addEventListener('submit', async (e) => {
         const parentId = document.getElementById('parentId')?.value || null;
         
         if (id === '') {
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('comments')
                 .insert([{
                     post_id: postId,
@@ -231,7 +231,7 @@ itemForm.addEventListener('submit', async (e) => {
                     parent_id: parentId
                 }]);
         } else {
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('comments')
                 .update({
                     content: content,
@@ -262,6 +262,5 @@ loadComments();
 
 // Fonction pour visualiser les commentaires (peut être améliorée)
 window.viewComments = (postId) => {
-    // On pourrait ouvrir une modale avec les commentaires, mais pour l'instant on se contente de les afficher dans la section commentaires
     alert('Les commentaires de ce post sont listés dans la section "Commentaires" ci-dessous.');
 };
