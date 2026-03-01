@@ -1,8 +1,8 @@
 /* ===== PAGE PUBLIQUE HUB COMMUNITY ===== */
 .public-feed-container {
     max-width: 800px;
-    margin: 0 auto;
-    padding: 40px 20px;
+    margin: 40px auto;
+    padding: 0 20px;
 }
 
 .page-header {
@@ -126,6 +126,7 @@
     color: #dc3545;
 }
 
+/* Section commentaires */
 .comments-section {
     margin-top: 20px;
     border-top: 1px solid var(--light-gray);
@@ -133,12 +134,15 @@
 }
 
 .comment {
-    display: flex;
-    gap: 10px;
     margin-bottom: 15px;
 }
 
-.comment img {
+.comment-main {
+    display: flex;
+    gap: 10px;
+}
+
+.comment-main img {
     width: 35px;
     height: 35px;
     border-radius: 50%;
@@ -162,11 +166,61 @@
     font-size: 0.9rem;
 }
 
-.comment small {
-    display: block;
-    font-size: 0.7rem;
-    color: var(--gray);
+.comment-footer {
+    display: flex;
+    gap: 15px;
+    margin-left: 45px;
     margin-top: 5px;
+    font-size: 0.8rem;
+}
+
+.comment-footer button {
+    background: none;
+    border: none;
+    color: var(--gray);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.comment-footer button:hover {
+    color: var(--primary);
+}
+
+.comment-footer .reply-count {
+    color: var(--gray);
+}
+
+/* Commentaires enfants (réponses) */
+.comment-child {
+    margin-left: 45px;
+    margin-top: 10px;
+    padding-left: 15px;
+    border-left: 2px solid var(--light-gray);
+}
+
+.reply-form {
+    margin-left: 45px;
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.reply-form input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--light-gray);
+    border-radius: 20px;
+    font-size: 0.85rem;
+}
+
+.reply-form button {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 0 15px;
+    font-weight: 600;
+    cursor: pointer;
 }
 
 .add-comment {
@@ -225,4 +279,27 @@
 .comment-limit-message .btn-auth.gold {
     background: var(--gold);
     color: black;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .post-actions {
+        flex-direction: column;
+    }
+    .post-actions button {
+        width: 100%;
+    }
+    .add-comment {
+        flex-direction: column;
+    }
+    .add-comment button {
+        padding: 12px;
+    }
+    .comment-child {
+        margin-left: 20px;
+    }
+    .reply-form {
+        margin-left: 20px;
+        flex-direction: column;
+    }
 }
