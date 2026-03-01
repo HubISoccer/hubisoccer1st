@@ -1,11 +1,10 @@
-/* ===== PAGE ADMIN MESSAGES ===== */
+/* Styles spécifiques à la page admin Messages */
 .messages-page {
     --primary: #551B8C;
     --primary-light: #7e3db0;
     --primary-dark: #3d1266;
     --gold: #FFCC00;
     --gold-dark: #e6b800;
-    --bg-light: #F0F8FF;
     --white: #ffffff;
     --dark: #1a1a1a;
     --gray: #6c757d;
@@ -39,13 +38,8 @@
     padding: 25px;
     box-shadow: var(--shadow);
     border: 1px solid var(--light-gray);
-    transition: var(--transition);
     margin-bottom: 30px;
 }
-.messages-page .admin-card:hover {
-    box-shadow: var(--shadow-hover);
-}
-
 .messages-page .card-header {
     display: flex;
     justify-content: space-between;
@@ -66,7 +60,6 @@
     color: var(--gold);
 }
 
-/* Formulaire */
 .messages-page .form-group {
     margin-bottom: 20px;
 }
@@ -93,16 +86,20 @@
     box-shadow: 0 0 0 3px rgba(85,27,140,0.1);
 }
 .messages-page .btn-submit {
+    width: 100%;
+    padding: 14px;
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: white;
     border: none;
-    padding: 14px 30px;
     border-radius: 50px;
     font-weight: 600;
+    font-size: 1.1rem;
     cursor: pointer;
     transition: var(--transition);
-    font-size: 1.1rem;
-    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 .messages-page .btn-submit:hover {
     background: var(--primary-light);
@@ -110,7 +107,6 @@
     box-shadow: 0 5px 15px rgba(85,27,140,0.3);
 }
 
-/* Historique des messages */
 .messages-page .admin-list {
     display: flex;
     flex-direction: column;
@@ -124,15 +120,9 @@
     justify-content: space-between;
     align-items: center;
     border-left: 5px solid var(--gold);
-    transition: var(--transition);
     border: 1px solid var(--light-gray);
     flex-wrap: wrap;
     gap: 15px;
-}
-.messages-page .list-item:hover {
-    transform: translateX(5px);
-    box-shadow: var(--shadow);
-    border-color: var(--primary);
 }
 .messages-page .list-item .info {
     flex: 2;
@@ -147,10 +137,10 @@
 .messages-page .list-item .info .details {
     color: var(--gray);
     font-size: 0.9rem;
-    line-height: 1.5;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    margin-top: 5px;
 }
 .messages-page .list-item .info .details span {
     background: rgba(85,27,140,0.05);
@@ -185,8 +175,6 @@
 .messages-page .list-item .actions {
     display: flex;
     gap: 10px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
 }
 .messages-page .list-item .actions button {
     background: none;
@@ -210,15 +198,12 @@
     background: #dc3545;
     color: white;
 }
-
 .messages-page .no-data {
     text-align: center;
     color: var(--gray);
     padding: 40px;
     font-size: 1.1rem;
 }
-
-/* Responsive */
 @media (max-width: 768px) {
     .messages-page h1 {
         font-size: 1.8rem;
