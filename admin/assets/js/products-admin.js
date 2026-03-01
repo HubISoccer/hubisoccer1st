@@ -132,18 +132,22 @@ form.addEventListener('submit', async (e) => {
     const price = parseInt(priceInput.value);
     const image_url = imageInput.value;
     const category = categorySelect.value;
-    const stock = stockSelect.value === 'true';
-    const featured = featuredSelect.value === 'true';
-    const payment_url = paymentUrlInput.value;
-    const return_url = returnUrlInput.value || 'suivi.html';
+    const stockValue = stockSelect.value === 'true';
+    const featuredValue = featuredSelect.value === 'true';
 
     const productData = {
-        name, description, price, image_url, category, stock, featured,
-        payment_url, return_url
+        name,
+        description,
+        price,
+        image_url,
+        category,
+        stock: stockValue ? 1 : 0,
+        featured: featuredValue,
+        payment_url: paymentUrlInput.value,
+        return_url: returnUrlInput.value
     };
 
     if (id === '') {
-        // Ajout
         const { error } = await supabaseClient
             .from('products')
             .insert([productData]);
@@ -154,7 +158,6 @@ form.addEventListener('submit', async (e) => {
             loadProducts();
         }
     } else {
-        // Modification
         const { error } = await supabaseClient
             .from('products')
             .update(productData)
