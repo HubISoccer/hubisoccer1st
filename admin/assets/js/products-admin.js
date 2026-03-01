@@ -1,93 +1,9 @@
-// ===== DONNÉES PAR DÉFAUT =====
-const defaultProducts = [
-    {
-        id: 'pack1',
-        name: 'Pack Starter',
-        description: 'Ebook "Guide du Jeune Footballeur" + Pommade chauffante + Maillot au choix',
-        price: 5000,
-        image: 'public/img/ebook-cover.png',
-        category: 'pack',
-        featured: true,
-        stock: true
-    },
-    {
-        id: 'pack2',
-        name: 'Pack Premium',
-        description: 'Ebook + Kit couleur au choix + Coaching spécialisé (1h)',
-        price: 15000,
-        image: 'public/img/kitviolet.jpg',
-        category: 'pack',
-        featured: true,
-        stock: true
-    },
-    {
-        id: 'pack3',
-        name: 'Pack Aspirant',
-        description: 'Ebook "Guide du Jeune Footballeur" (version PDF)',
-        price: 2000,
-        image: 'public/img/ebook-cover.png',
-        category: 'pack',
-        featured: true,
-        stock: true
-    },
-    {
-        id: 'kit1',
-        name: 'Kit Violet',
-        description: 'Ensemble complet (maillot, short, chaussettes)',
-        price: 8000,
-        image: 'public/img/kitviolet.jpg',
-        category: 'kit',
-        featured: false,
-        stock: true
-    },
-    {
-        id: 'kit2',
-        name: 'Kit Noir',
-        description: 'Ensemble complet (maillot, short, chaussettes)',
-        price: 8000,
-        image: 'public/img/kitnoir.jpg',
-        category: 'kit',
-        featured: false,
-        stock: true
-    },
-    {
-        id: 'kit3',
-        name: 'Kit Jaune',
-        description: 'Ensemble complet (maillot, short, chaussettes)',
-        price: 8000,
-        image: 'public/img/kitjaune.jpg',
-        category: 'kit',
-        featured: false,
-        stock: true
-    },
-    {
-        id: 'sac1',
-        name: 'Sac tout-en-un',
-        description: 'Grand sac de sport compartimenté',
-        price: 12000,
-        image: 'public/img/Sac-touten1.jpg',
-        category: 'sac',
-        featured: false,
-        stock: true
-    },
-    {
-        id: 'sac2',
-        name: 'Sac complet',
-        description: 'Sac + gourde + protège-tibia',
-        price: 15000,
-        image: 'public/img/sac-complet.jpg',
-        category: 'sac',
-        featured: false,
-        stock: true
-    }
-];
+// ===== INITIALISATION SUPABASE =====
+const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-// Initialisation localStorage
-if (!localStorage.getItem('emarket_products')) {
-    localStorage.setItem('emarket_products', JSON.stringify(defaultProducts));
-}
-
-// ===== ÉLÉMENTS DOM =====
+// Éléments DOM
 const productsList = document.getElementById('productsList');
 const modal = document.getElementById('productModal');
 const modalTitle = document.getElementById('modalTitle');
@@ -96,37 +12,55 @@ const productId = document.getElementById('productId');
 const nameInput = document.getElementById('name');
 const descriptionInput = document.getElementById('description');
 const priceInput = document.getElementById('price');
-const imageInput = document.getElementById('image');
+const imageInput = document.getElementById('image_url');
 const categorySelect = document.getElementById('category');
 const stockSelect = document.getElementById('stock');
 const featuredSelect = document.getElementById('featured');
+const paymentUrlInput = document.getElementById('payment_url');
+const returnUrlInput = document.getElementById('return_url');
 
-// ===== CHARGEMENT DES PRODUITS =====
-function loadProducts() {
-    const products = JSON.parse(localStorage.getItem('emarket_products')) || [];
+// Charger les produits
+async function loadProducts() {
+    const { data: products, error } = await supabaseClient
+        .from('products')
+        .select('*')
+        .order('id');
+
+    if (error) {
+        console.error('Erreur chargement produits:', error);
+        productsList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        return;
+    }
+
+    if (!products || products.length === 0) {
+        productsList.innerHTML = '<p class="no-data">Aucun produit.</p>';
+        return;
+    }
+
     let html = '';
-    products.forEach((p, index) => {
+    products.forEach(p => {
         html += `
-            <div class="list-item" data-index="${index}">
+            <div class="list-item" data-id="${p.id}">
                 <div class="info">
                     <strong>${p.name} ${p.featured ? '<span class="badge">Vedette</span>' : ''}</strong>
                     <div class="details">
                         <span>${p.category}</span>
                         <span>${p.stock ? 'En stock' : 'Épuisé'}</span>
+                        <span>Prix: ${p.price} FCFA</span>
                     </div>
-                    <span class="price">${p.price} FCFA</span>
+                    <small>Paiement: <a href="${p.payment_url}" target="_blank">lien</a> | Retour: ${p.return_url}</small>
                 </div>
                 <div class="actions">
-                    <button class="edit" onclick="editProduct(${index})"><i class="fas fa-edit"></i></button>
-                    <button class="delete" onclick="deleteProduct(${index})"><i class="fas fa-trash"></i></button>
+                    <button class="edit" onclick="editProduct(${p.id})"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
     });
-    productsList.innerHTML = html || '<p class="no-data">Aucun produit.</p>';
+    productsList.innerHTML = html;
 }
 
-// ===== OUVERTURE MODALE AJOUT =====
+// Ouvrir modale ajout
 function openAddModal() {
     modalTitle.textContent = 'Ajouter un produit';
     productId.value = '';
@@ -134,73 +68,110 @@ function openAddModal() {
     descriptionInput.value = '';
     priceInput.value = '';
     imageInput.value = '';
-    categorySelect.value = 'pack';
-    stockSelect.value = 'true';
-    featuredSelect.value = 'false';
+    categorySelect.value = '';
+    stockSelect.value = '';
+    featuredSelect.value = '';
+    paymentUrlInput.value = '';
+    returnUrlInput.value = 'suivi.html';
     modal.classList.add('active');
 }
 
-// ===== ÉDITION =====
-window.editProduct = (index) => {
-    const products = JSON.parse(localStorage.getItem('emarket_products'));
-    const p = products[index];
+// Éditer un produit
+window.editProduct = async (id) => {
+    const { data: p, error } = await supabaseClient
+        .from('products')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error) {
+        alert('Erreur chargement produit');
+        return;
+    }
+
     modalTitle.textContent = 'Modifier un produit';
-    productId.value = index;
+    productId.value = p.id;
     nameInput.value = p.name;
     descriptionInput.value = p.description;
     priceInput.value = p.price;
-    imageInput.value = p.image;
+    imageInput.value = p.image_url;
     categorySelect.value = p.category;
-    stockSelect.value = p.stock.toString();
-    featuredSelect.value = p.featured.toString();
+    stockSelect.value = p.stock ? 'true' : 'false';
+    featuredSelect.value = p.featured ? 'true' : 'false';
+    paymentUrlInput.value = p.payment_url || '';
+    returnUrlInput.value = p.return_url || 'suivi.html';
     modal.classList.add('active');
 };
 
-// ===== FERMETURE MODALE =====
+// Supprimer un produit
+window.deleteProduct = async (id) => {
+    if (!confirm('Supprimer ce produit ?')) return;
+    const { error } = await supabaseClient
+        .from('products')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        alert('Erreur suppression : ' + error.message);
+    } else {
+        loadProducts();
+    }
+};
+
+// Fermer modale
 window.closeModal = () => {
     modal.classList.remove('active');
 };
 
-// ===== SUPPRESSION =====
-window.deleteProduct = (index) => {
-    if (!confirm('Supprimer ce produit ?')) return;
-    let products = JSON.parse(localStorage.getItem('emarket_products'));
-    products.splice(index, 1);
-    localStorage.setItem('emarket_products', JSON.stringify(products));
-    loadProducts();
-};
-
-// ===== GESTION DU FORMULAIRE =====
-form.addEventListener('submit', (e) => {
+// Soumission formulaire
+form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const index = productId.value;
-    let products = JSON.parse(localStorage.getItem('emarket_products')) || [];
+    const id = productId.value;
+    const name = nameInput.value;
+    const description = descriptionInput.value;
+    const price = parseInt(priceInput.value);
+    const image_url = imageInput.value;
+    const category = categorySelect.value;
+    const stock = stockSelect.value === 'true';
+    const featured = featuredSelect.value === 'true';
+    const payment_url = paymentUrlInput.value;
+    const return_url = returnUrlInput.value || 'suivi.html';
 
-    const newProduct = {
-        id: index === '' ? 'prod' + Date.now() : products[index].id,
-        name: nameInput.value,
-        description: descriptionInput.value,
-        price: parseInt(priceInput.value),
-        image: imageInput.value,
-        category: categorySelect.value,
-        stock: stockSelect.value === 'true',
-        featured: featuredSelect.value === 'true'
+    const productData = {
+        name, description, price, image_url, category, stock, featured,
+        payment_url, return_url
     };
 
-    if (index === '') {
-        products.push(newProduct);
+    if (id === '') {
+        // Ajout
+        const { error } = await supabaseClient
+            .from('products')
+            .insert([productData]);
+        if (error) {
+            alert('Erreur ajout : ' + error.message);
+        } else {
+            closeModal();
+            loadProducts();
+        }
     } else {
-        products[index] = newProduct;
+        // Modification
+        const { error } = await supabaseClient
+            .from('products')
+            .update(productData)
+            .eq('id', id);
+        if (error) {
+            alert('Erreur modification : ' + error.message);
+        } else {
+            closeModal();
+            loadProducts();
+        }
     }
-    localStorage.setItem('emarket_products', JSON.stringify(products));
-    closeModal();
-    loadProducts();
 });
 
-// ===== BOUTON D'AJOUT =====
+// Bouton ajout
 document.getElementById('addProductBtn').addEventListener('click', openAddModal);
 
-// ===== DÉCONNEXION =====
+// Déconnexion
 document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     e.preventDefault();
     if (confirm('Déconnexion ?')) {
@@ -208,5 +179,5 @@ document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     }
 });
 
-// ===== CHARGEMENT INITIAL =====
+// Chargement initial
 loadProducts();
