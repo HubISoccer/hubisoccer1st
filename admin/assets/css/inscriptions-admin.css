@@ -207,6 +207,15 @@
     color: white;
     transform: scale(1.1);
 }
+.inscriptions-page .list-item .actions button.edit {
+    color: #ffc107;
+    background: rgba(255,193,7,0.1);
+}
+.inscriptions-page .list-item .actions button.edit:hover {
+    background: #ffc107;
+    color: white;
+    transform: scale(1.1);
+}
 .inscriptions-page .list-item .actions button.delete {
     color: #6c757d;
     background: rgba(108,117,125,0.1);
@@ -217,7 +226,7 @@
     transform: scale(1.1);
 }
 
-/* Modale améliorée */
+/* Modale */
 .inscriptions-page .admin-modal {
     display: none;
     position: fixed;
@@ -244,16 +253,12 @@
     box-shadow: 0 30px 60px rgba(85,27,140,0.3);
     border: 1px solid var(--gold);
     animation: modalSlideIn 0.3s ease;
+    max-height: 80vh;
+    overflow-y: auto;
 }
 @keyframes modalSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-50px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-50px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 .inscriptions-page .close {
     position: absolute;
@@ -285,16 +290,14 @@
 }
 .inscriptions-page .modal-details {
     margin-bottom: 20px;
-    background: #f8fafc;
-    padding: 25px;
-    border-radius: 15px;
-    max-height: 400px;
-    overflow-y: auto;
 }
 .inscriptions-page .modal-details-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 15px 20px;
+    background: #f8fafc;
+    padding: 25px;
+    border-radius: 15px;
 }
 .inscriptions-page .detail-item {
     display: flex;
