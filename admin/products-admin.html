@@ -55,7 +55,7 @@
                 </div>
                 <div class="form-group">
                     <label>Image (chemin)</label>
-                    <input type="text" id="image" placeholder="ex: public/img/ebook-cover.png" required>
+                    <input type="text" id="image_url" placeholder="ex: public/img/ebook-cover.png" required>
                 </div>
                 <div class="form-group">
                     <label>Catégorie</label>
@@ -85,6 +85,16 @@
                         <option value="false">Non</option>
                     </select>
                 </div>
+                <!-- Nouveaux champs pour les liens de paiement -->
+                <div class="form-group">
+                    <label>Lien de paiement Fedapay</label>
+                    <input type="url" id="payment_url" placeholder="https://me.fedapay.com/..." required>
+                </div>
+                <div class="form-group">
+                    <label>Lien de retour après paiement</label>
+                    <input type="url" id="return_url" placeholder="https://.../suivi.html" value="suivi.html">
+                    <small>Par défaut : suivi.html (chemin relatif)</small>
+                </div>
                 <button type="submit" class="btn-submit">Enregistrer</button>
             </form>
         </div>
@@ -94,6 +104,7 @@
         <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../public/js/main.js"></script>
     <script src="assets/js/products-admin.js"></script>
 </body>
