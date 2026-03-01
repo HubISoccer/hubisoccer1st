@@ -31,7 +31,7 @@ async function loadInscriptions() {
     }
 
     let html = '';
-    inscriptions.forEach((ins, index) => {
+    inscriptions.forEach((ins) => {
         const statut = ins.statut || 'en_attente';
         let statutClass = '';
         let statutText = '';
@@ -53,15 +53,18 @@ async function loadInscriptions() {
                 statutText = statut;
         }
 
+        const dateNaissance = ins.datenaissance ? new Date(ins.datenaissance).toLocaleDateString('fr-FR') : '??';
+        const dateSoumission = ins.datesoumission ? new Date(ins.datesoumission).toLocaleString('fr-FR') : '??';
+
         html += `
-            <div class="list-item" data-id="${ins.id}" data-index="${index}">
+            <div class="list-item" data-id="${ins.id}">
                 <div class="info">
                     <strong>${ins.nom}</strong>
                     <div class="details">
-                        <span>${ins.dateNaissance}</span>
+                        <span>${dateNaissance}</span>
                         <span>${ins.poste}</span>
                         <span>${ins.telephone}</span>
-                        <span>${ins.codeTournoi || '-'}</span>
+                        <span>${ins.codetournoi || '-'}</span>
                     </div>
                     <span class="status ${statutClass}">${statutText}</span>
                 </div>
@@ -91,20 +94,26 @@ window.viewInscription = async (id) => {
 
     currentInscriptionId = ins.id;
     const statut = ins.statut || 'en_attente';
-    const documents = `${ins.diplomeFileName ? '✅ Diplôme' : '❌ Diplôme'} | ${ins.pieceFileName ? '✅ Pièce d\'identité' : '❌ Pièce'}`;
+    const dateNaissance = ins.datenaissance ? new Date(ins.datenaissance).toLocaleDateString('fr-FR') : 'Non renseignée';
+    const dateSoumission = ins.datesoumission ? new Date(ins.datesoumission).toLocaleString('fr-FR') : 'Non renseignée';
+    const documents = `${ins.diplomefilename ? '✅ Diplôme' : '❌ Diplôme'} | ${ins.piecefilename ? '✅ Pièce' : '❌ Pièce'}`;
 
     modalDetails.innerHTML = `
-        <p><strong>ID :</strong> ${ins.id}</p>
-        <p><strong>Nom :</strong> ${ins.nom}</p>
-        <p><strong>Date de naissance :</strong> ${ins.dateNaissance}</p>
-        <p><strong>Poste :</strong> ${ins.poste}</p>
-        <p><strong>Téléphone :</strong> ${ins.telephone}</p>
-        <p><strong>Diplôme :</strong> ${ins.diplome}</p>
-        <p><strong>Code tournoi :</strong> ${ins.codeTournoi || '-'}</p>
-        <p><strong>Documents fournis :</strong> ${documents}</p>
-        <p><strong>Affilié :</strong> ${ins.affilié || '-'}</p>
-        <p><strong>Date de soumission :</strong> ${ins.dateSoumission}</p>
-        <p><strong>Statut :</strong> ${statut}</p>
+        <div class="modal-details-grid">
+            <div class="detail-item"><span class="detail-icon">🆔</span> <strong>ID :</strong> ${ins.id}</div>
+            <div class="detail-item"><span class="detail-icon">👤</span> <strong>Nom :</strong> ${ins.nom}</div>
+            <div class="detail-item"><span class="detail-icon">📅</span> <strong>Naissance :</strong> ${dateNaissance}</div>
+            <div class="detail-item"><span class="detail-icon">⚽</span> <strong>Poste :</strong> ${ins.poste}</div>
+            <div class="detail-item"><span class="detail-icon">📞</span> <strong>Téléphone :</strong> ${ins.telephone}</div>
+            <div class="detail-item"><span class="detail-icon">🎓</span> <strong>Diplôme :</strong> ${ins.diplome}</div>
+            <div class="detail-item"><span class="detail-icon">🏆</span> <strong>Code tournoi :</strong> ${ins.codetournoi || '-'}</div>
+            <div class="detail-item"><span class="detail-icon">📎</span> <strong>Documents :</strong> ${documents}</div>
+            <div class="detail-item"><span class="detail-icon">🔗</span> <strong>Affilié :</strong> ${ins.affilié || '-'}</div>
+            <div class="detail-item"><span class="detail-icon">⏰</span> <strong>Soumission :</strong> ${dateSoumission}</div>
+        </div>
+        <div class="detail-status">
+            <strong>Statut :</strong> <span class="status-badge ${statut}">${statut}</span>
+        </div>
     `;
     modal.classList.add('active');
 };
@@ -118,7 +127,6 @@ window.closeModal = () => {
 window.updateStatus = async (id, newStatut) => {
     if (!confirm(`Passer cette inscription en "${newStatut}" ?`)) return;
 
-    // Récupérer l'inscription pour connaître l'affilié
     const { data: ins, error: fetchError } = await supabaseClient
         .from('inscriptions')
         .select('affilié')
@@ -130,7 +138,6 @@ window.updateStatus = async (id, newStatut) => {
         return;
     }
 
-    // Mettre à jour le statut
     const { error: updateError } = await supabaseClient
         .from('inscriptions')
         .update({ statut: newStatut })
@@ -141,9 +148,7 @@ window.updateStatus = async (id, newStatut) => {
         return;
     }
 
-    // Si validation, incrémenter le compteur de l'affilié
     if (newStatut === 'valide' && ins.affilié) {
-        // Récupérer l'affilié
         const { data: aff, error: affError } = await supabaseClient
             .from('affiliates')
             .select('count')
