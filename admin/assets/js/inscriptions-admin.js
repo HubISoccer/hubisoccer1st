@@ -3,16 +3,14 @@ const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-const COMMISSION = 100; // FCFA par inscription validée
+const COMMISSION = 100;
 
-// Éléments DOM
 const inscriptionsList = document.getElementById('inscriptionsList');
 const modal = document.getElementById('inscriptionModal');
 const modalTitle = document.getElementById('modalTitle');
 const modalDetails = document.getElementById('modalDetails');
 let currentInscriptionId = null;
 
-// Charger les inscriptions
 async function loadInscriptions() {
     const { data: inscriptions, error } = await supabaseClient
         .from('inscriptions')
@@ -31,26 +29,14 @@ async function loadInscriptions() {
     }
 
     let html = '';
-    inscriptions.forEach((ins) => {
+    inscriptions.forEach(ins => {
         const statut = ins.statut || 'en_attente';
-        let statutClass = '';
-        let statutText = '';
+        let statutClass = '', statutText = '';
         switch (statut) {
-            case 'en_attente':
-                statutClass = 'en_attente';
-                statutText = 'En attente';
-                break;
-            case 'valide':
-                statutClass = 'valide';
-                statutText = 'Validé';
-                break;
-            case 'refuse':
-                statutClass = 'refuse';
-                statutText = 'Refusé';
-                break;
-            default:
-                statutClass = 'en_attente';
-                statutText = statut;
+            case 'en_attente': statutClass = 'en_attente'; statutText = 'En attente'; break;
+            case 'valide': statutClass = 'valide'; statutText = 'Validé'; break;
+            case 'refuse': statutClass = 'refuse'; statutText = 'Refusé'; break;
+            default: statutClass = 'en_attente'; statutText = statut;
         }
 
         const dateNaissance = ins.datenaissance ? new Date(ins.datenaissance).toLocaleDateString('fr-FR') : '??';
@@ -81,7 +67,6 @@ async function loadInscriptions() {
     inscriptionsList.innerHTML = html;
 }
 
-// Voir les détails d'une inscription
 window.viewInscription = async (id) => {
     const { data: ins, error } = await supabaseClient
         .from('inscriptions')
@@ -99,9 +84,13 @@ window.viewInscription = async (id) => {
     const dateNaissance = ins.datenaissance ? new Date(ins.datenaissance).toLocaleDateString('fr-FR') : 'Non renseignée';
     const dateSoumission = ins.datesoumission ? new Date(ins.datesoumission).toLocaleString('fr-FR') : 'Non renseignée';
 
-    // Affichage des documents avec noms de fichiers (cliquables si on avait un lien)
-    const diplomeLink = ins.diplomefilename ? `<a href="#" onclick="alert('Téléchargement non disponible')">${ins.diplomefilename}</a>` : 'Aucun';
-    const pieceLink = ins.piecefilename ? `<a href="#" onclick="alert('Téléchargement non disponible')">${ins.piecefilename}</a>` : 'Aucun';
+    // Construction des URLs des fichiers (bucket public)
+    const baseStorageUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co/storage/v1/object/public/documents/';
+    const diplomeUrl = ins.diplomefilename ? baseStorageUrl + ins.diplomefilename : null;
+    const pieceUrl = ins.piecefilename ? baseStorageUrl + ins.piecefilename : null;
+
+    const diplomeLink = diplomeUrl ? `<a href="${diplomeUrl}" target="_blank" class="download-link">📄 Télécharger le diplôme</a>` : 'Aucun';
+    const pieceLink = pieceUrl ? `<a href="${pieceUrl}" target="_blank" class="download-link">🪪 Télécharger la pièce d\'identité</a>` : 'Aucun';
 
     modalDetails.innerHTML = `
         <div class="modal-details-grid">
@@ -124,12 +113,8 @@ window.viewInscription = async (id) => {
     modal.classList.add('active');
 };
 
-// Fermer la modale
-window.closeModal = () => {
-    modal.classList.remove('active');
-};
+window.closeModal = () => modal.classList.remove('active');
 
-// Mise à jour du statut
 window.updateStatus = async (id, newStatut) => {
     if (!confirm(`Passer cette inscription en "${newStatut}" ?`)) return;
 
@@ -139,29 +124,22 @@ window.updateStatus = async (id, newStatut) => {
         .eq('id', id)
         .single();
 
-    if (fetchError) {
-        alert('Erreur lors de la récupération de l\'inscription');
-        return;
-    }
+    if (fetchError) { alert('Erreur'); return; }
 
     const { error: updateError } = await supabaseClient
         .from('inscriptions')
         .update({ statut: newStatut })
         .eq('id', id);
 
-    if (updateError) {
-        alert('Erreur lors de la mise à jour : ' + updateError.message);
-        return;
-    }
+    if (updateError) { alert('Erreur mise à jour'); return; }
 
     if (newStatut === 'valide' && ins.affilié) {
-        const { data: aff, error: affError } = await supabaseClient
+        const { data: aff } = await supabaseClient
             .from('affiliates')
             .select('count')
             .eq('id', ins.affilié)
             .single();
-
-        if (!affError && aff) {
+        if (aff) {
             const newCount = (aff.count || 0) + 1;
             await supabaseClient
                 .from('affiliates')
@@ -169,38 +147,25 @@ window.updateStatus = async (id, newStatut) => {
                 .eq('id', ins.affilié);
         }
     }
-
     closeModal();
     loadInscriptions();
 };
 
-// Supprimer une inscription
 window.deleteInscription = async (id) => {
     if (!confirm('Supprimer définitivement cette inscription ?')) return;
     const { error } = await supabaseClient
         .from('inscriptions')
         .delete()
         .eq('id', id);
-
-    if (error) {
-        alert('Erreur suppression : ' + error.message);
-    } else {
-        loadInscriptions();
-    }
+    if (error) alert('Erreur suppression');
+    else loadInscriptions();
 };
 
-// Modifier une inscription (à implémenter plus tard)
-window.editInscription = (id) => {
-    alert('Fonction de modification à venir');
-};
+window.editInscription = (id) => alert('Fonction de modification à venir');
 
-// Déconnexion
 document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     e.preventDefault();
-    if (confirm('Déconnexion ?')) {
-        window.location.href = '../../index.html';
-    }
+    if (confirm('Déconnexion ?')) window.location.href = '../../index.html';
 });
 
-// Chargement initial
 loadInscriptions();
