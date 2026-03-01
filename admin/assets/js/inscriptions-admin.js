@@ -127,12 +127,84 @@ window.viewInscription = async (id) => {
     modal.classList.add('active');
 };
 
-// ===== MODIFIER UNE INSCRIPTION =====
+// ===== MODIFIER UNE INSCRIPTION (ouverture d'une modale d'édition) =====
 window.editInscription = async (id) => {
-    // Pour l'instant, on redirige vers une page d'édition ou on ouvre une modale
-    // On va simplement afficher une alerte pour dire que c'est en développement
-    alert('Fonction de modification en cours de développement. Vous pouvez modifier directement dans la base de données.');
-    // Plus tard, on pourra ouvrir une modale avec les champs pré-remplis
+    const { data: ins, error } = await supabaseClient
+        .from('inscriptions')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error || !ins) {
+        alert('Erreur chargement des données');
+        return;
+    }
+
+    currentInscriptionId = ins.id;
+    modalTitle.textContent = 'Modifier l\'inscription';
+
+    // Créer un formulaire d'édition
+    modalDetails.innerHTML = `
+        <form id="editInscriptionForm" class="edit-form">
+            <div class="form-group">
+                <label>Nom</label>
+                <input type="text" id="editNom" value="${ins.nom}" required>
+            </div>
+            <div class="form-group">
+                <label>Date de naissance</label>
+                <input type="date" id="editDateNaissance" value="${ins.datenaissance}" required>
+            </div>
+            <div class="form-group">
+                <label>Poste</label>
+                <input type="text" id="editPoste" value="${ins.poste}" required>
+            </div>
+            <div class="form-group">
+                <label>Code tournoi</label>
+                <input type="text" id="editCodeTournoi" value="${ins.codetournoi || ''}">
+            </div>
+            <div class="form-group">
+                <label>Diplôme (texte)</label>
+                <input type="text" id="editDiplome" value="${ins.diplome}" required>
+            </div>
+            <div class="form-group">
+                <label>Téléphone</label>
+                <input type="text" id="editTelephone" value="${ins.telephone}" required>
+            </div>
+            <div class="form-group">
+                <label>Affilié (ID)</label>
+                <input type="text" id="editAffilie" value="${ins.affilié || ''}">
+            </div>
+            <button type="submit" class="btn-submit">Enregistrer les modifications</button>
+        </form>
+    `;
+    modal.classList.add('active');
+
+    // Ajouter l'écouteur de soumission
+    document.getElementById('editInscriptionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const updatedData = {
+            nom: document.getElementById('editNom').value,
+            datenaissance: document.getElementById('editDateNaissance').value,
+            poste: document.getElementById('editPoste').value,
+            codetournoi: document.getElementById('editCodeTournoi').value || '',
+            diplome: document.getElementById('editDiplome').value,
+            telephone: document.getElementById('editTelephone').value,
+            affilié: document.getElementById('editAffilie').value || null
+        };
+
+        const { error: updateError } = await supabaseClient
+            .from('inscriptions')
+            .update(updatedData)
+            .eq('id', currentInscriptionId);
+
+        if (updateError) {
+            alert('Erreur lors de la modification : ' + updateError.message);
+        } else {
+            alert('✅ Inscription modifiée avec succès');
+            closeModal();
+            loadInscriptions();
+        }
+    });
 };
 
 // ===== SUPPRIMER UNE INSCRIPTION (avec suppression des fichiers) =====
