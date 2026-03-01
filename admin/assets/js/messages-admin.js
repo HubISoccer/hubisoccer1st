@@ -1,13 +1,27 @@
-// ===== ÉLÉMENTS DOM =====
+// ===== INITIALISATION SUPABASE =====
+const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+// Éléments DOM
 const playerSelect = document.getElementById('playerSelect');
 const messageForm = document.getElementById('messageForm');
 const messageType = document.getElementById('messageType');
 const messageText = document.getElementById('messageText');
 const messagesHistory = document.getElementById('messagesHistory');
 
-// ===== CHARGEMENT DES JOUEURS =====
-function loadPlayers() {
-    const inscriptions = JSON.parse(localStorage.getItem('premiers_pas_inscriptions')) || [];
+// Charger la liste des joueurs (inscriptions)
+async function loadPlayers() {
+    const { data: inscriptions, error } = await supabaseClient
+        .from('inscriptions')
+        .select('id, nom')
+        .order('nom');
+
+    if (error) {
+        console.error('Erreur chargement joueurs:', error);
+        return;
+    }
+
     playerSelect.innerHTML = '<option value="">Sélectionnez un joueur</option>';
     inscriptions.forEach(ins => {
         const option = document.createElement('option');
@@ -17,29 +31,44 @@ function loadPlayers() {
     });
 }
 
-// ===== CHARGEMENT DE L'HISTORIQUE =====
-function loadMessagesHistory() {
-    const messages = JSON.parse(localStorage.getItem('player_messages')) || [];
-    const inscriptions = JSON.parse(localStorage.getItem('premiers_pas_inscriptions')) || [];
+// Charger l'historique des messages
+async function loadMessagesHistory() {
+    const { data: messages, error } = await supabaseClient
+        .from('player_messages')
+        .select('*')
+        .order('date', { ascending: false });
 
-    if (messages.length === 0) {
+    if (error) {
+        console.error('Erreur chargement historique:', error);
+        messagesHistory.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        return;
+    }
+
+    if (!messages || messages.length === 0) {
         messagesHistory.innerHTML = '<p class="no-data">Aucun message envoyé.</p>';
         return;
     }
 
-    // Trier du plus récent au plus ancien
-    messages.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // Récupérer les noms des joueurs pour les afficher
+    const { data: inscriptions } = await supabaseClient
+        .from('inscriptions')
+        .select('id, nom');
+
+    const playerMap = {};
+    if (inscriptions) {
+        inscriptions.forEach(ins => playerMap[ins.id] = ins.nom);
+    }
 
     let html = '';
-    messages.forEach((msg, index) => {
-        const player = inscriptions.find(ins => ins.id == msg.playerId) || { nom: 'Inconnu' };
+    messages.forEach(msg => {
         const typeClass = `type-${msg.type}`;
         const date = new Date(msg.date).toLocaleString('fr-FR');
+        const playerName = playerMap[msg.playerid] || 'Inconnu';
 
         html += `
-            <div class="list-item" data-index="${index}">
+            <div class="list-item" data-id="${msg.id}">
                 <div class="info">
-                    <strong>À: ${player.nom}</strong>
+                    <strong>À: ${playerName}</strong>
                     <div class="details">
                         <span class="message-type ${typeClass}">${msg.type}</span>
                         <span>${date}</span>
@@ -47,7 +76,7 @@ function loadMessagesHistory() {
                     <p>${msg.message}</p>
                 </div>
                 <div class="actions">
-                    <button class="delete" onclick="deleteMessage(${index})" title="Supprimer"><i class="fas fa-trash"></i></button>
+                    <button class="delete" onclick="deleteMessage(${msg.id})" title="Supprimer"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
@@ -55,8 +84,8 @@ function loadMessagesHistory() {
     messagesHistory.innerHTML = html;
 }
 
-// ===== ENVOI D'UN MESSAGE =====
-messageForm.addEventListener('submit', (e) => {
+// Envoyer un message
+messageForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const playerId = playerSelect.value;
     const type = messageType.value;
@@ -68,38 +97,44 @@ messageForm.addEventListener('submit', (e) => {
     }
 
     const newMessage = {
-        id: Date.now(),
-        playerId: playerId,
+        playerid: playerId,
         type: type,
         message: message,
         date: new Date().toISOString(),
         lu: false
     };
 
-    let messages = JSON.parse(localStorage.getItem('player_messages')) || [];
-    messages.push(newMessage);
-    localStorage.setItem('player_messages', JSON.stringify(messages));
+    const { error } = await supabaseClient
+        .from('player_messages')
+        .insert([newMessage]);
 
-    // Réinitialiser le formulaire
-    playerSelect.value = '';
-    messageText.value = '';
-    messageType.value = 'info';
-
-    // Recharger l'historique
-    loadMessagesHistory();
-    alert('Message envoyé avec succès !');
+    if (error) {
+        alert('Erreur envoi message : ' + error.message);
+    } else {
+        alert('✅ Message envoyé avec succès !');
+        playerSelect.value = '';
+        messageText.value = '';
+        messageType.value = 'info';
+        loadMessagesHistory(); // Recharger l'historique
+    }
 });
 
-// ===== SUPPRESSION D'UN MESSAGE =====
-window.deleteMessage = (index) => {
+// Supprimer un message
+window.deleteMessage = async (id) => {
     if (!confirm('Supprimer ce message ?')) return;
-    let messages = JSON.parse(localStorage.getItem('player_messages')) || [];
-    messages.splice(index, 1);
-    localStorage.setItem('player_messages', JSON.stringify(messages));
-    loadMessagesHistory();
+    const { error } = await supabaseClient
+        .from('player_messages')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        alert('Erreur suppression : ' + error.message);
+    } else {
+        loadMessagesHistory();
+    }
 };
 
-// ===== DÉCONNEXION =====
+// Déconnexion
 document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     e.preventDefault();
     if (confirm('Déconnexion ?')) {
@@ -107,6 +142,6 @@ document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     }
 });
 
-// ===== CHARGEMENT INITIAL =====
+// Chargement initial
 loadPlayers();
 loadMessagesHistory();
