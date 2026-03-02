@@ -1,4 +1,4 @@
-// public/js/tournoi.js
+// public/js/tournoi.js – Fusion live + tournois dynamiques
 console.log("✅ tournoi.js chargé");
 
 const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
@@ -8,7 +8,7 @@ const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 let currentLive = null;
 let currentUser = { nom: 'Visiteur', avatar: 'public/img/user-default.jpg' }; // À remplacer par vrai utilisateur plus tard
 
-// ===== CHARGEMENT DU LIVE ACTIF =====
+// ===== PARTIE LIVE =====
 async function loadLive() {
     const { data: lives, error } = await supabaseClient
         .from('lives')
@@ -30,12 +30,10 @@ async function loadLive() {
     }
 }
 
-// ===== RENDU DU LIVE AVEC CHAT =====
 async function renderLive() {
     const container = document.getElementById('liveContainer');
     if (!container || !currentLive) return;
 
-    // Charger les commentaires avec leurs réponses
     const { data: comments, error } = await supabaseClient
         .from('live_comments')
         .select('*')
@@ -138,7 +136,6 @@ function attachLiveEvents() {
     const shareBtn = document.querySelector('.live-share-btn');
     const sendBtn = document.getElementById('sendChatBtn');
     const chatInput = document.getElementById('chatInput');
-    const chatMessages = document.getElementById('chatMessages');
 
     if (likeBtn) {
         likeBtn.addEventListener('click', async () => {
@@ -168,8 +165,7 @@ function attachLiveEvents() {
 
     if (shareBtn) {
         shareBtn.addEventListener('click', () => {
-            const shareUrl = window.location.href;
-            navigator.clipboard?.writeText(shareUrl).then(() => alert('Lien copié !'));
+            navigator.clipboard?.writeText(window.location.href).then(() => alert('Lien copié !'));
         });
     }
 
@@ -180,7 +176,6 @@ function attachLiveEvents() {
         });
     }
 
-    // Répondre à un commentaire
     document.querySelectorAll('.reply-to-comment').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -196,7 +191,6 @@ function attachLiveEvents() {
         });
     });
 
-    // Gestion des formulaires de réponse
     document.addEventListener('click', async (e) => {
         if (e.target.closest('.reply-form button')) {
             e.preventDefault();
@@ -217,7 +211,6 @@ function attachLiveEvents() {
                 }]);
             if (!error) {
                 form.remove();
-                // Recharger les commentaires
                 renderLive();
             }
         }
@@ -239,12 +232,83 @@ async function sendMessage() {
         }]);
     if (!error) {
         input.value = '';
-        // Recharger les commentaires (on pourrait optimiser en ajoutant dynamiquement)
         renderLive();
     }
 }
 
-// ===== COPIER LES CODES DES TOURNOIS =====
+// ===== PARTIE TOURNOIS (chargement dynamique) =====
+async function loadTournois() {
+    const grid = document.getElementById('tournoiGrid');
+    if (!grid) return;
+
+    const { data: tournois, error } = await supabaseClient
+        .from('tournois')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Erreur chargement tournois:', error);
+        grid.innerHTML = '<p>Erreur de chargement des tournois.</p>';
+        return;
+    }
+
+    if (!tournois || tournois.length === 0) {
+        grid.innerHTML = '<p>Aucun tournoi pour le moment.</p>';
+        return;
+    }
+
+    let html = '';
+    tournois.forEach(t => {
+        const codeDisplay = t.prix > 0 ? `
+            <div class="code-box blurred">
+                <span class="code blurred-code">•••••••••••</span>
+                <button class="btn-buy-code" data-id="${t.id}" data-prix="${t.prix}"><i class="fas fa-shopping-cart"></i> Obtenir le code (${t.prix} FCFA)</button>
+            </div>
+        ` : `
+            <div class="code-box">
+                <span class="code">${t.code}</span>
+                <button class="copy-btn" data-code="${t.code}"><i class="fas fa-copy"></i> Copier</button>
+            </div>
+        `;
+
+        html += `
+            <div class="tournoi-card" data-id="${t.id}">
+                <div class="card-image">
+                    <img src="${t.image}" alt="${t.titre}">
+                    <div class="card-badge">${t.badge}</div>
+                </div>
+                <div class="card-content">
+                    <h3>${t.titre}</h3>
+                    <p class="tournoi-desc">${t.description}</p>
+                    <div class="tournoi-meta">
+                        <span><i class="fas fa-calendar-alt"></i> ${t.date}</span>
+                        <span><i class="fas fa-map-marker-alt"></i> ${t.lieu}</span>
+                        <span><i class="fas fa-users"></i> ${t.categories}</span>
+                    </div>
+                    <div class="tournoi-code">
+                        <span class="code-label">Code d'inscription :</span>
+                        ${codeDisplay}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    grid.innerHTML = html;
+
+    // Événements pour les boutons d'achat
+    document.querySelectorAll('.btn-buy-code').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const prix = btn.dataset.prix;
+            const tournoiId = btn.dataset.id;
+            const paymentUrl = `https://fedapay.com/payer?montant=${prix}&item=tournoi_${tournoiId}`;
+            window.open(paymentUrl, '_blank');
+            // Ici, après paiement, il faudrait un callback pour révéler le code.
+        });
+    });
+}
+
+// ===== ÉVÉNEMENTS POUR COPIER LES CODES (si public) =====
 document.addEventListener('click', (e) => {
     const copyBtn = e.target.closest('.copy-btn');
     if (copyBtn) {
@@ -259,3 +323,4 @@ document.addEventListener('click', (e) => {
 
 // ===== INITIALISATION =====
 loadLive();
+loadTournois();
