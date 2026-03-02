@@ -3,15 +3,12 @@ const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-// Gestion du compteur de commentaires pour les visiteurs
 let commentCount = parseInt(localStorage.getItem('visitor_comment_count')) || 0;
+let currentUser = null;
 
-// Pour l'instant, on simule un utilisateur connecté (ID 1) – à remplacer par une vraie auth plus tard
-let currentUser = null; // Sera défini après connexion
-
-// Fonction pour récupérer l'utilisateur courant (à implémenter avec Supabase Auth plus tard)
+// Récupérer l'utilisateur courant (à adapter avec Supabase Auth)
 async function getCurrentUser() {
-    // Simulation : on prend l'utilisateur avec ID 1 (admin test)
+    // Pour l'instant on utilise l'utilisateur avec ID 1 (admin)
     const { data: user, error } = await supabaseClient
         .from('users')
         .select('id, nom')
@@ -19,6 +16,8 @@ async function getCurrentUser() {
         .single();
     if (!error && user) {
         currentUser = user;
+        // Recharger les posts pour afficher correctement l'état des likes
+        loadPosts();
     }
 }
 getCurrentUser();
@@ -100,7 +99,7 @@ async function toggleLike(postId) {
             p_user_id: currentUser.id
         });
         if (error) throw error;
-        loadPosts(); // Recharger les posts
+        loadPosts();
     } catch (e) {
         console.error('Erreur like:', e);
         alert('Erreur : ' + e.message);
@@ -268,21 +267,18 @@ function renderAddComment(postId) {
 
 // ===== ÉVÉNEMENTS =====
 document.addEventListener('click', async (e) => {
-    // Like
     const likeBtn = e.target.closest('.like-btn');
     if (likeBtn) {
         e.preventDefault();
         await toggleLike(likeBtn.dataset.id);
         return;
     }
-    // Dislike
     const dislikeBtn = e.target.closest('.dislike-btn');
     if (dislikeBtn) {
         e.preventDefault();
         await toggleDislike(dislikeBtn.dataset.id);
         return;
     }
-    // Share
     const shareBtn = e.target.closest('.share-btn');
     if (shareBtn) {
         e.preventDefault();
@@ -296,7 +292,6 @@ document.addEventListener('click', async (e) => {
         const parent = replyBtn.closest('.comment');
         const postId = replyBtn.dataset.post;
         const commentId = replyBtn.dataset.id;
-        // Créer un formulaire de réponse
         const form = document.createElement('div');
         form.className = 'reply-form';
         form.innerHTML = `
@@ -317,7 +312,8 @@ document.addEventListener('click', async (e) => {
         if (content) {
             await addComment(replyFormBtn.dataset.post, content, replyFormBtn.dataset.parent);
             form.remove();
-            // Rétablir le bouton "Répondre" (à améliorer)
+            // Rétablir le bouton "Répondre" (simple : on recharge la page)
+            loadPosts();
         }
         return;
     }
