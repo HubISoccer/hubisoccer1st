@@ -420,3 +420,7 @@
         flex-direction: column;
     }
 }
+.code-box.success {
+    border-color: #28a745;
+    background-color: #d4edda;
+}
