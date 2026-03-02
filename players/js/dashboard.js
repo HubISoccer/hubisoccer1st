@@ -8,7 +8,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
 let playerProfile = null;
-const avatarBucket = 'avatars'; // Assurez-vous que ce bucket existe dans Supabase Storage
+const avatarBucket = 'avatars';
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
@@ -256,58 +256,90 @@ function initUserMenu() {
     });
 }
 
-// ===== SIDEBAR AVEC SWIPE AMÉLIORÉ =====
+// ===== SIDEBAR =====
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const menuHandle = document.getElementById('menuHandle'); // Nouvelle poignée
 
+    // Fonction pour ouvrir la sidebar
+    function openSidebar() {
+        sidebar.classList.add('active');
+        if (overlay) overlay.classList.add('active');
+    }
+
+    // Fonction pour fermer la sidebar
+    function closeSidebarFunc() {
+        sidebar.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
+    }
+
+    // Ouvrir avec le bouton de la navbar
     if (menuBtn && sidebar) {
-        menuBtn.addEventListener('click', () => {
-            sidebar.classList.add('active');
-            if (overlay) overlay.classList.add('active');
-        });
+        menuBtn.addEventListener('click', openSidebar);
     }
 
+    // Ouvrir avec la poignée (si elle existe)
+    if (menuHandle) {
+        menuHandle.addEventListener('click', openSidebar);
+    }
+
+    // Fermer avec le bouton X
     if (closeBtn && sidebar) {
-        closeBtn.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            if (overlay) overlay.classList.remove('active');
-        });
+        closeBtn.addEventListener('click', closeSidebarFunc);
     }
 
+    // Fermer avec l'overlay
     if (overlay) {
-        overlay.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            overlay.classList.remove('active');
-        });
+        overlay.addEventListener('click', closeSidebarFunc);
     }
 
-    // SWIPE : détection du toucher
+    // SWIPE : ouvrir/fermer par balayage (optionnel, sans conflit)
     let touchStartX = 0;
+    let touchStartY = 0;
     let touchEndX = 0;
     const swipeThreshold = 50;
 
     document.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
     }, { passive: true });
 
     document.addEventListener('touchend', (e) => {
         touchEndX = e.changedTouches[0].screenX;
-        const diff = touchEndX - touchStartX;
+        const diffX = touchEndX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
 
-        // Swipe droite depuis le bord gauche
-        if (diff > swipeThreshold && touchStartX < 50) {
-            sidebar.classList.add('active');
-            if (overlay) overlay.classList.add('active');
+        // Vérifier que le mouvement est plus horizontal que vertical et assez long
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+            e.preventDefault(); // Empêche la navigation du navigateur
+
+            // Swipe droite depuis le bord gauche (ouvrir)
+            if (diffX > 0 && touchStartX < 50) {
+                openSidebar();
+            }
+            // Swipe gauche (fermer)
+            else if (diffX < 0) {
+                closeSidebarFunc();
+            }
         }
-        // Swipe gauche
-        else if (diff < -swipeThreshold) {
-            sidebar.classList.remove('active');
-            if (overlay) overlay.classList.remove('active');
-        }
-    }, { passive: true });
+    }, { passive: false }); // Important pour preventDefault
+}
+
+// ===== AJOUT DE LA POIGNÉE DE MENU DANS LE DOM =====
+function addMenuHandle() {
+    // Vérifier si la poignée existe déjà
+    if (document.getElementById('menuHandle')) return;
+
+    // Créer l'élément
+    const handle = document.createElement('div');
+    handle.id = 'menuHandle';
+    handle.className = 'menu-handle';
+    handle.setAttribute('aria-label', 'Ouvrir le menu');
+    handle.innerHTML = '<span></span>'; // On peut mettre une icône ou juste un trait
+    document.body.appendChild(handle);
 }
 
 // ===== INITIALISATION =====
@@ -316,6 +348,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!user) return;
 
     await loadPlayerProfile();
+
+    // Ajouter la poignée de menu (pour mobile)
+    addMenuHandle();
 
     initUserMenu();
     initSidebar();
