@@ -6,13 +6,13 @@
     <title>Dashboard Joueur | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles globaux (publics) -->
-    <link rel="stylesheet" href="../public/css/style.css">
+    <!-- Styles globaux (publics) - chemin absolu -->
+    <link rel="stylesheet" href="/assets/css/style.css">
     <!-- Styles spécifiques au dashboard -->
-    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="/players/css/dashboard.css">
 </head>
 <body>
-    <!-- Navbar spécifique dashboard (à intégrer directement ou via include) -->
+    <!-- Navbar spécifique dashboard -->
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="/assets/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='/index.html'">
@@ -186,7 +186,7 @@
         </div>
     </main>
 
-    <!-- Footer spécifique dashboard (optionnel) -->
+    <!-- Footer spécifique dashboard -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
@@ -205,6 +205,7 @@
             </div>
         </div>
     </footer>
-    <script src="js/dashboard.js"></script>
+
+    <script src="/players/js/dashboard.js"></script>
 </body>
 </html>
