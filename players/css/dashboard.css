@@ -553,3 +553,43 @@
         grid-column: span 1;
     }
 }
+/* ===== POIGNÉE DE MENU POUR MOBILE ===== */
+.menu-handle {
+    position: fixed;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 80px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 0 8px 8px 0;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    cursor: pointer;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.menu-handle:hover {
+    width: 12px;
+    background: white;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+}
+
+.menu-handle span {
+    display: block;
+    width: 4px;
+    height: 40px;
+    background: var(--primary);
+    border-radius: 4px;
+    opacity: 0.7;
+}
+
+/* Sur les grands écrans, on peut cacher la poignée si le menu est toujours visible */
+@media (min-width: 901px) {
+    .menu-handle {
+        display: none;
+    }
+}
