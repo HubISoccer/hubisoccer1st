@@ -1,4 +1,4 @@
-// ===== DONNÉES UTILISATEUR SIMULÉES (en attendant l'auth) =====
+// ===== DONNÉES UTILISATEUR SIMULÉES =====
 const fakeUser = {
     userName: 'Koffi B. SOGLO',
     userId: '266HU028BIBJ16022026',
@@ -63,7 +63,7 @@ function initSidebar() {
     }
 }
 
-// ===== DÉCONNEXION SIMULÉE (redirige vers l'accueil) =====
+// ===== DÉCONNEXION SIMULÉE =====
 function initLogout() {
     const logoutLinks = document.querySelectorAll('#logoutLink, #logoutLinkSidebar');
     logoutLinks.forEach(link => {
