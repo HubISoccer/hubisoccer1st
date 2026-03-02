@@ -225,6 +225,7 @@ async function sendMessage() {
 }
 
 // ===== CHARGEMENT DES TOURNOIS =====
+// ===== CHARGEMENT DES TOURNOIS AVEC INTÉGRATION FEDAPAY =====
 async function loadTournois() {
     const grid = document.getElementById('tournoiGrid');
     if (!grid) return;
@@ -246,12 +247,16 @@ async function loadTournois() {
     }
 
     let html = '';
+
     tournois.forEach(t => {
         // Vérifier si un paiement a été effectué (via paramètre dans l'URL)
         const urlParams = new URLSearchParams(window.location.search);
         const success = urlParams.get('success');
         const paidTournoiId = urlParams.get('tournoi_id');
         let codeDisplay = '';
+
+        // Lien de paiement (pour l'instant fixe, à remplacer par un lien par tournoi si tu le souhaites)
+        const paymentUrl = t.prix > 0 ? 'https://process.fedapay.com/eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjEwOTc5NjYxNSwiZXhwIjoxNzcyNTQyNDgxfQ.8DKUyjUm5nKwo_oplY6uaBIqwtE2HXfTMHWvY-m-znk' : '';
 
         if (t.prix > 0) {
             if (success && paidTournoiId == t.id) {
@@ -263,18 +268,18 @@ async function loadTournois() {
                     </div>
                 `;
             } else {
-                // Code flouté avec bouton de paiement
+                // Afficher le bouton d'achat
                 codeDisplay = `
                     <div class="code-box blurred">
                         <span class="code blurred-code">•••••••••••</span>
-                        <button class="btn-buy-code" data-url="${t.payment_link || '#'}">
+                        <button class="btn-buy-code" data-url="${paymentUrl}" data-tournoi="${t.id}" data-prix="${t.prix}">
                             <i class="fas fa-shopping-cart"></i> Obtenir le code (${t.prix} FCFA)
                         </button>
                     </div>
                 `;
             }
         } else {
-            // Gratuit
+            // Tournoi gratuit : afficher le code directement
             codeDisplay = `
                 <div class="code-box">
                     <span class="code">${t.code}</span>
@@ -283,6 +288,7 @@ async function loadTournois() {
             `;
         }
 
+        // Construction de la carte du tournoi
         html += `
             <div class="tournoi-card" data-id="${t.id}">
                 <div class="card-image">
@@ -305,21 +311,21 @@ async function loadTournois() {
             </div>
         `;
     });
+
     grid.innerHTML = html;
 
-    // Attacher les événements
+    // Gestion des clics sur les boutons d'achat
     document.querySelectorAll('.btn-buy-code').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             const url = btn.dataset.url;
-            if (url && url !== '#') {
-                window.location.href = url;
-            } else {
-                alert('Lien de paiement non disponible pour ce tournoi.');
-            }
+            const tournoiId = btn.dataset.tournoi;
+            // Rediriger vers le lien de paiement en ajoutant l'ID du tournoi
+            window.location.href = url + (url.includes('?') ? '&' : '?') + 'tournoi_id=' + tournoiId;
         });
     });
 
+    // Gestion des boutons de copie
     document.querySelectorAll('.copy-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
