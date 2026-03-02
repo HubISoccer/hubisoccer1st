@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Styles globaux (publics) -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <!-- Styles spécifiques à l'authentification -->
+    <link rel="stylesheet" href="/players/css/auth.css">
+</head>
+<body>
+    <!-- Navbar publique (ou spécifique) -->
+    <nav>
+        <img src="/assets/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='/index.html'">
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+            </select>
+            <a href="/players/auth/signup.html" class="btn-auth gold">S'inscrire</a>
+        </div>
+    </nav>
+
+    <main class="register-wrapper">
+        <div class="register-card" style="max-width: 500px;">
+            <h2>Bon retour !</h2>
+            <p class="subtitle">Accédez à votre espace personnel.</p>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Email ou ID HubISoccer</label>
+                    <input type="text" id="loginIdentifier" placeholder="votre@email.com ou 266HU..." required>
+                </div>
+                <div class="form-group">
+                    <label>Mot de passe</label>
+                    <input type="password" id="loginPass" placeholder="••••••••" required>
+                    <span class="toggle-password" onclick="togglePass('loginPass')">👁️</span>
+                </div>
+                <div style="text-align: right; margin-bottom: 20px;">
+                    <a href="/players/auth/forgot-password.html" class="forgot-link">Mot de passe oublié ?</a>
+                </div>
+                <button type="submit" class="btn-register">Se connecter</button>
+                <p class="login-link">
+                    Pas encore de compte ? <a href="/players/auth/signup.html">Inscrivez-vous</a>
+                </p>
+            </form>
+        </div>
+    </main>
+
+    <!-- Footer (optionnel) -->
+    <footer>
+        <div class="compliance-badges">
+            <span class="badge">Conformité APDP Bénin</span>
+            <span class="badge">Règlementation FIFA</span>
+            <span class="badge">Double Projet Sport-Études</span>
+        </div>
+        <div class="contact-info">
+            <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+            <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+        </div>
+    </footer>
+
+    <script src="/players/js/auth.js"></script>
+</body>
+</html>
