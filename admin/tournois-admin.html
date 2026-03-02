@@ -26,17 +26,23 @@
     <div class="admin-container tournois-page">
         <h1>Gestion des tournois et lives</h1>
 
-        <!-- Section Live en direct -->
+        <!-- Section Lives -->
         <div class="admin-card">
             <div class="card-header">
-                <h2><i class="fas fa-broadcast-tower"></i> Live en direct</h2>
+                <h2><i class="fas fa-broadcast-tower"></i> Lives en direct</h2>
                 <button class="btn-add" id="addLiveBtn"><i class="fas fa-plus"></i> Ajouter un live</button>
             </div>
             <div id="livesList" class="admin-list"></div>
         </div>
 
-        <!-- Section Tournois (si vous voulez les gérer aussi, mais on peut les laisser statiques) -->
-        <!-- Pour l'instant on ne gère que les lives -->
+        <!-- Section Tournois -->
+        <div class="admin-card">
+            <div class="card-header">
+                <h2><i class="fas fa-trophy"></i> Tournois</h2>
+                <button class="btn-add" id="addTournoiBtn"><i class="fas fa-plus"></i> Ajouter un tournoi</button>
+            </div>
+            <div id="tournoisList" class="admin-list"></div>
+        </div>
     </div>
 
     <!-- Modale d'ajout/édition de live -->
@@ -60,6 +66,59 @@
                         <option value="true">Actif (en direct)</option>
                         <option value="false">Inactif</option>
                     </select>
+                </div>
+                <button type="submit" class="btn-submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modale d'ajout/édition de tournoi -->
+    <div id="tournoiModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeTournoiModal()">&times;</span>
+            <h3 id="tournoiModalTitle">Ajouter un tournoi</h3>
+            <form id="tournoiForm">
+                <input type="hidden" id="tournoiId">
+                <div class="form-group">
+                    <label>Titre</label>
+                    <input type="text" id="tournoiTitre" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="tournoiDescription" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Date (ex: 15-20 Mars 2026)</label>
+                    <input type="text" id="tournoiDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Lieu</label>
+                    <input type="text" id="tournoiLieu" required>
+                </div>
+                <div class="form-group">
+                    <label>Catégories (ex: U17 & 18-23 ans)</label>
+                    <input type="text" id="tournoiCategories" required>
+                </div>
+                <div class="form-group">
+                    <label>Code d'inscription</label>
+                    <input type="text" id="tournoiCode" required>
+                </div>
+                <div class="form-group">
+                    <label>Image (chemin)</label>
+                    <input type="text" id="tournoiImage" placeholder="ex: public/img/tou1.jpg" required>
+                </div>
+                <div class="form-group">
+                    <label>Badge (statut)</label>
+                    <select id="tournoiBadge">
+                        <option value="À venir">À venir</option>
+                        <option value="Bientôt">Bientôt</option>
+                        <option value="Complet">Complet</option>
+                        <option value="Terminé">Terminé</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Prix (FCFA) – 0 = gratuit</label>
+                    <input type="number" id="tournoiPrix" value="0" min="0">
                 </div>
                 <button type="submit" class="btn-submit">Enregistrer</button>
             </form>
