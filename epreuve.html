@@ -8,149 +8,108 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="public/css/style.css">
     <link rel="stylesheet" href="public/css/epreuve.css">
+    <style>
+        /* Styles pour l'overlay de déverrouillage */
+        .unlock-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        .unlock-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        .unlock-card h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+        .unlock-card p {
+            color: var(--gray);
+            margin-bottom: 30px;
+        }
+        .unlock-card input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid var(--light-gray);
+            border-radius: 10px;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+        .unlock-card button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+        .unlock-card button:hover {
+            background: var(--primary-light);
+        }
+        .blurred {
+            filter: blur(5px);
+            pointer-events: none;
+            user-select: none;
+        }
+    </style>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <nav>
-        <a href="index.html" class="logo-link">
-            <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
-        </a>
-        <div class="nav-right">
-            <select class="lang-picker" id="langSelect">
-                <option value="fr">🇫🇷 Français</option>
-                <option value="en">🇺🇸 English</option>
-                <!-- autres langues -->
-            </select>
-            <button class="menu-toggle" id="menuToggle">
-                <span></span><span></span><span></span>
-            </button>
-            <div class="nav-links" id="navLinks">
-                <a href="index.html">Accueil</a>
-                <a href="scouting.html">Scouting</a>
-                <a href="processus.html">Processus</a>
-                <a href="affiliation.html">Affiliation</a>
-                <a href="parrain.html">Parrain</a>
-                <a href="tournoi.html">Tournois</a>
-                <a href="hub-community.html">Community</a>
-                <a href="e-marketing-hubisoccer.html">Market</a>
-                <a href="public/auth/login.html" class="btn-auth">Connexion</a>
-                <a href="public/auth/signup.html" class="btn-auth gold">Inscription</a>
+    <!-- Overlay de déverrouillage -->
+    <div id="unlockOverlay" class="unlock-overlay">
+        <div class="unlock-card">
+            <h2><i class="fas fa-lock"></i> Épreuve verrouillée</h2>
+            <p>Veuillez saisir votre ID de suivi (reçu après examen.html) pour accéder à l'épreuve.</p>
+            <input type="text" id="unlockId" placeholder="Ex: 1772050361699">
+            <button id="unlockBtn">Déverrouiller</button>
+            <p style="margin-top:15px; font-size:0.8rem;">Cet ID est unique et vous a été communiqué.</p>
+        </div>
+    </div>
+
+    <!-- Contenu principal (flouté tant que non déverrouillé) -->
+    <div id="mainContent" class="blurred">
+        <!-- Navigation et reste de la page -->
+        <nav>
+            <a href="index.html" class="logo-link">
+                <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+            </a>
+            <div class="nav-right">
+                <!-- ... (garde ta navigation existante) ... -->
             </div>
-        </div>
-    </nav>
+        </nav>
 
-    <main class="epreuve-container">
-        <div class="epreuve-card">
-            <h1>Épreuve de qualification</h1>
-            <p class="subtitle">Répondez aux 10 questions à choix unique et aux 2 questions rédactionnelles. L'ensemble sera évalué par notre équipe.</p>
+        <main class="epreuve-container">
+            <div class="epreuve-card">
+                <h1>Épreuve de qualification</h1>
+                <p class="subtitle">Répondez aux 10 questions (tirées du guide).</p>
+                <form id="quizForm">
+                    <!-- Tes questions (garde-les telles quelles) -->
+                    <!-- ... -->
+                    <button type="submit" class="btn-submit">Soumettre mon épreuve</button>
+                </form>
+            </div>
+        </main>
 
-            <form id="quizForm">
-                <!-- Questions 1 à 10 (QCM) -->
-                <div class="question">
-                    <p>1. Que signifie IFAB ?</p>
-                    <label><input type="radio" name="q1" value="0"> Fédération Internationale de Football</label><br>
-                    <label><input type="radio" name="q1" value="1"> International Football Association Board</label><br>
-                    <label><input type="radio" name="q1" value="0"> Institut de Formation des Arbitres</label>
-                </div>
-
-                <div class="question">
-                    <p>2. Quelle est la durée standard d'un match de football ?</p>
-                    <label><input type="radio" name="q2" value="0"> 80 minutes</label><br>
-                    <label><input type="radio" name="q2" value="1"> 90 minutes</label><br>
-                    <label><input type="radio" name="q2" value="0"> 100 minutes</label>
-                </div>
-
-                <div class="question">
-                    <p>3. Quel est le rôle principal du milieu central ?</p>
-                    <label><input type="radio" name="q3" value="1"> Distribuer les passes et contrôler le tempo</label><br>
-                    <label><input type="radio" name="q3" value="0"> Marquer des buts</label><br>
-                    <label><input type="radio" name="q3" value="0"> Défendre uniquement</label>
-                </div>
-
-                <div class="question">
-                    <p>4. Que faire si un agent vous demande 500.000 FCFA avant de vous trouver un club ?</p>
-                    <label><input type="radio" name="q4" value="0"> Accepter et payer</label><br>
-                    <label><input type="radio" name="q4" value="1"> Refuser, c'est une arnaque</label><br>
-                    <label><input type="radio" name="q4" value="0"> Négocier</label>
-                </div>
-
-                <div class="question">
-                    <p>5. Combien d'heures de sommeil sont recommandées pour un joueur professionnel ?</p>
-                    <label><input type="radio" name="q5" value="0"> 5-6 heures</label><br>
-                    <label><input type="radio" name="q5" value="1"> 7-9 heures</label><br>
-                    <label><input type="radio" name="q5" value="0"> 10-12 heures</label>
-                </div>
-
-                <div class="question">
-                    <p>6. Quel système tactique utilise trois défenseurs centraux ?</p>
-                    <label><input type="radio" name="q6" value="0"> 4-4-2</label><br>
-                    <label><input type="radio" name="q6" value="1"> 3-5-2</label><br>
-                    <label><input type="radio" name="q6" value="0"> 4-3-3</label>
-                </div>
-
-                <div class="question">
-                    <p>7. Qu'est-ce qu'une clause résolutoire dans un contrat ?</p>
-                    <label><input type="radio" name="q7" value="1"> Permet de quitter le club si certains engagements ne sont pas tenus</label><br>
-                    <label><input type="radio" name="q7" value="0"> Une augmentation de salaire</label><br>
-                    <label><input type="radio" name="q7" value="0"> Une prolongation automatique</label>
-                </div>
-
-                <div class="question">
-                    <p>8. Comment identifier un faux agent ?</p>
-                    <label><input type="radio" name="q8" value="1"> Vérifier sa licence FIFA auprès de la fédération</label><br>
-                    <label><input type="radio" name="q8" value="0"> Lui faire confiance</label><br>
-                    <label><input type="radio" name="q8" value="0"> Payer une petite somme pour tester</label>
-                </div>
-
-                <div class="question">
-                    <p>9. Quelle est la priorité absolue pour un joueur selon le guide ?</p>
-                    <label><input type="radio" name="q9" value="1"> Préserver sa santé physique et mentale</label><br>
-                    <label><input type="radio" name="q9" value="0"> Gagner le maximum de matchs</label><br>
-                    <label><input type="radio" name="q9" value="0"> Devenir célèbre</label>
-                </div>
-
-                <div class="question">
-                    <p>10. En cas de douleur persistante après un entraînement, que faire ?</p>
-                    <label><input type="radio" name="q10" value="0"> Ignorer et continuer</label><br>
-                    <label><input type="radio" name="q10" value="1"> Consulter un médecin</label><br>
-                    <label><input type="radio" name="q10" value="0"> Prendre des antalgiques</label>
-                </div>
-
-                <!-- Questions rédactionnelles (11 et 12) -->
-                <div class="question-redaction">
-                    <p>11. Quel est votre club de rêve et pourquoi ? Pourquoi le sport vous intéresse-t-il ? Que pensez-vous du projet sport-études-métier ?</p>
-                    <p class="instruction">(Rédigez une réponse cohérente de 25 à 150 mots maximum)</p>
-                    <textarea id="q11" rows="6" placeholder="Votre réponse..." maxlength="1500"></textarea>
-                    <small class="word-count" id="q11-count">0 mots</small>
-                </div>
-
-                <div class="question-redaction">
-                    <p>12. Que pensez-vous du sport sur le plan économique, social et numérique ? En tant que passionné(e) de sport (précisez le type), quel est votre plan d'avenir pour après votre réussite vis-à-vis de votre entourage et de votre pays d'origine, une fois devenu professionnel ?</p>
-                    <p class="instruction">(Rédigez une réponse de 1500 mots maximum)</p>
-                    <textarea id="q12" rows="10" placeholder="Votre réponse..." maxlength="15000"></textarea>
-                    <small class="word-count" id="q12-count">0 mots</small>
-                </div>
-
-                <button type="submit" class="btn-submit">Soumettre mon épreuve</button>
-            </form>
-        </div>
-    </main>
-
-    <footer>
-        <div class="compliance-badges">
-            <div class="badge-item">Conformité APDP Bénin</div>
-            <div class="badge-item">Règlementation FIFA</div>
-            <div class="badge-item">Double Projet Sport-Études</div>
-        </div>
-        <div class="contact-box">
-            <a href="tel:+2290197208188" class="contact-item">📞 +229 01 97 20 81 88</a>
-            <a href="mailto:contact@hubisoccer.com" class="contact-item">📧 hubisoccer@gmail.com</a>
-        </div>
-        <div class="legal">
-            <p><strong>HubISoccer - The Hub of Inspiration of Soccer</strong></p>
-            <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
-            <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
-        </div>
-    </footer>
+        <footer>
+            <!-- Ton footer -->
+        </footer>
+    </div>
 
     <script src="public/js/main.js"></script>
     <script src="public/js/epreuve.js"></script>
