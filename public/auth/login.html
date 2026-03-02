@@ -18,6 +18,7 @@
         .auth-footer { text-align: center; margin-top: 20px; }
         .auth-footer a { color: var(--gold); text-decoration: none; }
     </style>
+    <!-- Inclusion de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -38,6 +39,27 @@
             <p>Pas encore de compte ? <a href="signup.html">Inscrivez-vous</a></p>
         </div>
     </div>
-    <script src="../js/auth.js"></script>
+
+    <script>
+        // Configuration Supabase
+        const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                alert('Erreur de connexion : ' + error.message);
+            } else {
+                // Redirection vers le dashboard joueur (chemin relatif correct)
+                window.location.href = '../../players/dashboard.html';
+            }
+        });
+    </script>
 </body>
 </html>
