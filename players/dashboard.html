@@ -6,8 +6,9 @@
     <title>Dashboard Joueur | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles globaux et spécifiques -->
+    <!-- Styles globaux (publics) -->
     <link rel="stylesheet" href="../public/css/style.css">
+    <!-- Styles spécifiques au dashboard -->
     <link rel="stylesheet" href="css/dashboard.css">
     <!-- Supabase JS (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -16,7 +17,7 @@
     <!-- Navbar -->
     <nav class="dashboard-nav">
         <div class="nav-left">
-            <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../../index.html'">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="dashboard-title">Espace Joueur</span>
         </div>
         <div class="nav-right">
@@ -31,7 +32,7 @@
                 <div class="user-dropdown" id="userDropdown">
                     <a href="edit-cv.html">Mon profil</a>
                     <a href="support.html">Paramètres</a>
-                    <a href="#" id="languageLink">Langue (Français)</a> <!-- Non fonctionnel -->
+                    <a href="#" id="languageLink">Langue (Français)</a>
                     <a href="#" id="logoutLink">Déconnexion</a>
                 </div>
             </div>
@@ -49,17 +50,17 @@
         </div>
         <nav class="sidebar-nav">
             <a href="dashboard.html" class="active"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
-            <a href="/players/feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
-            <a href="/players/verification.html"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
-            <a href="/players/edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV Pro</a>
-            <a href="/players/certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
-            <a href="/players/tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournoi (Live)</a>
-            <a href="/players/transfers.html"><i class="fas fa-exchange-alt"></i> Historique Transferts</a>
+            <a href="feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
+            <a href="verification.html"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
+            <a href="edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV Pro</a>
+            <a href="certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
+            <a href="tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournoi (Live)</a>
+            <a href="transfers.html"><i class="fas fa-exchange-alt"></i> Historique Transferts</a>
             <hr>
-            <a href="/players/videos.html"><i class="fas fa-video"></i> Mes Vidéos</a>
-            <a href="/players/revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
-            <a href="/players/messages.html"><i class="fas fa-envelope"></i> Messages</a>
-            <a href="/players/support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="videos.html"><i class="fas fa-video"></i> Mes Vidéos</a>
+            <a href="revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
+            <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
+            <a href="support.html"><i class="fas fa-headset"></i> Support</a>
             <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
         </nav>
     </div>
@@ -71,7 +72,7 @@
             <!-- Profil card (gauche) -->
             <aside class="glass-card profile-card">
                 <div class="avatar-upload" onclick="triggerUpload()">
-                    <img src="/players/img/user-default.jpg" id="profileDisplay" alt="Avatar">
+                    <img src="img/user-default.jpg" id="profileDisplay" alt="Avatar">
                     <div class="edit-badge">✎</div>
                     <input type="file" id="fileInput" style="display:none;" accept="image/*">
                 </div>
@@ -82,7 +83,7 @@
                     <span class="icon-copy">📋</span>
                 </div>
                 <div class="stats-mini-btn">
-                    <button class="mini-btn" onclick="location.href='/players/verification.html'">
+                    <button class="mini-btn" onclick="location.href='verification.html'">
                         <span class="icon">📈</span> <b id="profileCompletion">0</b>% Profil Complété
                     </button>
                     <button class="mini-btn" onclick="#">
@@ -92,7 +93,7 @@
                         <span class="icon">⭐</span> <b id="recruiterFavs">0</b> Favoris Recruteurs
                     </button>
                 </div>
-                <a href="/players/edit-cv.html" class="btn-download-cv">TÉLÉCHARGER MON CV PDF</a>
+                <a href="edit-cv.html" class="btn-download-cv">TÉLÉCHARGER MON CV PDF</a>
             </aside>
 
             <!-- Panneau principal (droite) -->
