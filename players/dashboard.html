@@ -6,11 +6,11 @@
     <title>Dashboard Joueur | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles globaux (publics) -->
+    <!-- Styles globaux -->
     <link rel="stylesheet" href="../public/css/style.css">
-    <!-- Styles spécifiques au dashboard -->
+    <!-- Styles dashboard -->
     <link rel="stylesheet" href="css/dashboard.css">
-    <!-- Supabase JS (CDN) -->
+    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -69,7 +69,7 @@
     <!-- Contenu principal -->
     <main class="dashboard-main">
         <div class="dashboard-container">
-            <!-- Profil card (gauche) -->
+            <!-- Profil card -->
             <aside class="glass-card profile-card">
                 <div class="avatar-upload" onclick="triggerUpload()">
                     <img src="img/user-default.jpg" id="profileDisplay" alt="Avatar">
@@ -96,7 +96,7 @@
                 <a href="edit-cv.html" class="btn-download-cv">TÉLÉCHARGER MON CV PDF</a>
             </aside>
 
-            <!-- Panneau principal (droite) -->
+            <!-- Panneau principal -->
             <main class="main-panel">
                 <div class="evolution-box">
                     <div class="evolution-header">
@@ -128,9 +128,9 @@
                 </div>
 
                 <div class="tab-nav">
-                    <button class="tab-btn active" onclick="showTab('edit')">Édition Profil</button>
-                    <button class="tab-btn" onclick="showTab('stats')">Performances Data</button>
-                    <button class="tab-btn" onclick="showTab('videos')">Vidéos Highlights</button>
+                    <button class="tab-btn active" onclick="showTab('edit', event)">Édition Profil</button>
+                    <button class="tab-btn" onclick="showTab('stats', event)">Performances Data</button>
+                    <button class="tab-btn" onclick="showTab('videos', event)">Vidéos Highlights</button>
                 </div>
 
                 <!-- Onglet Édition Profil -->
@@ -178,12 +178,12 @@
                     </div>
                 </div>
 
-                <!-- Onglet Performances (placeholder) -->
+                <!-- Onglet Performances -->
                 <div id="tab-stats" class="tab-content">
                     <p>Graphiques et statistiques détaillées à venir...</p>
                 </div>
 
-                <!-- Onglet Vidéos (placeholder) -->
+                <!-- Onglet Vidéos -->
                 <div id="tab-videos" class="tab-content">
                     <p>Vos vidéos de matchs et entraînements apparaîtront ici.</p>
                 </div>
