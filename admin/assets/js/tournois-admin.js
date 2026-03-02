@@ -28,6 +28,7 @@ const tournoiCode = document.getElementById('tournoiCode');
 const tournoiImage = document.getElementById('tournoiImage');
 const tournoiBadge = document.getElementById('tournoiBadge');
 const tournoiPrix = document.getElementById('tournoiPrix');
+const tournoiPaymentLink = document.getElementById('tournoiPaymentLink'); // nouveau champ
 
 // ===== GESTION DES LIVES =====
 async function loadLives() {
@@ -150,6 +151,7 @@ async function loadTournois() {
                     </div>
                     <div class="meta">
                         <span><i class="fas fa-tag"></i> ${t.code}</span>
+                        ${t.payment_link ? '<span><i class="fas fa-link"></i> Lien de paiement</span>' : ''}
                     </div>
                 </div>
                 <div class="actions">
@@ -174,6 +176,7 @@ function openAddTournoiModal() {
     tournoiImage.value = '';
     tournoiBadge.value = 'À venir';
     tournoiPrix.value = 0;
+    tournoiPaymentLink.value = '';
     tournoiModal.classList.add('active');
 }
 
@@ -195,6 +198,7 @@ window.editTournoi = async (id) => {
     tournoiImage.value = tournoi.image;
     tournoiBadge.value = tournoi.badge;
     tournoiPrix.value = tournoi.prix || 0;
+    tournoiPaymentLink.value = tournoi.payment_link || '';
     tournoiModal.classList.add('active');
 };
 
@@ -221,7 +225,8 @@ tournoiForm.addEventListener('submit', async (e) => {
         code: tournoiCode.value,
         image: tournoiImage.value,
         badge: tournoiBadge.value,
-        prix: parseInt(tournoiPrix.value) || 0
+        prix: parseInt(tournoiPrix.value) || 0,
+        payment_link: tournoiPaymentLink.value || null
     };
 
     if (id === '') {
