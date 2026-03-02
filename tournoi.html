@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="public/css/style.css">
     <link rel="stylesheet" href="public/css/tournoi.css">
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <nav>
@@ -21,7 +23,25 @@
                 <option value="yo">🇳🇬 Yoruba</option>
                 <option value="fon">🇧🇯 Fon</option>
                 <option value="mina">🇹🇬 Mina</option>
-                <!-- autres langues -->
+                <option value="lin">🇨🇬 Lingala</option>
+                <option value="wol">🇸🇳 Wolof</option>
+                <option value="diou">🇨🇮 Dioula</option>
+                <option value="ha">🇳🇬 Hausa</option>
+                <option value="sw">🇰🇪 Kiswahili</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="pt">🇵🇹 Português</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="ar">🇸🇦 العربية</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="ja">🇯🇵 日本語</option>
+                <option value="tr">🇹🇷 Türkçe</option>
+                <option value="ko">🇰🇷 한국어</option>
+                <option value="hi">🇮🇳 हिन्दी</option>
+                <option value="nl">🇳🇱 Nederlands</option>
+                <option value="pl">🇵🇱 Polski</option>
+                <option value="vi">🇻🇳 Tiếng Việt</option>
             </select>
             <button class="menu-toggle" id="menuToggle">
                 <span></span><span></span><span></span>
@@ -36,7 +56,7 @@
                 <a href="hub-community.html">Community</a>
                 <a href="e-marketing-hubisoccer.html">Market</a>
                 <a href="public/auth/login.html" class="btn-auth">Connexion</a>
-                <a href="public/auth/signup.html" class="btn-auth gold">Inscription</a>
+                <a href="public/auth/signup.html" class="btn-auth gold">S'inscrire</a>
             </div>
         </div>
     </nav>
@@ -48,9 +68,9 @@
             <p class="subtitle">L'arène où naissent les futures légendes du football mondial.</p>
         </header>
 
-        <!-- Section Lives -->
-        <section class="live-section">
-            <h2><i class="fas fa-broadcast-tower"></i> Lives en direct</h2>
+        <!-- Section Live (affichée s'il y a un live actif) -->
+        <section class="live-section" id="liveSection">
+            <h2><i class="fas fa-broadcast-tower"></i> Live en direct</h2>
             <div id="liveContainer" class="live-container">
                 <!-- Injecté par JS -->
             </div>
@@ -60,7 +80,7 @@
         <section class="tournois-section">
             <h2><i class="fas fa-trophy"></i> Tournois à venir</h2>
             <div class="tournoi-grid" id="tournoiGrid">
-                <!-- Tournois statiques -->
+                <!-- Tournois statiques (peuvent être chargés depuis la base si besoin) -->
                 <div class="tournoi-card">
                     <div class="card-image">
                         <img src="public/img/tou1.jpg" alt="Tournoi Cotonou">
@@ -83,50 +103,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="tournoi-card">
-                    <div class="card-image">
-                        <img src="public/img/tou2.jpg" alt="Tournoi Parakou">
-                        <div class="card-badge">Bientôt</div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Parakou Youth Cup 2026</h3>
-                        <p class="tournoi-desc">Un tournoi dédié aux jeunes espoirs du football. Détection par des scouts européens.</p>
-                        <div class="tournoi-meta">
-                            <span><i class="fas fa-calendar-alt"></i> 10-15 Avril 2026</span>
-                            <span><i class="fas fa-map-marker-alt"></i> Stade Municipal, Parakou</span>
-                            <span><i class="fas fa-users"></i> U15 & U17</span>
-                        </div>
-                        <div class="tournoi-code">
-                            <span class="code-label">Code d'inscription :</span>
-                            <div class="code-box">
-                                <span class="code">PARAKOU2026</span>
-                                <button class="copy-btn" data-code="PARAKOU2026"><i class="fas fa-copy"></i> Copier</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="tournoi-card">
-                    <div class="card-image">
-                        <img src="public/img/tou3.jpg" alt="Tournoi Elite">
-                        <div class="card-badge">Complet</div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Benin Elite Showcase</h3>
-                        <p class="tournoi-desc">Le rendez-vous des meilleurs talents béninois. Avec la participation de clubs professionnels.</p>
-                        <div class="tournoi-meta">
-                            <span><i class="fas fa-calendar-alt"></i> 5-10 Mai 2026</span>
-                            <span><i class="fas fa-map-marker-alt"></i> Complexe Sportif, Porto-Novo</span>
-                            <span><i class="fas fa-users"></i> 18-23 ans</span>
-                        </div>
-                        <div class="tournoi-code">
-                            <span class="code-label">Code d'inscription :</span>
-                            <div class="code-box">
-                                <span class="code">ELITE2026</span>
-                                <button class="copy-btn" data-code="ELITE2026"><i class="fas fa-copy"></i> Copier</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- ... autres tournois (peuvent être dynamiques) -->
             </div>
         </section>
 
