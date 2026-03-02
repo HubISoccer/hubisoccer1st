@@ -1,45 +1,21 @@
-// ===== GESTION DE SESSION (copie depuis auth.js) =====
-function getSession() {
-    const sessionStr = sessionStorage.getItem('hubiSession');
-    if (!sessionStr) return null;
-    try {
-        const session = JSON.parse(sessionStr);
-        const now = Date.now();
-        if (now - session.lastActivity > 3600000) { // 1 heure
-            sessionStorage.removeItem('hubiSession');
-            return null;
-        }
-        session.lastActivity = now;
-        sessionStorage.setItem('hubiSession', JSON.stringify(session));
-        return session;
-    } catch (e) {
-        return null;
-    }
-}
-
-function requireAuth() {
-    const session = getSession();
-    if (!session) {
-        sessionStorage.setItem('redirectAfterLogin', window.location.href);
-        window.location.href = '/players/auth/login.html';
-        return false;
-    }
-    return session;
-}
+// ===== DONNÉES UTILISATEUR SIMULÉES (en attendant l'auth) =====
+const fakeUser = {
+    userName: 'Koffi B. SOGLO',
+    userId: '266HU028BIBJ16022026',
+    userRole: 'Ailier Droit - U17'
+};
 
 // ===== CHARGEMENT DES DONNÉES UTILISATEUR =====
 function loadUserData() {
-    const session = getSession();
-    if (!session) return;
     const nameElement = document.getElementById('dashboardName');
     const idElement = document.getElementById('playerID');
     const roleElement = document.getElementById('dashboardRole');
     const userName = document.getElementById('userName');
 
-    if (nameElement) nameElement.textContent = session.userName || 'Koffi B. SOGLO';
-    if (idElement) idElement.innerHTML = `ID: ${session.userId || '266HU028BIBJ16022026'}`;
-    if (roleElement) roleElement.textContent = session.userRole || 'Ailier Droit - U17';
-    if (userName) userName.textContent = session.userName || 'Koffi B. SOGLO';
+    if (nameElement) nameElement.textContent = fakeUser.userName;
+    if (idElement) idElement.innerHTML = `ID: ${fakeUser.userId}`;
+    if (roleElement) roleElement.textContent = fakeUser.userRole;
+    if (userName) userName.textContent = fakeUser.userName;
 }
 
 // ===== GESTION DU MENU UTILISATEUR =====
@@ -47,10 +23,12 @@ function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
     if (!userMenu || !dropdown) return;
+
     userMenu.addEventListener('click', (e) => {
         e.stopPropagation();
         dropdown.classList.toggle('show');
     });
+
     document.addEventListener('click', () => {
         dropdown.classList.remove('show');
     });
@@ -69,12 +47,14 @@ function initSidebar() {
             if (overlay) overlay.classList.add('active');
         });
     }
+
     if (closeBtn && sidebar) {
         closeBtn.addEventListener('click', () => {
             sidebar.classList.remove('active');
             if (overlay) overlay.classList.remove('active');
         });
     }
+
     if (overlay) {
         overlay.addEventListener('click', () => {
             sidebar.classList.remove('active');
@@ -83,13 +63,12 @@ function initSidebar() {
     }
 }
 
-// ===== DÉCONNEXION =====
+// ===== DÉCONNEXION SIMULÉE (redirige vers l'accueil) =====
 function initLogout() {
     const logoutLinks = document.querySelectorAll('#logoutLink, #logoutLinkSidebar');
     logoutLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            sessionStorage.removeItem('hubiSession');
             window.location.href = '/index.html';
         });
     });
@@ -123,6 +102,8 @@ function copyID(text) {
             span.innerText = "Copié ! ✅";
             setTimeout(() => span.innerText = oldText, 2000);
         }
+    }).catch(() => {
+        alert('Erreur de copie. Veuillez copier manuellement.');
     });
 }
 
@@ -131,6 +112,7 @@ function showTab(tabName) {
     const tabs = document.querySelectorAll('.tab-btn');
     const contents = document.querySelectorAll('.tab-content');
     if (tabs.length === 0 || contents.length === 0) return;
+
     tabs.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
     contents.forEach(content => content.classList.remove('active'));
@@ -144,11 +126,11 @@ function saveProfile() {
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', () => {
-    if (!requireAuth()) return;
     loadUserData();
     initUserMenu();
     initSidebar();
     initLogout();
+
     // Exposer les fonctions globales
     window.triggerUpload = triggerUpload;
     window.copyID = copyID;
