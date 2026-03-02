@@ -66,8 +66,7 @@
     color: var(--gold);
 }
 
-.tournois-page .btn-add,
-.tournois-page .btn-edit-live {
+.tournois-page .btn-add {
     background: var(--primary);
     color: white;
     border: none;
@@ -82,40 +81,12 @@
     font-size: 1rem;
     box-shadow: 0 4px 10px rgba(85,27,140,0.2);
 }
-.tournois-page .btn-add:hover,
-.tournois-page .btn-edit-live:hover {
+.tournois-page .btn-add:hover {
     background: var(--primary-light);
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(85,27,140,0.3);
 }
-.tournois-page .btn-edit-live {
-    background: #17a2b8;
-}
-.tournois-page .btn-edit-live:hover {
-    background: #138496;
-}
 
-/* Affichage des infos live */
-.tournois-page .live-info-display {
-    background: #f8fafc;
-    border-radius: 12px;
-    padding: 20px;
-    border-left: 5px solid var(--gold);
-}
-.tournois-page .live-info-display p {
-    margin: 8px 0;
-    font-size: 1rem;
-}
-.tournois-page .live-info-display .live-active {
-    color: #28a745;
-    font-weight: 600;
-}
-.tournois-page .live-info-display .live-inactive {
-    color: #dc3545;
-    font-weight: 600;
-}
-
-/* Liste des tournois */
 .tournois-page .admin-list {
     display: flex;
     flex-direction: column;
@@ -162,6 +133,17 @@
     padding: 3px 10px;
     border-radius: 20px;
     border: 1px solid var(--light-gray);
+}
+.tournois-page .list-item .info .meta {
+    color: var(--dark);
+    font-size: 0.85rem;
+    margin-top: 8px;
+    display: flex;
+    gap: 15px;
+}
+.tournois-page .list-item .info .meta i {
+    color: var(--gold);
+    margin-right: 3px;
 }
 .tournois-page .list-item .badge {
     display: inline-block;
