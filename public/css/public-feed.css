@@ -302,4 +302,11 @@
         margin-left: 20px;
         flex-direction: column;
     }
+    .comment-main {
+        flex-wrap: wrap;
+    }
+    .comment-main img {
+        width: 30px;
+        height: 30px;
+    }
 }
