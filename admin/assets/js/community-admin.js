@@ -2,28 +2,15 @@
 
 // Vérification que le CDN Supabase est chargé
 if (typeof window.supabase === 'undefined') {
-    console.error('❌ ERREUR CRITIQUE : Le CDN Supabase n\'est pas chargé. Vérifiez que la balise <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> est présente dans le HTML avant ce script.');
+    console.error('❌ ERREUR CRITIQUE : Le CDN Supabase n\'est pas chargé. Vérifiez la balise script.');
 } else {
-    console.log('✅ CDN Supabase chargé avec succès.');
+    console.log('✅ CDN Supabase chargé.');
 }
 
 // Configuration Supabase
 const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-
-// Création du client (en utilisant la variable globale window.supabase)
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-// Test rapide de connexion (optionnel)
-(async () => {
-    try {
-        const { error } = await supabaseClient.from('posts').select('id').limit(1);
-        if (error) throw error;
-        console.log('✅ Connexion à Supabase établie.');
-    } catch (e) {
-        console.error('❌ Échec de connexion à Supabase :', e.message);
-    }
-})();
 
 // Éléments DOM
 const postsList = document.getElementById('postsList');
@@ -34,6 +21,29 @@ const itemForm = document.getElementById('itemForm');
 const itemType = document.getElementById('itemType');
 const itemId = document.getElementById('itemId');
 const dynamicFields = document.getElementById('dynamicFields');
+
+// ===== CHARGEMENT DES UTILISATEURS (pour les selects) =====
+async function loadUsers() {
+    const { data: users, error } = await supabaseClient
+        .from('users')
+        .select('id, nom')
+        .order('nom');
+    if (error) {
+        console.error('Erreur chargement utilisateurs:', error);
+        return [];
+    }
+    return users || [];
+}
+
+// ===== GÉNÉRATION DU SELECT UTILISATEUR =====
+function generateUserSelect(users, selectedId = null) {
+    let options = '<option value="">Sélectionnez un utilisateur</option>';
+    users.forEach(u => {
+        const selected = (u.id == selectedId) ? 'selected' : '';
+        options += `<option value="${u.id}" ${selected}>${u.nom} (ID: ${u.id})</option>`;
+    });
+    return `<select id="userId" required class="form-control">${options}</select>`;
+}
 
 // ===== CHARGEMENT DES POSTS =====
 async function loadPosts() {
@@ -113,12 +123,20 @@ async function loadComments() {
 }
 
 // ===== OUVERTURE MODALE AJOUT POST =====
-function openAddPostModal() {
+async function openAddPostModal() {
+    const users = await loadUsers();
+    if (users.length === 0) {
+        alert('Aucun utilisateur trouvé. Veuillez d\'abord créer un utilisateur.');
+        return;
+    }
     itemType.value = 'post';
     itemId.value = '';
     modalTitle.textContent = 'Ajouter un post';
     dynamicFields.innerHTML = `
-        <div class="form-group"><label>Auteur (ID utilisateur)</label><input type="number" id="userId" required></div>
+        <div class="form-group">
+            <label>Auteur</label>
+            ${generateUserSelect(users)}
+        </div>
         <div class="form-group"><label>Contenu</label><textarea id="content" rows="4" required></textarea></div>
         <div class="form-group"><label>Média (JSON, optionnel)</label><input type="text" id="media" placeholder='{"type":"image","url":"..."}'></div>
     `;
@@ -126,13 +144,21 @@ function openAddPostModal() {
 }
 
 // ===== OUVERTURE MODALE AJOUT COMMENTAIRE =====
-function openAddCommentModal() {
+async function openAddCommentModal() {
+    const users = await loadUsers();
+    if (users.length === 0) {
+        alert('Aucun utilisateur trouvé. Veuillez d\'abord créer un utilisateur.');
+        return;
+    }
     itemType.value = 'comment';
     itemId.value = '';
     modalTitle.textContent = 'Ajouter un commentaire';
     dynamicFields.innerHTML = `
         <div class="form-group"><label>Post ID</label><input type="number" id="postId" required></div>
-        <div class="form-group"><label>Auteur (ID utilisateur)</label><input type="number" id="userId" required></div>
+        <div class="form-group">
+            <label>Auteur</label>
+            ${generateUserSelect(users)}
+        </div>
         <div class="form-group"><label>Contenu</label><textarea id="content" rows="3" required></textarea></div>
         <div class="form-group"><label>Parent ID (pour répondre)</label><input type="number" id="parentId" placeholder="Optionnel"></div>
     `;
@@ -152,11 +178,15 @@ window.editPost = async (postId) => {
         return;
     }
 
+    const users = await loadUsers();
     itemType.value = 'post';
     itemId.value = postId;
     modalTitle.textContent = 'Modifier un post';
     dynamicFields.innerHTML = `
-        <div class="form-group"><label>Auteur (ID utilisateur)</label><input type="number" id="userId" value="${post.user_id}" required></div>
+        <div class="form-group">
+            <label>Auteur</label>
+            ${generateUserSelect(users, post.user_id)}
+        </div>
         <div class="form-group"><label>Contenu</label><textarea id="content" rows="4" required>${post.content}</textarea></div>
         <div class="form-group"><label>Média (JSON)</label><input type="text" id="media" value='${JSON.stringify(post.media_url) || ''}'></div>
     `;
@@ -176,12 +206,16 @@ window.editComment = async (commentId) => {
         return;
     }
 
+    const users = await loadUsers();
     itemType.value = 'comment';
     itemId.value = commentId;
     modalTitle.textContent = 'Modifier un commentaire';
     dynamicFields.innerHTML = `
         <div class="form-group"><label>Post ID</label><input type="number" id="postId" value="${comment.post_id}" required></div>
-        <div class="form-group"><label>Auteur (ID utilisateur)</label><input type="number" id="userId" value="${comment.user_id}" required></div>
+        <div class="form-group">
+            <label>Auteur</label>
+            ${generateUserSelect(users, comment.user_id)}
+        </div>
         <div class="form-group"><label>Contenu</label><textarea id="content" rows="3" required>${comment.content}</textarea></div>
         <div class="form-group"><label>Parent ID</label><input type="number" id="parentId" value="${comment.parent_id || ''}"></div>
     `;
@@ -230,6 +264,11 @@ itemForm.addEventListener('submit', async (e) => {
     const userId = document.getElementById('userId')?.value;
     const content = document.getElementById('content')?.value;
 
+    if (!userId) {
+        alert('Veuillez sélectionner un utilisateur.');
+        return;
+    }
+
     if (type === 'post') {
         const media = document.getElementById('media')?.value;
         let mediaUrl = null;
@@ -275,6 +314,11 @@ itemForm.addEventListener('submit', async (e) => {
         const postId = document.getElementById('postId')?.value;
         const parentId = document.getElementById('parentId')?.value || null;
 
+        if (!postId) {
+            alert('Veuillez renseigner un Post ID.');
+            return;
+        }
+
         if (id === '') {
             // Ajout
             const { error } = await supabaseClient
@@ -309,8 +353,8 @@ itemForm.addEventListener('submit', async (e) => {
 });
 
 // ===== BOUTONS D'AJOUT =====
-document.getElementById('addPostBtn').addEventListener('click', openAddPostModal);
-document.getElementById('addCommentBtn').addEventListener('click', openAddCommentModal);
+document.getElementById('addPostBtn').addEventListener('click', () => openAddPostModal());
+document.getElementById('addCommentBtn').addEventListener('click', () => openAddCommentModal());
 
 // ===== DÉCONNEXION =====
 document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
