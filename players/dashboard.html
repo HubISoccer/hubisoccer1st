@@ -7,8 +7,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Styles globaux et spécifiques -->
-    <link rel="stylesheet" href="/public/css/style.css">
-    <link rel="stylesheet" href="/players/css/dashboard.css">
+    <link rel="stylesheet" href="../public/css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
     <!-- Supabase JS (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -16,7 +16,7 @@
     <!-- Navbar -->
     <nav class="dashboard-nav">
         <div class="nav-left">
-            <img src="/public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='/index.html'">
+            <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../../index.html'">
             <span class="dashboard-title">Espace Joueur</span>
         </div>
         <div class="nav-right">
@@ -25,12 +25,12 @@
                 <span class="notif-badge" id="notifBadge">0</span>
             </div>
             <div class="user-menu" id="userMenu">
-                <img src="/players/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
-                    <a href="/players/edit-cv.html">Mon profil</a>
-                    <a href="/players/support.html">Paramètres</a>
+                    <a href="edit-cv.html">Mon profil</a>
+                    <a href="support.html">Paramètres</a>
                     <a href="#" id="languageLink">Langue (Français)</a> <!-- Non fonctionnel -->
                     <a href="#" id="logoutLink">Déconnexion</a>
                 </div>
@@ -48,7 +48,7 @@
             <button class="close-sidebar" id="closeSidebar"><i class="fas fa-times"></i></button>
         </div>
         <nav class="sidebar-nav">
-            <a href="/players/dashboard.html" class="active"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+            <a href="dashboard.html" class="active"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
             <a href="/players/feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
             <a href="/players/verification.html"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
             <a href="/players/edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV Pro</a>
@@ -210,6 +210,6 @@
         </div>
     </footer>
 
-    <script src="/players/js/dashboard.js"></script>
+    <script src="js/dashboard.js"></script>
 </body>
 </html>
