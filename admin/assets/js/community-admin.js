@@ -1,7 +1,29 @@
-// Initialisation Supabase (avec un nom différent pour éviter le conflit)
+// ===== ADMIN COMMUNITY - GESTION DES POSTS ET COMMENTAIRES =====
+
+// Vérification que le CDN Supabase est chargé
+if (typeof window.supabase === 'undefined') {
+    console.error('❌ ERREUR CRITIQUE : Le CDN Supabase n\'est pas chargé. Vérifiez que la balise <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> est présente dans le HTML avant ce script.');
+} else {
+    console.log('✅ CDN Supabase chargé avec succès.');
+}
+
+// Configuration Supabase
 const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+
+// Création du client (en utilisant la variable globale window.supabase)
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+// Test rapide de connexion (optionnel)
+(async () => {
+    try {
+        const { error } = await supabaseClient.from('posts').select('id').limit(1);
+        if (error) throw error;
+        console.log('✅ Connexion à Supabase établie.');
+    } catch (e) {
+        console.error('❌ Échec de connexion à Supabase :', e.message);
+    }
+})();
 
 // Éléments DOM
 const postsList = document.getElementById('postsList');
@@ -26,12 +48,12 @@ async function loadPosts() {
 
     if (error) {
         console.error('Erreur chargement posts:', error);
-        postsList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        postsList.innerHTML = '<p class="no-data">Erreur de chargement : ' + error.message + '</p>';
         return;
     }
 
     let html = '';
-    posts.forEach((post, index) => {
+    posts.forEach((post) => {
         html += `
             <div class="list-item" data-id="${post.id}">
                 <div class="info">
@@ -67,12 +89,12 @@ async function loadComments() {
 
     if (error) {
         console.error('Erreur chargement commentaires:', error);
-        commentsList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        commentsList.innerHTML = '<p class="no-data">Erreur de chargement : ' + error.message + '</p>';
         return;
     }
 
     let html = '';
-    comments.forEach((comment, index) => {
+    comments.forEach((comment) => {
         html += `
             <div class="list-item" data-id="${comment.id}">
                 <div class="info">
@@ -125,7 +147,10 @@ window.editPost = async (postId) => {
         .eq('id', postId)
         .single();
 
-    if (error) return;
+    if (error) {
+        console.error('Erreur chargement post:', error);
+        return;
+    }
 
     itemType.value = 'post';
     itemId.value = postId;
@@ -146,7 +171,10 @@ window.editComment = async (commentId) => {
         .eq('id', commentId)
         .single();
 
-    if (error) return;
+    if (error) {
+        console.error('Erreur chargement commentaire:', error);
+        return;
+    }
 
     itemType.value = 'comment';
     itemId.value = commentId;
@@ -167,7 +195,12 @@ window.deletePost = async (postId) => {
         .from('posts')
         .delete()
         .eq('id', postId);
-    if (!error) loadPosts();
+    if (error) {
+        console.error('Erreur suppression:', error);
+        alert('Erreur : ' + error.message);
+    } else {
+        loadPosts();
+    }
 };
 
 window.deleteComment = async (commentId) => {
@@ -176,7 +209,12 @@ window.deleteComment = async (commentId) => {
         .from('comments')
         .delete()
         .eq('id', commentId);
-    if (!error) loadComments();
+    if (error) {
+        console.error('Erreur suppression:', error);
+        alert('Erreur : ' + error.message);
+    } else {
+        loadComments();
+    }
 };
 
 // ===== FERMETURE MODALE =====
@@ -194,8 +232,16 @@ itemForm.addEventListener('submit', async (e) => {
 
     if (type === 'post') {
         const media = document.getElementById('media')?.value;
-        const mediaUrl = media ? JSON.parse(media) : null;
-        
+        let mediaUrl = null;
+        if (media && media.trim() !== '') {
+            try {
+                mediaUrl = JSON.parse(media);
+            } catch (parseError) {
+                alert('Le format JSON du média est invalide.');
+                return;
+            }
+        }
+
         if (id === '') {
             // Ajout
             const { error } = await supabaseClient
@@ -205,6 +251,10 @@ itemForm.addEventListener('submit', async (e) => {
                     content: content,
                     media_url: mediaUrl
                 }]);
+            if (error) {
+                console.error('Erreur ajout post:', error);
+                alert('Erreur : ' + error.message);
+            }
         } else {
             // Modification
             const { error } = await supabaseClient
@@ -214,14 +264,19 @@ itemForm.addEventListener('submit', async (e) => {
                     media_url: mediaUrl
                 })
                 .eq('id', id);
+            if (error) {
+                console.error('Erreur modification post:', error);
+                alert('Erreur : ' + error.message);
+            }
         }
         closeModal();
         loadPosts();
     } else if (type === 'comment') {
         const postId = document.getElementById('postId')?.value;
         const parentId = document.getElementById('parentId')?.value || null;
-        
+
         if (id === '') {
+            // Ajout
             const { error } = await supabaseClient
                 .from('comments')
                 .insert([{
@@ -230,7 +285,12 @@ itemForm.addEventListener('submit', async (e) => {
                     content: content,
                     parent_id: parentId
                 }]);
+            if (error) {
+                console.error('Erreur ajout commentaire:', error);
+                alert('Erreur : ' + error.message);
+            }
         } else {
+            // Modification
             const { error } = await supabaseClient
                 .from('comments')
                 .update({
@@ -238,6 +298,10 @@ itemForm.addEventListener('submit', async (e) => {
                     parent_id: parentId
                 })
                 .eq('id', id);
+            if (error) {
+                console.error('Erreur modification commentaire:', error);
+                alert('Erreur : ' + error.message);
+            }
         }
         closeModal();
         loadComments();
