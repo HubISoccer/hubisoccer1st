@@ -2,20 +2,20 @@
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 
-// Initialisation du client Supabase
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Création du client (on utilise un nom différent pour éviter les conflits)
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
 let playerProfile = null;
-let avatarBucket = 'avatars'; // Nom du bucket à créer dans Supabase Storage
+const avatarBucket = 'avatars'; // Assurez-vous que ce bucket existe dans Supabase Storage
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const { data: { session }, error } = await supabaseClient.auth.getSession();
     if (error || !session) {
         // Rediriger vers la page de connexion
-        window.location.href = '/public/auth/login.html';
+        window.location.href = '../public/auth/login.html';
         return null;
     }
     currentUser = session.user;
@@ -26,8 +26,7 @@ async function checkSession() {
 async function loadPlayerProfile() {
     if (!currentUser) return;
 
-    // Chercher dans la table player_profiles (à adapter selon votre schéma)
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('player_profiles')
         .select('*')
         .eq('user_id', currentUser.id)
@@ -41,14 +40,20 @@ async function loadPlayerProfile() {
     if (data) {
         playerProfile = data;
     } else {
-        // Créer un profil par défaut si inexistant
-        const { data: newProfile, error: insertError } = await supabase
+        // Créer un profil par défaut
+        const { data: newProfile, error: insertError } = await supabaseClient
             .from('player_profiles')
-            .insert([{ 
+            .insert([{
                 user_id: currentUser.id,
                 full_name: currentUser.user_metadata?.full_name || 'Joueur',
-                hub_id: generateHubId(), // À définir selon votre logique
-                // autres champs par défaut...
+                hub_id: generateHubId(),
+                profile_completion: 0,
+                scouting_views: 0,
+                recruiter_favs: 0,
+                market_value: 0,
+                potential: 0,
+                offers_count: 0,
+                level: 0
             }])
             .select()
             .single();
@@ -60,11 +65,9 @@ async function loadPlayerProfile() {
         playerProfile = newProfile;
     }
 
-    // Mettre à jour l'interface
     updateUIWithProfile();
 }
 
-// Génération d'un ID Hub (exemple simple)
 function generateHubId() {
     return 'HUB' + Date.now().toString(36).toUpperCase();
 }
@@ -73,17 +76,22 @@ function generateHubId() {
 function updateUIWithProfile() {
     if (!playerProfile) return;
 
-    // Éléments du profil
     setText('dashboardName', playerProfile.full_name || '-');
     setText('dashboardRole', playerProfile.position || '-');
     setText('playerID', `ID: ${playerProfile.hub_id || '-'}`);
     setText('userName', playerProfile.full_name || 'Joueur');
+
+    // Avatar
     if (playerProfile.avatar_url) {
         document.getElementById('profileDisplay').src = playerProfile.avatar_url;
         document.getElementById('userAvatar').src = playerProfile.avatar_url;
+    } else {
+        // Images par défaut (relatives)
+        document.getElementById('profileDisplay').src = 'img/user-default.jpg';
+        document.getElementById('userAvatar').src = 'img/user-default.jpg';
     }
 
-    // Stats (à ajuster selon vos colonnes)
+    // Statistiques
     setText('profileCompletion', playerProfile.profile_completion || 0);
     setText('scoutingViews', playerProfile.scouting_views || 0);
     setText('recruiterFavs', playerProfile.recruiter_favs || 0);
@@ -131,7 +139,6 @@ async function saveProfile() {
     if (!currentUser || !playerProfile) return;
 
     const updates = {
-        full_name: playerProfile.full_name, // inchangé
         position: document.getElementById('editPoste').value,
         club: document.getElementById('editClub').value,
         height: parseInt(document.getElementById('editTaille').value) || null,
@@ -140,8 +147,7 @@ async function saveProfile() {
         updated_at: new Date()
     };
 
-    // Mise à jour dans Supabase
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('player_profiles')
         .update(updates)
         .eq('id', playerProfile.id);
@@ -150,7 +156,6 @@ async function saveProfile() {
         alert('Erreur lors de la sauvegarde : ' + error.message);
     } else {
         alert('Profil mis à jour avec succès !');
-        // Recharger les données
         Object.assign(playerProfile, updates);
         updateUIWithProfile();
     }
@@ -162,51 +167,43 @@ async function uploadAvatar(file) {
 
     const fileExt = file.name.split('.').pop();
     const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
-    const filePath = `${fileName}`;
+    const filePath = fileName;
 
-    // Upload vers le bucket 'avatars'
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabaseClient.storage
         .from(avatarBucket)
         .upload(filePath, file);
 
     if (uploadError) {
         alert('Erreur upload : ' + uploadError.message);
-        return null;
+        return;
     }
 
-    // Récupérer l'URL publique
-    const { data: urlData } = supabase.storage
+    const { data: urlData } = supabaseClient.storage
         .from(avatarBucket)
         .getPublicUrl(filePath);
 
     const publicUrl = urlData.publicUrl;
 
-    // Mettre à jour le profil avec l'URL
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseClient
         .from('player_profiles')
         .update({ avatar_url: publicUrl })
         .eq('id', playerProfile.id);
 
     if (updateError) {
         alert('Erreur mise à jour avatar : ' + updateError.message);
-        return null;
+        return;
     }
 
-    // Mettre à jour l'affichage
     playerProfile.avatar_url = publicUrl;
     document.getElementById('profileDisplay').src = publicUrl;
     document.getElementById('userAvatar').src = publicUrl;
-
-    return publicUrl;
 }
 
 // ===== DÉCONNEXION =====
 async function logout() {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-        console.error('Erreur déconnexion:', error);
-    }
-    window.location.href = '/index.html';
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) console.error('Erreur déconnexion:', error);
+    window.location.href = '../index.html';
 }
 
 // ===== GESTIONNAIRES D'ÉVÉNEMENTS =====
@@ -217,9 +214,7 @@ function triggerUpload() {
 document.addEventListener('change', function(e) {
     if (e.target.matches('#fileInput')) {
         const file = e.target.files[0];
-        if (file) {
-            uploadAvatar(file);
-        }
+        if (file) uploadAvatar(file);
     }
 });
 
@@ -291,14 +286,13 @@ function initSidebar() {
         });
     }
 
-    // Swipe detection (optionnel)
+    // Swipe (optionnel)
     let touchStartX = 0;
-    let touchEndX = 0;
     document.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
     }, false);
     document.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
+        const touchEndX = e.changedTouches[0].screenX;
         const diff = touchEndX - touchStartX;
         const threshold = 50;
         if (diff > threshold && touchStartX < 50) {
@@ -313,18 +307,14 @@ function initSidebar() {
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    // Vérifier la session avant tout
     const user = await checkSession();
     if (!user) return;
 
-    // Charger le profil
     await loadPlayerProfile();
 
-    // Initialiser les composants UI
     initUserMenu();
     initSidebar();
 
-    // Gestion de la déconnexion
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
@@ -332,13 +322,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    // Lien langue (non fonctionnel)
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
         alert('Changement de langue bientôt disponible');
     });
 
-    // Exposer les fonctions globales nécessaires dans le HTML
+    // Exposer les fonctions globales
     window.triggerUpload = triggerUpload;
     window.copyID = copyID;
     window.showTab = showTab;
