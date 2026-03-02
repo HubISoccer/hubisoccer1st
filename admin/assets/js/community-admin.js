@@ -35,13 +35,14 @@ function generateUserSelect(users, selectedId = null) {
     return `<select id="userId" required class="form-control">${options}</select>`;
 }
 
-// ===== CHARGEMENT DES POSTS =====
+// ===== CHARGEMENT DES POSTS (avec toutes les stats) =====
 async function loadPosts() {
     const { data: posts, error } = await supabaseClient
         .from('posts')
         .select(`
             *,
-            users (nom)
+            users (nom),
+            comments (count)
         `)
         .order('created_at', { ascending: false });
 
@@ -60,6 +61,7 @@ async function loadPosts() {
                     <div class="details">${post.content.substring(0, 100)}...</div>
                     <div class="meta">
                         <span><i class="fas fa-thumbs-up"></i> ${post.likes_count || 0}</span>
+                        <span><i class="fas fa-thumbs-down"></i> ${post.dislikes || 0}</span>
                         <span><i class="fas fa-comment"></i> ${post.comments?.length || 0}</span>
                         <span><i class="fas fa-share"></i> ${post.shares || 0}</span>
                     </div>
