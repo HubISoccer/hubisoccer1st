@@ -2,7 +2,7 @@
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 
-// Création du client (on utilise un nom différent pour éviter les conflits)
+// Création du client (nom différent pour éviter les conflits)
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
@@ -14,7 +14,6 @@ const avatarBucket = 'avatars'; // Assurez-vous que ce bucket existe dans Supaba
 async function checkSession() {
     const { data: { session }, error } = await supabaseClient.auth.getSession();
     if (error || !session) {
-        // Rediriger vers la page de connexion
         window.location.href = '../public/auth/login.html';
         return null;
     }
@@ -86,7 +85,6 @@ function updateUIWithProfile() {
         document.getElementById('profileDisplay').src = playerProfile.avatar_url;
         document.getElementById('userAvatar').src = playerProfile.avatar_url;
     } else {
-        // Images par défaut (relatives)
         document.getElementById('profileDisplay').src = 'img/user-default.jpg';
         document.getElementById('userAvatar').src = 'img/user-default.jpg';
     }
@@ -258,7 +256,7 @@ function initUserMenu() {
     });
 }
 
-// ===== SIDEBAR =====
+// ===== SIDEBAR AVEC SWIPE AMÉLIORÉ =====
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
@@ -286,23 +284,30 @@ function initSidebar() {
         });
     }
 
-    // Swipe (optionnel)
+    // SWIPE : détection du toucher
     let touchStartX = 0;
+    let touchEndX = 0;
+    const swipeThreshold = 50;
+
     document.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
-    }, false);
+    }, { passive: true });
+
     document.addEventListener('touchend', (e) => {
-        const touchEndX = e.changedTouches[0].screenX;
+        touchEndX = e.changedTouches[0].screenX;
         const diff = touchEndX - touchStartX;
-        const threshold = 50;
-        if (diff > threshold && touchStartX < 50) {
+
+        // Swipe droite depuis le bord gauche
+        if (diff > swipeThreshold && touchStartX < 50) {
             sidebar.classList.add('active');
             if (overlay) overlay.classList.add('active');
-        } else if (diff < -threshold) {
+        }
+        // Swipe gauche
+        else if (diff < -swipeThreshold) {
             sidebar.classList.remove('active');
             if (overlay) overlay.classList.remove('active');
         }
-    }, false);
+    }, { passive: true });
 }
 
 // ===== INITIALISATION =====
