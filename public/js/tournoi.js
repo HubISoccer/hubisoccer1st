@@ -1,216 +1,261 @@
-// ===== GESTION DES LIVES =====
-// Données par défaut pour un live de démonstration
-const defaultLive = {
-    active: true,
-    title: "Détection en direct : Tournoi de Cotonou",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ", // Vidéo exemple
-    likes: 42,
-    dislikes: 3,
-    viewers: 156,
-    comments: [
-        {
-            id: 1,
-            author: "Koffi",
-            avatar: "public/img/user-default.jpg",
-            text: "Quel match incroyable !",
-            time: new Date(Date.now() - 3600000).toISOString()
-        },
-        {
-            id: 2,
-            author: "Aminata",
-            avatar: "public/img/user-default.jpg",
-            text: "Allez les jeunes !",
-            time: new Date(Date.now() - 1800000).toISOString()
-        }
-    ]
-};
+// public/js/tournoi.js
+console.log("✅ tournoi.js chargé");
 
-// Initialiser le live dans localStorage si absent
-if (!localStorage.getItem('live_data')) {
-    localStorage.setItem('live_data', JSON.stringify(defaultLive));
-}
+const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-// Éléments DOM
-const liveContainer = document.getElementById('liveContainer');
-let currentLive = JSON.parse(localStorage.getItem('live_data')) || defaultLive;
-let commentInterval;
+let currentLive = null;
+let currentUser = { nom: 'Visiteur', avatar: 'public/img/user-default.jpg' }; // À remplacer par vrai utilisateur plus tard
 
-// Fonction pour afficher le live
-function renderLive() {
-    if (!currentLive.active) {
-        liveContainer.innerHTML = '<div class="no-live"><i class="fas fa-video-slash"></i> Aucun live en cours pour le moment. Revenez plus tard !</div>';
+// ===== CHARGEMENT DU LIVE ACTIF =====
+async function loadLive() {
+    const { data: lives, error } = await supabaseClient
+        .from('lives')
+        .select('*')
+        .eq('actif', true)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+    if (error) {
+        console.error('Erreur chargement live:', error);
         return;
     }
 
-    // Trier les commentaires par date (plus récents en premier)
-    const comments = currentLive.comments.sort((a, b) => new Date(b.time) - new Date(a.time));
+    if (lives && lives.length > 0) {
+        currentLive = lives[0];
+        renderLive();
+    } else {
+        document.getElementById('liveContainer').innerHTML = '<div class="no-live"><i class="fas fa-video-slash"></i> Aucun live en cours pour le moment.</div>';
+    }
+}
 
-    let commentsHtml = '';
-    comments.forEach(c => {
-        const timeAgo = timeSince(new Date(c.time));
-        commentsHtml += `
-            <div class="chat-message">
-                <img src="${c.avatar}" alt="${c.author}" onerror="this.src='public/img/user-default.jpg'">
-                <div class="chat-content">
-                    <span class="chat-author">${c.author}</span>
-                    <span class="chat-text">${c.text}</span>
-                    <span class="chat-time">${timeAgo}</span>
-                </div>
-            </div>
-        `;
-    });
+// ===== RENDU DU LIVE AVEC CHAT =====
+async function renderLive() {
+    const container = document.getElementById('liveContainer');
+    if (!container || !currentLive) return;
 
-    const html = `
+    // Charger les commentaires avec leurs réponses
+    const { data: comments, error } = await supabaseClient
+        .from('live_comments')
+        .select('*')
+        .eq('live_id', currentLive.id)
+        .order('date', { ascending: true });
+
+    if (error) {
+        console.error('Erreur chargement commentaires:', error);
+    }
+
+    const commentsTree = buildCommentsTree(comments || []);
+
+    container.innerHTML = `
         <div class="live-card">
             <div class="live-video">
-                <iframe src="${currentLive.videoUrl}" allowfullscreen></iframe>
+                <iframe src="${currentLive.video_url}" allowfullscreen></iframe>
             </div>
             <div class="live-info">
-                <h3 class="live-title">${currentLive.title}</h3>
+                <h3 class="live-title">${currentLive.titre}</h3>
                 <div class="live-stats">
-                    <span><i class="fas fa-eye"></i> ${currentLive.viewers}</span>
-                    <span><i class="fas fa-thumbs-up"></i> ${currentLive.likes}</span>
-                    <span><i class="fas fa-thumbs-down"></i> ${currentLive.dislikes}</span>
-                    <span><i class="fas fa-comment"></i> ${currentLive.comments.length}</span>
+                    <span><i class="fas fa-eye"></i> ${currentLive.viewers || 0}</span>
+                    <span><i class="fas fa-thumbs-up"></i> ${currentLive.likes || 0}</span>
+                    <span><i class="fas fa-thumbs-down"></i> ${currentLive.dislikes || 0}</span>
+                    <span><i class="fas fa-comment"></i> ${comments?.length || 0}</span>
                 </div>
             </div>
             <div class="live-actions">
-                <button class="like-btn" id="liveLikeBtn"><i class="fas fa-thumbs-up"></i> J'aime (${currentLive.likes})</button>
-                <button class="dislike-btn" id="liveDislikeBtn"><i class="fas fa-thumbs-down"></i> Je n'aime pas (${currentLive.dislikes})</button>
-                <button class="share-btn" id="liveShareBtn"><i class="fas fa-share"></i> Partager</button>
+                <button class="live-like-btn"><i class="fas fa-thumbs-up"></i> J'aime</button>
+                <button class="live-dislike-btn"><i class="fas fa-thumbs-down"></i> Je n'aime pas</button>
+                <button class="live-share-btn"><i class="fas fa-share"></i> Partager</button>
             </div>
             <div class="live-chat">
                 <h3><i class="fas fa-comments"></i> Chat en direct</h3>
                 <div class="chat-messages" id="chatMessages">
-                    ${commentsHtml}
+                    ${renderComments(commentsTree)}
                 </div>
                 <div class="chat-input">
                     <input type="text" id="chatInput" placeholder="Votre message...">
-                    <button id="sendCommentBtn"><i class="fas fa-paper-plane"></i> Envoyer</button>
+                    <button id="sendChatBtn"><i class="fas fa-paper-plane"></i> Envoyer</button>
                 </div>
             </div>
         </div>
     `;
-    liveContainer.innerHTML = html;
 
-    // Re-attacher les événements après le rendu
     attachLiveEvents();
 }
 
-// Fonction pour attacher les événements du live
+function buildCommentsTree(comments) {
+    const map = {};
+    const roots = [];
+    comments.forEach(c => { c.replies = []; map[c.id] = c; });
+    comments.forEach(c => {
+        if (c.parent_id) map[c.parent_id]?.replies.push(c);
+        else roots.push(c);
+    });
+    return roots;
+}
+
+function renderComments(comments) {
+    let html = '';
+    comments.forEach(c => {
+        html += `
+            <div class="chat-message" data-id="${c.id}">
+                <img src="${c.avatar || 'public/img/user-default.jpg'}" alt="Avatar">
+                <div class="chat-content">
+                    <span class="chat-author">${c.auteur}</span>
+                    <span class="chat-text">${c.texte}</span>
+                    <span class="chat-time">${new Date(c.date).toLocaleTimeString()}</span>
+                </div>
+                <button class="reply-to-comment" data-id="${c.id}"><i class="fas fa-reply"></i></button>
+                ${renderReplies(c.replies)}
+            </div>
+        `;
+    });
+    return html;
+}
+
+function renderReplies(replies) {
+    if (!replies || replies.length === 0) return '';
+    let html = '<div class="child-comment">';
+    replies.forEach(r => {
+        html += `
+            <div class="chat-message" data-id="${r.id}">
+                <img src="${r.avatar || 'public/img/user-default.jpg'}" alt="Avatar">
+                <div class="chat-content">
+                    <span class="chat-author">${r.auteur}</span>
+                    <span class="chat-text">${r.texte}</span>
+                    <span class="chat-time">${new Date(r.date).toLocaleTimeString()}</span>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    return html;
+}
+
 function attachLiveEvents() {
-    const likeBtn = document.getElementById('liveLikeBtn');
-    const dislikeBtn = document.getElementById('liveDislikeBtn');
-    const shareBtn = document.getElementById('liveShareBtn');
-    const sendBtn = document.getElementById('sendCommentBtn');
+    const likeBtn = document.querySelector('.live-like-btn');
+    const dislikeBtn = document.querySelector('.live-dislike-btn');
+    const shareBtn = document.querySelector('.live-share-btn');
+    const sendBtn = document.getElementById('sendChatBtn');
     const chatInput = document.getElementById('chatInput');
     const chatMessages = document.getElementById('chatMessages');
 
     if (likeBtn) {
-        likeBtn.addEventListener('click', () => {
-            currentLive.likes++;
-            localStorage.setItem('live_data', JSON.stringify(currentLive));
-            renderLive();
+        likeBtn.addEventListener('click', async () => {
+            const { error } = await supabaseClient
+                .from('lives')
+                .update({ likes: currentLive.likes + 1 })
+                .eq('id', currentLive.id);
+            if (!error) {
+                currentLive.likes++;
+                document.querySelector('.live-stats span:nth-child(2)').innerHTML = `<i class="fas fa-thumbs-up"></i> ${currentLive.likes}`;
+            }
         });
     }
 
     if (dislikeBtn) {
-        dislikeBtn.addEventListener('click', () => {
-            currentLive.dislikes++;
-            localStorage.setItem('live_data', JSON.stringify(currentLive));
-            renderLive();
+        dislikeBtn.addEventListener('click', async () => {
+            const { error } = await supabaseClient
+                .from('lives')
+                .update({ dislikes: currentLive.dislikes + 1 })
+                .eq('id', currentLive.id);
+            if (!error) {
+                currentLive.dislikes++;
+                document.querySelector('.live-stats span:nth-child(3)').innerHTML = `<i class="fas fa-thumbs-down"></i> ${currentLive.dislikes}`;
+            }
         });
     }
 
     if (shareBtn) {
         shareBtn.addEventListener('click', () => {
-            const liveUrl = window.location.href;
-            navigator.clipboard.writeText(liveUrl).then(() => {
-                alert('Lien du live copié !');
-            });
+            const shareUrl = window.location.href;
+            navigator.clipboard?.writeText(shareUrl).then(() => alert('Lien copié !'));
         });
     }
 
     if (sendBtn && chatInput) {
-        sendBtn.addEventListener('click', () => {
-            const text = chatInput.value.trim();
-            if (text) {
-                const newComment = {
-                    id: Date.now(),
-                    author: "Visiteur",
-                    avatar: "public/img/user-default.jpg",
-                    text: text,
-                    time: new Date().toISOString()
-                };
-                currentLive.comments.push(newComment);
-                localStorage.setItem('live_data', JSON.stringify(currentLive));
-                chatInput.value = '';
-                renderLive();
-                // Scroll en bas du chat
-                setTimeout(() => {
-                    if (chatMessages) {
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }
-                }, 100);
-            }
+        sendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
         });
     }
+
+    // Répondre à un commentaire
+    document.querySelectorAll('.reply-to-comment').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const commentId = btn.dataset.id;
+            const form = document.createElement('div');
+            form.className = 'reply-form';
+            form.innerHTML = `
+                <input type="text" placeholder="Écrire une réponse...">
+                <button data-parent="${commentId}">Répondre</button>
+            `;
+            btn.closest('.chat-message').appendChild(form);
+            btn.style.display = 'none';
+        });
+    });
+
+    // Gestion des formulaires de réponse
+    document.addEventListener('click', async (e) => {
+        if (e.target.closest('.reply-form button')) {
+            e.preventDefault();
+            const form = e.target.closest('.reply-form');
+            const input = form.querySelector('input');
+            const parentId = e.target.dataset.parent;
+            const texte = input.value.trim();
+            if (!texte) return;
+
+            const { error } = await supabaseClient
+                .from('live_comments')
+                .insert([{
+                    live_id: currentLive.id,
+                    auteur: currentUser.nom,
+                    avatar: currentUser.avatar,
+                    texte: texte,
+                    parent_id: parentId
+                }]);
+            if (!error) {
+                form.remove();
+                // Recharger les commentaires
+                renderLive();
+            }
+        }
+    });
 }
 
-// Fonction pour mettre à jour le nombre de viewers aléatoirement (simulation)
-function updateViewers() {
-    if (currentLive.active) {
-        // Variation aléatoire entre -5 et +5
-        currentLive.viewers += Math.floor(Math.random() * 11) - 5;
-        if (currentLive.viewers < 0) currentLive.viewers = 0;
-        localStorage.setItem('live_data', JSON.stringify(currentLive));
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const texte = input.value.trim();
+    if (!texte) return;
+
+    const { error } = await supabaseClient
+        .from('live_comments')
+        .insert([{
+            live_id: currentLive.id,
+            auteur: currentUser.nom,
+            avatar: currentUser.avatar,
+            texte: texte
+        }]);
+    if (!error) {
+        input.value = '';
+        // Recharger les commentaires (on pourrait optimiser en ajoutant dynamiquement)
         renderLive();
     }
 }
 
-// Rafraîchir les données toutes les 10 secondes pour simuler le temps réel
-function startLiveUpdates() {
-    if (commentInterval) clearInterval(commentInterval);
-    commentInterval = setInterval(() => {
-        // Recharger depuis localStorage (au cas où d'autres onglets modifient)
-        currentLive = JSON.parse(localStorage.getItem('live_data')) || defaultLive;
-        updateViewers();
-    }, 10000);
-}
-
-// Fonction pour le temps relatif
-function timeSince(date) {
-    const seconds = Math.floor((new Date() - date) / 1000);
-    let interval = Math.floor(seconds / 3600);
-    if (interval >= 1) return `il y a ${interval} h`;
-    interval = Math.floor(seconds / 60);
-    if (interval >= 1) return `il y a ${interval} min`;
-    return `il y a ${Math.floor(seconds)} s`;
-}
-
-// Copie des codes de tournoi (fonction existante)
-function attachCopyButtons() {
-    const copyButtons = document.querySelectorAll('.copy-btn');
-    copyButtons.forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const code = this.getAttribute('data-code');
-            if (code) {
-                navigator.clipboard.writeText(code).then(() => {
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '<i class="fas fa-check"></i> Copié!';
-                    setTimeout(() => {
-                        this.innerHTML = originalText;
-                    }, 2000);
-                });
-            }
+// ===== COPIER LES CODES DES TOURNOIS =====
+document.addEventListener('click', (e) => {
+    const copyBtn = e.target.closest('.copy-btn');
+    if (copyBtn) {
+        const code = copyBtn.dataset.code;
+        navigator.clipboard?.writeText(code).then(() => {
+            const original = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i class="fas fa-check"></i> Copié!';
+            setTimeout(() => copyBtn.innerHTML = original, 2000);
         });
-    });
-}
-
-// Initialisation
-document.addEventListener('DOMContentLoaded', () => {
-    renderLive();
-    startLiveUpdates();
-    attachCopyButtons();
+    }
 });
+
+// ===== INITIALISATION =====
+loadLive();
