@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Joueur | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Styles globaux (publics) -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <!-- Styles spécifiques au dashboard -->
+    <link rel="stylesheet" href="/players/css/dashboard.css">
+</head>
+<body>
+    <!-- Navbar spécifique dashboard (à intégrer directement ou via include) -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="/assets/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='/index.html'">
+            <span class="dashboard-title">Espace Joueur</span>
+        </div>
+        <div class="nav-right">
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="/players/img/user-default.jpg" alt="Avatar" class="user-avatar">
+                <span class="user-name" id="userName">Koffi B. SOGLO</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="/players/edit-cv.html">Mon profil</a>
+                    <a href="/players/support.html">Paramètres</a>
+                    <a href="#" id="logoutLink">Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Menu Joueur</h3>
+            <button class="close-sidebar" id="closeSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/players/dashboard.html" class="active"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+            <a href="/players/feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
+            <a href="/players/verification.html"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
+            <a href="/players/edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV Pro</a>
+            <a href="/players/certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
+            <a href="/players/tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournoi (Live)</a>
+            <a href="/players/transfers.html"><i class="fas fa-exchange-alt"></i> Historique Transferts</a>
+            <hr>
+            <a href="/players/videos.html"><i class="fas fa-video"></i> Mes Vidéos</a>
+            <a href="/players/revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
+            <a href="/players/messages.html"><i class="fas fa-envelope"></i> Messages</a>
+            <a href="/players/support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Contenu principal -->
+    <main class="dashboard-main">
+        <div class="dashboard-container">
+            <!-- Profil card (gauche) -->
+            <aside class="glass-card profile-card">
+                <div class="avatar-upload" onclick="triggerUpload()">
+                    <img src="/players/img/user-default.jpg" id="profileDisplay" alt="Avatar">
+                    <div class="edit-badge">✎</div>
+                    <input type="file" id="fileInput" style="display:none;" accept="image/*">
+                </div>
+                <h2 id="dashboardName">Koffi B. SOGLO</h2>
+                <p class="role-badge" id="dashboardRole">Ailier Droit - U17</p>
+                <div class="id-copy-box" onclick="copyID('266HU028BIBJ16022026')">
+                    <span id="playerID">ID: 266HU028BIBJ16022026</span>
+                    <span class="icon-copy">📋</span>
+                </div>
+                <div class="stats-mini-btn">
+                    <button class="mini-btn" onclick="location.href='/players/verification.html'">
+                        <span class="icon">📈</span> <b>88%</b> Profil Complété
+                    </button>
+                    <button class="mini-btn" onclick="#">
+                        <span class="icon">👁️</span> <b>124</b> Vues Scouting
+                    </button>
+                    <button class="mini-btn" onclick="#">
+                        <span class="icon">⭐</span> <b>14</b> Favoris Recruteurs
+                    </button>
+                </div>
+                <a href="/players/edit-cv.html" class="btn-download-cv">TÉLÉCHARGER MON CV PDF</a>
+            </aside>
+
+            <!-- Panneau principal (droite) -->
+            <main class="main-panel">
+                <div class="evolution-box">
+                    <div class="evolution-header">
+                        <h3>ÉVOLUTION PERFORMANCE</h3>
+                        <span class="level-badge" id="level">LVL 17</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progressFill" style="width: 88%;"></div>
+                    </div>
+                    <p class="next-step" id="nextStep">Prochain palier : Détection Elite Europe (92%)</p>
+                </div>
+
+                <div class="stats-summary">
+                    <div class="stat-card">
+                        <button class="stat-btn" onclick="#">
+                            <b id="marketValue">1,8M</b><small>Valeur (FCFA)</small>
+                        </button>
+                    </div>
+                    <div class="stat-card">
+                        <button class="stat-btn" onclick="#">
+                            <b id="potential">88/100</b><small>Potentiel</small>
+                        </button>
+                    </div>
+                    <div class="stat-card">
+                        <button class="stat-btn" onclick="#">
+                            <b id="offers">12</b><small>Offres reçues</small>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="tab-nav">
+                    <button class="tab-btn active" onclick="showTab('edit')">Édition Profil</button>
+                    <button class="tab-btn" onclick="showTab('stats')">Performances Data</button>
+                    <button class="tab-btn" onclick="showTab('videos')">Vidéos Highlights</button>
+                </div>
+
+                <!-- Onglet Édition Profil -->
+                <div id="tab-edit" class="tab-content active">
+                    <div class="form-section">
+                        <div class="section-title">
+                            <h3>Informations de Carrière</h3>
+                        </div>
+                        <form id="careerForm">
+                            <div class="input-group">
+                                <div class="field">
+                                    <label>Poste Précis</label>
+                                    <select id="editPoste">
+                                        <option>Ailier Droit</option>
+                                        <option>Buteur</option>
+                                        <option>Milieu Offensif</option>
+                                        <option>Défenseur Central</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label>Club / Académie</label>
+                                    <input type="text" id="editClub" value="Académie Cotonou">
+                                </div>
+                                <div class="field">
+                                    <label>Taille (cm)</label>
+                                    <input type="number" id="editTaille" value="175">
+                                </div>
+                                <div class="field">
+                                    <label>Pied Fort</label>
+                                    <select id="editPied">
+                                        <option>Droitier</option>
+                                        <option>Gaucher</option>
+                                        <option>Ambidextre</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="field full-width">
+                                <label>Description (Bio pour les recruteurs & investisseurs)</label>
+                                <textarea id="editBio" rows="4">Joueur rapide, technique, doté d'une excellente vision de jeu. Ozawa Spirit.</textarea>
+                            </div>
+                            <button type="button" class="btn-save" onclick="saveProfile()">SAUVEGARDER LES MODIFICATIONS</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Onglet Performances (placeholder) -->
+                <div id="tab-stats" class="tab-content">
+                    <p>Graphiques et statistiques détaillées à venir...</p>
+                </div>
+
+                <!-- Onglet Vidéos (placeholder) -->
+                <div id="tab-videos" class="tab-content">
+                    <p>Vos vidéos de matchs et entraînements apparaîtront ici.</p>
+                </div>
+            </main>
+        </div>
+    </main>
+
+    <!-- Footer spécifique dashboard (optionnel) -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/players/js/dashboard.js"></script>
+</body>
+</html>
