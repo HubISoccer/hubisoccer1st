@@ -40,24 +40,44 @@
     </div>
 
     <script>
-        // Configuration Supabase
-        const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Attendre que le DOM soit prêt
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ DOM chargé, initialisation du formulaire');
 
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+            const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+            
+            // Utiliser un nom différent pour éviter les conflits
+            const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-            if (error) {
-                alert('Erreur de connexion : ' + error.message);
-            } else {
-                // Redirection vers le dashboard joueur (chemin relatif correct)
-                window.location.href = '../../players/dashboard.html';
+            const loginForm = document.getElementById('loginForm');
+            if (!loginForm) {
+                console.error('❌ Formulaire introuvable !');
+                return;
             }
+
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault(); // Empêche le rechargement par défaut
+                console.log('📤 Tentative de connexion...');
+
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value.trim();
+
+                try {
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+                    if (error) {
+                        console.error('❌ Erreur Supabase:', error);
+                        alert('Erreur de connexion : ' + error.message);
+                    } else {
+                        console.log('✅ Connexion réussie, redirection...');
+                        window.location.href = '../../players/dashboard.html';
+                    }
+                } catch (err) {
+                    console.error('❌ Erreur JS inattendue:', err);
+                    alert('Une erreur est survenue : ' + err.message);
+                }
+            });
         });
     </script>
 </body>
