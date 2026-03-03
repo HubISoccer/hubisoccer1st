@@ -8,8 +8,9 @@ let currentUser = null;
 let playerProfile = null;
 let documentsList = [];
 let licenseRequest = null;
-let signaturePad = null;
+let signaturePadModal = null;
 let signatureLocked = false;
+let signatureDataURL = null; // stocke la signature validée
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
@@ -204,85 +205,86 @@ async function uploadDocument(docId) {
     input.click();
 }
 
-// ===== GESTION DE LA SIGNATURE AMÉLIORÉE =====
-function initSignature() {
-    const canvas = document.getElementById('signatureCanvas');
-    if (!canvas) {
-        console.error('Canvas de signature introuvable');
-        return;
-    }
+// ===== GESTION DE LA MODALE DE SIGNATURE =====
+function openSignatureModal() {
+    const modal = document.getElementById('signatureModal');
+    modal.style.display = 'block';
     
-    // Fixer les dimensions réelles (évite les problèmes de résolution)
-    canvas.width = 600;
-    canvas.height = 200;
-    
-    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#551B8C';
-    signaturePad = new SignaturePad(canvas, {
-        backgroundColor: 'white',
-        penColor: primaryColor,
-        throttle: 16, // fluidité
-        minWidth: 1,
-        maxWidth: 2.5
-    });
-
-    // Restaurer depuis sessionStorage si disponible
-    const savedSignature = sessionStorage.getItem('tempSignature');
-    if (savedSignature) {
-        signaturePad.fromDataURL(savedSignature);
-    }
-
-    // Bouton Effacer
-    const clearBtn = document.getElementById('clearSignature');
-    if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-            if (signatureLocked) {
-                alert('Déverrouillez d\'abord la signature.');
-                return;
-            }
-            signaturePad.clear();
-            sessionStorage.removeItem('tempSignature');
+    // Initialiser le canvas si ce n'est pas déjà fait
+    if (!signaturePadModal) {
+        const canvas = document.getElementById('signatureCanvasModal');
+        canvas.width = canvas.offsetWidth || 800;
+        canvas.height = canvas.offsetHeight || 300;
+        
+        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#551B8C';
+        signaturePadModal = new SignaturePad(canvas, {
+            backgroundColor: 'white',
+            penColor: primaryColor,
+            throttle: 16,
+            minWidth: 1,
+            maxWidth: 2.5
         });
-    }
 
-    // Bouton Verrouiller
-    const lockBtn = document.getElementById('lockSignature');
-    if (lockBtn) {
-        lockBtn.addEventListener('click', () => {
-            if (signaturePad.isEmpty()) {
+        // Restaurer si une signature existe déjà
+        if (signatureDataURL) {
+            signaturePadModal.fromDataURL(signatureDataURL);
+        }
+
+        // Boutons
+        document.getElementById('clearSignatureModal').addEventListener('click', () => {
+            signaturePadModal.clear();
+            document.getElementById('signatureStatus').textContent = '';
+        });
+
+        document.getElementById('lockSignatureModal').addEventListener('click', (e) => {
+            if (signaturePadModal.isEmpty()) {
                 alert('Veuillez d\'abord signer.');
                 return;
             }
             signatureLocked = !signatureLocked;
-            lockBtn.textContent = signatureLocked ? 'Déverrouiller' : 'Verrouiller';
-            lockBtn.classList.toggle('locked', signatureLocked);
-            
+            e.target.textContent = signatureLocked ? 'Déverrouiller' : 'Verrouiller';
+            e.target.classList.toggle('locked', signatureLocked);
             if (signatureLocked) {
-                signaturePad.off(); // désactive le dessin
+                signaturePadModal.off();
             } else {
-                signaturePad.on(); // réactive
+                signaturePadModal.on();
             }
         });
+
+        document.getElementById('saveSignatureModal').addEventListener('click', () => {
+            if (signaturePadModal.isEmpty()) {
+                alert('Veuillez signer avant de valider.');
+                return;
+            }
+            signatureDataURL = signaturePadModal.toDataURL('image/png');
+            
+            // Afficher l'aperçu dans le formulaire
+            const previewImg = document.getElementById('signatureImage');
+            previewImg.src = signatureDataURL;
+            previewImg.style.display = 'block';
+            document.querySelector('.signature-placeholder').style.display = 'none';
+            
+            closeSignatureModal();
+        });
+
+        // Empêcher le scroll pendant la signature
+        canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
     }
-
-    // Sauvegarde temporaire après chaque trait
-    signaturePad.addEventListener('endStroke', () => {
-        if (!signatureLocked) {
-            const dataURL = signaturePad.toDataURL();
-            sessionStorage.setItem('tempSignature', dataURL);
-        }
-    });
-
-    // Empêcher le scroll pendant le toucher
-    canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-    
-    console.log('✅ SignaturePad amélioré initialisé');
 }
+
+function closeSignatureModal() {
+    document.getElementById('signatureModal').style.display = 'none';
+}
+
+// Rendre les fonctions accessibles globalement pour les appels HTML
+window.openSignatureModal = openSignatureModal;
+window.closeSignatureModal = closeSignatureModal;
 
 // ===== SOUMISSION DE LA DEMANDE DE LICENCE =====
 async function submitLicense(e) {
     e.preventDefault();
 
-    if (!signaturePad || signaturePad.isEmpty()) {
+    if (!signatureDataURL) {
         alert('Veuillez signer avant de soumettre.');
         return;
     }
@@ -299,7 +301,7 @@ async function submitLicense(e) {
             lieu_naissance: document.getElementById('lieuNaissance').value,
             adresse: document.getElementById('adresse').value,
             nationalite: document.getElementById('nationalite').value,
-            pays: document.getElementById('pays').value, // nouveau champ
+            pays: document.getElementById('pays').value,
             langue: document.getElementById('langue').value,
             telephone: document.getElementById('telephone').value,
             taille: document.getElementById('taille').value || null,
@@ -308,8 +310,7 @@ async function submitLicense(e) {
             club: document.getElementById('club').value || null,
         };
 
-        // Upload de la signature
-        const signatureDataURL = signaturePad.toDataURL('image/png');
+        // Upload de la signature (convertir dataURL en blob)
         const signatureBlob = await (await fetch(signatureDataURL)).blob();
         const signatureFileName = `${currentUser.id}_signature_${Date.now()}.png`;
         const signaturePath = `signatures/${signatureFileName}`;
@@ -342,12 +343,13 @@ async function submitLicense(e) {
         alert('Demande soumise avec succès ! Elle sera traitée sous 0 à 100h.');
         licenseRequest = data;
         
-        // Nettoyer les stockages temporaires
+        // Nettoyer
         sessionStorage.removeItem('licenseFormData');
-        sessionStorage.removeItem('tempSignature');
+        signatureDataURL = null;
+        document.getElementById('signatureImage').style.display = 'none';
+        document.querySelector('.signature-placeholder').style.display = 'block';
         
         document.getElementById('licenseForm').reset();
-        signaturePad.clear();
         checkLicenseStatus();
     } catch (err) {
         alert('Erreur lors de la soumission : ' + err.message);
@@ -542,8 +544,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadDocuments();
     await checkLicenseStatus();
 
-    initSignature();
-
     const form = document.getElementById('licenseForm');
     if (form) {
         form.addEventListener('submit', submitLicense);
@@ -555,11 +555,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     inputs.forEach(input => {
         input.addEventListener('input', () => {
             updateCardPreview();
-            saveFormToSession(); // sauvegarde automatique
+            saveFormToSession();
         });
     });
     
-    // Restaurer les données du formulaire si existantes
     restoreFormFromSession();
     updateCardPreview();
 
@@ -571,6 +570,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
         alert('Changement de langue bientôt disponible');
     });
+
+    // Si une signature était en cours de restauration ?
+    // (optionnel, on pourrait stocker signatureDataURL aussi)
 
     console.log('✅ Initialisation terminée');
 });
