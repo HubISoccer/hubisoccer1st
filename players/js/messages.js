@@ -125,7 +125,7 @@ function renderConversations() {
 
     list.innerHTML = filtered.map(conv => {
         const lastMsg = conv.messages[conv.messages.length - 1];
-        const lastTime = new Date(lastMsg.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        const lastTime = lastMsg ? new Date(lastMsg.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
         const unread = conv.messages.filter(m => !m.read && m.from !== 'me').length;
         const isActive = conv.id === currentConversationId;
         const avatarHtml = `<div class="conversation-avatar ${conv.online ? 'online' : ''}"><i class="fas fa-user"></i></div>`;
@@ -139,7 +139,7 @@ function renderConversations() {
                         <span class="conversation-time">${lastTime}</span>
                     </div>
                     <div class="conversation-last">
-                        ${lastMsg.content.substring(0, 30)}${lastMsg.content.length > 30 ? '…' : ''}
+                        ${lastMsg ? lastMsg.content.substring(0, 30) : ''}${lastMsg && lastMsg.content.length > 30 ? '…' : ''}
                         ${unread > 0 ? `<span class="conversation-badge">${unread}</span>` : ''}
                     </div>
                 </div>
@@ -159,18 +159,24 @@ function renderConversations() {
 // ===== SÉLECTION D'UNE CONVERSATION =====
 function selectConversation(convId) {
     currentConversationId = convId;
-    // Marquer les messages comme lus
     const conv = conversations.find(c => c.id === convId);
     if (conv) {
         conv.messages.forEach(m => { if (m.from !== 'me') m.read = true; });
     }
     renderConversations();
     renderChat();
-    // Sur mobile, on pourrait cacher la liste et montrer le chat
+
+    // Sur mobile, cacher la liste et montrer le chat
     if (window.innerWidth <= 900) {
-        document.querySelector('.conversations-panel').classList.remove('mobile-show');
-        document.querySelector('.chat-panel').classList.remove('mobile-hide');
+        document.querySelector('.conversations-panel').classList.add('hide');
+        document.querySelector('.chat-panel').classList.remove('hide');
     }
+}
+
+// ===== RETOUR À LA LISTE (mobile) =====
+function backToConversations() {
+    document.querySelector('.conversations-panel').classList.remove('hide');
+    document.querySelector('.chat-panel').classList.add('hide');
 }
 
 // ===== RENDU DU CHAT =====
@@ -190,7 +196,7 @@ function renderChat() {
     // En-tête
     const contact = conv;
     chatHeader.innerHTML = `
-        <div class="chat-contact">
+        <div class="chat-contact" onclick="showContactInfo(${contact.id})">
             <div class="chat-contact-avatar ${contact.online ? 'online' : ''}"><i class="fas fa-user"></i></div>
             <div class="chat-contact-info">
                 <h3>${contact.contactName}</h3>
@@ -198,6 +204,7 @@ function renderChat() {
             </div>
         </div>
         <div class="chat-actions">
+            <button class="chat-action-btn mobile-back-btn" onclick="backToConversations()" title="Retour"><i class="fas fa-arrow-left"></i></button>
             <button class="chat-action-btn" title="Bloquer" onclick="blockContact(${contact.id})"><i class="fas fa-ban"></i></button>
             <button class="chat-action-btn" title="Archiver" onclick="archiveContact(${contact.id})"><i class="fas fa-archive"></i></button>
             <button class="chat-action-btn" title="Inviter" onclick="inviteContact(${contact.id})"><i class="fas fa-user-plus"></i></button>
@@ -216,8 +223,9 @@ function renderChat() {
                 <div class="message-content">${msg.content}</div>
                 <span class="message-time">${time}</span>
                 <div class="message-actions">
-                    <button class="message-action" onclick="replyToMessage(${msg.id})"><i class="fas fa-reply"></i> Répondre</button>
-                    <button class="message-action" onclick="copyMessage(${msg.id})"><i class="fas fa-copy"></i> Copier</button>
+                    <button class="message-action" onclick="replyToMessage(${msg.id})"><i class="fas fa-reply"></i></button>
+                    <button class="message-action" onclick="copyMessage(${msg.id})"><i class="fas fa-copy"></i></button>
+                    ${isMe ? `<button class="message-action delete" onclick="deleteMessage(${msg.id})"><i class="fas fa-trash"></i></button>` : ''}
                 </div>
             </div>
         `;
@@ -289,6 +297,28 @@ function sendMessage(e) {
     renderChat();
 }
 
+// ===== SUPPRESSION D'UN MESSAGE =====
+function deleteMessage(msgId) {
+    if (!confirm('Supprimer ce message ?')) return;
+    const conv = conversations.find(c => c.id === currentConversationId);
+    if (!conv) return;
+    const index = conv.messages.findIndex(m => m.id === msgId);
+    if (index !== -1) {
+        conv.messages.splice(index, 1);
+        // Mettre à jour le dernier message si nécessaire
+        if (conv.messages.length > 0) {
+            const last = conv.messages[conv.messages.length - 1];
+            conv.lastMessage = last.content;
+            conv.lastTime = last.time;
+        } else {
+            conv.lastMessage = '';
+            conv.lastTime = null;
+        }
+        renderConversations();
+        renderChat();
+    }
+}
+
 // ===== ACTIONS =====
 function replyToMessage(msgId) {
     const conv = conversations.find(c => c.id === currentConversationId);
@@ -296,6 +326,7 @@ function replyToMessage(msgId) {
     if (msg) {
         replyingTo = { id: msg.id, content: msg.content };
         renderChat();
+        document.getElementById('messageInput').focus();
     }
 }
 
@@ -325,6 +356,10 @@ function inviteContact(convId) {
     alert(`Invitation envoyée à ${convId} (simulation)`);
 }
 
+function showContactInfo(contactId) {
+    alert(`Informations du contact ${contactId} (simulation)`);
+}
+
 function attachFile() {
     alert('Fonction d\'attachement de fichier (simulation)');
 }
@@ -345,22 +380,6 @@ function initSearch() {
             searchTerm = e.target.value;
             renderConversations();
         });
-    }
-}
-
-// ===== RESPONSIVE (bouton retour mobile) =====
-function initMobileNav() {
-    if (window.innerWidth <= 900) {
-        // Ajouter un bouton retour dans le chat header
-        const chatHeader = document.getElementById('chatHeader');
-        const backBtn = document.createElement('button');
-        backBtn.className = 'chat-action-btn mobile-back-btn';
-        backBtn.innerHTML = '<i class="fas fa-arrow-left"></i>';
-        backBtn.onclick = () => {
-            document.querySelector('.conversations-panel').classList.add('mobile-show');
-            document.querySelector('.chat-panel').classList.add('mobile-hide');
-        };
-        chatHeader.prepend(backBtn);
     }
 }
 
@@ -418,8 +437,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderConversations();
     if (currentConversationId) renderChat();
 
+    // Initialiser l'état mobile
+    if (window.innerWidth <= 900) {
+        document.querySelector('.conversations-panel').classList.remove('hide');
+        document.querySelector('.chat-panel').classList.add('hide');
+    }
+
     initSearch();
-    initMobileNav();
     initUserMenu();
     initSidebar();
     initLogout();
@@ -431,3 +455,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     console.log('✅ Initialisation terminée');
 });
+
+// Rendre les fonctions globales pour les appels onclick
+window.selectConversation = selectConversation;
+window.backToConversations = backToConversations;
+window.sendMessage = sendMessage;
+window.replyToMessage = replyToMessage;
+window.cancelReply = cancelReply;
+window.copyMessage = copyMessage;
+window.deleteMessage = deleteMessage;
+window.blockContact = blockContact;
+window.archiveContact = archiveContact;
+window.inviteContact = inviteContact;
+window.showContactInfo = showContactInfo;
+window.attachFile = attachFile;
+window.openEmoji = openEmoji;
+window.openSticker = openSticker;
