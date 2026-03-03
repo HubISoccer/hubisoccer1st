@@ -4,7 +4,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
-let currentUser = null;
+let currentUser = null; // Sera initialisé après checkSession
 let playerProfile = null;
 let documentsList = [];
 let licenseRequest = null;
@@ -15,11 +15,12 @@ async function checkSession() {
     try {
         const { data: { session }, error } = await supabaseClient.auth.getSession();
         if (error || !session) {
+            console.warn('Aucune session active, redirection vers login');
             window.location.href = '../public/auth/login.html';
             return null;
         }
         currentUser = session.user;
-        console.log('✅ Utilisateur connecté :', currentUser.email);
+        console.log('✅ Utilisateur connecté :', currentUser.email, 'ID:', currentUser.id);
         return currentUser;
     } catch (err) {
         console.error('❌ Erreur checkSession :', err);
@@ -30,6 +31,10 @@ async function checkSession() {
 
 // ===== CHARGEMENT DU PROFIL =====
 async function loadPlayerProfile() {
+    if (!currentUser || !currentUser.id) {
+        console.error('currentUser non défini, impossible de charger le profil');
+        return;
+    }
     try {
         const { data, error } = await supabaseClient
             .from('player_profiles')
@@ -53,6 +58,10 @@ async function loadPlayerProfile() {
 
 // ===== CHARGEMENT DES DOCUMENTS =====
 async function loadDocuments() {
+    if (!playerProfile || !playerProfile.id) {
+        console.warn('Profil non chargé, impossible de charger les documents');
+        return;
+    }
     try {
         const requiredDocs = [
             { id: 'id_card', name: 'Pièce d\'identité (CNI/Passeport)', type: 'identity' },
@@ -69,6 +78,7 @@ async function loadDocuments() {
 
         if (error) {
             console.error('Erreur chargement documents:', error);
+            // Si la table n'existe pas, on continue avec une liste vide
             documentsList = requiredDocs.map(doc => ({ ...doc, status: 'pending', file_url: null, file_name: null, request_id: null }));
         } else {
             documentsList = requiredDocs.map(doc => {
@@ -128,6 +138,10 @@ function renderDocuments() {
 
 // ===== UPLOAD D'UN DOCUMENT =====
 async function uploadDocument(docId) {
+    if (!currentUser || !playerProfile) {
+        alert('Utilisateur non connecté ou profil manquant');
+        return;
+    }
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.pdf,.jpg,.jpeg,.png';
@@ -190,10 +204,8 @@ function initSignature() {
         console.error('Canvas de signature introuvable');
         return;
     }
-    // Fixer les dimensions explicites (évite les problèmes de offset)
     canvas.width = 400;
     canvas.height = 150;
-    // Récupérer la couleur primaire depuis le CSS
     const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#551B8C';
     signaturePad = new SignaturePad(canvas, {
         backgroundColor: 'white',
@@ -215,6 +227,10 @@ async function submitLicense(e) {
 
     if (!signaturePad || signaturePad.isEmpty()) {
         alert('Veuillez signer avant de soumettre.');
+        return;
+    }
+    if (!currentUser || !playerProfile) {
+        alert('Données utilisateur manquantes');
         return;
     }
 
@@ -275,6 +291,7 @@ async function submitLicense(e) {
 
 // ===== VÉRIFICATION DU STATUT =====
 async function checkLicenseStatus() {
+    if (!playerProfile || !playerProfile.id) return;
     try {
         const { data, error } = await supabaseClient
             .from('license_requests')
@@ -284,7 +301,10 @@ async function checkLicenseStatus() {
             .limit(1)
             .maybeSingle();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Erreur checkLicenseStatus:', error);
+            return;
+        }
 
         if (data) {
             licenseRequest = data;
@@ -373,7 +393,7 @@ function updateCardPreview() {
     `;
 }
 
-// ===== FONCTIONS UI (copiées de dashboard) =====
+// ===== FONCTIONS UI =====
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
@@ -432,10 +452,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadDocuments();
     await checkLicenseStatus();
 
-    // Initialiser la signature
     initSignature();
 
-    // Attacher l'événement submit au formulaire
     const form = document.getElementById('licenseForm');
     if (form) {
         form.addEventListener('submit', submitLicense);
@@ -443,19 +461,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Formulaire #licenseForm introuvable');
     }
 
-    // Mettre à jour l'aperçu en temps réel
     const inputs = document.querySelectorAll('#licenseForm input, #licenseForm select');
     inputs.forEach(input => {
         input.addEventListener('input', updateCardPreview);
     });
-    updateCardPreview(); // appel initial
+    updateCardPreview();
 
-    // Initialiser les menus
     initUserMenu();
     initSidebar();
     initLogout();
 
-    // Lien langue
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
         alert('Changement de langue bientôt disponible');
