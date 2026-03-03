@@ -1,4 +1,4 @@
-// ===== CONFIGURATION SUPABASE (même que dashboard.js) =====
+// ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -6,78 +6,92 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
 let playerProfile = null;
-let documentsList = []; // Liste des documents demandés (depuis une table "required_documents" ou configuration)
-let licenseRequest = null; // Demande de licence existante
+let documentsList = [];
+let licenseRequest = null;
+let signaturePad = null;
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabaseClient.auth.getSession();
-    if (error || !session) {
+    try {
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        if (error || !session) {
+            window.location.href = '../public/auth/login.html';
+            return null;
+        }
+        currentUser = session.user;
+        console.log('✅ Utilisateur connecté :', currentUser.email);
+        return currentUser;
+    } catch (err) {
+        console.error('❌ Erreur checkSession :', err);
         window.location.href = '../public/auth/login.html';
         return null;
     }
-    currentUser = session.user;
-    return currentUser;
 }
 
 // ===== CHARGEMENT DU PROFIL =====
 async function loadPlayerProfile() {
-    const { data, error } = await supabaseClient
-        .from('player_profiles')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .maybeSingle();
+    try {
+        const { data, error } = await supabaseClient
+            .from('player_profiles')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
 
-    if (error) {
-        console.error('Erreur chargement profil:', error);
-        return;
+        if (error) {
+            console.error('Erreur chargement profil:', error);
+            playerProfile = { full_name: 'Joueur' };
+        } else {
+            playerProfile = data || { full_name: 'Joueur' };
+        }
+        document.getElementById('userName').textContent = playerProfile.full_name || 'Joueur';
+        console.log('✅ Profil chargé :', playerProfile);
+    } catch (err) {
+        console.error('❌ Exception loadPlayerProfile :', err);
+        playerProfile = { full_name: 'Joueur' };
     }
-    playerProfile = data || { full_name: 'Joueur' };
-    // Mettre à jour le nom dans la navbar
-    document.getElementById('userName').textContent = playerProfile.full_name || 'Joueur';
 }
 
 // ===== CHARGEMENT DES DOCUMENTS =====
 async function loadDocuments() {
-    // Pour l'exemple, on définit une liste de documents requis
-    // Dans la vraie vie, vous auriez une table "required_documents" ou une configuration admin
-    const requiredDocs = [
-        { id: 'id_card', name: 'Pièce d\'identité (CNI/Passeport)', type: 'identity' },
-        { id: 'photo', name: 'Photo d\'identité', type: 'photo' },
-        { id: 'certificat_medical', name: 'Certificat médical', type: 'medical' },
-        { id: 'diplome', name: 'Diplôme (si étudiant)', type: 'diploma' },
-        { id: 'justificatif_domicile', name: 'Justificatif de domicile', type: 'address' }
-    ];
+    try {
+        const requiredDocs = [
+            { id: 'id_card', name: 'Pièce d\'identité (CNI/Passeport)', type: 'identity' },
+            { id: 'photo', name: 'Photo d\'identité', type: 'photo' },
+            { id: 'certificat_medical', name: 'Certificat médical', type: 'medical' },
+            { id: 'diplome', name: 'Diplôme (si étudiant)', type: 'diploma' },
+            { id: 'justificatif_domicile', name: 'Justificatif de domicile', type: 'address' }
+        ];
 
-    // Récupérer les soumissions existantes pour ce joueur
-    const { data: existingDocs, error } = await supabaseClient
-        .from('document_requests')
-        .select('*')
-        .eq('player_id', playerProfile.id);
+        const { data: existingDocs, error } = await supabaseClient
+            .from('document_requests')
+            .select('*')
+            .eq('player_id', playerProfile.id);
 
-    if (error) {
-        console.error('Erreur chargement documents:', error);
-        return;
+        if (error) {
+            console.error('Erreur chargement documents:', error);
+            documentsList = requiredDocs.map(doc => ({ ...doc, status: 'pending', file_url: null, file_name: null, request_id: null }));
+        } else {
+            documentsList = requiredDocs.map(doc => {
+                const existing = existingDocs?.find(d => d.document_type === doc.id);
+                return {
+                    ...doc,
+                    status: existing?.status || 'pending',
+                    file_url: existing?.file_url || null,
+                    file_name: existing?.file_name || null,
+                    request_id: existing?.id || null
+                };
+            });
+        }
+        renderDocuments();
+    } catch (err) {
+        console.error('❌ Exception loadDocuments :', err);
     }
-
-    // Construire la liste avec statut
-    documentsList = requiredDocs.map(doc => {
-        const existing = existingDocs?.find(d => d.document_type === doc.id);
-        return {
-            ...doc,
-            status: existing?.status || 'pending',
-            file_url: existing?.file_url || null,
-            file_name: existing?.file_name || null,
-            request_id: existing?.id || null
-        };
-    });
-
-    renderDocuments();
 }
 
 // ===== AFFICHAGE DES DOCUMENTS =====
 function renderDocuments() {
     const grid = document.getElementById('documentsGrid');
+    if (!grid) return;
     grid.innerHTML = '';
 
     documentsList.forEach(doc => {
@@ -88,7 +102,7 @@ function renderDocuments() {
             pending: 'En attente',
             approved: 'Validé',
             rejected: 'Rejeté'
-        }[doc.status];
+        }[doc.status] || 'En attente';
 
         card.innerHTML = `
             <div class="document-header">
@@ -101,11 +115,9 @@ function renderDocuments() {
             </div>
             ${doc.file_name ? `<div class="document-file-name">${doc.file_name}</div>` : ''}
         `;
-
         grid.appendChild(card);
     });
 
-    // Ajouter les écouteurs sur les boutons d'upload
     document.querySelectorAll('.btn-upload').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const docId = e.target.dataset.docId;
@@ -123,202 +135,199 @@ async function uploadDocument(docId) {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Upload vers Supabase Storage (bucket 'documents')
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${currentUser.id}_${docId}_${Date.now()}.${fileExt}`;
-        const filePath = `player_docs/${fileName}`;
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${currentUser.id}_${docId}_${Date.now()}.${fileExt}`;
+            const filePath = `player_docs/${fileName}`;
 
-        const { error: uploadError } = await supabaseClient.storage
-            .from('documents')
-            .upload(filePath, file);
+            const { error: uploadError } = await supabaseClient.storage
+                .from('documents')
+                .upload(filePath, file);
 
-        if (uploadError) {
-            alert('Erreur upload : ' + uploadError.message);
-            return;
-        }
-
-        const { data: urlData } = supabaseClient.storage
-            .from('documents')
-            .getPublicUrl(filePath);
-
-        const publicUrl = urlData.publicUrl;
-
-        // Enregistrer dans la table document_requests
-        const doc = documentsList.find(d => d.id === docId);
-        if (doc.request_id) {
-            // Mettre à jour l'existant
-            const { error: updateError } = await supabaseClient
-                .from('document_requests')
-                .update({ file_url: publicUrl, file_name: file.name, status: 'pending' })
-                .eq('id', doc.request_id);
-
-            if (updateError) {
-                alert('Erreur mise à jour : ' + updateError.message);
+            if (uploadError) {
+                alert('Erreur upload : ' + uploadError.message);
                 return;
             }
-        } else {
-            // Créer une nouvelle entrée
-            const { error: insertError } = await supabaseClient
-                .from('document_requests')
-                .insert([{
-                    player_id: playerProfile.id,
-                    document_type: docId,
-                    file_url: publicUrl,
-                    file_name: file.name,
-                    status: 'pending'
-                }]);
 
-            if (insertError) {
-                alert('Erreur enregistrement : ' + insertError.message);
-                return;
+            const { data: urlData } = supabaseClient.storage
+                .from('documents')
+                .getPublicUrl(filePath);
+            const publicUrl = urlData.publicUrl;
+
+            const doc = documentsList.find(d => d.id === docId);
+            if (doc.request_id) {
+                const { error: updateError } = await supabaseClient
+                    .from('document_requests')
+                    .update({ file_url: publicUrl, file_name: file.name, status: 'pending' })
+                    .eq('id', doc.request_id);
+                if (updateError) throw updateError;
+            } else {
+                const { error: insertError } = await supabaseClient
+                    .from('document_requests')
+                    .insert([{
+                        player_id: playerProfile.id,
+                        document_type: docId,
+                        file_url: publicUrl,
+                        file_name: file.name,
+                        status: 'pending'
+                    }]);
+                if (insertError) throw insertError;
             }
-        }
 
-        alert('Document téléversé avec succès ! En attente de validation.');
-        loadDocuments(); // Recharger la liste
+            alert('Document téléversé avec succès ! En attente de validation.');
+            loadDocuments();
+        } catch (err) {
+            alert('Erreur : ' + err.message);
+        }
     };
     input.click();
 }
 
 // ===== GESTION DE LA SIGNATURE =====
-let signaturePad;
 function initSignature() {
     const canvas = document.getElementById('signatureCanvas');
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+    if (!canvas) {
+        console.error('Canvas de signature introuvable');
+        return;
+    }
+    // Fixer les dimensions explicites (évite les problèmes de offset)
+    canvas.width = 400;
+    canvas.height = 150;
+    // Récupérer la couleur primaire depuis le CSS
+    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#551B8C';
     signaturePad = new SignaturePad(canvas, {
         backgroundColor: 'white',
-        penColor: 'var(--primary)'
+        penColor: primaryColor
     });
 
-    document.getElementById('clearSignature').addEventListener('click', () => {
-        signaturePad.clear();
-    });
+    const clearBtn = document.getElementById('clearSignature');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            signaturePad.clear();
+        });
+    }
+    console.log('✅ SignaturePad initialisé');
 }
 
 // ===== SOUMISSION DE LA DEMANDE DE LICENCE =====
-document.getElementById('licenseForm').addEventListener('submit', async (e) => {
+async function submitLicense(e) {
     e.preventDefault();
 
-    if (signaturePad.isEmpty()) {
+    if (!signaturePad || signaturePad.isEmpty()) {
         alert('Veuillez signer avant de soumettre.');
         return;
     }
 
-    // Récupérer les données du formulaire
-    const formData = {
-        nom: document.getElementById('nom').value,
-        prenom: document.getElementById('prenom').value,
-        date_naissance: document.getElementById('dateNaissance').value,
-        lieu_naissance: document.getElementById('lieuNaissance').value,
-        adresse: document.getElementById('adresse').value,
-        nationalite: document.getElementById('nationalite').value,
-        langue: document.getElementById('langue').value,
-        telephone: document.getElementById('telephone').value,
-        taille: document.getElementById('taille').value || null,
-        poids: document.getElementById('poids').value || null,
-        pied_fort: document.getElementById('piedFort').value || null,
-        club: document.getElementById('club').value || null,
-    };
+    try {
+        const formData = {
+            nom: document.getElementById('nom').value,
+            prenom: document.getElementById('prenom').value,
+            date_naissance: document.getElementById('dateNaissance').value,
+            lieu_naissance: document.getElementById('lieuNaissance').value,
+            adresse: document.getElementById('adresse').value,
+            nationalite: document.getElementById('nationalite').value,
+            langue: document.getElementById('langue').value,
+            telephone: document.getElementById('telephone').value,
+            taille: document.getElementById('taille').value || null,
+            poids: document.getElementById('poids').value || null,
+            pied_fort: document.getElementById('piedFort').value || null,
+            club: document.getElementById('club').value || null,
+        };
 
-    // Convertir la signature en image
-    const signatureDataURL = signaturePad.toDataURL('image/png');
+        const signatureDataURL = signaturePad.toDataURL('image/png');
+        const signatureBlob = await (await fetch(signatureDataURL)).blob();
+        const signatureFileName = `${currentUser.id}_signature_${Date.now()}.png`;
+        const signaturePath = `signatures/${signatureFileName}`;
 
-    // Upload de la signature vers Storage
-    const signatureFileName = `${currentUser.id}_signature_${Date.now()}.png`;
-    const signaturePath = `signatures/${signatureFileName}`;
-    const signatureBlob = await (await fetch(signatureDataURL)).blob();
+        const { error: uploadError } = await supabaseClient.storage
+            .from('documents')
+            .upload(signaturePath, signatureBlob);
+        if (uploadError) throw uploadError;
 
-    const { error: uploadError } = await supabaseClient.storage
-        .from('documents')
-        .upload(signaturePath, signatureBlob);
+        const { data: urlData } = supabaseClient.storage
+            .from('documents')
+            .getPublicUrl(signaturePath);
+        const signatureUrl = urlData.publicUrl;
 
-    if (uploadError) {
-        alert('Erreur upload signature : ' + uploadError.message);
-        return;
-    }
+        const { data, error } = await supabaseClient
+            .from('license_requests')
+            .insert([{
+                player_id: playerProfile.id,
+                ...formData,
+                signature_url: signatureUrl,
+                admin_validated: false,
+                created_at: new Date()
+            }])
+            .select()
+            .single();
 
-    const { data: urlData } = supabaseClient.storage
-        .from('documents')
-        .getPublicUrl(signaturePath);
-    const signatureUrl = urlData.publicUrl;
+        if (error) throw error;
 
-    // Enregistrer la demande de licence
-    const { data, error } = await supabaseClient
-        .from('license_requests')
-        .insert([{
-            player_id: playerProfile.id,
-            ...formData,
-            signature_url: signatureUrl,
-            admin_validated: false,
-            created_at: new Date()
-        }])
-        .select()
-        .single();
-
-    if (error) {
-        alert('Erreur lors de la soumission : ' + error.message);
-    } else {
         alert('Demande soumise avec succès ! Elle sera traitée sous 0 à 100h.');
         licenseRequest = data;
         document.getElementById('licenseForm').reset();
         signaturePad.clear();
         checkLicenseStatus();
-    }
-});
-
-// ===== VÉRIFICATION DU STATUT DE LA DEMANDE =====
-async function checkLicenseStatus() {
-    const { data, error } = await supabaseClient
-        .from('license_requests')
-        .select('*')
-        .eq('player_id', playerProfile.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-    if (error) {
-        console.error('Erreur chargement statut licence:', error);
-        return;
-    }
-
-    if (data) {
-        licenseRequest = data;
-        document.getElementById('statusSection').style.display = 'block';
-        const statusCard = document.getElementById('statusCard');
-        if (data.admin_validated && data.carte_url) {
-            statusCard.innerHTML = `
-                <div class="status-icon"><i class="fas fa-check-circle"></i></div>
-                <div class="status-content">
-                    <h3>Demande validée !</h3>
-                    <p>Votre licence est prête. Cliquez ci-dessous pour télécharger votre carte.</p>
-                    <a href="${data.carte_url}" class="btn-download" download>Télécharger ma licence</a>
-                </div>
-            `;
-        } else {
-            statusCard.innerHTML = `
-                <div class="status-icon"><i class="fas fa-clock"></i></div>
-                <div class="status-content">
-                    <h3>Demande en cours de traitement</h3>
-                    <p>Soumise le ${new Date(data.created_at).toLocaleDateString('fr-FR')}</p>
-                    <p>Statut : En attente de validation par l'administration.</p>
-                </div>
-            `;
-        }
+    } catch (err) {
+        alert('Erreur lors de la soumission : ' + err.message);
     }
 }
 
-// ===== MISE À JOUR DE L'APERÇU DE LA CARTE EN TEMPS RÉEL =====
-function updateCardPreview() {
-    const nom = document.getElementById('nom').value || '---';
-    const prenom = document.getElementById('prenom').value || '---';
-    const dateNaissance = document.getElementById('dateNaissance').value || '---';
-    const nationalite = document.getElementById('nationalite').value || '---';
-    const taille = document.getElementById('taille').value || '---';
-    const pied = document.getElementById('piedFort').value || '---';
-    const club = document.getElementById('club').value || 'Libre';
+// ===== VÉRIFICATION DU STATUT =====
+async function checkLicenseStatus() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('license_requests')
+            .select('*')
+            .eq('player_id', playerProfile.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-    // Formatage de la date
+        if (error) throw error;
+
+        if (data) {
+            licenseRequest = data;
+            const statusSection = document.getElementById('statusSection');
+            const statusCard = document.getElementById('statusCard');
+            if (statusSection) statusSection.style.display = 'block';
+            if (statusCard) {
+                if (data.admin_validated && data.carte_url) {
+                    statusCard.innerHTML = `
+                        <div class="status-icon"><i class="fas fa-check-circle"></i></div>
+                        <div class="status-content">
+                            <h3>Demande validée !</h3>
+                            <p>Votre licence est prête. Cliquez ci-dessous pour télécharger votre carte.</p>
+                            <a href="${data.carte_url}" class="btn-download" download>Télécharger ma licence</a>
+                        </div>
+                    `;
+                } else {
+                    statusCard.innerHTML = `
+                        <div class="status-icon"><i class="fas fa-clock"></i></div>
+                        <div class="status-content">
+                            <h3>Demande en cours de traitement</h3>
+                            <p>Soumise le ${new Date(data.created_at).toLocaleDateString('fr-FR')}</p>
+                            <p>Statut : En attente de validation par l'administration.</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Erreur checkLicenseStatus:', err);
+    }
+}
+
+// ===== MISE À JOUR DE L'APERÇU =====
+function updateCardPreview() {
+    const nom = document.getElementById('nom')?.value || '---';
+    const prenom = document.getElementById('prenom')?.value || '---';
+    const dateNaissance = document.getElementById('dateNaissance')?.value || '---';
+    const nationalite = document.getElementById('nationalite')?.value || '---';
+    const taille = document.getElementById('taille')?.value || '---';
+    const pied = document.getElementById('piedFort')?.value || '---';
+    const club = document.getElementById('club')?.value || 'Libre';
+
     let dateFormatted = dateNaissance;
     if (dateNaissance && dateNaissance !== '---') {
         const d = new Date(dateNaissance);
@@ -326,6 +335,8 @@ function updateCardPreview() {
     }
 
     const preview = document.getElementById('cardPreview');
+    if (!preview) return;
+
     preview.innerHTML = `
         <div class="card-template">
             <div class="card-header">
@@ -349,7 +360,6 @@ function updateCardPreview() {
             <div class="card-footer">
                 <div class="signatures">
                     <div class="signature-box">
-                        <img src="" alt="Signature joueur" style="display:none;">
                         <span class="signature-label">Signature joueur</span>
                     </div>
                     <div class="signature-box">
@@ -363,8 +373,58 @@ function updateCardPreview() {
     `;
 }
 
-// ===== INITIALISATION =====
+// ===== FONCTIONS UI (copiées de dashboard) =====
+function initUserMenu() {
+    const userMenu = document.getElementById('userMenu');
+    const dropdown = document.getElementById('userDropdown');
+    if (!userMenu || !dropdown) return;
+    userMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('show');
+    });
+    document.addEventListener('click', () => dropdown.classList.remove('show'));
+}
+
+function initSidebar() {
+    const menuBtn = document.getElementById('menuToggle');
+    const sidebar = document.getElementById('sidebar');
+    const closeBtn = document.getElementById('closeSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+
+    if (!menuBtn || !sidebar || !closeBtn || !overlay) {
+        console.warn('Éléments de la sidebar manquants');
+        return;
+    }
+
+    function openSidebar() {
+        sidebar.classList.add('active');
+        overlay.classList.add('active');
+    }
+    function closeSidebarFunc() {
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
+    }
+
+    menuBtn.addEventListener('click', openSidebar);
+    closeBtn.addEventListener('click', closeSidebarFunc);
+    overlay.addEventListener('click', closeSidebarFunc);
+}
+
+function initLogout() {
+    document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            supabaseClient.auth.signOut().then(() => {
+                window.location.href = '../index.html';
+            });
+        });
+    });
+}
+
+// ===== INITIALISATION PRINCIPALE =====
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 Initialisation de la page verification');
+
     const user = await checkSession();
     if (!user) return;
 
@@ -375,61 +435,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialiser la signature
     initSignature();
 
+    // Attacher l'événement submit au formulaire
+    const form = document.getElementById('licenseForm');
+    if (form) {
+        form.addEventListener('submit', submitLicense);
+    } else {
+        console.error('Formulaire #licenseForm introuvable');
+    }
+
     // Mettre à jour l'aperçu en temps réel
     const inputs = document.querySelectorAll('#licenseForm input, #licenseForm select');
     inputs.forEach(input => {
         input.addEventListener('input', updateCardPreview);
     });
-    updateCardPreview();
+    updateCardPreview(); // appel initial
 
-    // Gestion du menu utilisateur (identique au dashboard)
-    // ... (vous pouvez copier les fonctions initUserMenu, initSidebar, logout depuis dashboard.js)
-    // Pour gagner du temps, je les inclus rapidement :
-
-    function initUserMenu() {
-        const userMenu = document.getElementById('userMenu');
-        const dropdown = document.getElementById('userDropdown');
-        if (!userMenu || !dropdown) return;
-        userMenu.addEventListener('click', (e) => {
-            e.stopPropagation();
-            dropdown.classList.toggle('show');
-        });
-        document.addEventListener('click', () => dropdown.classList.remove('show'));
-    }
-
-    function initSidebar() {
-        const menuBtn = document.getElementById('menuToggle');
-        const sidebar = document.getElementById('sidebar');
-        const closeBtn = document.getElementById('closeSidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-
-        function openSidebar() { sidebar.classList.add('active'); overlay.classList.add('active'); }
-        function closeSidebarFunc() { sidebar.classList.remove('active'); overlay.classList.remove('active'); }
-
-        if (menuBtn) menuBtn.addEventListener('click', openSidebar);
-        if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
-        if (overlay) overlay.addEventListener('click', closeSidebarFunc);
-    }
-
-    function initLogout() {
-        document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                supabaseClient.auth.signOut().then(() => {
-                    window.location.href = '../index.html';
-                });
-            });
-        });
-    }
-
+    // Initialiser les menus
     initUserMenu();
     initSidebar();
     initLogout();
 
+    // Lien langue
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
         alert('Changement de langue bientôt disponible');
     });
 
-    // Exposer les fonctions globales si nécessaire
+    console.log('✅ Initialisation terminée');
 });
