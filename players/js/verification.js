@@ -9,6 +9,7 @@ let playerProfile = null;
 let documentsList = [];
 let licenseRequest = null;
 let signaturePad = null;
+let signatureLocked = false;
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
@@ -28,7 +29,7 @@ async function checkSession() {
     }
 }
 
-// ===== CHARGEMENT DU PROFIL (adapté aux colonnes réelles) =====
+// ===== CHARGEMENT DU PROFIL =====
 async function loadPlayerProfile() {
     if (!currentUser?.id) {
         console.error('currentUser.id manquant');
@@ -203,28 +204,78 @@ async function uploadDocument(docId) {
     input.click();
 }
 
-// ===== GESTION DE LA SIGNATURE =====
+// ===== GESTION DE LA SIGNATURE AMÉLIORÉE =====
 function initSignature() {
     const canvas = document.getElementById('signatureCanvas');
     if (!canvas) {
         console.error('Canvas de signature introuvable');
         return;
     }
-    canvas.width = 400;
-    canvas.height = 150;
+    
+    // Fixer les dimensions réelles (évite les problèmes de résolution)
+    canvas.width = 600;
+    canvas.height = 200;
+    
     const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#551B8C';
     signaturePad = new SignaturePad(canvas, {
         backgroundColor: 'white',
-        penColor: primaryColor
+        penColor: primaryColor,
+        throttle: 16, // fluidité
+        minWidth: 1,
+        maxWidth: 2.5
     });
 
+    // Restaurer depuis sessionStorage si disponible
+    const savedSignature = sessionStorage.getItem('tempSignature');
+    if (savedSignature) {
+        signaturePad.fromDataURL(savedSignature);
+    }
+
+    // Bouton Effacer
     const clearBtn = document.getElementById('clearSignature');
     if (clearBtn) {
         clearBtn.addEventListener('click', () => {
+            if (signatureLocked) {
+                alert('Déverrouillez d\'abord la signature.');
+                return;
+            }
             signaturePad.clear();
+            sessionStorage.removeItem('tempSignature');
         });
     }
-    console.log('✅ SignaturePad initialisé');
+
+    // Bouton Verrouiller
+    const lockBtn = document.getElementById('lockSignature');
+    if (lockBtn) {
+        lockBtn.addEventListener('click', () => {
+            if (signaturePad.isEmpty()) {
+                alert('Veuillez d\'abord signer.');
+                return;
+            }
+            signatureLocked = !signatureLocked;
+            lockBtn.textContent = signatureLocked ? 'Déverrouiller' : 'Verrouiller';
+            lockBtn.classList.toggle('locked', signatureLocked);
+            
+            if (signatureLocked) {
+                signaturePad.off(); // désactive le dessin
+            } else {
+                signaturePad.on(); // réactive
+            }
+        });
+    }
+
+    // Sauvegarde temporaire après chaque trait
+    signaturePad.addEventListener('endStroke', () => {
+        if (!signatureLocked) {
+            const dataURL = signaturePad.toDataURL();
+            sessionStorage.setItem('tempSignature', dataURL);
+        }
+    });
+
+    // Empêcher le scroll pendant le toucher
+    canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+    
+    console.log('✅ SignaturePad amélioré initialisé');
 }
 
 // ===== SOUMISSION DE LA DEMANDE DE LICENCE =====
@@ -248,6 +299,7 @@ async function submitLicense(e) {
             lieu_naissance: document.getElementById('lieuNaissance').value,
             adresse: document.getElementById('adresse').value,
             nationalite: document.getElementById('nationalite').value,
+            pays: document.getElementById('pays').value, // nouveau champ
             langue: document.getElementById('langue').value,
             telephone: document.getElementById('telephone').value,
             taille: document.getElementById('taille').value || null,
@@ -256,6 +308,7 @@ async function submitLicense(e) {
             club: document.getElementById('club').value || null,
         };
 
+        // Upload de la signature
         const signatureDataURL = signaturePad.toDataURL('image/png');
         const signatureBlob = await (await fetch(signatureDataURL)).blob();
         const signatureFileName = `${currentUser.id}_signature_${Date.now()}.png`;
@@ -271,6 +324,7 @@ async function submitLicense(e) {
             .getPublicUrl(signaturePath);
         const signatureUrl = urlData.publicUrl;
 
+        // Insertion dans license_requests
         const { data, error } = await supabaseClient
             .from('license_requests')
             .insert([{
@@ -287,6 +341,11 @@ async function submitLicense(e) {
 
         alert('Demande soumise avec succès ! Elle sera traitée sous 0 à 100h.');
         licenseRequest = data;
+        
+        // Nettoyer les stockages temporaires
+        sessionStorage.removeItem('licenseFormData');
+        sessionStorage.removeItem('tempSignature');
+        
         document.getElementById('licenseForm').reset();
         signaturePad.clear();
         checkLicenseStatus();
@@ -447,6 +506,31 @@ function initLogout() {
     });
 }
 
+// ===== SAUVEGARDE / RESTAURATION DU FORMULAIRE =====
+function saveFormToSession() {
+    const inputs = document.querySelectorAll('#licenseForm input, #licenseForm select');
+    const formData = {};
+    inputs.forEach(inp => {
+        formData[inp.id] = inp.value;
+    });
+    sessionStorage.setItem('licenseFormData', JSON.stringify(formData));
+}
+
+function restoreFormFromSession() {
+    const savedForm = sessionStorage.getItem('licenseFormData');
+    if (savedForm) {
+        try {
+            const data = JSON.parse(savedForm);
+            for (let key in data) {
+                const input = document.getElementById(key);
+                if (input) input.value = data[key];
+            }
+        } catch (e) {
+            console.warn('Erreur de parsing sessionStorage', e);
+        }
+    }
+}
+
 // ===== INITIALISATION PRINCIPALE =====
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Initialisation de la page verification');
@@ -469,8 +553,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const inputs = document.querySelectorAll('#licenseForm input, #licenseForm select');
     inputs.forEach(input => {
-        input.addEventListener('input', updateCardPreview);
+        input.addEventListener('input', () => {
+            updateCardPreview();
+            saveFormToSession(); // sauvegarde automatique
+        });
     });
+    
+    // Restaurer les données du formulaire si existantes
+    restoreFormFromSession();
     updateCardPreview();
 
     initUserMenu();
