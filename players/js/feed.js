@@ -477,15 +477,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     initUserMenu();
     initLogout();
 
-    // 👇 BOUTON POUR OUVRIR LA SIDEBAR DROITE
-    const communityToggle = document.getElementById('communityToggle');
-    if (communityToggle) {
-        communityToggle.addEventListener('click', () => {
-            document.getElementById('rightSidebar').classList.add('active');
-            document.getElementById('sidebarOverlay').classList.add('active');
-        });
-    }
-
     // Realtime pour les nouvelles publications
     supabaseFeed
         .channel('feed_posts_changes')
