@@ -6,10 +6,10 @@
     <title>Mon CV Pro | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles -->
+    <!-- Styles globaux et spécifiques -->
     <link rel="stylesheet" href="css/global.css">
     <link rel="stylesheet" href="css/edit-cv.css">
-    <!-- Supabase (doit être avant les autres scripts) -->
+    <!-- Supabase (doit être en premier) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Signature Pad -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
@@ -45,8 +45,28 @@
         </div>
     </nav>
 
-    <!-- Sidebar (identique) -->
-    <div class="sidebar" id="sidebar">...</div>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Menu Joueur</h3>
+            <button class="close-sidebar" id="closeSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+            <a href="feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
+            <a href="verification.html"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
+            <a href="edit-cv.html" class="active"><i class="fas fa-file-alt"></i> Modifier mon CV Pro</a>
+            <a href="certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
+            <a href="tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournoi (Live)</a>
+            <a href="transfers.html"><i class="fas fa-exchange-alt"></i> Historique Transferts</a>
+            <hr>
+            <a href="videos.html"><i class="fas fa-video"></i> Mes Vidéos</a>
+            <a href="revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
+            <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
+            <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+    </div>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <!-- Contenu principal -->
@@ -55,26 +75,175 @@
             <h1 class="page-title"><i class="fas fa-file-alt"></i> Mon Curriculum Vitæ Professionnel</h1>
             <p class="page-subtitle">Remplissez votre parcours complet. Après validation par l'équipe HubISoccer, vous pourrez exporter en PDF.</p>
 
-            <!-- Indicateur de statut -->
+            <!-- Indicateur de statut de validation -->
             <div class="validation-status" id="validationStatus" style="display: none;"></div>
 
-            <!-- Formulaire -->
+            <!-- Formulaire principal du CV -->
             <form id="cvForm" class="cv-form">
-                <!-- Toutes les sections (inchangées, voir code précédent) -->
-                <!-- ... -->
-                <!-- Signature -->
-                <div class="signature-group">
-                    <label>Signature *</label>
-                    <div class="signature-preview" id="signaturePreview" onclick="openSignatureModal()">
-                        <div class="signature-placeholder">
-                            <i class="fas fa-pen"></i>
-                            <span>Cliquez pour signer</span>
+                <!-- En-tête (coordonnées) -->
+                <section class="cv-section">
+                    <h2><i class="fas fa-address-card"></i> Coordonnées</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nom *</label>
+                            <input type="text" id="nom" placeholder="Votre nom" required>
                         </div>
-                        <img id="signatureImage" style="display: none; max-width: 200px; max-height: 80px;" />
+                        <div class="form-group">
+                            <label>Prénom *</label>
+                            <input type="text" id="prenom" placeholder="Votre prénom" required>
+                        </div>
                     </div>
-                    <p class="field-info">Cliquez sur la zone pour ouvrir le module de signature.</p>
-                </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Téléphone *</label>
+                            <input type="tel" id="telephone" placeholder="+229 XX XX XX XX" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email *</label>
+                            <input type="email" id="email" placeholder="votre@email.com" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Ville de résidence *</label>
+                            <input type="text" id="ville" placeholder="Ex: Cotonou" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Lien réseau social (LinkedIn, Twitter, etc.)</label>
+                            <input type="url" id="social" placeholder="https://linkedin.com/in/...">
+                        </div>
+                    </div>
+                </section>
 
+                <!-- Accroche / Profil -->
+                <section class="cv-section">
+                    <h2><i class="fas fa-user-tag"></i> Profil professionnel</h2>
+                    <div class="form-group full-width">
+                        <textarea id="profil" rows="3" placeholder="Résumez qui vous êtes et ce que vous apportez (ex: 'Footballeur passionné, doté d'une excellente vision de jeu, en reconversion vers le coaching...')"></textarea>
+                    </div>
+                </section>
+
+                <!-- Informations sportives clés -->
+                <section class="cv-section">
+                    <h2><i class="fas fa-futbol"></i> Informations sportives</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Taille (cm)</label>
+                            <input type="number" id="taille" placeholder="175">
+                        </div>
+                        <div class="form-group">
+                            <label>Poids (kg)</label>
+                            <input type="number" id="poids" placeholder="70">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Pied fort</label>
+                            <select id="piedFort">
+                                <option value="">Sélectionnez</option>
+                                <option>Droitier</option>
+                                <option>Gaucher</option>
+                                <option>Ambidextre</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Club actuel</label>
+                            <input type="text" id="club" placeholder="Nom du club ou 'Joueur libre'">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Matchs joués (carrière)</label>
+                            <input type="number" id="matchs" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Buts marqués</label>
+                            <input type="number" id="buts" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Passes décisives</label>
+                            <input type="number" id="passes" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Valeur marchande (FCFA)</label>
+                            <input type="number" id="valeur" placeholder="0">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Expériences professionnelles -->
+                <section class="cv-section">
+                    <h2><i class="fas fa-briefcase"></i> Expériences professionnelles</h2>
+                    <div id="experiences-container"></div>
+                    <button type="button" class="btn-add" id="addExperience"><i class="fas fa-plus"></i> Ajouter une expérience</button>
+                </section>
+
+                <!-- Formations -->
+                <section class="cv-section">
+                    <h2><i class="fas fa-graduation-cap"></i> Formations & Diplômes</h2>
+                    <div id="formations-container"></div>
+                    <button type="button" class="btn-add" id="addFormation"><i class="fas fa-plus"></i> Ajouter une formation</button>
+                </section>
+
+                <!-- Compétences -->
+                <section class="cv-section">
+                    <h2><i class="fas fa-cogs"></i> Compétences</h2>
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label>Compétences techniques (séparées par des virgules)</label>
+                            <input type="text" id="skillsTech" placeholder="Ex: Photoshop, Excel, Analyse vidéo">
+                        </div>
+                        <div class="form-group half">
+                            <label>Savoir-être (séparés par des virgules)</label>
+                            <input type="text" id="skillsSoft" placeholder="Ex: Esprit d'équipe, Gestion du stress">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Langues -->
+                <section class="cv-section">
+                    <h2><i class="fas fa-language"></i> Langues</h2>
+                    <div id="langues-container"></div>
+                    <button type="button" class="btn-add" id="addLangue"><i class="fas fa-plus"></i> Ajouter une langue</button>
+                </section>
+
+                <!-- Centres d'intérêt -->
+                <section class="cv-section">
+                    <h2><i class="fas fa-heart"></i> Centres d'intérêt</h2>
+                    <div class="form-group full-width">
+                        <textarea id="interets" rows="3" placeholder="Ex: Course à pied, bénévolat, lecture, records personnels..."></textarea>
+                    </div>
+                </section>
+
+                <!-- Biographie -->
+                <section class="cv-section">
+                    <h2><i class="fas fa-pencil-alt"></i> Biographie</h2>
+                    <div class="form-group full-width">
+                        <textarea id="bio" rows="4" placeholder="Racontez votre parcours, vos motivations, vos objectifs..."></textarea>
+                    </div>
+                </section>
+
+                <!-- Signature et date -->
+                <section class="cv-section signature-section">
+                    <div class="signature-line">
+                        <span>Fait le </span>
+                        <input type="date" id="dateSignature">
+                        <span> à </span>
+                        <input type="text" id="lieuSignature" placeholder="Ville">
+                    </div>
+                    <div class="signature-box">
+                        <label>Signature (cliquez pour signer)</label>
+                        <div class="signature-preview" id="signaturePreview" onclick="openSignatureModal()">
+                            <div class="signature-placeholder">
+                                <i class="fas fa-pen"></i>
+                                <span>Cliquez pour signer</span>
+                            </div>
+                            <img id="signatureImage" style="display: none; max-width: 200px; max-height: 80px;" />
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Boutons d'action -->
                 <div class="form-actions">
                     <button type="submit" class="btn-save-cv">Enregistrer le CV</button>
                     <button type="button" class="btn-preview" id="previewBtn">Aperçu</button>
@@ -82,7 +251,7 @@
                 </div>
             </form>
 
-            <!-- Aperçu -->
+            <!-- Aperçu du CV -->
             <div class="cv-preview" id="cvPreview" style="display: none;">
                 <h2>Aperçu de votre CV</h2>
                 <div id="previewContent" class="preview-content"></div>
@@ -111,7 +280,24 @@
     </div>
 
     <!-- Footer -->
-    <footer class="dashboard-footer">...</footer>
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
 
     <script src="js/edit-cv.js"></script>
 </body>
