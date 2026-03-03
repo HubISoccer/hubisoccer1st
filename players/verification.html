@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vérification & Licence | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Styles globaux -->
+    <link rel="stylesheet" href="../public/css/style.css">
+    <!-- Styles spécifiques -->
+    <link rel="stylesheet" href="css/verification.css">
+    <!-- Signature Pad (pour la signature) -->
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar (identique au dashboard) -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Espace Joueur</span>
+        </div>
+        <div class="nav-right">
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="edit-cv.html">Mon profil</a>
+                    <a href="support.html">Paramètres</a>
+                    <a href="#" id="languageLink">Langue (Français)</a>
+                    <a href="#" id="logoutLink">Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Sidebar (identique) -->
+    <div class="sidebar" id="sidebar">...</div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Contenu principal -->
+    <main class="verification-main">
+        <div class="verification-container">
+            <h1 class="page-title"><i class="fas fa-shield-alt"></i> Hub de vérification & licence</h1>
+
+            <!-- Section Documents requis -->
+            <section class="documents-section">
+                <h2><i class="fas fa-file-alt"></i> Documents requis</h2>
+                <p class="section-subtitle">Téléversez les documents demandés par l'administration. Le statut change après vérification.</p>
+                <div class="documents-grid" id="documentsGrid">
+                    <!-- Les documents seront chargés dynamiquement -->
+                </div>
+            </section>
+
+            <!-- Section Demande de licence -->
+            <section class="license-section">
+                <h2><i class="fas fa-id-card"></i> Demande de licence HubISoccer</h2>
+                <p class="section-subtitle">Remplissez ces informations pour obtenir votre carte de licence officielle.</p>
+
+                <div class="license-layout">
+                    <!-- Formulaire -->
+                    <div class="license-form">
+                        <form id="licenseForm">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nom *</label>
+                                    <input type="text" id="nom" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Prénom *</label>
+                                    <input type="text" id="prenom" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Date de naissance *</label>
+                                    <input type="date" id="dateNaissance" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Lieu de naissance *</label>
+                                    <input type="text" id="lieuNaissance" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Adresse actuelle *</label>
+                                    <input type="text" id="adresse" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nationalité *</label>
+                                    <input type="text" id="nationalite" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Langue(s) parlée(s) *</label>
+                                    <input type="text" id="langue" placeholder="ex: Français, Anglais" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Téléphone *</label>
+                                    <input type="tel" id="telephone" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Taille (cm)</label>
+                                    <input type="number" id="taille">
+                                </div>
+                                <div class="form-group">
+                                    <label>Poids (kg)</label>
+                                    <input type="number" id="poids">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Pied fort</label>
+                                    <select id="piedFort">
+                                        <option value="">Sélectionnez</option>
+                                        <option>Droitier</option>
+                                        <option>Gaucher</option>
+                                        <option>Ambidextre</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Club actuel</label>
+                                    <input type="text" id="club" placeholder="ou 'Joueur libre'">
+                                </div>
+                            </div>
+
+                            <!-- Signature -->
+                            <div class="signature-group">
+                                <label>Signature *</label>
+                                <div class="signature-container">
+                                    <canvas id="signatureCanvas" width="400" height="150"></canvas>
+                                    <button type="button" class="btn-clear-signature" id="clearSignature">Effacer</button>
+                                </div>
+                                <p class="field-info">Signez dans le cadre ci-dessus</p>
+                            </div>
+
+                            <button type="submit" class="btn-submit-license" id="submitLicense">Soumettre ma demande</button>
+                        </form>
+                    </div>
+
+                    <!-- Aperçu de la carte -->
+                    <div class="license-preview">
+                        <h3>Aperçu de votre carte</h3>
+                        <div class="card-preview" id="cardPreview">
+                            <!-- La carte sera générée dynamiquement en JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section Statut de la demande -->
+            <section class="status-section" id="statusSection" style="display: none;">
+                <h2><i class="fas fa-clock"></i> Statut de votre demande</h2>
+                <div class="status-card" id="statusCard">
+                    <!-- Contenu dynamique -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">...</footer>
+
+    <script src="js/verification.js"></script>
+</body>
+</html>
