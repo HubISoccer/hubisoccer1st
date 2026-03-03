@@ -1,0 +1,514 @@
+// ===== CONFIGURATION SUPABASE =====
+const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ===== ÉTAT GLOBAL =====
+let currentUser = null;
+let currentProfile = null;
+let posts = [];
+let followers = [];
+let following = [];
+let currentFilter = 'all';
+let searchTerm = '';
+
+// ===== VÉRIFICATION DE SESSION =====
+async function checkSession() {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session) {
+        window.location.href = '../public/auth/login.html';
+        return null;
+    }
+    currentUser = session.user;
+    return currentUser;
+}
+
+// ===== CHARGEMENT DU PROFIL =====
+async function loadProfile() {
+    const { data, error } = await supabase
+        .from('player_profiles')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .single();
+
+    if (error) {
+        console.error('Erreur chargement profil:', error);
+        return null;
+    }
+    currentProfile = data;
+    document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
+    document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
+    document.getElementById('publishAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
+    return currentProfile;
+}
+
+// ===== CHARGEMENT DES POSTS (feed) =====
+async function loadPosts() {
+    let query = supabase
+        .from('feed_posts')
+        .select(`
+            *,
+            player:player_profiles!player_id (nom_complet, avatar_url, hub_id),
+            likes:feed_likes(count),
+            comments:feed_comments(count),
+            shares:feed_shares(count)
+        `)
+        .order('created_at', { ascending: false });
+
+    // Si on suit des personnes, on peut filtrer par followed
+    // Pour simplifier, on charge tous les posts pour l'instant
+    const { data, error } = await query;
+    if (error) {
+        console.error('Erreur chargement posts:', error);
+        return;
+    }
+    posts = data || [];
+    renderPosts();
+}
+
+// ===== RENDU DES POSTS =====
+function renderPosts() {
+    const feed = document.getElementById('postsFeed');
+    if (!feed) return;
+    let html = '';
+    posts.forEach(post => {
+        const timeAgo = timeSince(new Date(post.created_at));
+        const isLiked = false; // À vérifier avec une requête later
+        const likedClass = isLiked ? 'liked' : '';
+        let mediaHtml = '';
+        if (post.media_url) {
+            if (post.media_type === 'image') {
+                mediaHtml = `<img src="${post.media_url}" alt="Post media">`;
+            } else if (post.media_type === 'video') {
+                mediaHtml = `<video src="${post.media_url}" controls></video>`;
+            }
+        }
+
+        const roleIcon = getRoleIcon(post.player?.role);
+
+        html += `
+            <div class="post-card" data-post-id="${post.id}">
+                <div class="post-header">
+                    <img src="${post.player?.avatar_url || 'img/user-default.jpg'}" alt="${post.player?.nom_complet}">
+                    <div class="post-author">
+                        <h4>${post.player?.nom_complet || 'Anonyme'} ${roleIcon}</h4>
+                        <small>@${post.player?.hub_id || 'inconnu'} · ${timeAgo}</small>
+                    </div>
+                    <div class="post-menu">
+                        <button class="post-menu-btn" onclick="togglePostMenu(this)"><i class="fas fa-ellipsis-v"></i></button>
+                        <div class="post-menu-dropdown">
+                            ${post.player_id === currentProfile?.id ? `<button onclick="editPost(${post.id})"><i class="fas fa-edit"></i> Modifier</button>` : ''}
+                            ${post.player_id === currentProfile?.id ? `<button onclick="deletePost(${post.id})" class="delete"><i class="fas fa-trash-alt"></i> Supprimer</button>` : ''}
+                            <button onclick="pinPost(${post.id})"><i class="fas fa-thumbtack"></i> Épingler</button>
+                            <button onclick="hidePost(${post.id})"><i class="fas fa-eye-slash"></i> Masquer</button>
+                            <button onclick="reportPost(${post.id})"><i class="fas fa-flag"></i> Signaler</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="post-content">${post.content}</div>
+                ${post.media_url ? `<div class="post-media">${mediaHtml}</div>` : ''}
+                <div class="post-stats">
+                    <span onclick="showLikes(${post.id})"><i class="fas fa-heart"></i> ${post.likes?.[0]?.count || 0}</span>
+                    <span onclick="showComments(${post.id})"><i class="fas fa-comment"></i> ${post.comments?.[0]?.count || 0}</span>
+                    <span><i class="fas fa-share"></i> ${post.shares?.[0]?.count || 0}</span>
+                </div>
+                <div class="post-actions">
+                    <button class="${likedClass}" onclick="likePost(${post.id})"><i class="fas fa-heart"></i> J'aime</button>
+                    <button onclick="focusComment(${post.id})"><i class="fas fa-comment"></i> Commenter</button>
+                    <button onclick="sharePost(${post.id})"><i class="fas fa-share"></i> Partager</button>
+                </div>
+                <div class="comments-section" id="comments-${post.id}">
+                    <!-- Les commentaires seront chargés dynamiquement -->
+                </div>
+            </div>
+        `;
+    });
+    feed.innerHTML = html;
+    // Charger les commentaires pour chaque post
+    posts.forEach(post => loadComments(post.id));
+}
+
+// ===== CHARGEMENT DES COMMENTAIRES POUR UN POST =====
+async function loadComments(postId) {
+    const { data, error } = await supabase
+        .from('feed_comments')
+        .select(`
+            *,
+            player:player_profiles!player_id (nom_complet, avatar_url)
+        `)
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        console.error('Erreur chargement commentaires:', error);
+        return;
+    }
+    const commentsDiv = document.getElementById(`comments-${postId}`);
+    if (!commentsDiv) return;
+    let html = '';
+    data.forEach(comment => {
+        html += `
+            <div class="comment">
+                <img src="${comment.player?.avatar_url || 'img/user-default.jpg'}">
+                <div class="comment-content">
+                    <span class="comment-author">${comment.player?.nom_complet || 'Anonyme'}</span>
+                    <span class="comment-text">${comment.content}</span>
+                    <small>${timeSince(new Date(comment.created_at))}</small>
+                </div>
+            </div>
+        `;
+    });
+    html += `
+        <div class="add-comment">
+            <img src="${currentProfile?.avatar_url || 'img/user-default.jpg'}">
+            <input type="text" id="commentInput-${postId}" placeholder="Écrire un commentaire...">
+            <button onclick="addComment(${postId})">Envoyer</button>
+        </div>
+    `;
+    commentsDiv.innerHTML = html;
+}
+
+// ===== FONCTIONS UTILITAIRES =====
+function timeSince(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    let interval = Math.floor(seconds / 31536000);
+    if (interval > 1) return `il y a ${interval} ans`;
+    interval = Math.floor(seconds / 2592000);
+    if (interval > 1) return `il y a ${interval} mois`;
+    interval = Math.floor(seconds / 86400);
+    if (interval > 1) return `il y a ${interval} jours`;
+    interval = Math.floor(seconds / 3600);
+    if (interval > 1) return `il y a ${interval} heures`;
+    interval = Math.floor(seconds / 60);
+    if (interval > 1) return `il y a ${interval} minutes`;
+    return `il y a ${Math.floor(seconds)} secondes`;
+}
+
+function getRoleIcon(role) {
+    switch(role) {
+        case 'joueur': return '⚽';
+        case 'parrain': return '👨‍👦';
+        case 'academie': return '🏫';
+        case 'agent': return '💼';
+        case 'staff_medical': return '🩺';
+        default: return '';
+    }
+}
+
+// ===== ACTIONS SUR LES POSTS =====
+function togglePostMenu(btn) {
+    const dropdown = btn.nextElementSibling;
+    dropdown.classList.toggle('show');
+    document.addEventListener('click', function closeMenu(e) {
+        if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+            document.removeEventListener('click', closeMenu);
+        }
+    });
+}
+
+async function likePost(postId) {
+    // Vérifier si déjà liké
+    const { data: existing } = await supabase
+        .from('feed_likes')
+        .select()
+        .eq('player_id', currentProfile.id)
+        .eq('post_id', postId)
+        .maybeSingle();
+
+    if (existing) {
+        // Unlike
+        await supabase.from('feed_likes').delete().eq('player_id', currentProfile.id).eq('post_id', postId);
+    } else {
+        // Like
+        await supabase.from('feed_likes').insert({ player_id: currentProfile.id, post_id: postId });
+    }
+    // Recharger les posts pour mettre à jour le compteur
+    loadPosts();
+}
+
+async function addComment(postId) {
+    const input = document.getElementById(`commentInput-${postId}`);
+    const content = input.value.trim();
+    if (!content) return;
+    await supabase.from('feed_comments').insert({
+        player_id: currentProfile.id,
+        post_id: postId,
+        content: content
+    });
+    input.value = '';
+    loadComments(postId);
+    // Mettre à jour le compteur de commentaires
+    loadPosts();
+}
+
+async function sharePost(postId) {
+    await supabase.from('feed_shares').insert({ player_id: currentProfile.id, post_id: postId });
+    alert('Post partagé !');
+    loadPosts();
+}
+
+function focusComment(postId) {
+    document.getElementById(`commentInput-${postId}`).focus();
+}
+
+function showLikes(postId) {
+    // Optionnel : afficher la liste des likes
+    alert('Fonctionnalité à venir : liste des likes');
+}
+
+function showComments(postId) {
+    document.getElementById(`comments-${postId}`).scrollIntoView({ behavior: 'smooth' });
+}
+
+function editPost(postId) {
+    const post = posts.find(p => p.id === postId);
+    const newContent = prompt('Modifier votre message :', post.content);
+    if (newContent !== null) {
+        supabase.from('feed_posts').update({ content: newContent }).eq('id', postId).then(() => loadPosts());
+    }
+}
+
+function deletePost(postId) {
+    if (confirm('Supprimer ce post définitivement ?')) {
+        supabase.from('feed_posts').delete().eq('id', postId).then(() => loadPosts());
+    }
+}
+
+function pinPost(postId) {
+    alert('Épingler (simulation)');
+}
+
+function hidePost(postId) {
+    if (confirm('Masquer ce post ?')) {
+        // On pourrait stocker les posts masqués dans une table feed_hidden
+        alert('Post masqué (simulation)');
+    }
+}
+
+function reportPost(postId) {
+    alert('Post signalé à la modération (simulation)');
+}
+
+// ===== CRÉATION D'UN NOUVEAU POST =====
+async function createPost(content, file) {
+    let mediaUrl = null;
+    let mediaType = null;
+    if (file) {
+        // Upload vers Storage (bucket 'media')
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
+        const filePath = `posts/${fileName}`;
+        const { error: uploadError } = await supabase.storage
+            .from('media')
+            .upload(filePath, file);
+        if (uploadError) {
+            alert('Erreur upload : ' + uploadError.message);
+            return;
+        }
+        const { data: urlData } = supabase.storage.from('media').getPublicUrl(filePath);
+        mediaUrl = urlData.publicUrl;
+        mediaType = file.type.startsWith('image/') ? 'image' : 'video';
+    }
+    const { error } = await supabase.from('feed_posts').insert({
+        player_id: currentProfile.id,
+        content: content,
+        media_url: mediaUrl,
+        media_type: mediaType
+    });
+    if (error) {
+        alert('Erreur publication : ' + error.message);
+    } else {
+        document.getElementById('postContent').value = '';
+        document.getElementById('publishMediaPreview').innerHTML = '';
+        document.getElementById('mediaInput').value = '';
+        loadPosts();
+    }
+}
+
+// ===== GESTION DES SWIPES =====
+let touchStartX = 0;
+let touchEndX = 0;
+const swipeThreshold = 50;
+
+document.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+}, false);
+
+document.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+}, false);
+
+function handleSwipe() {
+    const leftSidebar = document.getElementById('leftSidebar');
+    const rightSidebar = document.getElementById('rightSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const diff = touchEndX - touchStartX;
+
+    if (diff > swipeThreshold && touchStartX < 50) {
+        leftSidebar.classList.add('active');
+        overlay.classList.add('active');
+    } else if (diff < -swipeThreshold && touchStartX > window.innerWidth - 50) {
+        rightSidebar.classList.add('active');
+        overlay.classList.add('active');
+    }
+}
+
+// Fermeture des sidebars
+document.getElementById('closeLeftSidebar').addEventListener('click', () => {
+    document.getElementById('leftSidebar').classList.remove('active');
+    document.getElementById('sidebarOverlay').classList.remove('active');
+});
+
+document.getElementById('closeRightSidebar').addEventListener('click', () => {
+    document.getElementById('rightSidebar').classList.remove('active');
+    document.getElementById('sidebarOverlay').classList.remove('active');
+});
+
+document.getElementById('sidebarOverlay').addEventListener('click', () => {
+    document.getElementById('leftSidebar').classList.remove('active');
+    document.getElementById('rightSidebar').classList.remove('active');
+    document.getElementById('sidebarOverlay').classList.remove('active');
+});
+
+// ===== RENDU DE LA SIDEBAR DROITE (abonnés, abonnements) =====
+async function loadFollowers() {
+    // Récupérer les followers
+    const { data: followersData } = await supabase
+        .from('feed_follows')
+        .select('follower_id, player:player_profiles!follower_id (nom_complet, avatar_url, hub_id)')
+        .eq('followed_id', currentProfile.id);
+    followers = followersData || [];
+    const followersList = document.getElementById('followersList');
+    followersList.innerHTML = followers.map(f => `
+        <li><img src="${f.player?.avatar_url || 'img/user-default.jpg'}"><span>${f.player?.nom_complet || 'Anonyme'}</span> <small>@${f.player?.hub_id || ''}</small></li>
+    `).join('');
+
+    // Récupérer les abonnements
+    const { data: followingData } = await supabase
+        .from('feed_follows')
+        .select('followed_id, player:player_profiles!followed_id (nom_complet, avatar_url, hub_id)')
+        .eq('follower_id', currentProfile.id);
+    following = followingData || [];
+    const followingList = document.getElementById('followingList');
+    followingList.innerHTML = following.map(f => `
+        <li><img src="${f.player?.avatar_url || 'img/user-default.jpg'}"><span>${f.player?.nom_complet || 'Anonyme'}</span> <small>@${f.player?.hub_id || ''}</small></li>
+    `).join('');
+
+    // Insights (simples)
+    document.getElementById('insightReach').textContent = (followers.length * 10).toLocaleString(); // fictif
+    document.getElementById('insightEngagement').textContent = '12%'; // fictif
+    document.getElementById('insightNewFollowers').textContent = `+${Math.floor(Math.random() * 10)}`;
+}
+
+// ===== RECHERCHE ET FILTRES =====
+function initSearchAndFilters() {
+    document.getElementById('communitySearch').addEventListener('input', (e) => {
+        searchTerm = e.target.value.toLowerCase();
+        // Filtrer les followers/following (à implémenter)
+    });
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            // Appliquer le filtre (à implémenter)
+        });
+    });
+}
+
+// ===== MENU UTILISATEUR =====
+function initUserMenu() {
+    document.getElementById('userMenu').addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('userDropdown').classList.toggle('show');
+    });
+    document.addEventListener('click', () => {
+        document.getElementById('userDropdown').classList.remove('show');
+    });
+}
+
+// ===== DÉCONNEXION =====
+function initLogout() {
+    document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
+        link.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await supabase.auth.signOut();
+            window.location.href = '../index.html';
+        });
+    });
+}
+
+// ===== INITIALISATION =====
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 Initialisation de feed.js');
+
+    const user = await checkSession();
+    if (!user) return;
+
+    await loadProfile();
+    await loadPosts();
+    await loadFollowers();
+
+    // Gestion de la publication
+    document.getElementById('attachMediaBtn').addEventListener('click', () => {
+        document.getElementById('mediaInput').click();
+    });
+
+    document.getElementById('mediaInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const preview = document.getElementById('publishMediaPreview');
+        const url = URL.createObjectURL(file);
+        if (file.type.startsWith('image/')) {
+            preview.innerHTML = `<img src="${url}" alt="Aperçu">`;
+        } else if (file.type.startsWith('video/')) {
+            preview.innerHTML = `<video src="${url}" controls></video>`;
+        }
+    });
+
+    document.getElementById('previewPostBtn').addEventListener('click', () => {
+        const content = document.getElementById('postContent').value.trim();
+        alert(`Aperçu : ${content || '(aucun texte)'}`);
+    });
+
+    document.getElementById('schedulePostBtn').addEventListener('click', () => {
+        alert('Fonctionnalité de programmation (simulation).');
+    });
+
+    document.getElementById('publishBtn').addEventListener('click', () => {
+        const content = document.getElementById('postContent').value.trim();
+        const file = document.getElementById('mediaInput').files[0];
+        if (!content && !file) return;
+        createPost(content, file);
+    });
+
+    initSearchAndFilters();
+    initUserMenu();
+    initLogout();
+    initSidebarButtons();
+
+    // Realtime pour les nouvelles publications
+    supabase
+        .channel('feed_posts_changes')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_posts' }, payload => {
+            // Recharger les posts pour voir le nouveau
+            loadPosts();
+        })
+        .subscribe();
+
+    document.getElementById('languageLink')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        alert('Changement de langue bientôt disponible');
+    });
+
+    console.log('✅ Initialisation terminée');
+});
+
+function initSidebarButtons() {
+    // Boutons d'édition (simulés)
+    window.editBio = () => alert('Modification de la bio (simulation)');
+    window.editContact = () => alert('Modification des coordonnées (simulation)');
+}
