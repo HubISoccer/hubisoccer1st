@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mes vidéos | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Styles globaux -->
+    <link rel="stylesheet" href="css/global.css">
+    <!-- Styles spécifiques -->
+    <link rel="stylesheet" href="css/videos.css">
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Espace Joueur</span>
+        </div>
+        <div class="nav-right">
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="edit-cv.html">Mon CV Pro</a>
+                    <a href="support.html">Paramètres</a>
+                    <a href="#" id="languageLink">Langue (Français)</a>
+                    <a href="#" id="logoutLink">Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Menu Joueur</h3>
+            <button class="close-sidebar" id="closeSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+            <a href="feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
+            <a href="verification.html"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
+            <a href="edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV Pro</a>
+            <a href="certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
+            <a href="tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournoi (Live)</a>
+            <a href="transfers.html"><i class="fas fa-exchange-alt"></i> Historique Transferts</a>
+            <hr>
+            <a href="videos.html" class="active"><i class="fas fa-video"></i> Mes Vidéos</a>
+            <a href="revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
+            <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
+            <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Contenu principal -->
+    <main class="videos-main">
+        <div class="videos-container">
+            <h1 class="page-title"><i class="fas fa-video"></i> Mes vidéos & photos</h1>
+
+            <!-- Bouton d'upload -->
+            <div class="upload-section">
+                <button class="btn-upload" id="openUploadModal"><i class="fas fa-cloud-upload-alt"></i> Ajouter une vidéo/photo</button>
+            </div>
+
+            <!-- Filtres par statut -->
+            <div class="filter-tabs">
+                <button class="filter-btn active" data-filter="all">Tous</button>
+                <button class="filter-btn" data-filter="pending">En attente</button>
+                <button class="filter-btn" data-filter="approved">Validés</button>
+                <button class="filter-btn" data-filter="rejected">Rejetés</button>
+            </div>
+
+            <!-- Grille des médias -->
+            <div class="media-grid" id="mediaGrid">
+                <!-- Les médias seront chargés dynamiquement -->
+            </div>
+        </div>
+    </main>
+
+    <!-- MODALE D'UPLOAD -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Ajouter un média</h2>
+                <span class="close-modal" onclick="closeUploadModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="uploadForm">
+                    <div class="form-group">
+                        <label>Titre *</label>
+                        <input type="text" id="mediaTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="mediaDesc" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Type *</label>
+                        <select id="mediaType" required>
+                            <option value="video">Vidéo</option>
+                            <option value="photo">Photo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Fichier *</label>
+                        <input type="file" id="mediaFile" accept="video/*,image/*" required>
+                    </div>
+                    <button type="submit" class="btn-submit">Soumettre pour examen</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE DÉTAIL (pour voir le média et les commentaires) -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Détail du média</h2>
+                <span class="close-modal" onclick="closeDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="detailContent">
+                <!-- Rempli dynamiquement -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/videos.js"></script>
+</body>
+                                     </html>
