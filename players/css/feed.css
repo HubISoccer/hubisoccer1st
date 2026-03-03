@@ -790,3 +790,31 @@ body {
         font-size: 0.75rem;
     }
 }
+
+/* Bouton pour ouvrir la sidebar communauté */
+.community-toggle {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--gray);
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+.community-toggle:hover {
+    background: rgba(85,27,140,0.1);
+    color: var(--primary);
+}
+
+/* Ajustement responsive : cacher le texte du bouton si nécessaire */
+@media (max-width: 600px) {
+    .community-toggle {
+        font-size: 1rem;
+    }
+}
