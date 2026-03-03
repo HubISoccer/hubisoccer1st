@@ -4,7 +4,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
-let currentUser = null; // Sera initialisé après checkSession
+let currentUser = null;
 let playerProfile = null;
 let documentsList = [];
 let licenseRequest = null;
@@ -15,7 +15,6 @@ async function checkSession() {
     try {
         const { data: { session }, error } = await supabaseClient.auth.getSession();
         if (error || !session) {
-            console.warn('Aucune session active, redirection vers login');
             window.location.href = '../public/auth/login.html';
             return null;
         }
@@ -29,13 +28,15 @@ async function checkSession() {
     }
 }
 
-// ===== CHARGEMENT DU PROFIL =====
+// ===== CHARGEMENT DU PROFIL (adapté aux colonnes réelles) =====
 async function loadPlayerProfile() {
-    if (!currentUser || !currentUser.id) {
-        console.error('currentUser non défini, impossible de charger le profil');
+    if (!currentUser?.id) {
+        console.error('currentUser.id manquant');
+        playerProfile = { nom_complet: 'Joueur', hub_id: 'TEMP-' + Date.now() };
         return;
     }
     try {
+        console.log('Tentative de chargement du profil pour user_id:', currentUser.id);
         const { data, error } = await supabaseClient
             .from('player_profiles')
             .select('*')
@@ -44,24 +45,28 @@ async function loadPlayerProfile() {
 
         if (error) {
             console.error('Erreur chargement profil:', error);
-            playerProfile = { full_name: 'Joueur' };
+            playerProfile = { 
+                id: null, 
+                nom_complet: 'Joueur', 
+                hub_id: 'TEMP-' + Date.now() 
+            };
         } else {
-            playerProfile = data || { full_name: 'Joueur' };
+            playerProfile = data || { 
+                id: null, 
+                nom_complet: 'Joueur', 
+                hub_id: 'TEMP-' + Date.now() 
+            };
         }
-        document.getElementById('userName').textContent = playerProfile.full_name || 'Joueur';
-        console.log('✅ Profil chargé :', playerProfile);
+        document.getElementById('userName').textContent = playerProfile.nom_complet || 'Joueur';
+        console.log('✅ Profil utilisé :', playerProfile);
     } catch (err) {
         console.error('❌ Exception loadPlayerProfile :', err);
-        playerProfile = { full_name: 'Joueur' };
+        playerProfile = { nom_complet: 'Joueur', hub_id: 'TEMP-' + Date.now() };
     }
 }
 
 // ===== CHARGEMENT DES DOCUMENTS =====
 async function loadDocuments() {
-    if (!playerProfile || !playerProfile.id) {
-        console.warn('Profil non chargé, impossible de charger les documents');
-        return;
-    }
     try {
         const requiredDocs = [
             { id: 'id_card', name: 'Pièce d\'identité (CNI/Passeport)', type: 'identity' },
@@ -71,27 +76,28 @@ async function loadDocuments() {
             { id: 'justificatif_domicile', name: 'Justificatif de domicile', type: 'address' }
         ];
 
-        const { data: existingDocs, error } = await supabaseClient
-            .from('document_requests')
-            .select('*')
-            .eq('player_id', playerProfile.id);
+        if (playerProfile?.id) {
+            const { data: existingDocs, error } = await supabaseClient
+                .from('document_requests')
+                .select('*')
+                .eq('player_id', playerProfile.id);
 
-        if (error) {
-            console.error('Erreur chargement documents:', error);
-            // Si la table n'existe pas, on continue avec une liste vide
-            documentsList = requiredDocs.map(doc => ({ ...doc, status: 'pending', file_url: null, file_name: null, request_id: null }));
-        } else {
-            documentsList = requiredDocs.map(doc => {
-                const existing = existingDocs?.find(d => d.document_type === doc.id);
-                return {
-                    ...doc,
-                    status: existing?.status || 'pending',
-                    file_url: existing?.file_url || null,
-                    file_name: existing?.file_name || null,
-                    request_id: existing?.id || null
-                };
-            });
+            if (!error && existingDocs) {
+                documentsList = requiredDocs.map(doc => {
+                    const existing = existingDocs.find(d => d.document_type === doc.id);
+                    return {
+                        ...doc,
+                        status: existing?.status || 'pending',
+                        file_url: existing?.file_url || null,
+                        file_name: existing?.file_name || null,
+                        request_id: existing?.id || null
+                    };
+                });
+                renderDocuments();
+                return;
+            }
         }
+        documentsList = requiredDocs.map(doc => ({ ...doc, status: 'pending', file_url: null, file_name: null, request_id: null }));
         renderDocuments();
     } catch (err) {
         console.error('❌ Exception loadDocuments :', err);
