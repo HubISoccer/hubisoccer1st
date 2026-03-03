@@ -1,7 +1,8 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Utiliser un nom différent pour éviter les conflits
+const supabaseFeed = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -14,7 +15,7 @@ let searchTerm = '';
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const { data: { session }, error } = await supabaseFeed.auth.getSession();
     if (error || !session) {
         window.location.href = '../public/auth/login.html';
         return null;
@@ -25,7 +26,7 @@ async function checkSession() {
 
 // ===== CHARGEMENT DU PROFIL =====
 async function loadProfile() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseFeed
         .from('player_profiles')
         .select('*')
         .eq('user_id', currentUser.id)
@@ -44,7 +45,7 @@ async function loadProfile() {
 
 // ===== CHARGEMENT DES POSTS (feed) =====
 async function loadPosts() {
-    let query = supabase
+    let query = supabaseFeed
         .from('feed_posts')
         .select(`
             *,
@@ -55,8 +56,6 @@ async function loadPosts() {
         `)
         .order('created_at', { ascending: false });
 
-    // Si on suit des personnes, on peut filtrer par followed
-    // Pour simplifier, on charge tous les posts pour l'instant
     const { data, error } = await query;
     if (error) {
         console.error('Erreur chargement posts:', error);
@@ -64,6 +63,8 @@ async function loadPosts() {
     }
     posts = data || [];
     renderPosts();
+    // Charger les commentaires pour chaque post
+    posts.forEach(post => loadComments(post.id));
 }
 
 // ===== RENDU DES POSTS =====
@@ -105,7 +106,7 @@ function renderPosts() {
                         </div>
                     </div>
                 </div>
-                <div class="post-content">${post.content}</div>
+                <div class="post-content">${post.content || ''}</div>
                 ${post.media_url ? `<div class="post-media">${mediaHtml}</div>` : ''}
                 <div class="post-stats">
                     <span onclick="showLikes(${post.id})"><i class="fas fa-heart"></i> ${post.likes?.[0]?.count || 0}</span>
@@ -124,13 +125,11 @@ function renderPosts() {
         `;
     });
     feed.innerHTML = html;
-    // Charger les commentaires pour chaque post
-    posts.forEach(post => loadComments(post.id));
 }
 
 // ===== CHARGEMENT DES COMMENTAIRES POUR UN POST =====
 async function loadComments(postId) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseFeed
         .from('feed_comments')
         .select(`
             *,
@@ -208,8 +207,7 @@ function togglePostMenu(btn) {
 }
 
 async function likePost(postId) {
-    // Vérifier si déjà liké
-    const { data: existing } = await supabase
+    const { data: existing } = await supabaseFeed
         .from('feed_likes')
         .select()
         .eq('player_id', currentProfile.id)
@@ -217,13 +215,10 @@ async function likePost(postId) {
         .maybeSingle();
 
     if (existing) {
-        // Unlike
-        await supabase.from('feed_likes').delete().eq('player_id', currentProfile.id).eq('post_id', postId);
+        await supabaseFeed.from('feed_likes').delete().eq('player_id', currentProfile.id).eq('post_id', postId);
     } else {
-        // Like
-        await supabase.from('feed_likes').insert({ player_id: currentProfile.id, post_id: postId });
+        await supabaseFeed.from('feed_likes').insert({ player_id: currentProfile.id, post_id: postId });
     }
-    // Recharger les posts pour mettre à jour le compteur
     loadPosts();
 }
 
@@ -231,19 +226,18 @@ async function addComment(postId) {
     const input = document.getElementById(`commentInput-${postId}`);
     const content = input.value.trim();
     if (!content) return;
-    await supabase.from('feed_comments').insert({
+    await supabaseFeed.from('feed_comments').insert({
         player_id: currentProfile.id,
         post_id: postId,
         content: content
     });
     input.value = '';
     loadComments(postId);
-    // Mettre à jour le compteur de commentaires
-    loadPosts();
+    loadPosts(); // pour mettre à jour le compteur
 }
 
 async function sharePost(postId) {
-    await supabase.from('feed_shares').insert({ player_id: currentProfile.id, post_id: postId });
+    await supabaseFeed.from('feed_shares').insert({ player_id: currentProfile.id, post_id: postId });
     alert('Post partagé !');
     loadPosts();
 }
@@ -253,7 +247,6 @@ function focusComment(postId) {
 }
 
 function showLikes(postId) {
-    // Optionnel : afficher la liste des likes
     alert('Fonctionnalité à venir : liste des likes');
 }
 
@@ -265,13 +258,13 @@ function editPost(postId) {
     const post = posts.find(p => p.id === postId);
     const newContent = prompt('Modifier votre message :', post.content);
     if (newContent !== null) {
-        supabase.from('feed_posts').update({ content: newContent }).eq('id', postId).then(() => loadPosts());
+        supabaseFeed.from('feed_posts').update({ content: newContent }).eq('id', postId).then(() => loadPosts());
     }
 }
 
 function deletePost(postId) {
     if (confirm('Supprimer ce post définitivement ?')) {
-        supabase.from('feed_posts').delete().eq('id', postId).then(() => loadPosts());
+        supabaseFeed.from('feed_posts').delete().eq('id', postId).then(() => loadPosts());
     }
 }
 
@@ -281,7 +274,6 @@ function pinPost(postId) {
 
 function hidePost(postId) {
     if (confirm('Masquer ce post ?')) {
-        // On pourrait stocker les posts masqués dans une table feed_hidden
         alert('Post masqué (simulation)');
     }
 }
@@ -295,22 +287,21 @@ async function createPost(content, file) {
     let mediaUrl = null;
     let mediaType = null;
     if (file) {
-        // Upload vers Storage (bucket 'media')
         const fileExt = file.name.split('.').pop();
         const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
         const filePath = `posts/${fileName}`;
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabaseFeed.storage
             .from('media')
             .upload(filePath, file);
         if (uploadError) {
             alert('Erreur upload : ' + uploadError.message);
             return;
         }
-        const { data: urlData } = supabase.storage.from('media').getPublicUrl(filePath);
+        const { data: urlData } = supabaseFeed.storage.from('media').getPublicUrl(filePath);
         mediaUrl = urlData.publicUrl;
         mediaType = file.type.startsWith('image/') ? 'image' : 'video';
     }
-    const { error } = await supabase.from('feed_posts').insert({
+    const { error } = await supabaseFeed.from('feed_posts').insert({
         player_id: currentProfile.id,
         content: content,
         media_url: mediaUrl,
@@ -374,8 +365,7 @@ document.getElementById('sidebarOverlay').addEventListener('click', () => {
 
 // ===== RENDU DE LA SIDEBAR DROITE (abonnés, abonnements) =====
 async function loadFollowers() {
-    // Récupérer les followers
-    const { data: followersData } = await supabase
+    const { data: followersData } = await supabaseFeed
         .from('feed_follows')
         .select('follower_id, player:player_profiles!follower_id (nom_complet, avatar_url, hub_id)')
         .eq('followed_id', currentProfile.id);
@@ -385,8 +375,7 @@ async function loadFollowers() {
         <li><img src="${f.player?.avatar_url || 'img/user-default.jpg'}"><span>${f.player?.nom_complet || 'Anonyme'}</span> <small>@${f.player?.hub_id || ''}</small></li>
     `).join('');
 
-    // Récupérer les abonnements
-    const { data: followingData } = await supabase
+    const { data: followingData } = await supabaseFeed
         .from('feed_follows')
         .select('followed_id, player:player_profiles!followed_id (nom_complet, avatar_url, hub_id)')
         .eq('follower_id', currentProfile.id);
@@ -396,9 +385,8 @@ async function loadFollowers() {
         <li><img src="${f.player?.avatar_url || 'img/user-default.jpg'}"><span>${f.player?.nom_complet || 'Anonyme'}</span> <small>@${f.player?.hub_id || ''}</small></li>
     `).join('');
 
-    // Insights (simples)
-    document.getElementById('insightReach').textContent = (followers.length * 10).toLocaleString(); // fictif
-    document.getElementById('insightEngagement').textContent = '12%'; // fictif
+    document.getElementById('insightReach').textContent = (followers.length * 10).toLocaleString();
+    document.getElementById('insightEngagement').textContent = '12%';
     document.getElementById('insightNewFollowers').textContent = `+${Math.floor(Math.random() * 10)}`;
 }
 
@@ -406,7 +394,7 @@ async function loadFollowers() {
 function initSearchAndFilters() {
     document.getElementById('communitySearch').addEventListener('input', (e) => {
         searchTerm = e.target.value.toLowerCase();
-        // Filtrer les followers/following (à implémenter)
+        // Implémentez le filtrage ici
     });
 
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -414,7 +402,7 @@ function initSearchAndFilters() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentFilter = btn.dataset.filter;
-            // Appliquer le filtre (à implémenter)
+            // Implémentez le filtrage ici
         });
     });
 }
@@ -435,7 +423,7 @@ function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', async (e) => {
             e.preventDefault();
-            await supabase.auth.signOut();
+            await supabaseFeed.auth.signOut();
             window.location.href = '../index.html';
         });
     });
@@ -488,13 +476,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSearchAndFilters();
     initUserMenu();
     initLogout();
-    initSidebarButtons();
 
     // Realtime pour les nouvelles publications
-    supabase
+    supabaseFeed
         .channel('feed_posts_changes')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_posts' }, payload => {
-            // Recharger les posts pour voir le nouveau
             loadPosts();
         })
         .subscribe();
@@ -507,8 +493,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('✅ Initialisation terminée');
 });
 
-function initSidebarButtons() {
-    // Boutons d'édition (simulés)
-    window.editBio = () => alert('Modification de la bio (simulation)');
-    window.editContact = () => alert('Modification des coordonnées (simulation)');
-}
+// Rendre les fonctions globales pour les appels onclick
+window.togglePostMenu = togglePostMenu;
+window.likePost = likePost;
+window.addComment = addComment;
+window.sharePost = sharePost;
+window.focusComment = focusComment;
+window.showLikes = showLikes;
+window.showComments = showComments;
+window.editPost = editPost;
+window.deletePost = deletePost;
+window.pinPost = pinPost;
+window.hidePost = hidePost;
+window.reportPost = reportPost;
+window.editBio = () => alert('Modification de la bio (simulation)');
+window.editContact = () => alert('Modification des coordonnées (simulation)');
