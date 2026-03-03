@@ -2,19 +2,17 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ma Communauté | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles globaux -->
-    <link rel="stylesheet" href="css/global.css">
+    <!-- Styles globaux (public) -->
+    <link rel="stylesheet" href="../public/css/style.css">
     <!-- Styles spécifiques -->
     <link rel="stylesheet" href="css/feed.css">
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- Navbar -->
+    <!-- Navbar (commune) -->
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
@@ -23,16 +21,15 @@
         <div class="nav-right">
             <div class="notif-icon" id="notifIcon">
                 <i class="fas fa-bell"></i>
-                <span class="notif-badge" id="notifBadge">5</span>
+                <span class="notif-badge" id="notifBadge">0</span>
             </div>
             <div class="user-menu" id="userMenu">
-                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
-                <span class="user-name" id="userName">Chargement...</span>
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar">
+                <span class="user-name" id="userName">Koffi B. SOGLO</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
                     <a href="edit-cv.html">Mon profil</a>
                     <a href="support.html">Paramètres</a>
-                    <a href="#" id="languageLink">Langue (Français)</a>
                     <a href="#" id="logoutLink">Déconnexion</a>
                 </div>
             </div>
@@ -42,11 +39,14 @@
         </div>
     </nav>
 
+    <!-- Overlay pour mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <!-- Sidebar gauche (menu joueur) -->
-    <div class="sidebar-left" id="sidebarLeft">
+    <div class="sidebar left-sidebar" id="leftSidebar">
         <div class="sidebar-header">
             <h3>Menu Joueur</h3>
-            <button class="close-sidebar" id="closeSidebarLeft"><i class="fas fa-times"></i></button>
+            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
         </div>
         <nav class="sidebar-nav">
             <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
@@ -65,67 +65,83 @@
         </nav>
     </div>
 
-    <!-- Sidebar droite (menu communauté) -->
-    <div class="sidebar-right" id="sidebarRight">
+    <!-- Sidebar droite (communauté) -->
+    <div class="sidebar right-sidebar" id="rightSidebar">
         <div class="sidebar-header">
             <h3>Communauté</h3>
-            <button class="close-sidebar" id="closeSidebarRight"><i class="fas fa-times"></i></button>
+            <button class="close-sidebar" id="closeRightSidebar"><i class="fas fa-times"></i></button>
         </div>
-        <div class="community-menu">
-            <div class="menu-section">
+        <div class="sidebar-content">
+            <!-- Abonnés / Fans -->
+            <div class="community-section">
                 <h4><i class="fas fa-users"></i> Abonnés</h4>
-                <div class="followers-list" id="followersList">
-                    <!-- Liste des abonnés (simulée) -->
-                </div>
+                <ul class="followers-list" id="followersList">
+                    <!-- Généré par JS -->
+                </ul>
+                <a href="#" class="view-all">Voir tous</a>
             </div>
-            <div class="menu-section">
-                <h4><i class="fas fa-user-check"></i> Abonnements</h4>
-                <div class="following-list" id="followingList">
-                    <!-- Liste des abonnements (simulée) -->
-                </div>
+            <!-- Abonnements -->
+            <div class="community-section">
+                <h4><i class="fas fa-user-friends"></i> Abonnements</h4>
+                <ul class="following-list" id="followingList">
+                    <!-- Généré par JS -->
+                </ul>
+                <a href="#" class="view-all">Voir tous</a>
             </div>
-            <div class="menu-section">
+            <!-- Analyses (Insights) -->
+            <div class="community-section">
                 <h4><i class="fas fa-chart-line"></i> Insights</h4>
                 <div class="insights">
                     <p>Portée cette semaine : <strong>1 234</strong></p>
-                    <p>Engagement : <strong>567</strong></p>
-                    <p>Croissance : <strong>+12%</strong></p>
+                    <p>Engagement : <strong>12%</strong></p>
+                    <p>Nouveaux abonnés : <strong>+45</strong></p>
                 </div>
             </div>
-            <div class="menu-section">
-                <h4><i class="fas fa-edit"></i> Gestion profil</h4>
-                <button class="btn-edit-profile" onclick="editProfile()">Modifier bio</button>
-                <button class="btn-edit-profile" onclick="editContact()">Coordonnées</button>
+            <!-- Gestionnaires de profil -->
+            <div class="community-section">
+                <h4><i class="fas fa-cog"></i> Gestionnaire</h4>
+                <button class="btn-edit-bio" onclick="editBio()"><i class="fas fa-pen"></i> Modifier la bio</button>
+                <button class="btn-edit-contact" onclick="editContact()"><i class="fas fa-address-card"></i> Modifier contact</button>
             </div>
-            <div class="menu-section">
+            <!-- Recherche / Filtres -->
+            <div class="community-section">
                 <h4><i class="fas fa-search"></i> Recherche</h4>
-                <input type="text" placeholder="Rechercher un membre..." id="communitySearch">
+                <input type="text" id="communitySearch" placeholder="Rechercher un membre...">
+                <div class="filter-buttons">
+                    <button class="filter-btn" data-filter="all">Tous</button>
+                    <button class="filter-btn" data-filter="joueur">Joueurs</button>
+                    <button class="filter-btn" data-filter="parrain">Parrains</button>
+                    <button class="filter-btn" data-filter="agent">Agents</button>
+                    <button class="filter-btn" data-filter="academie">Académies</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Overlay pour les sidebars -->
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
     <!-- Contenu principal -->
-    <main class="feed-main">
+    <main class="dashboard-main">
         <div class="feed-container">
-            <!-- Zone de création de publication -->
-            <div class="create-post">
-                <div class="post-input-area">
-                    <img src="img/user-default.jpg" alt="Avatar" class="post-avatar">
-                    <textarea placeholder="Quoi de neuf, Joueur ?" id="postContent" rows="2"></textarea>
+            <h1>Ma Communauté</h1>
+            <p>Partagez et interagissez avec tous les acteurs du football.</p>
+
+            <!-- Zone de publication -->
+            <div class="publish-box">
+                <div class="publish-top">
+                    <img src="img/user-default.jpg" alt="Avatar" id="publishAvatar">
+                    <textarea id="postContent" placeholder="Quoi de neuf ?" rows="2"></textarea>
                 </div>
-                <div class="post-actions">
-                    <button class="post-media" onclick="attachMedia()"><i class="fas fa-image"></i> Photo/vidéo</button>
-                    <button class="post-submit" onclick="createPost()">Publier</button>
+                <div class="publish-media" id="publishMediaPreview"></div>
+                <div class="publish-actions">
+                    <input type="file" id="mediaInput" accept="image/*,video/*" style="display: none;">
+                    <button class="action-btn" id="attachMediaBtn"><i class="fas fa-image"></i> Photo/Vidéo</button>
+                    <button class="action-btn" id="previewPostBtn"><i class="fas fa-eye"></i> Aperçu</button>
+                    <button class="action-btn" id="schedulePostBtn"><i class="fas fa-clock"></i> Prog.</button>
+                    <button class="action-btn publish-main" id="publishBtn"><i class="fas fa-paper-plane"></i> Publier</button>
                 </div>
             </div>
 
             <!-- Fil d'actualité -->
-            <div class="feed-stream" id="feedStream">
-                <!-- Les publications seront chargées dynamiquement -->
-            </div>
+            <div id="postsFeed" class="posts-feed"></div>
         </div>
     </main>
 
@@ -149,6 +165,7 @@
         </div>
     </footer>
 
+    <script src="js/dashboard.js"></script>
     <script src="js/feed.js"></script>
 </body>
 </html>
