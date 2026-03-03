@@ -163,17 +163,17 @@
                                 </div>
                             </div>
 
-                            <!-- Signature améliorée -->
+                            <!-- Signature avec bouton d'ouverture de modale -->
                             <div class="signature-group">
                                 <label>Signature *</label>
-                                <div class="signature-container">
-                                    <canvas id="signatureCanvas" width="600" height="200" style="touch-action: none; width: 100%; height: auto;"></canvas>
-                                    <div class="signature-actions">
-                                        <button type="button" class="btn-clear-signature" id="clearSignature">Effacer</button>
-                                        <button type="button" class="btn-lock-signature" id="lockSignature">Verrouiller</button>
+                                <div class="signature-preview" id="signaturePreview" onclick="openSignatureModal()">
+                                    <div class="signature-placeholder">
+                                        <i class="fas fa-pen"></i>
+                                        <span>Cliquez pour signer</span>
                                     </div>
+                                    <img id="signatureImage" style="display: none; max-width: 100%; max-height: 100px;" />
                                 </div>
-                                <p class="field-info">Signez dans le cadre ci-dessus. Utilisez "Verrouiller" pour figer votre signature.</p>
+                                <p class="field-info">Cliquez sur la zone pour ouvrir le module de signature.</p>
                             </div>
 
                             <button type="submit" class="btn-submit-license" id="submitLicense">Soumettre ma demande</button>
@@ -199,6 +199,25 @@
             </section>
         </div>
     </main>
+
+    <!-- MODALE DE SIGNATURE -->
+    <div id="signatureModal" class="signature-modal">
+        <div class="signature-modal-content">
+            <div class="signature-modal-header">
+                <h3>Signez dans le cadre</h3>
+                <span class="close-modal" onclick="closeSignatureModal()">&times;</span>
+            </div>
+            <div class="signature-modal-body">
+                <canvas id="signatureCanvasModal" width="800" height="300" style="touch-action: none; width: 100%; height: auto; border: 1px solid #ccc;"></canvas>
+                <div class="signature-modal-actions">
+                    <button type="button" class="btn-clear" id="clearSignatureModal">Effacer</button>
+                    <button type="button" class="btn-lock" id="lockSignatureModal">Verrouiller</button>
+                    <button type="button" class="btn-save" id="saveSignatureModal">Valider la signature</button>
+                </div>
+                <p class="signature-status" id="signatureStatus"></p>
+            </div>
+        </div>
+    </div>
 
     <!-- Footer -->
     <footer class="dashboard-footer">
