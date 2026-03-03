@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Ma Communauté | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Styles globaux -->
+    <link rel="stylesheet" href="css/global.css">
+    <!-- Styles spécifiques -->
+    <link rel="stylesheet" href="css/feed.css">
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Espace Joueur</span>
+        </div>
+        <div class="nav-right">
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">5</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="edit-cv.html">Mon profil</a>
+                    <a href="support.html">Paramètres</a>
+                    <a href="#" id="languageLink">Langue (Français)</a>
+                    <a href="#" id="logoutLink">Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Sidebar gauche (menu joueur) -->
+    <div class="sidebar-left" id="sidebarLeft">
+        <div class="sidebar-header">
+            <h3>Menu Joueur</h3>
+            <button class="close-sidebar" id="closeSidebarLeft"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+            <a href="feed.html" class="active"><i class="fas fa-users"></i> Ma Communauté</a>
+            <a href="verification.html"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
+            <a href="edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV Pro</a>
+            <a href="certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
+            <a href="tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournoi (Live)</a>
+            <a href="transfers.html"><i class="fas fa-exchange-alt"></i> Historique Transferts</a>
+            <hr>
+            <a href="videos.html"><i class="fas fa-video"></i> Mes Vidéos</a>
+            <a href="revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
+            <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
+            <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+    </div>
+
+    <!-- Sidebar droite (menu communauté) -->
+    <div class="sidebar-right" id="sidebarRight">
+        <div class="sidebar-header">
+            <h3>Communauté</h3>
+            <button class="close-sidebar" id="closeSidebarRight"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="community-menu">
+            <div class="menu-section">
+                <h4><i class="fas fa-users"></i> Abonnés</h4>
+                <div class="followers-list" id="followersList">
+                    <!-- Liste des abonnés (simulée) -->
+                </div>
+            </div>
+            <div class="menu-section">
+                <h4><i class="fas fa-user-check"></i> Abonnements</h4>
+                <div class="following-list" id="followingList">
+                    <!-- Liste des abonnements (simulée) -->
+                </div>
+            </div>
+            <div class="menu-section">
+                <h4><i class="fas fa-chart-line"></i> Insights</h4>
+                <div class="insights">
+                    <p>Portée cette semaine : <strong>1 234</strong></p>
+                    <p>Engagement : <strong>567</strong></p>
+                    <p>Croissance : <strong>+12%</strong></p>
+                </div>
+            </div>
+            <div class="menu-section">
+                <h4><i class="fas fa-edit"></i> Gestion profil</h4>
+                <button class="btn-edit-profile" onclick="editProfile()">Modifier bio</button>
+                <button class="btn-edit-profile" onclick="editContact()">Coordonnées</button>
+            </div>
+            <div class="menu-section">
+                <h4><i class="fas fa-search"></i> Recherche</h4>
+                <input type="text" placeholder="Rechercher un membre..." id="communitySearch">
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay pour les sidebars -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Contenu principal -->
+    <main class="feed-main">
+        <div class="feed-container">
+            <!-- Zone de création de publication -->
+            <div class="create-post">
+                <div class="post-input-area">
+                    <img src="img/user-default.jpg" alt="Avatar" class="post-avatar">
+                    <textarea placeholder="Quoi de neuf, Joueur ?" id="postContent" rows="2"></textarea>
+                </div>
+                <div class="post-actions">
+                    <button class="post-media" onclick="attachMedia()"><i class="fas fa-image"></i> Photo/vidéo</button>
+                    <button class="post-submit" onclick="createPost()">Publier</button>
+                </div>
+            </div>
+
+            <!-- Fil d'actualité -->
+            <div class="feed-stream" id="feedStream">
+                <!-- Les publications seront chargées dynamiquement -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/feed.js"></script>
+</body>
+</html>
