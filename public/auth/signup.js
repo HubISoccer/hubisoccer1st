@@ -1,13 +1,13 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-// Création du client (une seule fois)
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Utiliser un nom différent pour éviter les conflits
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===== LISTE DES PAYS (simplifiée) =====
+// ===== LISTE DES PAYS =====
 const countries = [
     "Bénin", "Burkina Faso", "Burundi", "Cameroun", "Cap-Vert", "République centrafricaine", "Comores", "Congo",
-    "République démocratique du Congo", "Côte d'Ivoire", "Djibouti", "Égypte", "Érythrée", "Eswatini", "Éthiopie", "France",
+    "République démocratique du Congo", "Côte d'Ivoire", "Djibouti", "Égypte", "Érythrée", "Eswatini", "Éthiopie",
     "Gabon", "Gambie", "Ghana", "Guinée", "Guinée-Bissau", "Guinée équatoriale", "Kenya", "Lesotho", "Liberia",
     "Libye", "Madagascar", "Malawi", "Mali", "Maroc", "Maurice", "Mauritanie", "Mozambique", "Namibie", "Niger",
     "Nigeria", "Ouganda", "Rwanda", "Sahara occidental", "Sao Tomé-et-Principe", "Sénégal", "Seychelles",
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ===== FONCTION POUR AFFICHER/MASQUER LE MOT DE PASSE =====
 window.togglePassword = function(id) {
     const input = document.getElementById(id);
-    const icon = input.nextElementSibling.querySelector('i');
+    const icon = input.parentElement.querySelector('i');
     if (input.type === 'password') {
         input.type = 'text';
         icon.classList.remove('fa-eye');
@@ -62,21 +62,20 @@ function validatePassword(password) {
 
 // ===== VÉRIFICATION DE L'UNICITÉ DE L'ID HUB =====
 async function checkHubIdUniqueness(hubId) {
-    if (!hubId) return true; // pas d'ID fourni = pas de vérification
-    const { data, error } = await supabase
+    if (!hubId) return true;
+    const { data, error } = await supabaseClient
         .from('player_profiles')
         .select('hub_id')
         .eq('hub_id', hubId)
         .maybeSingle();
     if (error) throw error;
-    return !data; // true si aucun utilisateur avec cet ID
+    return !data;
 }
 
 // ===== SOUMISSION DU FORMULAIRE =====
 document.getElementById('signupForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // Récupération des valeurs
     const role = document.getElementById('role').value;
     const fullname = document.getElementById('fullname').value.trim();
     const email = document.getElementById('email').value.trim();
@@ -88,7 +87,6 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
     const confirmPassword = document.getElementById('confirmPassword').value;
     const acceptTerms = document.getElementById('acceptTerms').checked;
 
-    // Vérifications de base
     if (!fullname || !email || !phone || !country || !address || !password || !confirmPassword) {
         alert('Tous les champs obligatoires doivent être remplis.');
         return;
@@ -110,7 +108,6 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
     }
 
     try {
-        // Vérifier l'unicité de l'ID si fourni
         if (hubIdInput) {
             const isUnique = await checkHubIdUniqueness(hubIdInput);
             if (!isUnique) {
@@ -119,8 +116,7 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
             }
         }
 
-        // Création de l'utilisateur dans Auth
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        const { data: authData, error: authError } = await supabaseClient.auth.signUp({
             email,
             password,
             options: {
@@ -131,11 +127,9 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
         if (authError) throw authError;
         if (!authData.user) throw new Error("Erreur lors de la création du compte.");
 
-        // Génération d'un hub_id si non fourni
         const hubId = hubIdInput || ('HUB' + Date.now().toString(36).toUpperCase());
 
-        // Création du profil dans player_profiles
-        const { error: profileError } = await supabase
+        const { error: profileError } = await supabaseClient
             .from('player_profiles')
             .insert([{
                 user_id: authData.user.id,
