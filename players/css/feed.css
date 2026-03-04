@@ -817,3 +817,6 @@ body {
 .follow-btn.following:hover {
     background: var(--primary-dark);
 }
+.post-menu-dropdown button i.fa-thumbtack {
+    color: var(--gold);
+}
