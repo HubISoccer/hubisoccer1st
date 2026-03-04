@@ -256,7 +256,7 @@ async function loadTournois() {
         let codeDisplay = '';
 
         // Lien de paiement (pour l'instant fixe, à remplacer par un lien par tournoi si tu le souhaites)
-        const paymentUrl = t.prix > 0 ? 'https://process.fedapay.com/eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjEwOTc5NjYxNSwiZXhwIjoxNzcyNTQyNDgxfQ.8DKUyjUm5nKwo_oplY6uaBIqwtE2HXfTMHWvY-m-znk' : '';
+        const paymentUrl = t.prix > 0 ? 'https://me.fedapay.com/hubisoccer.com' : '';
 
         if (t.prix > 0) {
             if (success && paidTournoiId == t.id) {
