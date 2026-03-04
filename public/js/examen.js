@@ -1,4 +1,4 @@
-// public/js/examen.js – Version Supabase (corrigée)
+// public/js/examen.js – Version corrigée avec passage d'autorisation
 document.addEventListener('DOMContentLoaded', () => {
     const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
@@ -41,11 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 2. Vérifier que l'utilisateur n'a pas déjà soumis l'examen
-            // Attention : la colonne s'appelle 'playerid' (tout minuscule)
             const { data: existing, error: err2 } = await supabase
                 .from('exam_submissions')
                 .select('id')
-                .eq('playerid', playerId)   // ← Correction : 'playerid' au lieu de 'playerId'
+                .eq('playerid', playerId)   // Attention : colonne en minuscule
                 .maybeSingle();
 
             if (err2) throw err2;
@@ -54,8 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Tout est bon : on redirige vers l'épreuve
-            sessionStorage.setItem('currentExamId', playerId);
+            // Tout est bon : on stocke l'autorisation et on redirige
+            sessionStorage.setItem('epreuve_unlocked', 'true');
+            sessionStorage.setItem('epreuve_userId', playerId);
             window.location.href = `epreuve.html?id=${playerId}`;
         } catch (err) {
             console.error('Erreur:', err);
