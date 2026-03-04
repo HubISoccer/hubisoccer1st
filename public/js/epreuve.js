@@ -1,4 +1,4 @@
-// public/js/epreuve.js – Version corrigée
+// public/js/epreuve.js – Passage de l'épreuve et soumission
 console.log("✅ epreuve.js chargé");
 
 const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
@@ -46,7 +46,7 @@ const urlUserId = urlParams.get('id');
     }
 })();
 
-// Bouton de déverrouillage manuel
+// Bouton de déverrouillage manuel (overlay)
 document.getElementById('unlockBtn')?.addEventListener('click', async () => {
     const id = document.getElementById('unlockId').value.trim();
     if (!id) {
@@ -91,7 +91,8 @@ document.getElementById('unlockBtn')?.addEventListener('click', async () => {
 });
 
 // ===== SOUMISSION DE L'ÉPREUVE =====
-const epreuveForm = document.getElementById('quizForm'); // CORRECTION : l'ID est quizForm
+// CORRECTION : le formulaire a l'id "quizForm" dans le HTML
+const epreuveForm = document.getElementById('quizForm');
 if (epreuveForm) {
     epreuveForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -128,24 +129,65 @@ if (epreuveForm) {
                 .from('exam_submissions')
                 .insert([{
                     playerid: parseInt(userId),
-                    qcm: qcmReponses,          // tableau
-                    redaction: [redac1, redac2], // tableau
+                    qcm: qcmReponses,
+                    redaction: [redac1, redac2],
                     statut: 'en_attente',
                     date: new Date().toISOString()
                 }]);
 
             if (error) throw error;
 
-            // Récupérer les infos pour générer l'ID formaté (optionnel pour redirection)
-            // Ici on redirige vers succes.html avec l'ID réel
+            // Récupérer les infos de l'inscription pour générer l'ID formaté
+            const { data: inscription, error: err2 } = await supabaseClient
+                .from('inscriptions')
+                .select('datenaissance, pays')
+                .eq('id', userId)
+                .single();
+
+            if (err2) {
+                console.warn('Impossible de récupérer les infos pour l\'ID formaté, on utilise des valeurs par défaut.');
+            }
+
+            // Calcul de l'âge
+            let age = 18; // valeur par défaut
+            if (inscription?.datenaissance) {
+                const birth = new Date(inscription.datenaissance);
+                const today = new Date();
+                age = today.getFullYear() - birth.getFullYear();
+                const m = today.getMonth() - birth.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+            }
+            const ageStr = age.toString().padStart(3, '0');
+
+            // Code pays (si non disponible, utiliser 'BJ')
+            const pays = inscription?.pays || 'BJ';
+            const paysCode = pays.substring(0, 2).toUpperCase();
+
+            // 3 derniers chiffres de l'ID
+            const idStr = userId.toString();
+            const lastThree = idStr.slice(-3);
+
+            // Date du jour
+            const today = new Date();
+            const day = today.getDate().toString().padStart(2, '0');
+            const month = (today.getMonth() + 1).toString().padStart(2, '0');
+            const year = today.getFullYear();
+
+            // Note provisoire (0 en attendant notation)
+            const note = '0';
+
+            // ID formaté : XXXHUYYYNMBIZJJMMAAAA
+            const hubId = `${lastThree}HU${ageStr}${paysCode}BI${note}${day}${month}${year}`;
+
+            // Nettoyer la session et rediriger vers succes.html
             sessionStorage.removeItem('epreuve_unlocked');
             sessionStorage.removeItem('epreuve_userId');
-            window.location.href = `succes.html?realId=${userId}`;
+            window.location.href = `succes.html?id=${encodeURIComponent(hubId)}&realId=${userId}`;
         } catch (err) {
             console.error('Erreur soumission:', err);
-            alert('Erreur lors de l\'envoi : ' + err.message);
+            alert('Erreur lors de l\'envoi. Veuillez réessayer.');
         }
     });
 } else {
-    console.error('Formulaire non trouvé (id="quizForm")');
+    console.error('Formulaire avec id "quizForm" non trouvé');
 }
