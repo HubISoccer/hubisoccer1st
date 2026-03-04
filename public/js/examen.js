@@ -1,4 +1,4 @@
-// public/js/examen.js – Version Supabase
+// public/js/examen.js – Version Supabase (corrigée)
 document.addEventListener('DOMContentLoaded', () => {
     const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
@@ -23,40 +23,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Vérifier dans Supabase (table inscriptions)
-            const { data: inscription, error } = await supabase
+            // 1. Vérifier que l'ID existe dans la table inscriptions et est validé
+            const { data: inscription, error: err1 } = await supabase
                 .from('inscriptions')
                 .select('id, statut')
                 .eq('id', playerId)
                 .maybeSingle();
 
-            if (error) throw error;
-
+            if (err1) throw err1;
             if (!inscription) {
                 showError('ID introuvable. Vérifiez votre identifiant.');
                 return;
             }
-
             if (inscription.statut !== 'valide') {
-                showError('Votre inscription doit être validée avant de pouvoir passer l\'examen. Vérifiez votre statut sur la page de suivi.');
+                showError('Votre inscription doit être validée avant de pouvoir passer l\'examen.');
                 return;
             }
 
-            // Vérifier si l'utilisateur n'a pas déjà passé l'examen
-            const { data: existing, error: examError } = await supabase
+            // 2. Vérifier que l'utilisateur n'a pas déjà soumis l'examen
+            // Attention : la colonne s'appelle 'playerid' (tout minuscule)
+            const { data: existing, error: err2 } = await supabase
                 .from('exam_submissions')
                 .select('id')
-                .eq('playerId', playerId)
+                .eq('playerid', playerId)   // ← Correction : 'playerid' au lieu de 'playerId'
                 .maybeSingle();
 
-            if (examError) throw examError;
-
+            if (err2) throw err2;
             if (existing) {
                 showError('Vous avez déjà passé cet examen. Vous ne pouvez le passer qu\'une seule fois.');
                 return;
             }
 
-            // Tout est bon
+            // Tout est bon : on redirige vers l'épreuve
             sessionStorage.setItem('currentExamId', playerId);
             window.location.href = `epreuve.html?id=${playerId}`;
         } catch (err) {
