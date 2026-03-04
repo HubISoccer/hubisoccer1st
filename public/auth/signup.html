@@ -2,291 +2,100 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Inscription | HubISoccer</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        :root {
-            --primary: #551B8C;
-            --primary-light: #7e3db0;
-            --primary-dark: #3d1266;
-            --gold: #ffcc00;
-            --gold-dark: #e6b800;
-            --bg-light: #F0F8FF;
-            --white: #ffffff;
-            --dark: #1a1a1a;
-            --gray: #6c757d;
-            --light-gray: #e9ecef;
-            --success: #28a745;
-            --warning: #ffc107;
-            --danger: #dc3545;
-            --shadow: 0 10px 30px rgba(0,0,0,0.05);
-            --shadow-hover: 0 15px 40px rgba(85,27,140,0.1);
-            --transition: all 0.3s ease;
-        }
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .register-wrapper {
-            width: 100%;
-            max-width: 800px;
-        }
-        .register-card {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        .register-card h2 {
-            color: var(--primary);
-            font-size: 2rem;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-        .subtitle {
-            text-align: center;
-            color: var(--gray);
-            margin-bottom: 30px;
-        }
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-        .full-width {
-            grid-column: span 2;
-        }
-        label {
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: var(--dark);
-        }
-        .required {
-            color: #e74c3c;
-        }
-        .field-note {
-            font-size: 0.7rem;
-            color: var(--gray);
-            margin-top: 3px;
-        }
-        input, select, textarea {
-            padding: 12px;
-            border: 2px solid var(--light-gray);
-            border-radius: 10px;
-            font-family: 'Poppins', sans-serif;
-            transition: var(--transition);
-            width: 100%;
-        }
-        input:focus, select:focus, textarea:focus {
-            border-color: var(--primary);
-            outline: none;
-        }
-        textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-        .role-selector {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 5px;
-        }
-        .role-option {
-            flex: 1 1 auto;
-            padding: 10px 15px;
-            background: var(--light-gray);
-            border-radius: 30px;
-            text-align: center;
-            font-weight: 600;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        .role-option.active {
-            background: var(--primary);
-            color: white;
-        }
-        .toggle-password {
-            position: absolute;
-            right: 15px;
-            top: 45px;
-            cursor: pointer;
-            color: var(--gray);
-            font-size: 1.2rem;
-        }
-        .password-criteria {
-            font-size: 0.7rem;
-            color: var(--gray);
-            margin-top: 5px;
-        }
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 10px 0;
-        }
-        .checkbox-group input {
-            width: auto;
-        }
-        .btn-register {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(45deg, var(--primary), var(--primary-dark));
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: var(--transition);
-            margin-top: 20px;
-        }
-        .btn-register:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(85,27,140,0.3);
-        }
-        .login-link {
-            text-align: center;
-            margin-top: 20px;
-        }
-        .login-link a {
-            color: var(--primary);
-            font-weight: 600;
-            text-decoration: none;
-        }
-        footer {
-            margin-top: 40px;
-            text-align: center;
-            color: white;
-        }
-        .compliance-badges {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-        .badge {
-            background: rgba(255,255,255,0.2);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            color: var(--gold);
-        }
-        .contact-info a {
-            color: var(--gold);
-            text-decoration: none;
-            margin: 0 10px;
-        }
-        @media (max-width: 600px) {
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-            .full-width {
-                grid-column: span 1;
-            }
-        }
-    </style>
+    <!-- Styles spécifiques -->
+    <link rel="stylesheet" href="signup.css">
+    <!-- Supabase (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="register-wrapper">
-        <div class="register-card">
-            <h2>Créer un compte</h2>
+    <div class="signup-wrapper">
+        <div class="signup-card">
+            <h1>Créer un compte</h1>
             <p class="subtitle">Rejoignez l'écosystème qui transforme le football africain.</p>
 
             <form id="signupForm">
-                <div class="form-grid">
-                    <!-- Sélection du rôle -->
-                    <div class="form-group full-width">
-                        <label>Choisissez votre profil <span class="required">*</span></label>
-                        <div class="role-selector" id="roleSelector">
-                            <div class="role-option active" data-role="joueur">JOUEUR</div>
-                            <div class="role-option" data-role="parrain">PARRAIN</div>
-                            <div class="role-option" data-role="agent">AGENT / SCOUT</div>
-                            <div class="role-option" data-role="academie">ACADÉMIE</div>
-                        </div>
-                        <input type="hidden" id="role" name="role" value="joueur">
+                <!-- Rôle -->
+                <div class="form-group full-width">
+                    <label>Choisissez votre profil <span class="required">*</span></label>
+                    <div class="role-selector" id="roleSelector">
+                        <button type="button" class="role-option active" data-role="joueur">JOUEUR</button>
+                        <button type="button" class="role-option" data-role="parrain">PARRAIN</button>
+                        <button type="button" class="role-option" data-role="agent">AGENT / SCOUT</button>
+                        <button type="button" class="role-option" data-role="academie">ACADÉMIE</button>
                     </div>
+                    <input type="hidden" id="role" name="role" value="joueur">
+                </div>
 
-                    <!-- Nom complet -->
-                    <div class="form-group">
-                        <label>Nom complet <span class="required">*</span></label>
-                        <input type="text" id="fullname" name="fullname" placeholder="Ex: Koffi SOGLO" required>
-                    </div>
+                <!-- Nom complet -->
+                <div class="form-group">
+                    <label>Nom complet <span class="required">*</span></label>
+                    <input type="text" id="fullname" name="fullname" placeholder="Ex: Koffi SOGLO" required>
+                </div>
 
-                    <!-- Email -->
-                    <div class="form-group">
-                        <label>Email professionnel <span class="required">*</span></label>
-                        <input type="email" id="email" name="email" placeholder="contact@exemple.com" required>
-                    </div>
+                <!-- Email -->
+                <div class="form-group">
+                    <label>Email professionnel <span class="required">*</span></label>
+                    <input type="email" id="email" name="email" placeholder="contact@exemple.com" required>
+                </div>
 
-                    <!-- ID HubISoccer (optionnel) -->
-                    <div class="form-group">
-                        <label>ID HubISoccer (si vous en avez déjà un)</label>
-                        <input type="text" id="hubId" name="hubId" placeholder="Ex: 266HU028BIBJ16022026">
-                        <small class="field-note">Si vous avez déjà un ID après examen ou validation, saisissez-le.</small>
-                    </div>
+                <!-- ID HubISoccer (optionnel) -->
+                <div class="form-group">
+                    <label>ID HubISoccer (si vous en avez déjà un)</label>
+                    <input type="text" id="hubId" name="hubId" placeholder="Ex: 266HU028BIBJ16022026">
+                    <small class="field-note">Si vous avez déjà un ID après examen ou validation, saisissez-le.</small>
+                </div>
 
-                    <!-- Téléphone -->
-                    <div class="form-group">
-                        <label>Téléphone (WhatsApp) <span class="required">*</span></label>
-                        <input type="tel" id="phone" name="phone" placeholder="+229 01..." required>
-                    </div>
+                <!-- Téléphone -->
+                <div class="form-group">
+                    <label>Téléphone (WhatsApp) <span class="required">*</span></label>
+                    <input type="tel" id="phone" name="phone" placeholder="+229 01..." required>
+                </div>
 
-                    <!-- Pays de résidence -->
-                    <div class="form-group">
-                        <label>Pays de résidence <span class="required">*</span></label>
-                        <select id="country" name="country" required>
-                            <option value="">Sélectionner votre pays</option>
-                        </select>
-                    </div>
+                <!-- Pays de résidence -->
+                <div class="form-group">
+                    <label>Pays de résidence <span class="required">*</span></label>
+                    <select id="country" name="country" required>
+                        <option value="">Sélectionner votre pays</option>
+                    </select>
+                </div>
 
-                    <!-- Adresse complète (obligatoire) -->
-                    <div class="form-group full-width">
-                        <label>Adresse complète <span class="required">*</span></label>
-                        <textarea id="address" name="address" placeholder="Numéro, rue, quartier, ville, code postal..." required></textarea>
-                    </div>
+                <!-- Adresse complète -->
+                <div class="form-group full-width">
+                    <label>Adresse complète <span class="required">*</span></label>
+                    <textarea id="address" name="address" placeholder="Numéro, rue, quartier, ville, code postal..." required></textarea>
+                </div>
 
-                    <!-- Mot de passe -->
-                    <div class="form-group">
-                        <label>Mot de passe <span class="required">*</span></label>
-                        <input type="password" id="pass1" name="pass1" placeholder="••••••••" required>
-                        <span class="toggle-password" onclick="togglePassword('pass1')">👁️</span>
-                        <div class="password-criteria">
-                            <small>8 caractères minimum, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial parmi @#€&_-+?!*</small>
-                        </div>
+                <!-- Mot de passe -->
+                <div class="form-group">
+                    <label>Mot de passe <span class="required">*</span></label>
+                    <div class="password-wrapper">
+                        <input type="password" id="password" name="password" placeholder="••••••••" required>
+                        <span class="toggle-password" onclick="togglePassword('password')"><i class="far fa-eye"></i></span>
                     </div>
+                    <div class="password-criteria">
+                        <small>8 caractères minimum, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial parmi @#€&_-+?!*</small>
+                    </div>
+                </div>
 
-                    <!-- Confirmation mot de passe -->
-                    <div class="form-group">
-                        <label>Confirmer le mot de passe <span class="required">*</span></label>
-                        <input type="password" id="pass2" name="pass2" placeholder="••••••••" required>
-                        <span class="toggle-password" onclick="togglePassword('pass2')">👁️</span>
+                <!-- Confirmation mot de passe -->
+                <div class="form-group">
+                    <label>Confirmer le mot de passe <span class="required">*</span></label>
+                    <div class="password-wrapper">
+                        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="••••••••" required>
+                        <span class="toggle-password" onclick="togglePassword('confirmPassword')"><i class="far fa-eye"></i></span>
                     </div>
+                </div>
 
-                    <!-- Conditions -->
-                    <div class="form-group full-width checkbox-group">
-                        <input type="checkbox" id="acceptTerms" name="acceptTerms" required>
-                        <label for="acceptTerms">J'accepte les conditions d'utilisation et la politique de protection des données.</label>
-                    </div>
+                <!-- Conditions -->
+                <div class="form-group full-width checkbox-group">
+                    <input type="checkbox" id="acceptTerms" name="acceptTerms" required>
+                    <label for="acceptTerms">J'accepte les conditions d'utilisation et la politique de protection des données.</label>
                 </div>
 
                 <button type="submit" class="btn-register">S'INSCRIRE</button>
@@ -295,7 +104,7 @@
         </div>
     </div>
 
-    <!-- Footer -->
+    <!-- Footer (optionnel, mais on peut le mettre ici) -->
     <footer>
         <div class="compliance-badges">
             <span class="badge">Conformité APDP Bénin</span>
@@ -308,151 +117,6 @@
         </div>
     </footer>
 
-    <script>
-        // Configuration Supabase
-        const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        // Liste des pays (simplifiée)
-        const countries = [
-            "Bénin", "Burkina Faso", "Burundi", "Cameroun", "Cap-Vert", "République centrafricaine", "Comores", "Congo", 
-            "République démocratique du Congo", "Côte d'Ivoire", "Djibouti", "Égypte", "Érythrée", "Eswatini", "Éthiopie", 
-            "Gabon", "Gambie", "Ghana", "Guinée", "Guinée-Bissau", "Guinée équatoriale", "Kenya", "Lesotho", "Liberia", 
-            "Libye", "Madagascar", "Malawi", "Mali", "Maroc", "Maurice", "Mauritanie", "Mozambique", "Namibie", "Niger", 
-            "Nigeria", "Ouganda", "Rwanda", "Sahara occidental", "Sao Tomé-et-Principe", "Sénégal", "Seychelles", 
-            "Sierra Leone", "Somalie", "Soudan", "Soudan du Sud", "Tanzanie", "Tchad", "Togo", "Tunisie", "Zambie", 
-            "Zimbabwe"
-        ].sort();
-
-        // Remplir le select des pays
-        const countrySelect = document.getElementById('country');
-        countries.forEach(country => {
-            const option = document.createElement('option');
-            option.value = country;
-            option.textContent = country;
-            countrySelect.appendChild(option);
-        });
-
-        // Gestion du rôle (boutons)
-        function setRole(element) {
-            document.querySelectorAll('.role-option').forEach(opt => opt.classList.remove('active'));
-            element.classList.add('active');
-            document.getElementById('role').value = element.dataset.role;
-        }
-
-        // Attacher les événements aux options de rôle
-        document.querySelectorAll('.role-option').forEach(opt => {
-            opt.addEventListener('click', () => setRole(opt));
-        });
-
-        // Fonction pour afficher/masquer le mot de passe
-        window.togglePassword = function(id) {
-            const input = document.getElementById(id);
-            const type = input.type === 'password' ? 'text' : 'password';
-            input.type = type;
-        };
-
-        // Validation du mot de passe côté client
-        function validatePassword(password) {
-            const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#€&_\-+?!*])[A-Za-z\d@#€&_\-+?!*]{8,}$/;
-            return regex.test(password);
-        }
-
-        // Soumission du formulaire
-        document.getElementById('signupForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            // Récupération des valeurs
-            const role = document.getElementById('role').value;
-            const fullname = document.getElementById('fullname').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const hubIdInput = document.getElementById('hubId').value.trim();
-            const phone = document.getElementById('phone').value.trim();
-            const country = document.getElementById('country').value;
-            const address = document.getElementById('address').value.trim();
-            const pass1 = document.getElementById('pass1').value;
-            const pass2 = document.getElementById('pass2').value;
-            const acceptTerms = document.getElementById('acceptTerms').checked;
-
-            // Vérifications basiques
-            if (!fullname || !email || !phone || !country || !address || !pass1 || !pass2) {
-                alert('Tous les champs obligatoires doivent être remplis.');
-                return;
-            }
-
-            if (pass1 !== pass2) {
-                alert('Les mots de passe ne correspondent pas.');
-                return;
-            }
-
-            if (!validatePassword(pass1)) {
-                alert('Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial parmi @#€&_-+?!*');
-                return;
-            }
-
-            if (!acceptTerms) {
-                alert('Vous devez accepter les conditions d\'utilisation.');
-                return;
-            }
-
-            try {
-                // Vérifier si l'ID HubISoccer fourni est déjà utilisé
-                if (hubIdInput) {
-                    const { data: existing, error: checkError } = await supabase
-                        .from('player_profiles')
-                        .select('hub_id')
-                        .eq('hub_id', hubIdInput)
-                        .maybeSingle();
-                    if (checkError) throw checkError;
-                    if (existing) {
-                        alert('Cet ID HubISoccer est déjà utilisé.');
-                        return;
-                    }
-                }
-
-                // Créer l'utilisateur dans Auth
-                const { data: authData, error: authError } = await supabase.auth.signUp({
-                    email,
-                    password: pass1,
-                    options: {
-                        data: { nom_complet: fullname }
-                    }
-                });
-
-                if (authError) throw authError;
-                if (!authData.user) throw new Error("Erreur lors de la création du compte.");
-
-                // Générer un hub_id si non fourni
-                let hubId = hubIdInput;
-                if (!hubId) {
-                    hubId = 'HUB' + Date.now().toString(36).toUpperCase();
-                }
-
-                // Créer le profil dans player_profiles
-                const { error: profileError } = await supabase
-                    .from('player_profiles')
-                    .insert([{
-                        user_id: authData.user.id,
-                        hub_id: hubId,
-                        nom_complet: fullname,
-                        role: role,
-                        phone: phone,
-                        country: country,
-                        address: address,
-                        avatar_url: 'img/user-default.jpg'
-                    }]);
-
-                if (profileError) throw profileError;
-
-                alert('Inscription réussie ! Vous pouvez maintenant vous connecter.');
-                window.location.href = 'login.html';
-
-            } catch (error) {
-                console.error('Erreur:', error);
-                alert('Erreur lors de l\'inscription : ' + error.message);
-            }
-        });
-    </script>
+    <script src="signup.js"></script>
 </body>
 </html>
