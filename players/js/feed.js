@@ -9,8 +9,8 @@ let currentProfile = null;
 let posts = [];
 let followers = [];
 let following = [];
-let hiddenPosts = new Set(); // IDs des posts masqués par l'utilisateur courant
-let savedPosts = new Set();   // IDs des posts épinglés (saved) par l'utilisateur courant
+let savedPosts = new Set(); // IDs des posts épinglés par l'utilisateur
+let hiddenPosts = new Set(); // IDs des posts masqués
 let currentFilter = 'all';
 let searchTerm = '';
 
@@ -44,59 +44,99 @@ async function loadProfile() {
     return currentProfile;
 }
 
-// ===== CHARGEMENT DES POSTS AVEC STATUTS =====
-async function loadPosts() {
-    // Récupérer la liste des personnes suivies
-    const { data: followingData } = await supabaseFeed
-        .from('feed_follows')
-        .select('followed_id')
-        .eq('follower_id', currentProfile.id);
-    const followingIds = followingData?.map(f => f.followed_id) || [];
-
-    // Récupérer les posts masqués par l'utilisateur
-    const { data: hiddenData } = await supabaseFeed
-        .from('feed_hidden')
-        .select('post_id')
-        .eq('player_id', currentProfile.id);
-    hiddenPosts = new Set(hiddenData?.map(h => h.post_id) || []);
-
-    // Récupérer les posts épinglés par l'utilisateur
+// ===== CHARGEMENT DES ÉPINGLES ET MASQUÉS =====
+async function loadUserMetadata() {
+    // Charger les posts épinglés (feed_saved)
     const { data: savedData } = await supabaseFeed
         .from('feed_saved')
         .select('post_id')
         .eq('player_id', currentProfile.id);
     savedPosts = new Set(savedData?.map(s => s.post_id) || []);
 
-    let query = supabaseFeed
+    // Charger les posts masqués (feed_hidden)
+    const { data: hiddenData } = await supabaseFeed
+        .from('feed_hidden')
+        .select('post_id')
+        .eq('player_id', currentProfile.id);
+    hiddenPosts = new Set(hiddenData?.map(h => h.post_id) || []);
+}
+
+// ===== CHARGEMENT DES POSTS (version simplifiée sans 'role') =====
+async function loadPosts() {
+    // Récupérer les posts
+    const { data: postsData, error: postsError } = await supabaseFeed
         .from('feed_posts')
-        .select(`
-            *,
-            player:player_profiles!player_id (nom_complet, avatar_url, hub_id, role),
-            likes:feed_likes(count),
-            comments:feed_comments(count),
-            shares:feed_shares(count)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-    const { data, error } = await query;
-    if (error) {
-        console.error('Erreur chargement posts:', error);
+    if (postsError) {
+        console.error('Erreur chargement posts:', postsError);
         return;
     }
 
-    // Filtrer les posts masqués et ajouter les statuts
-    posts = (data || [])
-        .filter(post => !hiddenPosts.has(post.id)) // enlever les masqués
-        .map(post => ({
+    // Récupérer les profils des auteurs
+    const playerIds = postsData.map(p => p.player_id).filter(Boolean);
+    const { data: profilesData, error: profilesError } = await supabaseFeed
+        .from('player_profiles')
+        .select('id, nom_complet, avatar_url, hub_id')
+        .in('id', playerIds);
+
+    if (profilesError) {
+        console.error('Erreur chargement profils:', profilesError);
+        return;
+    }
+
+    const profilesMap = {};
+    (profilesData || []).forEach(p => profilesMap[p.id] = p);
+
+    // Récupérer les compteurs pour chaque post
+    const postsWithCounts = [];
+    for (const post of postsData) {
+        const { count: likesCount } = await supabaseFeed
+            .from('feed_likes')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', post.id);
+
+        const { count: commentsCount } = await supabaseFeed
+            .from('feed_comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', post.id);
+
+        const { count: sharesCount } = await supabaseFeed
+            .from('feed_shares')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', post.id);
+
+        postsWithCounts.push({
             ...post,
-            isFollowed: followingIds.includes(post.player_id),
-            isSaved: savedPosts.has(post.id)
-        }));
+            player: profilesMap[post.player_id] || null,
+            likes: [{ count: likesCount || 0 }],
+            comments: [{ count: commentsCount || 0 }],
+            shares: [{ count: sharesCount || 0 }]
+        });
+    }
+
+    // Filtrer les posts masqués
+    const visiblePosts = postsWithCounts.filter(post => !hiddenPosts.has(post.id));
+
+    // Récupérer les IDs des personnes suivies
+    const { data: followingData } = await supabaseFeed
+        .from('feed_follows')
+        .select('followed_id')
+        .eq('follower_id', currentProfile.id);
+    const followingIds = followingData?.map(f => f.followed_id) || [];
+
+    posts = visiblePosts.map(post => ({
+        ...post,
+        isFollowed: followingIds.includes(post.player_id),
+        isSaved: savedPosts.has(post.id)
+    }));
+
     renderPosts();
     posts.forEach(post => loadComments(post.id));
 }
 
-// ===== RENDU DES POSTS AVEC TOUS LES BOUTONS =====
+// ===== RENDU DES POSTS =====
 function renderPosts() {
     const feed = document.getElementById('postsFeed');
     if (!feed) return;
@@ -114,23 +154,15 @@ function renderPosts() {
             }
         }
 
-        const roleIcon = getRoleIcon(post.player?.role);
+        // Icône de rôle temporairement supprimée
+        const roleIcon = ''; // sera ajouté plus tard si nécessaire
+
         const followButton = post.player_id !== currentProfile?.id 
             ? `<button class="follow-btn ${post.isFollowed ? 'following' : ''}" data-user-id="${post.player_id}" onclick="toggleFollow(this)">${post.isFollowed ? 'Abonné' : 'Suivre'}</button>`
             : '';
 
-        // Menu déroulant avec actions réelles
-        const menuItems = [];
-        if (post.player_id === currentProfile?.id) {
-            menuItems.push(`<button onclick="editPost(${post.id})"><i class="fas fa-edit"></i> Modifier</button>`);
-            menuItems.push(`<button onclick="deletePost(${post.id})" class="delete"><i class="fas fa-trash-alt"></i> Supprimer</button>`);
-        } else {
-            menuItems.push(`<button onclick="reportPost(${post.id})"><i class="fas fa-flag"></i> Signaler</button>`);
-        }
-        // Épingler / désépingler (pour tout le monde, mais on peut épingler n'importe quel post)
-        menuItems.push(`<button onclick="toggleSavePost(${post.id})"><i class="fas fa-thumbtack"></i> ${post.isSaved ? 'Désépingler' : 'Épingler'}</button>`);
-        // Masquer / ne pas masquer (pour tout le monde)
-        menuItems.push(`<button onclick="hidePost(${post.id})"><i class="fas fa-eye-slash"></i> Masquer</button>`);
+        const pinIcon = post.isSaved ? 'fas fa-star' : 'fas fa-star';
+        const pinText = post.isSaved ? 'Épinglé' : 'Épingler';
 
         html += `
             <div class="post-card" data-post-id="${post.id}">
@@ -144,7 +176,11 @@ function renderPosts() {
                     <div class="post-menu">
                         <button class="post-menu-btn" onclick="togglePostMenu(this)"><i class="fas fa-ellipsis-v"></i></button>
                         <div class="post-menu-dropdown">
-                            ${menuItems.join('')}
+                            ${post.player_id === currentProfile?.id ? `<button onclick="editPost(${post.id})"><i class="fas fa-edit"></i> Modifier</button>` : ''}
+                            ${post.player_id === currentProfile?.id ? `<button onclick="deletePost(${post.id})" class="delete"><i class="fas fa-trash-alt"></i> Supprimer</button>` : ''}
+                            <button onclick="toggleSavePost(${post.id})"><i class="${pinIcon}"></i> ${pinText}</button>
+                            <button onclick="hidePost(${post.id})"><i class="fas fa-eye-slash"></i> Masquer</button>
+                            <button onclick="reportPost(${post.id})"><i class="fas fa-flag"></i> Signaler</button>
                         </div>
                     </div>
                 </div>
@@ -225,113 +261,65 @@ function timeSince(date) {
     return `il y a ${Math.floor(seconds)} secondes`;
 }
 
-function getRoleIcon(role) {
-    switch(role) {
-        case 'joueur': return '⚽';
-        case 'parrain': return '👨‍👦';
-        case 'academie': return '🏫';
-        case 'agent': return '💼';
-        case 'staff_medical': return '🩺';
-        default: return '';
-    }
-}
-
 // ===== FOLLOW / UNFOLLOW =====
 async function toggleFollow(button) {
     const followedId = parseInt(button.dataset.userId);
     const isFollowing = button.classList.contains('following');
 
     if (isFollowing) {
-        const { error } = await supabaseFeed
+        await supabaseFeed
             .from('feed_follows')
             .delete()
             .eq('follower_id', currentProfile.id)
             .eq('followed_id', followedId);
-        if (!error) {
-            button.classList.remove('following');
-            button.textContent = 'Suivre';
-            await loadFollowers();
-            await loadPosts();
-        } else {
-            alert('Erreur lors du désabonnement');
-        }
     } else {
-        const { error } = await supabaseFeed
+        await supabaseFeed
             .from('feed_follows')
             .insert({ follower_id: currentProfile.id, followed_id: followedId });
-        if (!error) {
-            button.classList.add('following');
-            button.textContent = 'Abonné';
-            await loadFollowers();
-            await loadPosts();
-        } else {
-            alert('Erreur lors de l\'abonnement');
-        }
     }
+    await loadFollowers();
+    await loadPosts();
 }
 
-// ===== ÉPINGLER / DÉSÉPINGLER (feed_saved) =====
+// ===== ÉPINGLER / DÉSÉPINGLER =====
 async function toggleSavePost(postId) {
-    const isSaved = savedPosts.has(postId);
-    if (isSaved) {
-        const { error } = await supabaseFeed
+    if (savedPosts.has(postId)) {
+        await supabaseFeed
             .from('feed_saved')
             .delete()
             .eq('player_id', currentProfile.id)
             .eq('post_id', postId);
-        if (!error) {
-            savedPosts.delete(postId);
-            await loadPosts(); // recharger pour mettre à jour l'affichage
-        } else {
-            alert('Erreur lors du désépinglage');
-        }
+        savedPosts.delete(postId);
     } else {
-        const { error } = await supabaseFeed
+        await supabaseFeed
             .from('feed_saved')
             .insert({ player_id: currentProfile.id, post_id: postId });
-        if (!error) {
-            savedPosts.add(postId);
-            await loadPosts();
-        } else {
-            alert('Erreur lors de l\'épinglage');
-        }
+        savedPosts.add(postId);
     }
+    await loadPosts();
 }
 
-// ===== MASQUER UN POST (feed_hidden) =====
+// ===== MASQUER UN POST =====
 async function hidePost(postId) {
     if (confirm('Masquer ce post ? Il ne sera plus visible dans votre fil.')) {
-        const { error } = await supabaseFeed
+        await supabaseFeed
             .from('feed_hidden')
             .insert({ player_id: currentProfile.id, post_id: postId });
-        if (!error) {
-            // Mettre à jour l'état local et recharger les posts
-            hiddenPosts.add(postId);
-            await loadPosts();
-        } else {
-            alert('Erreur lors du masquage');
-        }
+        hiddenPosts.add(postId);
+        await loadPosts();
     }
 }
 
-// ===== SIGNALER UN POST (feed_reports) =====
+// ===== SIGNALER UN POST =====
 async function reportPost(postId) {
     const reason = prompt('Pourquoi signalez-vous ce post ? (optionnel)');
-    const { error } = await supabaseFeed
+    await supabaseFeed
         .from('feed_reports')
-        .insert({
-            reporter_id: currentProfile.id,
-            post_id: postId,
-            reason: reason || null
-        });
-    if (!error) {
-        alert('Merci, votre signalement a été envoyé à l\'équipe de modération.');
-    } else {
-        alert('Erreur lors du signalement');
-    }
+        .insert({ reporter_id: currentProfile.id, post_id: postId, reason: reason || null });
+    alert('Merci, votre signalement a été enregistré.');
 }
 
-// ===== ACTIONS SUR LES POSTS (inchangées) =====
+// ===== ACTIONS SUR LES POSTS =====
 function togglePostMenu(btn) {
     const dropdown = btn.nextElementSibling;
     dropdown.classList.toggle('show');
@@ -469,6 +457,7 @@ function handleSwipe() {
     }
 }
 
+// Fermeture des sidebars
 document.getElementById('closeLeftSidebar').addEventListener('click', () => {
     document.getElementById('leftSidebar').classList.remove('active');
     document.getElementById('sidebarOverlay').classList.remove('active');
@@ -559,6 +548,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!user) return;
 
     await loadProfile();
+    await loadUserMetadata();
     await loadPosts();
     await loadFollowers();
 
@@ -615,7 +605,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('✅ Initialisation terminée');
 });
 
-// Rendre les fonctions globales pour les appels onclick
+// Rendre les fonctions globales
 window.togglePostMenu = togglePostMenu;
 window.likePost = likePost;
 window.addComment = addComment;
@@ -625,9 +615,9 @@ window.showLikes = showLikes;
 window.showComments = showComments;
 window.editPost = editPost;
 window.deletePost = deletePost;
-window.toggleFollow = toggleFollow;
 window.toggleSavePost = toggleSavePost;
 window.hidePost = hidePost;
 window.reportPost = reportPost;
+window.toggleFollow = toggleFollow;
 window.editBio = () => alert('Modification de la bio (simulation)');
 window.editContact = () => alert('Modification des coordonnées (simulation)');
