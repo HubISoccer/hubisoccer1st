@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="public/css/style.css">
     <link rel="stylesheet" href="public/css/examen.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <nav>
@@ -19,7 +18,6 @@
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
-                <!-- autres langues -->
             </select>
             <button class="menu-toggle" id="menuToggle">
                 <span></span><span></span><span></span>
@@ -46,7 +44,7 @@
 
             <form id="examenForm">
                 <div class="form-group">
-                    <label>Votre ID HubISoccer <span class="required">*</span></label>
+                    <label>Votre ID de suivi <span class="required">*</span></label>
                     <input type="text" id="playerId" placeholder="Ex: 1772050361699" required>
                     <small class="field-note">Cet ID se trouve sur la page de suivi ou dans l'email de confirmation.</small>
                 </div>
@@ -76,6 +74,8 @@
             <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
         </div>
     </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="public/js/main.js"></script>
     <script src="public/js/examen.js"></script>
 </body>
