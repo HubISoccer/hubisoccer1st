@@ -1,7 +1,6 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-// Utiliser un nom différent pour éviter les conflits
 const supabaseFeed = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
@@ -43,8 +42,15 @@ async function loadProfile() {
     return currentProfile;
 }
 
-// ===== CHARGEMENT DES POSTS (feed) =====
+// ===== CHARGEMENT DES POSTS AVEC STATUT FOLLOW =====
 async function loadPosts() {
+    // Récupérer la liste des personnes suivies par l'utilisateur courant
+    const { data: followingData } = await supabaseFeed
+        .from('feed_follows')
+        .select('followed_id')
+        .eq('follower_id', currentProfile.id);
+    const followingIds = followingData?.map(f => f.followed_id) || [];
+
     let query = supabaseFeed
         .from('feed_posts')
         .select(`
@@ -61,20 +67,23 @@ async function loadPosts() {
         console.error('Erreur chargement posts:', error);
         return;
     }
-    posts = data || [];
+    // Ajouter un champ isFollowed à chaque post
+    posts = (data || []).map(post => ({
+        ...post,
+        isFollowed: followingIds.includes(post.player_id)
+    }));
     renderPosts();
-    // Charger les commentaires pour chaque post
     posts.forEach(post => loadComments(post.id));
 }
 
-// ===== RENDU DES POSTS =====
+// ===== RENDU DES POSTS AVEC BOUTON SUIVRE =====
 function renderPosts() {
     const feed = document.getElementById('postsFeed');
     if (!feed) return;
     let html = '';
     posts.forEach(post => {
         const timeAgo = timeSince(new Date(post.created_at));
-        const isLiked = false; // À vérifier avec une requête later
+        const isLiked = false; // À implémenter plus tard
         const likedClass = isLiked ? 'liked' : '';
         let mediaHtml = '';
         if (post.media_url) {
@@ -86,6 +95,10 @@ function renderPosts() {
         }
 
         const roleIcon = getRoleIcon(post.player?.role);
+        // NOUVEAU : bouton Suivre (uniquement si ce n'est pas notre propre post)
+        const followButton = post.player_id !== currentProfile?.id 
+            ? `<button class="follow-btn ${post.isFollowed ? 'following' : ''}" data-user-id="${post.player_id}" onclick="toggleFollow(this)">${post.isFollowed ? 'Abonné' : 'Suivre'}</button>`
+            : '';
 
         html += `
             <div class="post-card" data-post-id="${post.id}">
@@ -94,6 +107,7 @@ function renderPosts() {
                     <div class="post-author">
                         <h4>${post.player?.nom_complet || 'Anonyme'} ${roleIcon}</h4>
                         <small>@${post.player?.hub_id || 'inconnu'} · ${timeAgo}</small>
+                        ${followButton}
                     </div>
                     <div class="post-menu">
                         <button class="post-menu-btn" onclick="togglePostMenu(this)"><i class="fas fa-ellipsis-v"></i></button>
@@ -194,7 +208,44 @@ function getRoleIcon(role) {
     }
 }
 
-// ===== ACTIONS SUR LES POSTS =====
+// ===== NOUVELLE FONCTION : FOLLOW / UNFOLLOW =====
+async function toggleFollow(button) {
+    const followedId = parseInt(button.dataset.userId);
+    const isFollowing = button.classList.contains('following');
+
+    if (isFollowing) {
+        // Unfollow
+        const { error } = await supabaseFeed
+            .from('feed_follows')
+            .delete()
+            .eq('follower_id', currentProfile.id)
+            .eq('followed_id', followedId);
+        if (!error) {
+            button.classList.remove('following');
+            button.textContent = 'Suivre';
+            // Mettre à jour les listes et les posts
+            await loadFollowers();
+            await loadPosts(); // recharger les posts pour mettre à jour les boutons
+        } else {
+            alert('Erreur lors du désabonnement');
+        }
+    } else {
+        // Follow
+        const { error } = await supabaseFeed
+            .from('feed_follows')
+            .insert({ follower_id: currentProfile.id, followed_id: followedId });
+        if (!error) {
+            button.classList.add('following');
+            button.textContent = 'Abonné';
+            await loadFollowers();
+            await loadPosts();
+        } else {
+            alert('Erreur lors de l\'abonnement');
+        }
+    }
+}
+
+// ===== ACTIONS SUR LES POSTS (inchangées) =====
 function togglePostMenu(btn) {
     const dropdown = btn.nextElementSibling;
     dropdown.classList.toggle('show');
@@ -233,7 +284,7 @@ async function addComment(postId) {
     });
     input.value = '';
     loadComments(postId);
-    loadPosts(); // pour mettre à jour le compteur
+    loadPosts();
 }
 
 async function sharePost(postId) {
@@ -508,3 +559,4 @@ window.hidePost = hidePost;
 window.reportPost = reportPost;
 window.editBio = () => alert('Modification de la bio (simulation)');
 window.editContact = () => alert('Modification des coordonnées (simulation)');
+window.toggleFollow = toggleFollow; // NOUVEAU
