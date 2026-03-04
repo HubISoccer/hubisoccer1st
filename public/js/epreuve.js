@@ -1,4 +1,4 @@
-// public/js/epreuve.js – Passage de l'épreuve et soumission
+// public/js/epreuve.js – Version corrigée
 console.log("✅ epreuve.js chargé");
 
 const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
@@ -11,14 +11,12 @@ const urlUserId = urlParams.get('id');
 
 // Vérifier l'autorisation (sessionStorage ou validation directe)
 (async function checkAccess() {
-    // Si déjà autorisé en session, on affiche le contenu
     if (sessionStorage.getItem('epreuve_unlocked')) {
         document.getElementById('unlockOverlay').style.display = 'none';
         document.getElementById('mainContent').classList.remove('blurred');
         return;
     }
 
-    // Si on a un ID dans l'URL, on tente une validation automatique
     if (urlUserId) {
         try {
             const { data: inscription, error } = await supabaseClient
@@ -28,7 +26,6 @@ const urlUserId = urlParams.get('id');
                 .maybeSingle();
 
             if (!error && inscription && inscription.statut === 'valide') {
-                // Vérifier qu'il n'a pas déjà soumis
                 const { data: existing } = await supabaseClient
                     .from('exam_submissions')
                     .select('id')
@@ -47,10 +44,9 @@ const urlUserId = urlParams.get('id');
             console.warn('Erreur validation auto:', err);
         }
     }
-    // Sinon, on laisse l'overlay visible
 })();
 
-// Bouton de déverrouillage manuel (overlay)
+// Bouton de déverrouillage manuel
 document.getElementById('unlockBtn')?.addEventListener('click', async () => {
     const id = document.getElementById('unlockId').value.trim();
     if (!id) {
@@ -95,7 +91,7 @@ document.getElementById('unlockBtn')?.addEventListener('click', async () => {
 });
 
 // ===== SOUMISSION DE L'ÉPREUVE =====
-const epreuveForm = document.getElementById('examenForm'); // À adapter si l'ID est différent
+const epreuveForm = document.getElementById('quizForm'); // CORRECTION : l'ID est quizForm
 if (epreuveForm) {
     epreuveForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -107,46 +103,49 @@ if (epreuveForm) {
             return;
         }
 
-        // Récupération des réponses QCM (exemple avec des radios)
-        const qcmReponses = {};
-        const questions = document.querySelectorAll('.qcm-question'); // Adaptez la classe
-        questions.forEach((q, index) => {
-            const selected = q.querySelector('input[type=radio]:checked');
-            qcmReponses[`q${index+1}`] = selected ? selected.value : null;
-        });
+        // Récupération des réponses QCM (10 questions)
+        const qcmReponses = [];
+        for (let i = 1; i <= 10; i++) {
+            const radio = document.querySelector(`input[name="q${i}"]:checked`);
+            if (!radio) {
+                alert(`Veuillez répondre à la question ${i}.`);
+                return;
+            }
+            qcmReponses.push(radio.value);
+        }
 
-        // Récupération de la rédaction
-        const redaction = document.getElementById('reponseRedaction')?.value.trim() || '';
-
-        // Validation simple
-        if (!redaction) {
-            alert('Veuillez remplir la partie rédaction.');
+        // Récupération des rédactions
+        const redac1 = document.getElementById('q11')?.value.trim();
+        const redac2 = document.getElementById('q12')?.value.trim();
+        if (!redac1 || !redac2) {
+            alert('Veuillez remplir les deux rédactions.');
             return;
         }
 
         try {
             // Insérer dans exam_submissions
-            const { data, error } = await supabaseClient
+            const { error } = await supabaseClient
                 .from('exam_submissions')
                 .insert([{
-                    playerid: parseInt(userId), // car bigint
-                    qcm: qcmReponses,
-                    redaction: redaction,
+                    playerid: parseInt(userId),
+                    qcm: qcmReponses,          // tableau
+                    redaction: [redac1, redac2], // tableau
                     statut: 'en_attente',
                     date: new Date().toISOString()
                 }]);
 
             if (error) throw error;
 
-            // Nettoyer la session et rediriger vers la page de suivi
+            // Récupérer les infos pour générer l'ID formaté (optionnel pour redirection)
+            // Ici on redirige vers succes.html avec l'ID réel
             sessionStorage.removeItem('epreuve_unlocked');
             sessionStorage.removeItem('epreuve_userId');
-            window.location.href = `suivi.html?id=${userId}`; // ou succes.html
+            window.location.href = `succes.html?realId=${userId}`;
         } catch (err) {
             console.error('Erreur soumission:', err);
-            alert('Erreur lors de l\'envoi. Veuillez réessayer.');
+            alert('Erreur lors de l\'envoi : ' + err.message);
         }
     });
 } else {
-    console.error('Formulaire non trouvé');
+    console.error('Formulaire non trouvé (id="quizForm")');
 }
