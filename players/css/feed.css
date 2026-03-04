@@ -790,3 +790,30 @@ body {
         font-size: 0.75rem;
     }
 }
+
+/* ===== BOUTON SUIVRE ===== */
+.follow-btn {
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: var(--transition);
+    display: inline-block;
+    vertical-align: middle;
+}
+.follow-btn:hover {
+    background: rgba(85,27,140,0.1);
+}
+.follow-btn.following {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+.follow-btn.following:hover {
+    background: var(--primary-dark);
+}
