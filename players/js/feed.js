@@ -9,7 +9,7 @@ let currentProfile = null;
 let posts = [];
 let followers = [];
 let following = [];
-let savedPosts = new Set(); // IDs des posts épinglés par l'utilisateur
+let savedPosts = new Set(); // IDs des posts épinglés
 let hiddenPosts = new Set(); // IDs des posts masqués
 let currentFilter = 'all';
 let searchTerm = '';
@@ -46,14 +46,14 @@ async function loadProfile() {
 
 // ===== CHARGEMENT DES ÉPINGLES ET MASQUÉS =====
 async function loadUserMetadata() {
-    // Charger les posts épinglés (feed_saved)
+    // Épinglés (feed_saved)
     const { data: savedData } = await supabaseFeed
         .from('feed_saved')
         .select('post_id')
         .eq('player_id', currentProfile.id);
     savedPosts = new Set(savedData?.map(s => s.post_id) || []);
 
-    // Charger les posts masqués (feed_hidden)
+    // Masqués (feed_hidden)
     const { data: hiddenData } = await supabaseFeed
         .from('feed_hidden')
         .select('post_id')
@@ -61,7 +61,7 @@ async function loadUserMetadata() {
     hiddenPosts = new Set(hiddenData?.map(h => h.post_id) || []);
 }
 
-// ===== CHARGEMENT DES POSTS (version simplifiée sans 'role') =====
+// ===== CHARGEMENT DES POSTS (avec compteurs et profils) =====
 async function loadPosts() {
     // Récupérer les posts
     const { data: postsData, error: postsError } = await supabaseFeed
@@ -154,14 +154,12 @@ function renderPosts() {
             }
         }
 
-        // Icône de rôle temporairement supprimée
-        const roleIcon = ''; // sera ajouté plus tard si nécessaire
-
         const followButton = post.player_id !== currentProfile?.id 
             ? `<button class="follow-btn ${post.isFollowed ? 'following' : ''}" data-user-id="${post.player_id}" onclick="toggleFollow(this)">${post.isFollowed ? 'Abonné' : 'Suivre'}</button>`
             : '';
 
-        const pinIcon = post.isSaved ? 'fas fa-star' : 'fas fa-star';
+        // Icône et texte pour Épingler
+        const pinIcon = post.isSaved ? 'fas fa-star' : 'far fa-star';
         const pinText = post.isSaved ? 'Épinglé' : 'Épingler';
 
         html += `
@@ -169,7 +167,7 @@ function renderPosts() {
                 <div class="post-header">
                     <img src="${post.player?.avatar_url || 'img/user-default.jpg'}" alt="${post.player?.nom_complet}">
                     <div class="post-author">
-                        <h4>${post.player?.nom_complet || 'Anonyme'} ${roleIcon}</h4>
+                        <h4>${post.player?.nom_complet || 'Anonyme'}</h4>
                         <small>@${post.player?.hub_id || 'inconnu'} · ${timeAgo}</small>
                         ${followButton}
                     </div>
@@ -261,7 +259,9 @@ function timeSince(date) {
     return `il y a ${Math.floor(seconds)} secondes`;
 }
 
-// ===== FOLLOW / UNFOLLOW =====
+// ===== ACTIONS RÉELLES =====
+
+// Follow / Unfollow (déjà présent)
 async function toggleFollow(button) {
     const followedId = parseInt(button.dataset.userId);
     const isFollowing = button.classList.contains('following');
@@ -281,7 +281,7 @@ async function toggleFollow(button) {
     await loadPosts();
 }
 
-// ===== ÉPINGLER / DÉSÉPINGLER =====
+// Épingler / Désépingler
 async function toggleSavePost(postId) {
     if (savedPosts.has(postId)) {
         await supabaseFeed
@@ -296,21 +296,21 @@ async function toggleSavePost(postId) {
             .insert({ player_id: currentProfile.id, post_id: postId });
         savedPosts.add(postId);
     }
-    await loadPosts();
+    await loadPosts(); // Recharge pour mettre à jour l'icône
 }
 
-// ===== MASQUER UN POST =====
+// Masquer un post
 async function hidePost(postId) {
     if (confirm('Masquer ce post ? Il ne sera plus visible dans votre fil.')) {
         await supabaseFeed
             .from('feed_hidden')
             .insert({ player_id: currentProfile.id, post_id: postId });
         hiddenPosts.add(postId);
-        await loadPosts();
+        await loadPosts(); // Recharge sans le post masqué
     }
 }
 
-// ===== SIGNALER UN POST =====
+// Signaler un post
 async function reportPost(postId) {
     const reason = prompt('Pourquoi signalez-vous ce post ? (optionnel)');
     await supabaseFeed
@@ -319,7 +319,7 @@ async function reportPost(postId) {
     alert('Merci, votre signalement a été enregistré.');
 }
 
-// ===== ACTIONS SUR LES POSTS =====
+// ===== AUTRES ACTIONS SUR LES POSTS (inchangées) =====
 function togglePostMenu(btn) {
     const dropdown = btn.nextElementSibling;
     dropdown.classList.toggle('show');
@@ -548,7 +548,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!user) return;
 
     await loadProfile();
-    await loadUserMetadata();
+    await loadUserMetadata(); // charge savedPosts et hiddenPosts
     await loadPosts();
     await loadFollowers();
 
