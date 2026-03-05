@@ -9,11 +9,14 @@ let currentProfile = null;
 let posts = [];
 let followers = [];
 let following = [];
-let savedPosts = new Set();
-let hiddenPosts = new Set();
+let savedPosts = new Set();      // IDs des posts épinglés
+let hiddenPosts = new Set();     // IDs des posts masqués
 let currentFilter = 'all';
 let searchTerm = '';
 let newPostsCount = 0;
+let selectedUserId = null;       // Pour la modale de profil
+let previewMedia = null;         // Pour l'aperçu avant publication
+let previewMediaType = null;
 
 // ===== TOAST SYSTEM =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -177,7 +180,7 @@ function renderPosts() {
     let html = '';
     posts.forEach(post => {
         const timeAgo = timeSince(new Date(post.created_at));
-        const isLiked = false;
+        const isLiked = false; // On pourrait le vérifier mais on laisse pour l'instant
         const likedClass = isLiked ? 'liked' : '';
         let mediaHtml = '';
         if (post.media_url) {
@@ -358,8 +361,12 @@ async function sharePost(postId) {
     const button = event.target.closest('button');
     button.disabled = true;
     try {
+        // Générer un lien de partage (ex: URL du post)
+        const shareUrl = `${window.location.origin}/post.html?id=${postId}`; // à adapter
+        await navigator.clipboard.writeText(shareUrl);
+        showToast('Lien copié ! Partagez-le à vos amis.', 'success');
+        // Optionnel : enregistrer le partage dans la table feed_shares
         await supabaseFeed.from('feed_shares').insert({ player_id: currentProfile.id, post_id: postId });
-        showToast('Post partagé !', 'success');
         loadPosts();
     } catch (error) {
         showToast('Erreur', 'error');
@@ -372,8 +379,27 @@ function focusComment(postId) {
     document.getElementById(`commentInput-${postId}`).focus();
 }
 
-function showLikes(postId) {
-    showToast('Liste des likes à venir', 'info');
+async function showLikes(postId) {
+    const { data, error } = await supabaseFeed
+        .from('feed_likes')
+        .select('player_id, player:player_profiles!player_id (nom_complet, avatar_url, hub_id)')
+        .eq('post_id', postId);
+
+    if (error) {
+        showToast('Erreur lors du chargement des likes', 'error');
+        return;
+    }
+
+    const modal = document.getElementById('likesModal');
+    const list = document.getElementById('likesList');
+    list.innerHTML = data.map(like => `
+        <li onclick="openUserProfile(${like.player_id})">
+            <img src="${like.player?.avatar_url || 'img/user-default.jpg'}" alt="${like.player?.nom_complet}">
+            <span>${like.player?.nom_complet || 'Anonyme'}</span>
+            <small>@${like.player?.hub_id || ''}</small>
+        </li>
+    `).join('');
+    modal.style.display = 'block';
 }
 
 function showComments(postId) {
@@ -513,10 +539,41 @@ async function toggleFollow(button) {
     }
 }
 
-// ===== CRÉATION D'UN NOUVEAU POST =====
-let previewMedia = null;
-let previewMediaType = null;
+// ===== PROFIL UTILISATEUR (MODALE) =====
+async function openUserProfile(userId) {
+    selectedUserId = userId;
+    const { data, error } = await supabaseFeed
+        .from('player_profiles')
+        .select('nom_complet, hub_id, avatar_url, bio')
+        .eq('id', userId)
+        .single();
 
+    if (error) {
+        showToast('Erreur lors du chargement du profil', 'error');
+        return;
+    }
+
+    document.getElementById('profileName').textContent = data.nom_complet || 'Anonyme';
+    document.getElementById('profileHubId').textContent = `@${data.hub_id || 'inconnu'}`;
+    document.getElementById('profileAvatar').src = data.avatar_url || 'img/user-default.jpg';
+    document.getElementById('profileBio').textContent = data.bio || 'Aucune bio renseignée.';
+    document.getElementById('userProfileModal').style.display = 'block';
+}
+
+function closeUserProfileModal() {
+    document.getElementById('userProfileModal').style.display = 'none';
+}
+
+function sendMessageToUser() {
+    if (selectedUserId) {
+        // Rediriger vers la page messages avec l'ID du destinataire
+        window.location.href = `messages.html?to=${selectedUserId}`;
+    } else {
+        showToast('Aucun utilisateur sélectionné', 'warning');
+    }
+}
+
+// ===== CRÉATION D'UN NOUVEAU POST AVEC APERÇU =====
 async function createPost(content, file) {
     let mediaUrl = null;
     let mediaType = null;
@@ -552,6 +609,39 @@ async function createPost(content, file) {
         loadPosts();
         showToast('Publication réussie !', 'success');
     }
+}
+
+function openPreview() {
+    const content = document.getElementById('postContent').value.trim();
+    if (!content && !previewMedia) {
+        showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
+        return;
+    }
+    document.getElementById('previewModal').classList.add('active');
+    document.getElementById('previewAuthorName').textContent = currentProfile.nom_complet;
+    document.getElementById('previewAuthorAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
+    document.getElementById('previewText').textContent = content || '(aucun texte)';
+    const previewMediaDiv = document.getElementById('previewMedia');
+    if (previewMedia) {
+        if (previewMediaType.startsWith('image/')) {
+            previewMediaDiv.innerHTML = `<img src="${previewMedia}" alt="Aperçu">`;
+        } else {
+            previewMediaDiv.innerHTML = `<video src="${previewMedia}" controls></video>`;
+        }
+    } else {
+        previewMediaDiv.innerHTML = '';
+    }
+}
+
+function closePreview() {
+    document.getElementById('previewModal').classList.remove('active');
+}
+
+async function publishFromPreview() {
+    const content = document.getElementById('postContent').value.trim();
+    closePreview();
+    const publishBtn = document.getElementById('publishBtn');
+    await withButtonSpinner(publishBtn, () => createPost(content, document.getElementById('mediaInput').files[0]));
 }
 
 // ===== GESTION DES SWIPES =====
@@ -609,7 +699,11 @@ async function loadFollowers() {
     followers = followersData || [];
     const followersList = document.getElementById('followersList');
     followersList.innerHTML = followers.map(f => `
-        <li><img src="${f.player?.avatar_url || 'img/user-default.jpg'}"><span>${f.player?.nom_complet || 'Anonyme'}</span> <small>@${f.player?.hub_id || ''}</small></li>
+        <li onclick="openUserProfile(${f.follower_id})">
+            <img src="${f.player?.avatar_url || 'img/user-default.jpg'}">
+            <span>${f.player?.nom_complet || 'Anonyme'}</span>
+            <small>@${f.player?.hub_id || ''}</small>
+        </li>
     `).join('');
 
     const { data: followingData } = await supabaseFeed
@@ -619,7 +713,11 @@ async function loadFollowers() {
     following = followingData || [];
     const followingList = document.getElementById('followingList');
     followingList.innerHTML = following.map(f => `
-        <li><img src="${f.player?.avatar_url || 'img/user-default.jpg'}"><span>${f.player?.nom_complet || 'Anonyme'}</span> <small>@${f.player?.hub_id || ''}</small></li>
+        <li onclick="openUserProfile(${f.followed_id})">
+            <img src="${f.player?.avatar_url || 'img/user-default.jpg'}">
+            <span>${f.player?.nom_complet || 'Anonyme'}</span>
+            <small>@${f.player?.hub_id || ''}</small>
+        </li>
     `).join('');
 
     document.getElementById('insightReach').textContent = (followers.length * 10).toLocaleString();
@@ -631,7 +729,7 @@ async function loadFollowers() {
 function initSearchAndFilters() {
     document.getElementById('communitySearch').addEventListener('input', (e) => {
         searchTerm = e.target.value.toLowerCase();
-        // Implémentez le filtrage ici
+        // À implémenter : filtrage des membres
     });
 
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -639,7 +737,7 @@ function initSearchAndFilters() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentFilter = btn.dataset.filter;
-            // Implémentez le filtrage ici
+            // À implémenter : filtrage des posts par rôle
         });
     });
 }
@@ -770,7 +868,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = await checkSession();
     if (!user) return;
 
-    // Afficher le loader global
     showLoader(true);
 
     try {
@@ -798,14 +895,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             previewMediaType = file.type;
         });
 
-        document.getElementById('previewPostBtn').addEventListener('click', () => {
-            const content = document.getElementById('postContent').value.trim();
-            if (!content && !previewMedia) {
-                showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
-                return;
-            }
-            alert(`Aperçu : ${content || '(média)'}`);
-        });
+        document.getElementById('previewPostBtn').addEventListener('click', openPreview);
 
         document.getElementById('schedulePostBtn').addEventListener('click', () => {
             showToast('Fonctionnalité de programmation bientôt disponible', 'info');
@@ -818,8 +908,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
                 return;
             }
-            const publishBtn = document.getElementById('publishBtn');
-            await withButtonSpinner(publishBtn, () => createPost(content, file));
+            await withButtonSpinner(document.getElementById('publishBtn'), () => createPost(content, file));
         });
 
         // Édition de profil
@@ -857,7 +946,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Erreur lors de l\'initialisation:', error);
         showToast('Erreur lors du chargement de la page', 'error');
     } finally {
-        // Cacher le loader global
         showLoader(false);
     }
 });
@@ -881,3 +969,10 @@ window.editContact = openEditProfileModal;
 window.openEditProfileModal = openEditProfileModal;
 window.closeEditProfileModal = closeEditProfileModal;
 window.saveProfileChanges = saveProfileChanges;
+window.openUserProfile = openUserProfile;
+window.closeUserProfileModal = closeUserProfileModal;
+window.sendMessageToUser = sendMessageToUser;
+window.closeLikesModal = () => document.getElementById('likesModal').style.display = 'none';
+window.openPreview = openPreview;
+window.closePreview = closePreview;
+window.publishFromPreview = publishFromPreview;
