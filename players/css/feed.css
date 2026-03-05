@@ -1187,7 +1187,7 @@ body {
     background: var(--primary-dark);
 }
 
-/* ===== RESPONSIVE ===== */
+/* ===== RESPON SIVE ===== */
 @media (max-width: 900px) {
     .menu-toggle {
         display: block;
