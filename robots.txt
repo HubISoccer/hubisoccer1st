@@ -1,4 +1,3 @@
 User-agent: *
 Allow: /
-
 Sitemap: https://hubisoccer.github.io/hubisoccer1st/sitemap.xml
