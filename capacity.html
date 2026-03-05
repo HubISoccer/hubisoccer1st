@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HubISoccer – Analyse vidéo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #551B8C 0%, #3d1266 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .capacity-card {
+            background: white;
+            max-width: 600px;
+            width: 100%;
+            border-radius: 30px;
+            padding: 40px 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #551B8C;
+            font-size: 2rem;
+            margin-bottom: 10px;
+            border-left: 5px solid #FFCC00;
+            padding-left: 20px;
+        }
+        .info-box {
+            background: #f0f8ff;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 5px solid #FFCC00;
+        }
+        .info-box h3 {
+            color: #551B8C;
+            margin-bottom: 10px;
+        }
+        .info-box ul {
+            list-style-type: none;
+        }
+        .info-box li {
+            margin: 10px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        .info-box li:before {
+            content: "⚽";
+            position: absolute;
+            left: 0;
+            color: #FFCC00;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-family: 'Poppins', sans-serif;
+        }
+        .video-upload {
+            border: 2px dashed #FFCC00;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .video-upload:hover {
+            background: rgba(255,204,0,0.05);
+        }
+        .file-name {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        button[type="submit"] {
+            width: 100%;
+            background: #551B8C;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button[type="submit"]:hover {
+            background: #7e3db0;
+            transform: translateY(-2px);
+        }
+        .progress-bar {
+            height: 5px;
+            background: #e9ecef;
+            border-radius: 5px;
+            margin: 10px 0;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #FFCC00;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .warning {
+            color: #721c24;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 10px;
+            padding: 10px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="capacity-card">
+        <h1>HubISoccer – Analyse vidéo</h1>
+        
+        <div class="info-box">
+            <h3>🎯 Pourquoi cette analyse ?</h3>
+            <p>Avant de pouvoir acheter ton guide et passer l'examen, nos analystes étudient tes capacités techniques et physiques à travers deux courtes vidéos.</p>
+            <h4>🎥 Ce que nous regardons :</h4>
+            <ul>
+                <li><strong>Vidéo 1 :</strong> Contrôle de balle, dribbles, aisance technique (5 min max).</li>
+                <li><strong>Vidéo 2 :</strong> Placement, vision du jeu, déplacements (5 min max).</li>
+            </ul>
+        </div>
+
+        <form id="uploadForm">
+            <div class="form-group">
+                <label>ID de suivi (obtenu après "Premier Pas")</label>
+                <input type="text" id="id_suivi" placeholder="ex: 1772394157225" required>
+            </div>
+            <div class="form-group">
+                <label>Nom</label>
+                <input type="text" id="nom" required>
+            </div>
+            <div class="form-group">
+                <label>Prénom(s)</label>
+                <input type="text" id="prenom" required>
+            </div>
+            <div class="form-group">
+                <label>Poste de prédilection</label>
+                <select id="poste" required>
+                    <option value="">Sélectionne ton poste</option>
+                    <option>Gardien de But</option>
+                    <option>Défenseur Central</option>
+                    <option>Latéral</option>
+                    <option>Milieu Défensif</option>
+                    <option>Milieu Offensif</option>
+                    <option>Attaquant / Ailier</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Vidéo 1 – Technique (max 5 min)</label>
+                <div class="video-upload" onclick="document.getElementById('video1').click()">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #FFCC00;"></i>
+                    <p>Clique pour télécharger la vidéo 1</p>
+                    <span class="file-name" id="video1-name">Aucun fichier</span>
+                </div>
+                <input type="file" id="video1" accept="video/*" style="display: none;" required>
+            </div>
+
+            <div class="form-group">
+                <label>Vidéo 2 – Placement & vision (max 5 min)</label>
+                <div class="video-upload" onclick="document.getElementById('video2').click()">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #FFCC00;"></i>
+                    <p>Clique pour télécharger la vidéo 2</p>
+                    <span class="file-name" id="video2-name">Aucun fichier</span>
+                </div>
+                <input type="file" id="video2" accept="video/*" style="display: none;" required>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div id="warning" class="warning"></div>
+
+            <button type="submit">Envoyer mes vidéos</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('video1').addEventListener('change', (e) => {
+            document.getElementById('video1-name').textContent = e.target.files[0]?.name || 'Aucun fichier';
+        });
+        document.getElementById('video2').addEventListener('change', (e) => {
+            document.getElementById('video2-name').textContent = e.target.files[0]?.name || 'Aucun fichier';
+        });
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const id_suivi = document.getElementById('id_suivi').value.trim();
+            const nom = document.getElementById('nom').value.trim();
+            const prenom = document.getElementById('prenom').value.trim();
+            const poste = document.getElementById('poste').value;
+            const video1 = document.getElementById('video1').files[0];
+            const video2 = document.getElementById('video2').files[0];
+
+            if (!id_suivi || !nom || !prenom || !poste || !video1 || !video2) {
+                alert('Tous les champs sont obligatoires');
+                return;
+            }
+
+            // Vérification simple de l'ID (optionnel, peut être amélioré)
+            if (id_suivi.length < 10) {
+                alert('ID de suivi invalide');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('id_suivi', id_suivi);
+            formData.append('nom', nom);
+            formData.append('prenom', prenom);
+            formData.append('poste', poste);
+            formData.append('video1', video1);
+            formData.append('video2', video2);
+
+            // Afficher la barre de progression
+            const progressBar = document.querySelector('.progress-bar');
+            const progressFill = document.getElementById('progressFill');
+            const warning = document.getElementById('warning');
+            progressBar.style.display = 'block';
+            warning.style.display = 'none';
+
+            // ICI tu dois mettre l'URL ngrok de ton serveur
+            const NGROK_URL = 'https://ton-serveur.ngrok.io'; // Remplace par ta vraie URL
+
+            try {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', NGROK_URL + '/upload', true);
+
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        const percent = (e.loaded / e.total) * 100;
+                        progressFill.style.width = percent + '%';
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.responseText);
+                        alert('✅ Envoi réussi ! Nos analystes traiteront ta candidature dans les plus brefs délais.');
+                        window.location.href = 'suivi.html?id=' + id_suivi;
+                    } else {
+                        try {
+                            const err = JSON.parse(xhr.responseText);
+                            warning.textContent = '❌ ' + (err.error || 'Erreur inconnue');
+                        } catch {
+                            warning.textContent = '❌ Erreur serveur. Réessaie plus tard.';
+                        }
+                        warning.style.display = 'block';
+                        progressBar.style.display = 'none';
+                    }
+                };
+
+                xhr.onerror = () => {
+                    warning.textContent = '❌ Erreur de connexion. Vérifie que ton téléphone (admin) est allumé et que ngrok est actif.';
+                    warning.style.display = 'block';
+                    progressBar.style.display = 'none';
+                };
+
+                xhr.send(formData);
+
+            } catch (error) {
+                console.error(error);
+                alert('Erreur : ' + error.message);
+            }
+        });
+    </script>
+    <!-- Font Awesome pour les icônes (optionnel mais joli) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</body>
+</html>
