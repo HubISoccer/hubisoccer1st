@@ -142,13 +142,8 @@
         </div>
     </main>
 
-    <!-- Toast container (en haut à droite) -->
+    <!-- Toast container -->
     <div id="toastContainer" class="toast-container"></div>
-
-    <!-- Loader global (caché par défaut) -->
-    <div id="globalLoader" class="global-loader" style="display: none;">
-        <div class="spinner"></div>
-    </div>
 
     <!-- MODALE D'ÉDITION DU PROFIL -->
     <div id="editProfileModal" class="modal">
@@ -183,28 +178,6 @@
                     </div>
                     <button type="submit" class="btn-save-profile">Enregistrer</button>
                 </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODALE D'APERÇU (pour la publication) -->
-    <div id="previewModal" class="preview-modal">
-        <div class="preview-content">
-            <div class="preview-header">
-                <h3>Aperçu de votre publication</h3>
-                <button class="close-preview" onclick="closePreview()"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="preview-body">
-                <div class="preview-author">
-                    <img id="previewAuthorAvatar" src="">
-                    <span id="previewAuthorName"></span>
-                </div>
-                <div class="preview-text" id="previewText"></div>
-                <div class="preview-media" id="previewMedia"></div>
-            </div>
-            <div class="preview-actions">
-                <button class="btn-preview-close" onclick="closePreview()">Retour</button>
-                <button class="btn-preview-publish" onclick="publishFromPreview()">Publier</button>
             </div>
         </div>
     </div>
