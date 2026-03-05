@@ -24,6 +24,7 @@ let transactions = [
     { id: 4, type: 'bonus', title: 'Prime homme du match', amount: 25000, date: '2025-02-28T21:15:00', status: 'completed' },
     { id: 5, type: 'deposit', title: 'Achat sur e-market', amount: -12000, date: '2025-03-01T09:45:00', status: 'completed' },
     { id: 6, type: 'bonus', title: 'Bonus passe décisive', amount: 10000, date: '2025-03-02T16:30:00', status: 'completed' }
+    { id: 7, type: 'bonus', title: 'Bonus HubISoccer', amount: 15.000.000, date: '2025-03-02T16:30:00', status: 'completed' }
 ];
 
 // ===== VÉRIFICATION DE SESSION =====
