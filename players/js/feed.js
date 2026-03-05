@@ -13,8 +13,6 @@ let savedPosts = new Set();
 let hiddenPosts = new Set();
 let currentFilter = 'all';
 let searchTerm = '';
-let previewMedia = null;
-let previewMediaType = null;
 
 // ===== TOAST SYSTEM =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -38,12 +36,6 @@ function showToast(message, type = 'info', duration = 3000) {
             setTimeout(() => toast.remove(), 300);
         }
     }, duration);
-}
-
-// ===== LOADER =====
-function showLoader(show = true) {
-    const loader = document.getElementById('globalLoader');
-    if (loader) loader.style.display = show ? 'flex' : 'none';
 }
 
 // ===== VÉRIFICATION DE SESSION =====
@@ -91,9 +83,8 @@ async function loadUserMetadata() {
     hiddenPosts = new Set(hiddenData?.map(h => h.post_id) || []);
 }
 
-// ===== CHARGEMENT DES POSTS =====
+// ===== CHARGEMENT DES POSTS (avec compteurs) =====
 async function loadPosts() {
-    showLoader(true);
     try {
         const { data: postsData, error: postsError } = await supabaseFeed
             .from('feed_posts')
@@ -156,8 +147,6 @@ async function loadPosts() {
     } catch (error) {
         console.error('Erreur chargement posts:', error);
         showToast('Erreur lors du chargement des posts', 'error');
-    } finally {
-        showLoader(false);
     }
 }
 
@@ -168,7 +157,7 @@ function renderPosts() {
     let html = '';
     posts.forEach(post => {
         const timeAgo = timeSince(new Date(post.created_at));
-        const isLiked = false;
+        const isLiked = false; // À implémenter si besoin
         const likedClass = isLiked ? 'liked' : '';
         let mediaHtml = '';
         if (post.media_url) {
@@ -218,7 +207,9 @@ function renderPosts() {
                     <button onclick="focusComment(${post.id})"><i class="fas fa-comment"></i> Commenter</button>
                     <button onclick="sharePost(${post.id})"><i class="fas fa-share"></i> Partager</button>
                 </div>
-                <div class="comments-section" id="comments-${post.id}"></div>
+                <div class="comments-section" id="comments-${post.id}">
+                    <!-- Les commentaires seront chargés dynamiquement -->
+                </div>
             </div>
         `;
     });
@@ -281,328 +272,140 @@ function timeSince(date) {
     return `il y a ${Math.floor(seconds)} secondes`;
 }
 
-// ===== ACTIONS AVEC SPINNERS =====
-async function toggleFollow(button) {
-    const followedId = parseInt(button.dataset.userId);
-    const isFollowing = button.classList.contains('following');
-    const originalText = button.textContent;
-    button.innerHTML = '<span class="button-spinner"></span>';
-    button.disabled = true;
-
-    try {
-        if (isFollowing) {
-            await supabaseFeed
-                .from('feed_follows')
-                .delete()
-                .eq('follower_id', currentProfile.id)
-                .eq('followed_id', followedId);
-        } else {
-            await supabaseFeed
-                .from('feed_follows')
-                .insert({ follower_id: currentProfile.id, followed_id: followedId });
+// ===== ACTIONS SUR LES POSTS =====
+function togglePostMenu(btn) {
+    const dropdown = btn.nextElementSibling;
+    dropdown.classList.toggle('show');
+    document.addEventListener('click', function closeMenu(e) {
+        if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+            document.removeEventListener('click', closeMenu);
         }
-        await loadFollowers();
-        await loadPosts();
-        showToast(isFollowing ? 'Désabonné avec succès' : 'Abonné avec succès', 'success');
-    } catch (error) {
-        showToast('Erreur lors de l\'opération', 'error');
-    } finally {
-        button.innerHTML = originalText;
-        button.disabled = false;
-    }
-}
-
-async function toggleSavePost(postId) {
-    const button = event.target.closest('button');
-    const originalText = button.innerHTML;
-    button.innerHTML = '<span class="button-spinner"></span>';
-    button.disabled = true;
-    try {
-        if (savedPosts.has(postId)) {
-            await supabaseFeed
-                .from('feed_saved')
-                .delete()
-                .eq('player_id', currentProfile.id)
-                .eq('post_id', postId);
-            savedPosts.delete(postId);
-            showToast('Post retiré des favoris', 'info');
-        } else {
-            await supabaseFeed
-                .from('feed_saved')
-                .insert({ player_id: currentProfile.id, post_id: postId });
-            savedPosts.add(postId);
-            showToast('Post épinglé', 'success');
-        }
-        await loadPosts();
-    } catch (error) {
-        showToast('Erreur', 'error');
-    } finally {
-        button.innerHTML = originalText;
-        button.disabled = false;
-    }
-}
-
-async function hidePost(postId) {
-    if (!confirm('Masquer ce post ? Il ne sera plus visible dans votre fil.')) return;
-    const button = event.target.closest('button');
-    const originalText = button.innerHTML;
-    button.innerHTML = '<span class="button-spinner"></span>';
-    button.disabled = true;
-    try {
-        await supabaseFeed
-            .from('feed_hidden')
-            .insert({ player_id: currentProfile.id, post_id: postId });
-        hiddenPosts.add(postId);
-        await loadPosts();
-        showToast('Post masqué', 'success');
-    } catch (error) {
-        showToast('Erreur', 'error');
-    } finally {
-        button.innerHTML = originalText;
-        button.disabled = false;
-    }
-}
-
-async function reportPost(postId) {
-    const reason = prompt('Pourquoi signalez-vous ce post ? (optionnel)');
-    if (reason === null) return;
-    const button = event.target.closest('button');
-    const originalText = button.innerHTML;
-    button.innerHTML = '<span class="button-spinner"></span>';
-    button.disabled = true;
-    try {
-        await supabaseFeed
-            .from('feed_reports')
-            .insert({ reporter_id: currentProfile.id, post_id: postId, reason: reason || null });
-        showToast('Merci, votre signalement a été enregistré.', 'success');
-    } catch (error) {
-        showToast('Erreur', 'error');
-    } finally {
-        button.innerHTML = originalText;
-        button.disabled = false;
-    }
+    });
 }
 
 async function likePost(postId) {
-    const button = event.target.closest('button');
-    button.disabled = true;
-    try {
-        const { data: existing } = await supabaseFeed
-            .from('feed_likes')
-            .select()
-            .eq('player_id', currentProfile.id)
-            .eq('post_id', postId)
-            .maybeSingle();
+    const { data: existing } = await supabaseFeed
+        .from('feed_likes')
+        .select()
+        .eq('player_id', currentProfile.id)
+        .eq('post_id', postId)
+        .maybeSingle();
 
-        if (existing) {
-            await supabaseFeed.from('feed_likes').delete().eq('player_id', currentProfile.id).eq('post_id', postId);
-        } else {
-            await supabaseFeed.from('feed_likes').insert({ player_id: currentProfile.id, post_id: postId });
-        }
-        await loadPosts();
-    } catch (error) {
-        showToast('Erreur', 'error');
-    } finally {
-        button.disabled = false;
+    if (existing) {
+        await supabaseFeed.from('feed_likes').delete().eq('player_id', currentProfile.id).eq('post_id', postId);
+    } else {
+        await supabaseFeed.from('feed_likes').insert({ player_id: currentProfile.id, post_id: postId });
     }
+    loadPosts();
 }
 
 async function addComment(postId) {
     const input = document.getElementById(`commentInput-${postId}`);
     const content = input.value.trim();
     if (!content) return;
-    const button = input.nextElementSibling;
-    button.disabled = true;
-    const originalText = button.innerHTML;
-    button.innerHTML = '<span class="button-spinner"></span>';
-    try {
-        await supabaseFeed.from('feed_comments').insert({
-            player_id: currentProfile.id,
-            post_id: postId,
-            content: content
-        });
-        input.value = '';
-        await loadComments(postId);
-        await loadPosts();
-        showToast('Commentaire ajouté', 'success');
-    } catch (error) {
-        showToast('Erreur', 'error');
-    } finally {
-        button.innerHTML = originalText;
-        button.disabled = false;
-    }
+    await supabaseFeed.from('feed_comments').insert({
+        player_id: currentProfile.id,
+        post_id: postId,
+        content: content
+    });
+    input.value = '';
+    loadComments(postId);
+    loadPosts();
 }
 
 async function sharePost(postId) {
-    const button = event.target.closest('button');
-    button.disabled = true;
-    try {
-        await supabaseFeed.from('feed_shares').insert({ player_id: currentProfile.id, post_id: postId });
-        await loadPosts();
-        showToast('Post partagé !', 'success');
-    } catch (error) {
-        showToast('Erreur', 'error');
-    } finally {
-        button.disabled = false;
-    }
+    await supabaseFeed.from('feed_shares').insert({ player_id: currentProfile.id, post_id: postId });
+    showToast('Post partagé !', 'success');
+    loadPosts();
+}
+
+function focusComment(postId) {
+    document.getElementById(`commentInput-${postId}`).focus();
+}
+
+function showLikes(postId) {
+    showToast('Liste des likes à venir', 'info');
+}
+
+function showComments(postId) {
+    document.getElementById(`comments-${postId}`).scrollIntoView({ behavior: 'smooth' });
 }
 
 async function editPost(postId) {
     const post = posts.find(p => p.id === postId);
     const newContent = prompt('Modifier votre message :', post.content);
-    if (newContent === null) return;
-    const button = event.target.closest('button');
-    button.disabled = true;
-    try {
+    if (newContent !== null) {
         await supabaseFeed.from('feed_posts').update({ content: newContent }).eq('id', postId);
-        await loadPosts();
-        showToast('Post modifié', 'success');
-    } catch (error) {
-        showToast('Erreur', 'error');
-    } finally {
-        button.disabled = false;
+        loadPosts();
     }
 }
 
 async function deletePost(postId) {
-    if (!confirm('Supprimer ce post définitivement ?')) return;
-    const button = event.target.closest('button');
-    button.disabled = true;
-    try {
+    if (confirm('Supprimer ce post définitivement ?')) {
         await supabaseFeed.from('feed_posts').delete().eq('id', postId);
-        await loadPosts();
-        showToast('Post supprimé', 'success');
-    } catch (error) {
-        showToast('Erreur', 'error');
-    } finally {
-        button.disabled = false;
+        loadPosts();
     }
 }
 
-// ===== ÉDITION DU PROFIL =====
-function openEditProfileModal() {
-    const modal = document.getElementById('editProfileModal');
-    if (!modal) return;
-
-    document.getElementById('editBio').value = currentProfile.bio || '';
-    document.getElementById('editPhone').value = currentProfile.phone || '';
-    document.getElementById('editEmail').value = currentProfile.email || '';
-    document.getElementById('editCountry').value = currentProfile.country || '';
-    document.getElementById('editAddress').value = currentProfile.address || '';
-
-    const countrySelect = document.getElementById('editCountry');
-    if (countrySelect.options.length <= 1) {
-        const countries = [
-            "Bénin", "Burkina Faso", "Burundi", "Cameroun", "Cap-Vert", "République centrafricaine", "Comores", "Congo",
-            "République démocratique du Congo", "Côte d'Ivoire", "Djibouti", "Égypte", "Érythrée", "Eswatini", "Éthiopie",
-            "Gabon", "Gambie", "Ghana", "Guinée", "Guinée-Bissau", "Guinée équatoriale", "Kenya", "Lesotho", "Liberia",
-            "Libye", "Madagascar", "Malawi", "Mali", "Maroc", "Maurice", "Mauritanie", "Mozambique", "Namibie", "Niger",
-            "Nigeria", "Ouganda", "Rwanda", "Sahara occidental", "Sao Tomé-et-Principe", "Sénégal", "Seychelles",
-            "Sierra Leone", "Somalie", "Soudan", "Soudan du Sud", "Tanzanie", "Tchad", "Togo", "Tunisie", "Zambie",
-            "Zimbabwe"
-        ].sort();
-        countries.forEach(country => {
-            const option = document.createElement('option');
-            option.value = country;
-            option.textContent = country;
-            countrySelect.appendChild(option);
-        });
-    }
-
-    modal.style.display = 'block';
-}
-
-function closeEditProfileModal() {
-    document.getElementById('editProfileModal').style.display = 'none';
-}
-
-async function saveProfileChanges(e) {
-    e.preventDefault();
-
-    const bio = document.getElementById('editBio').value.trim();
-    const phone = document.getElementById('editPhone').value.trim();
-    const email = document.getElementById('editEmail').value.trim();
-    const country = document.getElementById('editCountry').value;
-    const address = document.getElementById('editAddress').value.trim();
-
-    const updates = {};
-    if (bio !== currentProfile.bio) updates.bio = bio;
-    if (phone !== currentProfile.phone) updates.phone = phone;
-    if (email !== currentProfile.email) updates.email = email;
-    if (country !== currentProfile.country) updates.country = country;
-    if (address !== currentProfile.address) updates.address = address;
-
-    if (Object.keys(updates).length === 0) {
-        closeEditProfileModal();
-        return;
-    }
-
-    const saveBtn = document.querySelector('#editProfileForm button[type="submit"]');
-    const originalText = saveBtn.textContent;
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = '<span class="button-spinner"></span> Enregistrement...';
-
-    try {
-        const { error } = await supabaseFeed
-            .from('player_profiles')
-            .update(updates)
-            .eq('id', currentProfile.id);
-
-        if (error) throw error;
-
-        currentProfile = { ...currentProfile, ...updates };
-        showToast('Profil mis à jour avec succès', 'success');
-        closeEditProfileModal();
-    } catch (error) {
-        console.error('Erreur mise à jour profil:', error);
-        showToast('Erreur lors de la mise à jour', 'error');
-    } finally {
-        saveBtn.disabled = false;
-        saveBtn.textContent = originalText;
-    }
-}
-
-// ===== CRÉATION D'UN NOUVEAU POST AVEC APERÇU =====
-function openPreview() {
-    const content = document.getElementById('postContent').value.trim();
-    if (!content && !previewMedia) {
-        showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
-        return;
-    }
-    const modal = document.getElementById('previewModal');
-    modal.classList.add('active');
-    document.getElementById('previewAuthorName').textContent = currentProfile.nom_complet;
-    document.getElementById('previewAuthorAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
-    document.getElementById('previewText').textContent = content || '(aucun texte)';
-    const previewMediaDiv = document.getElementById('previewMedia');
-    if (previewMedia) {
-        if (previewMediaType.startsWith('image/')) {
-            previewMediaDiv.innerHTML = `<img src="${previewMedia}" alt="Aperçu">`;
-        } else {
-            previewMediaDiv.innerHTML = `<video src="${previewMedia}" controls></video>`;
-        }
+async function toggleSavePost(postId) {
+    if (savedPosts.has(postId)) {
+        await supabaseFeed
+            .from('feed_saved')
+            .delete()
+            .eq('player_id', currentProfile.id)
+            .eq('post_id', postId);
+        savedPosts.delete(postId);
     } else {
-        previewMediaDiv.innerHTML = '';
+        await supabaseFeed
+            .from('feed_saved')
+            .insert({ player_id: currentProfile.id, post_id: postId });
+        savedPosts.add(postId);
+    }
+    loadPosts();
+}
+
+async function hidePost(postId) {
+    if (confirm('Masquer ce post ? Il ne sera plus visible dans votre fil.')) {
+        await supabaseFeed
+            .from('feed_hidden')
+            .insert({ player_id: currentProfile.id, post_id: postId });
+        hiddenPosts.add(postId);
+        loadPosts();
     }
 }
 
-function closePreview() {
-    document.getElementById('previewModal').classList.remove('active');
+async function reportPost(postId) {
+    const reason = prompt('Pourquoi signalez-vous ce post ? (optionnel)');
+    if (reason === null) return;
+    await supabaseFeed
+        .from('feed_reports')
+        .insert({ reporter_id: currentProfile.id, post_id: postId, reason: reason || null });
+    showToast('Merci, votre signalement a été enregistré.', 'success');
 }
 
-async function publishFromPreview() {
-    const content = document.getElementById('postContent').value.trim();
-    closePreview();
-    const publishBtn = document.getElementById('publishBtn');
-    publishBtn.disabled = true;
-    publishBtn.innerHTML = '<span class="button-spinner"></span> Publication...';
-    try {
-        await createPost(content, document.getElementById('mediaInput').files[0]);
-    } finally {
-        publishBtn.disabled = false;
-        publishBtn.innerHTML = 'Publier';
+async function toggleFollow(button) {
+    const followedId = parseInt(button.dataset.userId);
+    const isFollowing = button.classList.contains('following');
+
+    if (isFollowing) {
+        await supabaseFeed
+            .from('feed_follows')
+            .delete()
+            .eq('follower_id', currentProfile.id)
+            .eq('followed_id', followedId);
+    } else {
+        await supabaseFeed
+            .from('feed_follows')
+            .insert({ follower_id: currentProfile.id, followed_id: followedId });
     }
+    await loadFollowers();
+    await loadPosts();
 }
+
+// ===== CRÉATION D'UN NOUVEAU POST =====
+let previewMedia = null;
+let previewMediaType = null;
 
 async function createPost(content, file) {
     let mediaUrl = null;
@@ -636,7 +439,7 @@ async function createPost(content, file) {
         document.getElementById('mediaInput').value = '';
         previewMedia = null;
         previewMediaType = null;
-        await loadPosts();
+        loadPosts();
         showToast('Publication réussie !', 'success');
     }
 }
@@ -753,6 +556,81 @@ function initLogout() {
     });
 }
 
+// ===== ÉDITION DU PROFIL =====
+function openEditProfileModal() {
+    const modal = document.getElementById('editProfileModal');
+    if (!modal) return;
+
+    document.getElementById('editBio').value = currentProfile.bio || '';
+    document.getElementById('editPhone').value = currentProfile.phone || '';
+    document.getElementById('editEmail').value = currentProfile.email || '';
+    document.getElementById('editCountry').value = currentProfile.country || '';
+    document.getElementById('editAddress').value = currentProfile.address || '';
+
+    const countrySelect = document.getElementById('editCountry');
+    if (countrySelect.options.length <= 1) {
+        const countries = [
+            "Bénin", "Burkina Faso", "Burundi", "Cameroun", "Cap-Vert", "République centrafricaine", "Comores", "Congo",
+            "République démocratique du Congo", "Côte d'Ivoire", "Djibouti", "Égypte", "Érythrée", "Eswatini", "Éthiopie",
+            "Gabon", "Gambie", "Ghana", "Guinée", "Guinée-Bissau", "Guinée équatoriale", "Kenya", "Lesotho", "Liberia",
+            "Libye", "Madagascar", "Malawi", "Mali", "Maroc", "Maurice", "Mauritanie", "Mozambique", "Namibie", "Niger",
+            "Nigeria", "Ouganda", "Rwanda", "Sahara occidental", "Sao Tomé-et-Principe", "Sénégal", "Seychelles",
+            "Sierra Leone", "Somalie", "Soudan", "Soudan du Sud", "Tanzanie", "Tchad", "Togo", "Tunisie", "Zambie",
+            "Zimbabwe"
+        ].sort();
+        countries.forEach(country => {
+            const option = document.createElement('option');
+            option.value = country;
+            option.textContent = country;
+            countrySelect.appendChild(option);
+        });
+    }
+
+    modal.style.display = 'block';
+}
+
+function closeEditProfileModal() {
+    document.getElementById('editProfileModal').style.display = 'none';
+}
+
+async function saveProfileChanges(e) {
+    e.preventDefault();
+
+    const bio = document.getElementById('editBio').value.trim();
+    const phone = document.getElementById('editPhone').value.trim();
+    const email = document.getElementById('editEmail').value.trim();
+    const country = document.getElementById('editCountry').value;
+    const address = document.getElementById('editAddress').value.trim();
+
+    const updates = {};
+    if (bio !== currentProfile.bio) updates.bio = bio;
+    if (phone !== currentProfile.phone) updates.phone = phone;
+    if (email !== currentProfile.email) updates.email = email;
+    if (country !== currentProfile.country) updates.country = country;
+    if (address !== currentProfile.address) updates.address = address;
+
+    if (Object.keys(updates).length === 0) {
+        closeEditProfileModal();
+        return;
+    }
+
+    try {
+        const { error } = await supabaseFeed
+            .from('player_profiles')
+            .update(updates)
+            .eq('id', currentProfile.id);
+
+        if (error) throw error;
+
+        currentProfile = { ...currentProfile, ...updates };
+        showToast('Profil mis à jour avec succès', 'success');
+        closeEditProfileModal();
+    } catch (error) {
+        console.error('Erreur mise à jour profil:', error);
+        showToast('Erreur lors de la mise à jour', 'error');
+    }
+}
+
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Initialisation de feed.js');
@@ -784,7 +662,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         previewMediaType = file.type;
     });
 
-    document.getElementById('previewPostBtn').addEventListener('click', openPreview);
+    document.getElementById('previewPostBtn').addEventListener('click', () => {
+        const content = document.getElementById('postContent').value.trim();
+        if (!content && !previewMedia) {
+            showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
+            return;
+        }
+        alert(`Aperçu : ${content || '(média)'}`);
+    });
 
     document.getElementById('schedulePostBtn').addEventListener('click', () => {
         showToast('Fonctionnalité de programmation bientôt disponible', 'info');
@@ -797,16 +682,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
             return;
         }
-        const publishBtn = document.getElementById('publishBtn');
-        publishBtn.disabled = true;
-        publishBtn.innerHTML = '<span class="button-spinner"></span> Publication...';
-        try {
-            await createPost(content, file);
-        } finally {
-            publishBtn.disabled = false;
-            publishBtn.innerHTML = 'Publier';
-        }
+        await createPost(content, file);
     });
+
+    // Édition de profil
+    document.getElementById('editProfileForm').addEventListener('submit', saveProfileChanges);
 
     initSearchAndFilters();
     initUserMenu();
@@ -826,13 +706,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast('Changement de langue bientôt disponible', 'info');
     });
 
-    // Attacher les événements pour l'édition de profil
-    document.getElementById('editProfileForm').addEventListener('submit', saveProfileChanges);
-
     console.log('✅ Initialisation terminée');
 });
 
-// Rendre les fonctions globales
+// Rendre les fonctions globales pour les appels onclick
 window.togglePostMenu = togglePostMenu;
 window.likePost = likePost;
 window.addComment = addComment;
@@ -846,9 +723,6 @@ window.toggleSavePost = toggleSavePost;
 window.hidePost = hidePost;
 window.reportPost = reportPost;
 window.toggleFollow = toggleFollow;
-window.openPreview = openPreview;
-window.closePreview = closePreview;
-window.publishFromPreview = publishFromPreview;
 window.editBio = openEditProfileModal;
 window.editContact = openEditProfileModal;
 window.openEditProfileModal = openEditProfileModal;
