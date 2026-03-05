@@ -150,6 +150,33 @@
     <!-- Toast container -->
     <div id="toastContainer" class="toast-container"></div>
 
+    <!-- Loader global -->
+    <div id="globalLoader" class="global-loader" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- MODALE D'APERÇU (pour la publication) -->
+    <div id="previewModal" class="preview-modal">
+        <div class="preview-content">
+            <div class="preview-header">
+                <h3>Aperçu de votre publication</h3>
+                <button class="close-preview" onclick="closePreview()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="preview-body">
+                <div class="preview-author">
+                    <img id="previewAuthorAvatar" src="">
+                    <span id="previewAuthorName"></span>
+                </div>
+                <div class="preview-text" id="previewText"></div>
+                <div class="preview-media" id="previewMedia"></div>
+            </div>
+            <div class="preview-actions">
+                <button class="btn-preview-close" onclick="closePreview()">Retour</button>
+                <button class="btn-preview-publish" onclick="publishFromPreview()">Publier</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODALE D'ÉDITION DU PROFIL -->
     <div id="editProfileModal" class="modal">
         <div class="modal-content">
@@ -183,6 +210,40 @@
                     </div>
                     <button type="submit" class="btn-save-profile">Enregistrer</button>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE LISTE DES LIKES -->
+    <div id="likesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Personnes qui aiment ce post</h2>
+                <span class="close-modal" onclick="closeLikesModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <ul id="likesList" class="likes-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE PROFIL UTILISATEUR (pour afficher les infos d'un abonné) -->
+    <div id="userProfileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Profil</h2>
+                <span class="close-modal" onclick="closeUserProfileModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="user-profile">
+                    <div class="profile-avatar">
+                        <img id="profileAvatar" src="img/user-default.jpg" alt="Avatar">
+                    </div>
+                    <h3 id="profileName">Nom de l'utilisateur</h3>
+                    <p id="profileHubId">@hub_id</p>
+                    <p id="profileBio" class="profile-bio">Bio de l'utilisateur...</p>
+                    <button class="btn-send-message" onclick="sendMessageToUser()"><i class="fas fa-envelope"></i> Envoyer un message</button>
+                </div>
             </div>
         </div>
     </div>
