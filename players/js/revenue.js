@@ -6,9 +6,9 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
 let playerProfile = null;
-let walletBalance = 125000; // Solde fictif en FCFA
-let totalEarned = 450000;
-let totalSpent = 325000;
+let walletBalance = 14.675.000; // Solde fictif en FCFA
+let totalEarned = 15.000.000;
+let totalSpent = 325.000;
 let bonusStats = {
     buts: 12,
     passes: 8,
