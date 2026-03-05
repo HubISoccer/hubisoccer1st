@@ -13,6 +13,7 @@ let savedPosts = new Set();
 let hiddenPosts = new Set();
 let currentFilter = 'all';
 let searchTerm = '';
+let newPostsCount = 0; // compteur de nouveaux posts
 
 // ===== TOAST SYSTEM =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -36,6 +37,19 @@ function showToast(message, type = 'info', duration = 3000) {
             setTimeout(() => toast.remove(), 300);
         }
     }, duration);
+}
+
+// ===== SPINNER UTILITY =====
+async function withButtonSpinner(button, asyncFn) {
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="button-spinner"></span>';
+    try {
+        await asyncFn();
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalText;
+    }
 }
 
 // ===== VÉRIFICATION DE SESSION =====
@@ -285,39 +299,67 @@ function togglePostMenu(btn) {
 }
 
 async function likePost(postId) {
-    const { data: existing } = await supabaseFeed
-        .from('feed_likes')
-        .select()
-        .eq('player_id', currentProfile.id)
-        .eq('post_id', postId)
-        .maybeSingle();
+    const button = event.target.closest('button');
+    button.disabled = true;
+    try {
+        const { data: existing } = await supabaseFeed
+            .from('feed_likes')
+            .select()
+            .eq('player_id', currentProfile.id)
+            .eq('post_id', postId)
+            .maybeSingle();
 
-    if (existing) {
-        await supabaseFeed.from('feed_likes').delete().eq('player_id', currentProfile.id).eq('post_id', postId);
-    } else {
-        await supabaseFeed.from('feed_likes').insert({ player_id: currentProfile.id, post_id: postId });
+        if (existing) {
+            await supabaseFeed.from('feed_likes').delete().eq('player_id', currentProfile.id).eq('post_id', postId);
+        } else {
+            await supabaseFeed.from('feed_likes').insert({ player_id: currentProfile.id, post_id: postId });
+        }
+        loadPosts();
+    } catch (error) {
+        showToast('Erreur', 'error');
+    } finally {
+        button.disabled = false;
     }
-    loadPosts();
 }
 
 async function addComment(postId) {
     const input = document.getElementById(`commentInput-${postId}`);
     const content = input.value.trim();
     if (!content) return;
-    await supabaseFeed.from('feed_comments').insert({
-        player_id: currentProfile.id,
-        post_id: postId,
-        content: content
-    });
-    input.value = '';
-    loadComments(postId);
-    loadPosts();
+    const button = input.nextElementSibling;
+    button.disabled = true;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="button-spinner"></span>';
+    try {
+        await supabaseFeed.from('feed_comments').insert({
+            player_id: currentProfile.id,
+            post_id: postId,
+            content: content
+        });
+        input.value = '';
+        loadComments(postId);
+        loadPosts();
+        showToast('Commentaire ajouté', 'success');
+    } catch (error) {
+        showToast('Erreur', 'error');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }
 }
 
 async function sharePost(postId) {
-    await supabaseFeed.from('feed_shares').insert({ player_id: currentProfile.id, post_id: postId });
-    showToast('Post partagé !', 'success');
-    loadPosts();
+    const button = event.target.closest('button');
+    button.disabled = true;
+    try {
+        await supabaseFeed.from('feed_shares').insert({ player_id: currentProfile.id, post_id: postId });
+        showToast('Post partagé !', 'success');
+        loadPosts();
+    } catch (error) {
+        showToast('Erreur', 'error');
+    } finally {
+        button.disabled = false;
+    }
 }
 
 function focusComment(postId) {
@@ -335,72 +377,134 @@ function showComments(postId) {
 async function editPost(postId) {
     const post = posts.find(p => p.id === postId);
     const newContent = prompt('Modifier votre message :', post.content);
-    if (newContent !== null) {
+    if (newContent === null) return;
+    const button = event.target.closest('button');
+    button.disabled = true;
+    try {
         await supabaseFeed.from('feed_posts').update({ content: newContent }).eq('id', postId);
         loadPosts();
+        showToast('Post modifié', 'success');
+    } catch (error) {
+        showToast('Erreur', 'error');
+    } finally {
+        button.disabled = false;
     }
 }
 
 async function deletePost(postId) {
-    if (confirm('Supprimer ce post définitivement ?')) {
+    if (!confirm('Supprimer ce post définitivement ?')) return;
+    const button = event.target.closest('button');
+    button.disabled = true;
+    try {
         await supabaseFeed.from('feed_posts').delete().eq('id', postId);
         loadPosts();
+        showToast('Post supprimé', 'success');
+    } catch (error) {
+        showToast('Erreur', 'error');
+    } finally {
+        button.disabled = false;
     }
 }
 
 async function toggleSavePost(postId) {
-    if (savedPosts.has(postId)) {
-        await supabaseFeed
-            .from('feed_saved')
-            .delete()
-            .eq('player_id', currentProfile.id)
-            .eq('post_id', postId);
-        savedPosts.delete(postId);
-    } else {
-        await supabaseFeed
-            .from('feed_saved')
-            .insert({ player_id: currentProfile.id, post_id: postId });
-        savedPosts.add(postId);
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="button-spinner"></span>';
+    button.disabled = true;
+    try {
+        if (savedPosts.has(postId)) {
+            await supabaseFeed
+                .from('feed_saved')
+                .delete()
+                .eq('player_id', currentProfile.id)
+                .eq('post_id', postId);
+            savedPosts.delete(postId);
+            showToast('Post retiré des favoris', 'info');
+        } else {
+            await supabaseFeed
+                .from('feed_saved')
+                .insert({ player_id: currentProfile.id, post_id: postId });
+            savedPosts.add(postId);
+            showToast('Post épinglé', 'success');
+        }
+        loadPosts();
+    } catch (error) {
+        showToast('Erreur', 'error');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
     }
-    loadPosts();
 }
 
 async function hidePost(postId) {
-    if (confirm('Masquer ce post ? Il ne sera plus visible dans votre fil.')) {
+    if (!confirm('Masquer ce post ? Il ne sera plus visible dans votre fil.')) return;
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="button-spinner"></span>';
+    button.disabled = true;
+    try {
         await supabaseFeed
             .from('feed_hidden')
             .insert({ player_id: currentProfile.id, post_id: postId });
         hiddenPosts.add(postId);
         loadPosts();
+        showToast('Post masqué', 'success');
+    } catch (error) {
+        showToast('Erreur', 'error');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
     }
 }
 
 async function reportPost(postId) {
     const reason = prompt('Pourquoi signalez-vous ce post ? (optionnel)');
     if (reason === null) return;
-    await supabaseFeed
-        .from('feed_reports')
-        .insert({ reporter_id: currentProfile.id, post_id: postId, reason: reason || null });
-    showToast('Merci, votre signalement a été enregistré.', 'success');
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="button-spinner"></span>';
+    button.disabled = true;
+    try {
+        await supabaseFeed
+            .from('feed_reports')
+            .insert({ reporter_id: currentProfile.id, post_id: postId, reason: reason || null });
+        showToast('Merci, votre signalement a été enregistré.', 'success');
+    } catch (error) {
+        showToast('Erreur', 'error');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }
 }
 
 async function toggleFollow(button) {
     const followedId = parseInt(button.dataset.userId);
     const isFollowing = button.classList.contains('following');
+    const originalText = button.textContent;
+    button.innerHTML = '<span class="button-spinner"></span>';
+    button.disabled = true;
 
-    if (isFollowing) {
-        await supabaseFeed
-            .from('feed_follows')
-            .delete()
-            .eq('follower_id', currentProfile.id)
-            .eq('followed_id', followedId);
-    } else {
-        await supabaseFeed
-            .from('feed_follows')
-            .insert({ follower_id: currentProfile.id, followed_id: followedId });
+    try {
+        if (isFollowing) {
+            await supabaseFeed
+                .from('feed_follows')
+                .delete()
+                .eq('follower_id', currentProfile.id)
+                .eq('followed_id', followedId);
+        } else {
+            await supabaseFeed
+                .from('feed_follows')
+                .insert({ follower_id: currentProfile.id, followed_id: followedId });
+        }
+        await loadFollowers();
+        await loadPosts();
+        showToast(isFollowing ? 'Désabonné avec succès' : 'Abonné avec succès', 'success');
+    } catch (error) {
+        showToast('Erreur lors de l\'opération', 'error');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
     }
-    await loadFollowers();
-    await loadPosts();
 }
 
 // ===== CRÉATION D'UN NOUVEAU POST =====
@@ -614,6 +718,11 @@ async function saveProfileChanges(e) {
         return;
     }
 
+    const saveBtn = document.querySelector('#editProfileForm button[type="submit"]');
+    const originalText = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="button-spinner"></span> Enregistrement...';
+
     try {
         const { error } = await supabaseFeed
             .from('player_profiles')
@@ -628,7 +737,24 @@ async function saveProfileChanges(e) {
     } catch (error) {
         console.error('Erreur mise à jour profil:', error);
         showToast('Erreur lors de la mise à jour', 'error');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
     }
+}
+
+// ===== INDICATEUR DE NOUVEAUX POSTS =====
+function showNewPostsIndicator() {
+    const indicator = document.getElementById('newPostsIndicator');
+    if (indicator) {
+        document.getElementById('newPostsCount').textContent = newPostsCount;
+        indicator.style.display = 'block';
+    }
+}
+
+function hideNewPostsIndicator() {
+    document.getElementById('newPostsIndicator').style.display = 'none';
+    newPostsCount = 0;
 }
 
 // ===== INITIALISATION =====
@@ -682,7 +808,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
             return;
         }
-        await createPost(content, file);
+        const publishBtn = document.getElementById('publishBtn');
+        await withButtonSpinner(publishBtn, () => createPost(content, file));
     });
 
     // Édition de profil
@@ -696,10 +823,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     supabaseFeed
         .channel('feed_posts_changes')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_posts' }, payload => {
-            loadPosts();
-            showToast('Nouvelle publication !', 'info');
+            newPostsCount++;
+            showNewPostsIndicator();
         })
         .subscribe();
+
+    // Clic sur l'indicateur pour recharger
+    const indicator = document.getElementById('newPostsIndicator');
+    if (indicator) {
+        indicator.addEventListener('click', async () => {
+            hideNewPostsIndicator();
+            await loadPosts();
+        });
+    }
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
