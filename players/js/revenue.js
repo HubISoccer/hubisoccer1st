@@ -6,9 +6,9 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
 let playerProfile = null;
-let walletBalance = 14.675.000; // Solde fictif en FCFA
-let totalEarned = 15.000.000;
-let totalSpent = 325.000;
+let walletBalance = 14675000; // Solde fictif en FCFA
+let totalEarned = 15000000;
+let totalSpent = 325000;
 let bonusStats = {
     buts: 12,
     passes: 8,
@@ -24,7 +24,7 @@ let transactions = [
     { id: 4, type: 'bonus', title: 'Prime homme du match', amount: 25000, date: '2025-02-28T21:15:00', status: 'completed' },
     { id: 5, type: 'deposit', title: 'Achat sur e-market', amount: -12000, date: '2025-03-01T09:45:00', status: 'completed' },
     { id: 6, type: 'bonus', title: 'Bonus passe décisive', amount: 10000, date: '2025-03-02T16:30:00', status: 'completed' }
-    { id: 7, type: 'bonus', title: 'Bonus HubISoccer', amount: 15.000.000, date: '2025-03-02T16:30:00', status: 'completed' }
+    { id: 7, type: 'bonus', title: 'Bonus HubISoccer', amount: 15000000, date: '2025-03-02T16:30:00', status: 'completed' }
 ];
 
 // ===== VÉRIFICATION DE SESSION =====
@@ -130,8 +130,8 @@ document.getElementById('depositForm')?.addEventListener('submit', (e) => {
     const amount = parseInt(document.getElementById('depositAmount').value);
     const method = document.getElementById('depositMethod').value;
 
-    if (amount < 100) {
-        alert('Le montant minimum est de 100 FCFA');
+    if (amount < 10000) {
+        alert('Le montant minimum est de 10000 FCFA');
         return;
     }
 
