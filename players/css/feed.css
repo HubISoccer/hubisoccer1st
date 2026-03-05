@@ -1,4 +1,4 @@
-/* ===== VARIABLES ===== */
+/* ===== VARIABLES FEED TEST ===== */
 :root {
     --primary: #551B8C;
     --primary-light: #7e3db0;
@@ -1187,7 +1187,7 @@ body {
     background: var(--primary-dark);
 }
 
-/* ===== RESPON SIVE ===== */
+/* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
     .menu-toggle {
         display: block;
