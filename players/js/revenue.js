@@ -130,8 +130,8 @@ document.getElementById('depositForm')?.addEventListener('submit', (e) => {
     const amount = parseInt(document.getElementById('depositAmount').value);
     const method = document.getElementById('depositMethod').value;
 
-    if (amount < 10000) {
-        alert('Le montant minimum est de 10000 FCFA');
+    if (amount < 100) {
+        alert('Le montant minimum est de 100 FCFA');
         return;
     }
 
@@ -160,8 +160,8 @@ document.getElementById('withdrawForm')?.addEventListener('submit', (e) => {
     const method = document.getElementById('withdrawMethod').value;
     const recipient = document.getElementById('withdrawRecipient').value;
 
-    if (amount < 100) {
-        alert('Le montant minimum est de 100 FCFA');
+    if (amount < 10000) {
+        alert('Le montant minimum est de 10000 FCFA');
         return;
     }
     if (amount > walletBalance) {
