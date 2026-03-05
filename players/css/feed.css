@@ -633,6 +633,11 @@ body {
     gap: 10px;
     padding: 8px 0;
     border-bottom: 1px solid var(--light-gray);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.community-section li:hover {
+    background: rgba(85,27,140,0.05);
 }
 .community-section li img {
     width: 30px;
@@ -853,7 +858,7 @@ body {
     to { opacity: 0; transform: translateX(400px); }
 }
 
-/* ===== SPINNERS (optionnel) ===== */
+/* ===== SPINNERS ===== */
 .spinner {
     width: 40px;
     height: 40px;
@@ -867,6 +872,19 @@ body {
     to { transform: rotate(360deg); }
 }
 
+.global-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
 .button-spinner {
     display: inline-block;
     width: 16px;
@@ -878,7 +896,7 @@ body {
     margin-right: 5px;
 }
 
-/* ===== MODALE D'ÉDITION PROFIL ===== */
+/* ===== MODALES ===== */
 .modal {
     display: none;
     position: fixed;
@@ -954,6 +972,221 @@ body {
     box-shadow: 0 5px 15px rgba(85,27,140,0.3);
 }
 
+/* ===== MODALE D'APERÇU ===== */
+.preview-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 10001;
+    align-items: center;
+    justify-content: center;
+}
+
+.preview-modal.active {
+    display: flex;
+}
+
+.preview-content {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-hover);
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.preview-header h3 {
+    color: var(--primary);
+}
+
+.close-preview {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--gray);
+}
+
+.preview-body {
+    margin-bottom: 20px;
+}
+
+.preview-author {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.preview-author img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.preview-author span {
+    font-weight: 600;
+}
+
+.preview-text {
+    background: var(--bg-light);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    font-size: 0.95rem;
+}
+
+.preview-media {
+    text-align: center;
+}
+
+.preview-media img,
+.preview-media video {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 10px;
+}
+
+.preview-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.preview-actions button {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-preview-close {
+    background: var(--light-gray);
+    color: var(--dark);
+}
+
+.btn-preview-publish {
+    background: var(--primary);
+    color: white;
+}
+
+/* ===== MODALE DE LISTE DES LIKES ===== */
+.likes-list {
+    list-style: none;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.likes-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-bottom: 1px solid var(--light-gray);
+}
+.likes-list img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.likes-list span {
+    flex: 1;
+    font-weight: 500;
+}
+.likes-list small {
+    color: var(--gray);
+    font-size: 0.7rem;
+}
+
+/* ===== MODALE PROFIL UTILISATEUR ===== */
+.user-profile {
+    text-align: center;
+    padding: 10px;
+}
+.profile-avatar {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 15px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--gold);
+}
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+#profileName {
+    color: var(--primary);
+    margin-bottom: 5px;
+}
+#profileHubId {
+    color: var(--gray);
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+}
+.profile-bio {
+    background: var(--bg-light);
+    padding: 15px;
+    border-radius: 10px;
+    margin: 15px 0;
+    font-size: 0.95rem;
+    text-align: left;
+}
+.btn-send-message {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 30px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    width: 100%;
+}
+.btn-send-message:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(85,27,140,0.3);
+}
+
+/* ===== INDICATEUR DE NOUVEAUX POSTS ===== */
+.new-posts-indicator {
+    background: var(--primary);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 30px;
+    text-align: center;
+    margin-bottom: 20px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    font-weight: 600;
+    display: inline-block;
+    width: auto;
+    margin-left: auto;
+    margin-right: auto;
+}
+.new-posts-indicator:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+    background: var(--primary-dark);
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
     .menu-toggle {
@@ -995,27 +1228,4 @@ body {
     .comment-text {
         font-size: 0.75rem;
     }
-}
-
-/* ===== INDICATEUR DE NOUVEAUX POSTS ===== */
-.new-posts-indicator {
-    background: var(--primary);
-    color: white;
-    padding: 10px 15px;
-    border-radius: 30px;
-    text-align: center;
-    margin-bottom: 20px;
-    cursor: pointer;
-    box-shadow: var(--shadow);
-    transition: var(--transition);
-    font-weight: 600;
-    display: inline-block;
-    width: auto;
-    margin-left: auto;
-    margin-right: auto;
-}
-.new-posts-indicator:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-hover);
-    background: var(--primary-dark);
 }
