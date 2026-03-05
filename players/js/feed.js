@@ -13,7 +13,7 @@ let savedPosts = new Set();
 let hiddenPosts = new Set();
 let currentFilter = 'all';
 let searchTerm = '';
-let newPostsCount = 0; // compteur de nouveaux posts
+let newPostsCount = 0;
 
 // ===== TOAST SYSTEM =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -37,6 +37,12 @@ function showToast(message, type = 'info', duration = 3000) {
             setTimeout(() => toast.remove(), 300);
         }
     }, duration);
+}
+
+// ===== LOADER GLOBAL =====
+function showLoader(show = true) {
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.style.display = show ? 'flex' : 'none';
 }
 
 // ===== SPINNER UTILITY =====
@@ -171,7 +177,7 @@ function renderPosts() {
     let html = '';
     posts.forEach(post => {
         const timeAgo = timeSince(new Date(post.created_at));
-        const isLiked = false; // À implémenter si besoin
+        const isLiked = false;
         const likedClass = isLiked ? 'liked' : '';
         let mediaHtml = '';
         if (post.media_url) {
@@ -764,85 +770,96 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = await checkSession();
     if (!user) return;
 
-    await loadProfile();
-    await loadUserMetadata();
-    await loadPosts();
-    await loadFollowers();
+    // Afficher le loader global
+    showLoader(true);
 
-    // Gestion de la publication
-    document.getElementById('attachMediaBtn').addEventListener('click', () => {
-        document.getElementById('mediaInput').click();
-    });
+    try {
+        await loadProfile();
+        await loadUserMetadata();
+        await loadPosts();
+        await loadFollowers();
 
-    document.getElementById('mediaInput').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const preview = document.getElementById('publishMediaPreview');
-        const url = URL.createObjectURL(file);
-        if (file.type.startsWith('image/')) {
-            preview.innerHTML = `<img src="${url}" alt="Aperçu">`;
-        } else {
-            preview.innerHTML = `<video src="${url}" controls></video>`;
-        }
-        previewMedia = url;
-        previewMediaType = file.type;
-    });
-
-    document.getElementById('previewPostBtn').addEventListener('click', () => {
-        const content = document.getElementById('postContent').value.trim();
-        if (!content && !previewMedia) {
-            showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
-            return;
-        }
-        alert(`Aperçu : ${content || '(média)'}`);
-    });
-
-    document.getElementById('schedulePostBtn').addEventListener('click', () => {
-        showToast('Fonctionnalité de programmation bientôt disponible', 'info');
-    });
-
-    document.getElementById('publishBtn').addEventListener('click', async () => {
-        const content = document.getElementById('postContent').value.trim();
-        const file = document.getElementById('mediaInput').files[0];
-        if (!content && !file) {
-            showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
-            return;
-        }
-        const publishBtn = document.getElementById('publishBtn');
-        await withButtonSpinner(publishBtn, () => createPost(content, file));
-    });
-
-    // Édition de profil
-    document.getElementById('editProfileForm').addEventListener('submit', saveProfileChanges);
-
-    initSearchAndFilters();
-    initUserMenu();
-    initLogout();
-
-    // Realtime pour les nouvelles publications
-    supabaseFeed
-        .channel('feed_posts_changes')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_posts' }, payload => {
-            newPostsCount++;
-            showNewPostsIndicator();
-        })
-        .subscribe();
-
-    // Clic sur l'indicateur pour recharger
-    const indicator = document.getElementById('newPostsIndicator');
-    if (indicator) {
-        indicator.addEventListener('click', async () => {
-            hideNewPostsIndicator();
-            await loadPosts();
+        // Gestion de la publication
+        document.getElementById('attachMediaBtn').addEventListener('click', () => {
+            document.getElementById('mediaInput').click();
         });
+
+        document.getElementById('mediaInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const preview = document.getElementById('publishMediaPreview');
+            const url = URL.createObjectURL(file);
+            if (file.type.startsWith('image/')) {
+                preview.innerHTML = `<img src="${url}" alt="Aperçu">`;
+            } else {
+                preview.innerHTML = `<video src="${url}" controls></video>`;
+            }
+            previewMedia = url;
+            previewMediaType = file.type;
+        });
+
+        document.getElementById('previewPostBtn').addEventListener('click', () => {
+            const content = document.getElementById('postContent').value.trim();
+            if (!content && !previewMedia) {
+                showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
+                return;
+            }
+            alert(`Aperçu : ${content || '(média)'}`);
+        });
+
+        document.getElementById('schedulePostBtn').addEventListener('click', () => {
+            showToast('Fonctionnalité de programmation bientôt disponible', 'info');
+        });
+
+        document.getElementById('publishBtn').addEventListener('click', async () => {
+            const content = document.getElementById('postContent').value.trim();
+            const file = document.getElementById('mediaInput').files[0];
+            if (!content && !file) {
+                showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
+                return;
+            }
+            const publishBtn = document.getElementById('publishBtn');
+            await withButtonSpinner(publishBtn, () => createPost(content, file));
+        });
+
+        // Édition de profil
+        document.getElementById('editProfileForm').addEventListener('submit', saveProfileChanges);
+
+        initSearchAndFilters();
+        initUserMenu();
+        initLogout();
+
+        // Realtime pour les nouvelles publications
+        supabaseFeed
+            .channel('feed_posts_changes')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_posts' }, payload => {
+                newPostsCount++;
+                showNewPostsIndicator();
+            })
+            .subscribe();
+
+        // Clic sur l'indicateur pour recharger
+        const indicator = document.getElementById('newPostsIndicator');
+        if (indicator) {
+            indicator.addEventListener('click', async () => {
+                hideNewPostsIndicator();
+                await loadPosts();
+            });
+        }
+
+        document.getElementById('languageLink')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            showToast('Changement de langue bientôt disponible', 'info');
+        });
+
+        console.log('✅ Initialisation terminée');
+    } catch (error) {
+        console.error('Erreur lors de l\'initialisation:', error);
+        showToast('Erreur lors du chargement de la page', 'error');
+    } finally {
+        // Cacher le loader global
+        showLoader(false);
     }
-
-    document.getElementById('languageLink')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        showToast('Changement de langue bientôt disponible', 'info');
-    });
-
-    console.log('✅ Initialisation terminée');
 });
 
 // Rendre les fonctions globales pour les appels onclick
