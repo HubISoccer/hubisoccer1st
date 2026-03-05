@@ -9,10 +9,60 @@ let currentProfile = null;
 let posts = [];
 let followers = [];
 let following = [];
-let savedPosts = new Set(); // IDs des posts épinglés
-let hiddenPosts = new Set(); // IDs des posts masqués
+let savedPosts = new Set();
+let hiddenPosts = new Set();
 let currentFilter = 'all';
 let searchTerm = '';
+
+// ===== SYSTÈME DE NOTIFICATION (TOAST) =====
+function showToast(message, type = 'info', title = '') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        info: 'fa-info-circle',
+        warning: 'fa-exclamation-triangle'
+    };
+    
+    toast.innerHTML = `
+        <div class="toast-icon"><i class="fas ${icons[type] || icons.info}"></i></div>
+        <div class="toast-content">
+            ${title ? `<div class="toast-title">${title}</div>` : ''}
+            <div class="toast-message">${message}</div>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Auto-suppression après 5 secondes
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// ===== INDICATEURS DE CHARGEMENT =====
+function showLoading(button) {
+    button.classList.add('btn-loading');
+    button.disabled = true;
+}
+function hideLoading(button) {
+    button.classList.remove('btn-loading');
+    button.disabled = false;
+}
+function showFeedLoading() {
+    document.getElementById('feedLoading').style.display = 'flex';
+}
+function hideFeedLoading() {
+    document.getElementById('feedLoading').style.display = 'none';
+}
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
@@ -35,6 +85,7 @@ async function loadProfile() {
 
     if (error) {
         console.error('Erreur chargement profil:', error);
+        showToast('Erreur lors du chargement du profil', 'error', 'Oups !');
         return null;
     }
     currentProfile = data;
@@ -46,14 +97,12 @@ async function loadProfile() {
 
 // ===== CHARGEMENT DES ÉPINGLES ET MASQUÉS =====
 async function loadUserMetadata() {
-    // Épinglés (feed_saved)
     const { data: savedData } = await supabaseFeed
         .from('feed_saved')
         .select('post_id')
         .eq('player_id', currentProfile.id);
     savedPosts = new Set(savedData?.map(s => s.post_id) || []);
 
-    // Masqués (feed_hidden)
     const { data: hiddenData } = await supabaseFeed
         .from('feed_hidden')
         .select('post_id')
@@ -61,79 +110,81 @@ async function loadUserMetadata() {
     hiddenPosts = new Set(hiddenData?.map(h => h.post_id) || []);
 }
 
-// ===== CHARGEMENT DES POSTS (avec compteurs et profils) =====
+// ===== CHARGEMENT DES POSTS =====
 async function loadPosts() {
-    // Récupérer les posts
-    const { data: postsData, error: postsError } = await supabaseFeed
-        .from('feed_posts')
-        .select('*')
-        .order('created_at', { ascending: false });
+    showFeedLoading();
+    try {
+        // Récupérer les posts
+        const { data: postsData, error: postsError } = await supabaseFeed
+            .from('feed_posts')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-    if (postsError) {
-        console.error('Erreur chargement posts:', postsError);
-        return;
-    }
+        if (postsError) throw postsError;
 
-    // Récupérer les profils des auteurs
-    const playerIds = postsData.map(p => p.player_id).filter(Boolean);
-    const { data: profilesData, error: profilesError } = await supabaseFeed
-        .from('player_profiles')
-        .select('id, nom_complet, avatar_url, hub_id')
-        .in('id', playerIds);
+        // Récupérer les profils des auteurs
+        const playerIds = postsData.map(p => p.player_id).filter(Boolean);
+        const { data: profilesData, error: profilesError } = await supabaseFeed
+            .from('player_profiles')
+            .select('id, nom_complet, avatar_url, hub_id')
+            .in('id', playerIds);
 
-    if (profilesError) {
-        console.error('Erreur chargement profils:', profilesError);
-        return;
-    }
+        if (profilesError) throw profilesError;
 
-    const profilesMap = {};
-    (profilesData || []).forEach(p => profilesMap[p.id] = p);
+        const profilesMap = {};
+        (profilesData || []).forEach(p => profilesMap[p.id] = p);
 
-    // Récupérer les compteurs pour chaque post
-    const postsWithCounts = [];
-    for (const post of postsData) {
-        const { count: likesCount } = await supabaseFeed
-            .from('feed_likes')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id);
+        // Récupérer les compteurs
+        const postsWithCounts = [];
+        for (const post of postsData) {
+            const { count: likesCount } = await supabaseFeed
+                .from('feed_likes')
+                .select('*', { count: 'exact', head: true })
+                .eq('post_id', post.id);
 
-        const { count: commentsCount } = await supabaseFeed
-            .from('feed_comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id);
+            const { count: commentsCount } = await supabaseFeed
+                .from('feed_comments')
+                .select('*', { count: 'exact', head: true })
+                .eq('post_id', post.id);
 
-        const { count: sharesCount } = await supabaseFeed
-            .from('feed_shares')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id);
+            const { count: sharesCount } = await supabaseFeed
+                .from('feed_shares')
+                .select('*', { count: 'exact', head: true })
+                .eq('post_id', post.id);
 
-        postsWithCounts.push({
+            postsWithCounts.push({
+                ...post,
+                player: profilesMap[post.player_id] || null,
+                likes: [{ count: likesCount || 0 }],
+                comments: [{ count: commentsCount || 0 }],
+                shares: [{ count: sharesCount || 0 }]
+            });
+        }
+
+        // Filtrer les posts masqués
+        const visiblePosts = postsWithCounts.filter(post => !hiddenPosts.has(post.id));
+
+        // Récupérer les IDs des personnes suivies
+        const { data: followingData } = await supabaseFeed
+            .from('feed_follows')
+            .select('followed_id')
+            .eq('follower_id', currentProfile.id);
+        const followingIds = followingData?.map(f => f.followed_id) || [];
+
+        posts = visiblePosts.map(post => ({
             ...post,
-            player: profilesMap[post.player_id] || null,
-            likes: [{ count: likesCount || 0 }],
-            comments: [{ count: commentsCount || 0 }],
-            shares: [{ count: sharesCount || 0 }]
-        });
+            isFollowed: followingIds.includes(post.player_id),
+            isSaved: savedPosts.has(post.id)
+        }));
+
+        renderPosts();
+        posts.forEach(post => loadComments(post.id));
+    } catch (error) {
+        console.error('Erreur chargement posts:', error);
+        showToast('Erreur lors du chargement des posts', 'error', 'Oups !');
+    } finally {
+        hideFeedLoading();
     }
-
-    // Filtrer les posts masqués
-    const visiblePosts = postsWithCounts.filter(post => !hiddenPosts.has(post.id));
-
-    // Récupérer les IDs des personnes suivies
-    const { data: followingData } = await supabaseFeed
-        .from('feed_follows')
-        .select('followed_id')
-        .eq('follower_id', currentProfile.id);
-    const followingIds = followingData?.map(f => f.followed_id) || [];
-
-    posts = visiblePosts.map(post => ({
-        ...post,
-        isFollowed: followingIds.includes(post.player_id),
-        isSaved: savedPosts.has(post.id)
-    }));
-
-    renderPosts();
-    posts.forEach(post => loadComments(post.id));
 }
 
 // ===== RENDU DES POSTS =====
@@ -158,7 +209,6 @@ function renderPosts() {
             ? `<button class="follow-btn ${post.isFollowed ? 'following' : ''}" data-user-id="${post.player_id}" onclick="toggleFollow(this)">${post.isFollowed ? 'Abonné' : 'Suivre'}</button>`
             : '';
 
-        // Icône et texte pour Épingler
         const pinIcon = post.isSaved ? 'fas fa-star' : 'far fa-star';
         const pinText = post.isSaved ? 'Épinglé' : 'Épingler';
 
@@ -194,9 +244,7 @@ function renderPosts() {
                     <button onclick="focusComment(${post.id})"><i class="fas fa-comment"></i> Commenter</button>
                     <button onclick="sharePost(${post.id})"><i class="fas fa-share"></i> Partager</button>
                 </div>
-                <div class="comments-section" id="comments-${post.id}">
-                    <!-- Les commentaires seront chargés dynamiquement -->
-                </div>
+                <div class="comments-section" id="comments-${post.id}"></div>
             </div>
         `;
     });
@@ -259,67 +307,7 @@ function timeSince(date) {
     return `il y a ${Math.floor(seconds)} secondes`;
 }
 
-// ===== ACTIONS RÉELLES =====
-
-// Follow / Unfollow (déjà présent)
-async function toggleFollow(button) {
-    const followedId = parseInt(button.dataset.userId);
-    const isFollowing = button.classList.contains('following');
-
-    if (isFollowing) {
-        await supabaseFeed
-            .from('feed_follows')
-            .delete()
-            .eq('follower_id', currentProfile.id)
-            .eq('followed_id', followedId);
-    } else {
-        await supabaseFeed
-            .from('feed_follows')
-            .insert({ follower_id: currentProfile.id, followed_id: followedId });
-    }
-    await loadFollowers();
-    await loadPosts();
-}
-
-// Épingler / Désépingler
-async function toggleSavePost(postId) {
-    if (savedPosts.has(postId)) {
-        await supabaseFeed
-            .from('feed_saved')
-            .delete()
-            .eq('player_id', currentProfile.id)
-            .eq('post_id', postId);
-        savedPosts.delete(postId);
-    } else {
-        await supabaseFeed
-            .from('feed_saved')
-            .insert({ player_id: currentProfile.id, post_id: postId });
-        savedPosts.add(postId);
-    }
-    await loadPosts(); // Recharge pour mettre à jour l'icône
-}
-
-// Masquer un post
-async function hidePost(postId) {
-    if (confirm('Masquer ce post ? Il ne sera plus visible dans votre fil.')) {
-        await supabaseFeed
-            .from('feed_hidden')
-            .insert({ player_id: currentProfile.id, post_id: postId });
-        hiddenPosts.add(postId);
-        await loadPosts(); // Recharge sans le post masqué
-    }
-}
-
-// Signaler un post
-async function reportPost(postId) {
-    const reason = prompt('Pourquoi signalez-vous ce post ? (optionnel)');
-    await supabaseFeed
-        .from('feed_reports')
-        .insert({ reporter_id: currentProfile.id, post_id: postId, reason: reason || null });
-    alert('Merci, votre signalement a été enregistré.');
-}
-
-// ===== AUTRES ACTIONS SUR LES POSTS (inchangées) =====
+// ===== ACTIONS =====
 function togglePostMenu(btn) {
     const dropdown = btn.nextElementSibling;
     dropdown.classList.toggle('show');
@@ -331,40 +319,131 @@ function togglePostMenu(btn) {
     });
 }
 
-async function likePost(postId) {
-    const { data: existing } = await supabaseFeed
-        .from('feed_likes')
-        .select()
-        .eq('player_id', currentProfile.id)
-        .eq('post_id', postId)
-        .maybeSingle();
-
-    if (existing) {
-        await supabaseFeed.from('feed_likes').delete().eq('player_id', currentProfile.id).eq('post_id', postId);
-    } else {
-        await supabaseFeed.from('feed_likes').insert({ player_id: currentProfile.id, post_id: postId });
+async function toggleFollow(button) {
+    showLoading(button);
+    const followedId = parseInt(button.dataset.userId);
+    const isFollowing = button.classList.contains('following');
+    try {
+        if (isFollowing) {
+            await supabaseFeed
+                .from('feed_follows')
+                .delete()
+                .eq('follower_id', currentProfile.id)
+                .eq('followed_id', followedId);
+            showToast('Vous ne suivez plus cet utilisateur', 'success', 'Désabonné');
+        } else {
+            await supabaseFeed
+                .from('feed_follows')
+                .insert({ follower_id: currentProfile.id, followed_id: followedId });
+            showToast('Vous suivez maintenant cet utilisateur', 'success', 'Abonné');
+        }
+        await loadFollowers();
+        await loadPosts();
+    } catch (error) {
+        showToast('Erreur lors de l\'opération', 'error', 'Oups !');
+    } finally {
+        hideLoading(button);
     }
-    loadPosts();
+}
+
+async function toggleSavePost(postId) {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    try {
+        if (savedPosts.has(postId)) {
+            await supabaseFeed
+                .from('feed_saved')
+                .delete()
+                .eq('player_id', currentProfile.id)
+                .eq('post_id', postId);
+            savedPosts.delete(postId);
+            showToast('Post retiré des favoris', 'success', 'Favori');
+        } else {
+            await supabaseFeed
+                .from('feed_saved')
+                .insert({ player_id: currentProfile.id, post_id: postId });
+            savedPosts.add(postId);
+            showToast('Post ajouté aux favoris', 'success', 'Favori');
+        }
+        await loadPosts();
+    } catch (error) {
+        showToast('Erreur lors de l\'opération', 'error', 'Oups !');
+    }
+}
+
+async function hidePost(postId) {
+    if (!confirm('Masquer ce post ? Il ne sera plus visible dans votre fil.')) return;
+    try {
+        await supabaseFeed
+            .from('feed_hidden')
+            .insert({ player_id: currentProfile.id, post_id: postId });
+        hiddenPosts.add(postId);
+        showToast('Post masqué', 'success', 'Masqué');
+        await loadPosts();
+    } catch (error) {
+        showToast('Erreur lors du masquage', 'error', 'Oups !');
+    }
+}
+
+async function reportPost(postId) {
+    const reason = prompt('Pourquoi signalez-vous ce post ? (optionnel)');
+    try {
+        await supabaseFeed
+            .from('feed_reports')
+            .insert({ reporter_id: currentProfile.id, post_id: postId, reason: reason || null });
+        showToast('Signalement envoyé, merci', 'success', 'Signalé');
+    } catch (error) {
+        showToast('Erreur lors du signalement', 'error', 'Oups !');
+    }
+}
+
+async function likePost(postId) {
+    try {
+        const { data: existing } = await supabaseFeed
+            .from('feed_likes')
+            .select()
+            .eq('player_id', currentProfile.id)
+            .eq('post_id', postId)
+            .maybeSingle();
+
+        if (existing) {
+            await supabaseFeed.from('feed_likes').delete().eq('player_id', currentProfile.id).eq('post_id', postId);
+        } else {
+            await supabaseFeed.from('feed_likes').insert({ player_id: currentProfile.id, post_id: postId });
+        }
+        loadPosts();
+    } catch (error) {
+        showToast('Erreur lors du like', 'error', 'Oups !');
+    }
 }
 
 async function addComment(postId) {
     const input = document.getElementById(`commentInput-${postId}`);
     const content = input.value.trim();
     if (!content) return;
-    await supabaseFeed.from('feed_comments').insert({
-        player_id: currentProfile.id,
-        post_id: postId,
-        content: content
-    });
-    input.value = '';
-    loadComments(postId);
-    loadPosts();
+    try {
+        await supabaseFeed.from('feed_comments').insert({
+            player_id: currentProfile.id,
+            post_id: postId,
+            content: content
+        });
+        input.value = '';
+        loadComments(postId);
+        loadPosts();
+        showToast('Commentaire ajouté', 'success');
+    } catch (error) {
+        showToast('Erreur lors de l\'ajout du commentaire', 'error', 'Oups !');
+    }
 }
 
 async function sharePost(postId) {
-    await supabaseFeed.from('feed_shares').insert({ player_id: currentProfile.id, post_id: postId });
-    alert('Post partagé !');
-    loadPosts();
+    try {
+        await supabaseFeed.from('feed_shares').insert({ player_id: currentProfile.id, post_id: postId });
+        showToast('Post partagé !', 'success');
+        loadPosts();
+    } catch (error) {
+        showToast('Erreur lors du partage', 'error', 'Oups !');
+    }
 }
 
 function focusComment(postId) {
@@ -372,60 +451,104 @@ function focusComment(postId) {
 }
 
 function showLikes(postId) {
-    alert('Fonctionnalité à venir : liste des likes');
+    showToast('Fonctionnalité à venir : liste des likes', 'info');
 }
 
 function showComments(postId) {
     document.getElementById(`comments-${postId}`).scrollIntoView({ behavior: 'smooth' });
 }
 
-function editPost(postId) {
+async function editPost(postId) {
     const post = posts.find(p => p.id === postId);
     const newContent = prompt('Modifier votre message :', post.content);
     if (newContent !== null) {
-        supabaseFeed.from('feed_posts').update({ content: newContent }).eq('id', postId).then(() => loadPosts());
+        try {
+            await supabaseFeed.from('feed_posts').update({ content: newContent }).eq('id', postId);
+            showToast('Post modifié', 'success');
+            loadPosts();
+        } catch (error) {
+            showToast('Erreur lors de la modification', 'error', 'Oups !');
+        }
     }
 }
 
-function deletePost(postId) {
-    if (confirm('Supprimer ce post définitivement ?')) {
-        supabaseFeed.from('feed_posts').delete().eq('id', postId).then(() => loadPosts());
+async function deletePost(postId) {
+    if (!confirm('Supprimer ce post définitivement ?')) return;
+    try {
+        await supabaseFeed.from('feed_posts').delete().eq('id', postId);
+        showToast('Post supprimé', 'success');
+        loadPosts();
+    } catch (error) {
+        showToast('Erreur lors de la suppression', 'error', 'Oups !');
     }
 }
 
 // ===== CRÉATION D'UN NOUVEAU POST =====
 async function createPost(content, file) {
-    let mediaUrl = null;
-    let mediaType = null;
-    if (file) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
-        const filePath = `posts/${fileName}`;
-        const { error: uploadError } = await supabaseFeed.storage
-            .from('media')
-            .upload(filePath, file);
-        if (uploadError) {
-            alert('Erreur upload : ' + uploadError.message);
-            return;
+    const publishBtn = document.getElementById('publishBtn');
+    showLoading(publishBtn);
+    try {
+        let mediaUrl = null;
+        let mediaType = null;
+        if (file) {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
+            const filePath = `posts/${fileName}`;
+            const { error: uploadError } = await supabaseFeed.storage
+                .from('media')
+                .upload(filePath, file);
+            if (uploadError) throw uploadError;
+            const { data: urlData } = supabaseFeed.storage.from('media').getPublicUrl(filePath);
+            mediaUrl = urlData.publicUrl;
+            mediaType = file.type.startsWith('image/') ? 'image' : 'video';
         }
-        const { data: urlData } = supabaseFeed.storage.from('media').getPublicUrl(filePath);
-        mediaUrl = urlData.publicUrl;
-        mediaType = file.type.startsWith('image/') ? 'image' : 'video';
-    }
-    const { error } = await supabaseFeed.from('feed_posts').insert({
-        player_id: currentProfile.id,
-        content: content,
-        media_url: mediaUrl,
-        media_type: mediaType
-    });
-    if (error) {
-        alert('Erreur publication : ' + error.message);
-    } else {
+        const { error } = await supabaseFeed.from('feed_posts').insert({
+            player_id: currentProfile.id,
+            content: content,
+            media_url: mediaUrl,
+            media_type: mediaType
+        });
+        if (error) throw error;
+        showToast('Publication réussie !', 'success');
         document.getElementById('postContent').value = '';
         document.getElementById('publishMediaPreview').innerHTML = '';
         document.getElementById('mediaInput').value = '';
         loadPosts();
+    } catch (error) {
+        showToast('Erreur lors de la publication : ' + error.message, 'error', 'Oups !');
+    } finally {
+        hideLoading(publishBtn);
     }
+}
+
+// ===== FONCTION D'APERÇU AMÉLIORÉE =====
+function previewPost() {
+    const content = document.getElementById('postContent').value.trim();
+    const file = document.getElementById('mediaInput').files[0];
+    const modal = document.createElement('div');
+    modal.className = 'preview-modal';
+    let mediaHtml = '';
+    if (file) {
+        const url = URL.createObjectURL(file);
+        if (file.type.startsWith('image/')) {
+            mediaHtml = `<img src="${url}" alt="Aperçu">`;
+        } else if (file.type.startsWith('video/')) {
+            mediaHtml = `<video src="${url}" controls></video>`;
+        }
+    }
+    modal.innerHTML = `
+        <div class="preview-modal-content">
+            <div class="preview-modal-header">
+                <h3>Aperçu de votre publication</h3>
+                <button class="close-preview" onclick="this.closest('.preview-modal').remove()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="preview-content">
+                <p>${content || '(aucun texte)'}</p>
+                ${mediaHtml ? `<div class="preview-media">${mediaHtml}</div>` : ''}
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
 }
 
 // ===== GESTION DES SWIPES =====
@@ -505,7 +628,6 @@ async function loadFollowers() {
 function initSearchAndFilters() {
     document.getElementById('communitySearch').addEventListener('input', (e) => {
         searchTerm = e.target.value.toLowerCase();
-        // Implémentez le filtrage ici
     });
 
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -513,7 +635,6 @@ function initSearchAndFilters() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentFilter = btn.dataset.filter;
-            // Implémentez le filtrage ici
         });
     });
 }
@@ -548,7 +669,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!user) return;
 
     await loadProfile();
-    await loadUserMetadata(); // charge savedPosts et hiddenPosts
+    await loadUserMetadata();
     await loadPosts();
     await loadFollowers();
 
@@ -569,15 +690,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    document.getElementById('previewPostBtn').addEventListener('click', () => {
-        const content = document.getElementById('postContent').value.trim();
-        alert(`Aperçu : ${content || '(aucun texte)'}`);
-    });
-
+    document.getElementById('previewPostBtn').addEventListener('click', previewPost);
     document.getElementById('schedulePostBtn').addEventListener('click', () => {
-        alert('Fonctionnalité de programmation (simulation).');
+        showToast('Fonctionnalité de programmation (simulation)', 'info');
     });
-
     document.getElementById('publishBtn').addEventListener('click', () => {
         const content = document.getElementById('postContent').value.trim();
         const file = document.getElementById('mediaInput').files[0];
@@ -599,7 +715,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
-        alert('Changement de langue bientôt disponible');
+        showToast('Changement de langue bientôt disponible', 'info');
     });
 
     console.log('✅ Initialisation terminée');
@@ -619,5 +735,5 @@ window.toggleSavePost = toggleSavePost;
 window.hidePost = hidePost;
 window.reportPost = reportPost;
 window.toggleFollow = toggleFollow;
-window.editBio = () => alert('Modification de la bio (simulation)');
-window.editContact = () => alert('Modification des coordonnées (simulation)');
+window.editBio = () => showToast('Modification de la bio (simulation)', 'info');
+window.editContact = () => showToast('Modification des coordonnées (simulation)', 'info');
