@@ -115,6 +115,9 @@
         </div>
     </div>
 
+    <!-- Conteneur pour les notifications toast -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <!-- Contenu principal -->
     <main class="dashboard-main">
         <div class="feed-container">
@@ -135,6 +138,11 @@
                     <button class="action-btn" id="schedulePostBtn"><i class="fas fa-clock"></i> Prog.</button>
                     <button class="action-btn publish-main" id="publishBtn"><i class="fas fa-paper-plane"></i> Publier</button>
                 </div>
+            </div>
+
+            <!-- Indicateur de chargement global (pour les posts) -->
+            <div id="feedLoading" class="loading-spinner" style="display: none;">
+                <div class="spinner"></div>
             </div>
 
             <!-- Fil d'actualité -->
