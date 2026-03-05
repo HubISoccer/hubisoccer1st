@@ -13,55 +13,37 @@ let savedPosts = new Set();
 let hiddenPosts = new Set();
 let currentFilter = 'all';
 let searchTerm = '';
+let previewMedia = null;
+let previewMediaType = null;
 
-// ===== SYSTÈME DE NOTIFICATION (TOAST) =====
-function showToast(message, type = 'info', title = '') {
+// ===== TOAST SYSTEM =====
+function showToast(message, type = 'info', duration = 3000) {
     const container = document.getElementById('toastContainer');
     if (!container) return;
-
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    
-    const icons = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-circle',
-        info: 'fa-info-circle',
-        warning: 'fa-exclamation-triangle'
-    };
-    
     toast.innerHTML = `
-        <div class="toast-icon"><i class="fas ${icons[type] || icons.info}"></i></div>
-        <div class="toast-content">
-            ${title ? `<div class="toast-title">${title}</div>` : ''}
-            <div class="toast-message">${message}</div>
-        </div>
-        <button class="toast-close" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+        <div class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i></div>
+        <div class="toast-content">${message}</div>
+        <button class="toast-close"><i class="fas fa-times"></i></button>
     `;
-    
     container.appendChild(toast);
-    
-    // Auto-suppression après 5 secondes
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(100%)';
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.style.animation = 'fadeOut 0.3s forwards';
         setTimeout(() => toast.remove(), 300);
-    }, 5000);
+    });
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.animation = 'fadeOut 0.3s forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
 }
 
-// ===== INDICATEURS DE CHARGEMENT =====
-function showLoading(button) {
-    button.classList.add('btn-loading');
-    button.disabled = true;
-}
-function hideLoading(button) {
-    button.classList.remove('btn-loading');
-    button.disabled = false;
-}
-function showFeedLoading() {
-    document.getElementById('feedLoading').style.display = 'flex';
-}
-function hideFeedLoading() {
-    document.getElementById('feedLoading').style.display = 'none';
+// ===== LOADER =====
+function showLoader(show = true) {
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.style.display = show ? 'flex' : 'none';
 }
 
 // ===== VÉRIFICATION DE SESSION =====
@@ -85,7 +67,6 @@ async function loadProfile() {
 
     if (error) {
         console.error('Erreur chargement profil:', error);
-        showToast('Erreur lors du chargement du profil', 'error', 'Oups !');
         return null;
     }
     currentProfile = data;
@@ -112,9 +93,8 @@ async function loadUserMetadata() {
 
 // ===== CHARGEMENT DES POSTS =====
 async function loadPosts() {
-    showFeedLoading();
+    showLoader(true);
     try {
-        // Récupérer les posts
         const { data: postsData, error: postsError } = await supabaseFeed
             .from('feed_posts')
             .select('*')
@@ -122,7 +102,6 @@ async function loadPosts() {
 
         if (postsError) throw postsError;
 
-        // Récupérer les profils des auteurs
         const playerIds = postsData.map(p => p.player_id).filter(Boolean);
         const { data: profilesData, error: profilesError } = await supabaseFeed
             .from('player_profiles')
@@ -134,19 +113,16 @@ async function loadPosts() {
         const profilesMap = {};
         (profilesData || []).forEach(p => profilesMap[p.id] = p);
 
-        // Récupérer les compteurs
         const postsWithCounts = [];
         for (const post of postsData) {
             const { count: likesCount } = await supabaseFeed
                 .from('feed_likes')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
-
             const { count: commentsCount } = await supabaseFeed
                 .from('feed_comments')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
-
             const { count: sharesCount } = await supabaseFeed
                 .from('feed_shares')
                 .select('*', { count: 'exact', head: true })
@@ -161,10 +137,8 @@ async function loadPosts() {
             });
         }
 
-        // Filtrer les posts masqués
         const visiblePosts = postsWithCounts.filter(post => !hiddenPosts.has(post.id));
 
-        // Récupérer les IDs des personnes suivies
         const { data: followingData } = await supabaseFeed
             .from('feed_follows')
             .select('followed_id')
@@ -181,9 +155,9 @@ async function loadPosts() {
         posts.forEach(post => loadComments(post.id));
     } catch (error) {
         console.error('Erreur chargement posts:', error);
-        showToast('Erreur lors du chargement des posts', 'error', 'Oups !');
+        showToast('Erreur lors du chargement des posts', 'error');
     } finally {
-        hideFeedLoading();
+        showLoader(false);
     }
 }
 
@@ -194,7 +168,7 @@ function renderPosts() {
     let html = '';
     posts.forEach(post => {
         const timeAgo = timeSince(new Date(post.created_at));
-        const isLiked = false; // À implémenter plus tard
+        const isLiked = false;
         const likedClass = isLiked ? 'liked' : '';
         let mediaHtml = '';
         if (post.media_url) {
@@ -307,22 +281,14 @@ function timeSince(date) {
     return `il y a ${Math.floor(seconds)} secondes`;
 }
 
-// ===== ACTIONS =====
-function togglePostMenu(btn) {
-    const dropdown = btn.nextElementSibling;
-    dropdown.classList.toggle('show');
-    document.addEventListener('click', function closeMenu(e) {
-        if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.classList.remove('show');
-            document.removeEventListener('click', closeMenu);
-        }
-    });
-}
-
+// ===== ACTIONS AVEC SPINNERS =====
 async function toggleFollow(button) {
-    showLoading(button);
     const followedId = parseInt(button.dataset.userId);
     const isFollowing = button.classList.contains('following');
+    const originalText = button.textContent;
+    button.innerHTML = '<span class="button-spinner"></span>';
+    button.disabled = true;
+
     try {
         if (isFollowing) {
             await supabaseFeed
@@ -330,25 +296,27 @@ async function toggleFollow(button) {
                 .delete()
                 .eq('follower_id', currentProfile.id)
                 .eq('followed_id', followedId);
-            showToast('Vous ne suivez plus cet utilisateur', 'success', 'Désabonné');
         } else {
             await supabaseFeed
                 .from('feed_follows')
                 .insert({ follower_id: currentProfile.id, followed_id: followedId });
-            showToast('Vous suivez maintenant cet utilisateur', 'success', 'Abonné');
         }
         await loadFollowers();
         await loadPosts();
+        showToast(isFollowing ? 'Désabonné avec succès' : 'Abonné avec succès', 'success');
     } catch (error) {
-        showToast('Erreur lors de l\'opération', 'error', 'Oups !');
+        showToast('Erreur lors de l\'opération', 'error');
     } finally {
-        hideLoading(button);
+        button.innerHTML = originalText;
+        button.disabled = false;
     }
 }
 
 async function toggleSavePost(postId) {
-    const post = posts.find(p => p.id === postId);
-    if (!post) return;
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="button-spinner"></span>';
+    button.disabled = true;
     try {
         if (savedPosts.has(postId)) {
             await supabaseFeed
@@ -357,47 +325,67 @@ async function toggleSavePost(postId) {
                 .eq('player_id', currentProfile.id)
                 .eq('post_id', postId);
             savedPosts.delete(postId);
-            showToast('Post retiré des favoris', 'success', 'Favori');
+            showToast('Post retiré des favoris', 'info');
         } else {
             await supabaseFeed
                 .from('feed_saved')
                 .insert({ player_id: currentProfile.id, post_id: postId });
             savedPosts.add(postId);
-            showToast('Post ajouté aux favoris', 'success', 'Favori');
+            showToast('Post épinglé', 'success');
         }
         await loadPosts();
     } catch (error) {
-        showToast('Erreur lors de l\'opération', 'error', 'Oups !');
+        showToast('Erreur', 'error');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
     }
 }
 
 async function hidePost(postId) {
     if (!confirm('Masquer ce post ? Il ne sera plus visible dans votre fil.')) return;
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="button-spinner"></span>';
+    button.disabled = true;
     try {
         await supabaseFeed
             .from('feed_hidden')
             .insert({ player_id: currentProfile.id, post_id: postId });
         hiddenPosts.add(postId);
-        showToast('Post masqué', 'success', 'Masqué');
         await loadPosts();
+        showToast('Post masqué', 'success');
     } catch (error) {
-        showToast('Erreur lors du masquage', 'error', 'Oups !');
+        showToast('Erreur', 'error');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
     }
 }
 
 async function reportPost(postId) {
     const reason = prompt('Pourquoi signalez-vous ce post ? (optionnel)');
+    if (reason === null) return;
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="button-spinner"></span>';
+    button.disabled = true;
     try {
         await supabaseFeed
             .from('feed_reports')
             .insert({ reporter_id: currentProfile.id, post_id: postId, reason: reason || null });
-        showToast('Signalement envoyé, merci', 'success', 'Signalé');
+        showToast('Merci, votre signalement a été enregistré.', 'success');
     } catch (error) {
-        showToast('Erreur lors du signalement', 'error', 'Oups !');
+        showToast('Erreur', 'error');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
     }
 }
 
 async function likePost(postId) {
+    const button = event.target.closest('button');
+    button.disabled = true;
     try {
         const { data: existing } = await supabaseFeed
             .from('feed_likes')
@@ -411,9 +399,11 @@ async function likePost(postId) {
         } else {
             await supabaseFeed.from('feed_likes').insert({ player_id: currentProfile.id, post_id: postId });
         }
-        loadPosts();
+        await loadPosts();
     } catch (error) {
-        showToast('Erreur lors du like', 'error', 'Oups !');
+        showToast('Erreur', 'error');
+    } finally {
+        button.disabled = false;
     }
 }
 
@@ -421,6 +411,10 @@ async function addComment(postId) {
     const input = document.getElementById(`commentInput-${postId}`);
     const content = input.value.trim();
     if (!content) return;
+    const button = input.nextElementSibling;
+    button.disabled = true;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="button-spinner"></span>';
     try {
         await supabaseFeed.from('feed_comments').insert({
             player_id: currentProfile.id,
@@ -428,127 +422,223 @@ async function addComment(postId) {
             content: content
         });
         input.value = '';
-        loadComments(postId);
-        loadPosts();
+        await loadComments(postId);
+        await loadPosts();
         showToast('Commentaire ajouté', 'success');
     } catch (error) {
-        showToast('Erreur lors de l\'ajout du commentaire', 'error', 'Oups !');
+        showToast('Erreur', 'error');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
     }
 }
 
 async function sharePost(postId) {
+    const button = event.target.closest('button');
+    button.disabled = true;
     try {
         await supabaseFeed.from('feed_shares').insert({ player_id: currentProfile.id, post_id: postId });
+        await loadPosts();
         showToast('Post partagé !', 'success');
-        loadPosts();
     } catch (error) {
-        showToast('Erreur lors du partage', 'error', 'Oups !');
+        showToast('Erreur', 'error');
+    } finally {
+        button.disabled = false;
     }
-}
-
-function focusComment(postId) {
-    document.getElementById(`commentInput-${postId}`).focus();
-}
-
-function showLikes(postId) {
-    showToast('Fonctionnalité à venir : liste des likes', 'info');
-}
-
-function showComments(postId) {
-    document.getElementById(`comments-${postId}`).scrollIntoView({ behavior: 'smooth' });
 }
 
 async function editPost(postId) {
     const post = posts.find(p => p.id === postId);
     const newContent = prompt('Modifier votre message :', post.content);
-    if (newContent !== null) {
-        try {
-            await supabaseFeed.from('feed_posts').update({ content: newContent }).eq('id', postId);
-            showToast('Post modifié', 'success');
-            loadPosts();
-        } catch (error) {
-            showToast('Erreur lors de la modification', 'error', 'Oups !');
-        }
+    if (newContent === null) return;
+    const button = event.target.closest('button');
+    button.disabled = true;
+    try {
+        await supabaseFeed.from('feed_posts').update({ content: newContent }).eq('id', postId);
+        await loadPosts();
+        showToast('Post modifié', 'success');
+    } catch (error) {
+        showToast('Erreur', 'error');
+    } finally {
+        button.disabled = false;
     }
 }
 
 async function deletePost(postId) {
     if (!confirm('Supprimer ce post définitivement ?')) return;
+    const button = event.target.closest('button');
+    button.disabled = true;
     try {
         await supabaseFeed.from('feed_posts').delete().eq('id', postId);
+        await loadPosts();
         showToast('Post supprimé', 'success');
-        loadPosts();
     } catch (error) {
-        showToast('Erreur lors de la suppression', 'error', 'Oups !');
+        showToast('Erreur', 'error');
+    } finally {
+        button.disabled = false;
     }
 }
 
-// ===== CRÉATION D'UN NOUVEAU POST =====
-async function createPost(content, file) {
-    const publishBtn = document.getElementById('publishBtn');
-    showLoading(publishBtn);
-    try {
-        let mediaUrl = null;
-        let mediaType = null;
-        if (file) {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
-            const filePath = `posts/${fileName}`;
-            const { error: uploadError } = await supabaseFeed.storage
-                .from('media')
-                .upload(filePath, file);
-            if (uploadError) throw uploadError;
-            const { data: urlData } = supabaseFeed.storage.from('media').getPublicUrl(filePath);
-            mediaUrl = urlData.publicUrl;
-            mediaType = file.type.startsWith('image/') ? 'image' : 'video';
-        }
-        const { error } = await supabaseFeed.from('feed_posts').insert({
-            player_id: currentProfile.id,
-            content: content,
-            media_url: mediaUrl,
-            media_type: mediaType
+// ===== ÉDITION DU PROFIL =====
+function openEditProfileModal() {
+    const modal = document.getElementById('editProfileModal');
+    if (!modal) return;
+
+    document.getElementById('editBio').value = currentProfile.bio || '';
+    document.getElementById('editPhone').value = currentProfile.phone || '';
+    document.getElementById('editEmail').value = currentProfile.email || '';
+    document.getElementById('editCountry').value = currentProfile.country || '';
+    document.getElementById('editAddress').value = currentProfile.address || '';
+
+    const countrySelect = document.getElementById('editCountry');
+    if (countrySelect.options.length <= 1) {
+        const countries = [
+            "Bénin", "Burkina Faso", "Burundi", "Cameroun", "Cap-Vert", "République centrafricaine", "Comores", "Congo",
+            "République démocratique du Congo", "Côte d'Ivoire", "Djibouti", "Égypte", "Érythrée", "Eswatini", "Éthiopie",
+            "Gabon", "Gambie", "Ghana", "Guinée", "Guinée-Bissau", "Guinée équatoriale", "Kenya", "Lesotho", "Liberia",
+            "Libye", "Madagascar", "Malawi", "Mali", "Maroc", "Maurice", "Mauritanie", "Mozambique", "Namibie", "Niger",
+            "Nigeria", "Ouganda", "Rwanda", "Sahara occidental", "Sao Tomé-et-Principe", "Sénégal", "Seychelles",
+            "Sierra Leone", "Somalie", "Soudan", "Soudan du Sud", "Tanzanie", "Tchad", "Togo", "Tunisie", "Zambie",
+            "Zimbabwe"
+        ].sort();
+        countries.forEach(country => {
+            const option = document.createElement('option');
+            option.value = country;
+            option.textContent = country;
+            countrySelect.appendChild(option);
         });
+    }
+
+    modal.style.display = 'block';
+}
+
+function closeEditProfileModal() {
+    document.getElementById('editProfileModal').style.display = 'none';
+}
+
+async function saveProfileChanges(e) {
+    e.preventDefault();
+
+    const bio = document.getElementById('editBio').value.trim();
+    const phone = document.getElementById('editPhone').value.trim();
+    const email = document.getElementById('editEmail').value.trim();
+    const country = document.getElementById('editCountry').value;
+    const address = document.getElementById('editAddress').value.trim();
+
+    const updates = {};
+    if (bio !== currentProfile.bio) updates.bio = bio;
+    if (phone !== currentProfile.phone) updates.phone = phone;
+    if (email !== currentProfile.email) updates.email = email;
+    if (country !== currentProfile.country) updates.country = country;
+    if (address !== currentProfile.address) updates.address = address;
+
+    if (Object.keys(updates).length === 0) {
+        closeEditProfileModal();
+        return;
+    }
+
+    const saveBtn = document.querySelector('#editProfileForm button[type="submit"]');
+    const originalText = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="button-spinner"></span> Enregistrement...';
+
+    try {
+        const { error } = await supabaseFeed
+            .from('player_profiles')
+            .update(updates)
+            .eq('id', currentProfile.id);
+
         if (error) throw error;
-        showToast('Publication réussie !', 'success');
+
+        currentProfile = { ...currentProfile, ...updates };
+        showToast('Profil mis à jour avec succès', 'success');
+        closeEditProfileModal();
+    } catch (error) {
+        console.error('Erreur mise à jour profil:', error);
+        showToast('Erreur lors de la mise à jour', 'error');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
+    }
+}
+
+// ===== CRÉATION D'UN NOUVEAU POST AVEC APERÇU =====
+function openPreview() {
+    const content = document.getElementById('postContent').value.trim();
+    if (!content && !previewMedia) {
+        showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
+        return;
+    }
+    const modal = document.getElementById('previewModal');
+    modal.classList.add('active');
+    document.getElementById('previewAuthorName').textContent = currentProfile.nom_complet;
+    document.getElementById('previewAuthorAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
+    document.getElementById('previewText').textContent = content || '(aucun texte)';
+    const previewMediaDiv = document.getElementById('previewMedia');
+    if (previewMedia) {
+        if (previewMediaType.startsWith('image/')) {
+            previewMediaDiv.innerHTML = `<img src="${previewMedia}" alt="Aperçu">`;
+        } else {
+            previewMediaDiv.innerHTML = `<video src="${previewMedia}" controls></video>`;
+        }
+    } else {
+        previewMediaDiv.innerHTML = '';
+    }
+}
+
+function closePreview() {
+    document.getElementById('previewModal').classList.remove('active');
+}
+
+async function publishFromPreview() {
+    const content = document.getElementById('postContent').value.trim();
+    closePreview();
+    const publishBtn = document.getElementById('publishBtn');
+    publishBtn.disabled = true;
+    publishBtn.innerHTML = '<span class="button-spinner"></span> Publication...';
+    try {
+        await createPost(content, document.getElementById('mediaInput').files[0]);
+    } finally {
+        publishBtn.disabled = false;
+        publishBtn.innerHTML = 'Publier';
+    }
+}
+
+async function createPost(content, file) {
+    let mediaUrl = null;
+    let mediaType = null;
+    if (file) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
+        const filePath = `posts/${fileName}`;
+        const { error: uploadError } = await supabaseFeed.storage
+            .from('media')
+            .upload(filePath, file);
+        if (uploadError) {
+            showToast('Erreur upload : ' + uploadError.message, 'error');
+            return;
+        }
+        const { data: urlData } = supabaseFeed.storage.from('media').getPublicUrl(filePath);
+        mediaUrl = urlData.publicUrl;
+        mediaType = file.type.startsWith('image/') ? 'image' : 'video';
+    }
+    const { error } = await supabaseFeed.from('feed_posts').insert({
+        player_id: currentProfile.id,
+        content: content,
+        media_url: mediaUrl,
+        media_type: mediaType
+    });
+    if (error) {
+        showToast('Erreur publication : ' + error.message, 'error');
+    } else {
         document.getElementById('postContent').value = '';
         document.getElementById('publishMediaPreview').innerHTML = '';
         document.getElementById('mediaInput').value = '';
-        loadPosts();
-    } catch (error) {
-        showToast('Erreur lors de la publication : ' + error.message, 'error', 'Oups !');
-    } finally {
-        hideLoading(publishBtn);
+        previewMedia = null;
+        previewMediaType = null;
+        await loadPosts();
+        showToast('Publication réussie !', 'success');
     }
-}
-
-// ===== FONCTION D'APERÇU AMÉLIORÉE =====
-function previewPost() {
-    const content = document.getElementById('postContent').value.trim();
-    const file = document.getElementById('mediaInput').files[0];
-    const modal = document.createElement('div');
-    modal.className = 'preview-modal';
-    let mediaHtml = '';
-    if (file) {
-        const url = URL.createObjectURL(file);
-        if (file.type.startsWith('image/')) {
-            mediaHtml = `<img src="${url}" alt="Aperçu">`;
-        } else if (file.type.startsWith('video/')) {
-            mediaHtml = `<video src="${url}" controls></video>`;
-        }
-    }
-    modal.innerHTML = `
-        <div class="preview-modal-content">
-            <div class="preview-modal-header">
-                <h3>Aperçu de votre publication</h3>
-                <button class="close-preview" onclick="this.closest('.preview-modal').remove()"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="preview-content">
-                <p>${content || '(aucun texte)'}</p>
-                ${mediaHtml ? `<div class="preview-media">${mediaHtml}</div>` : ''}
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
 }
 
 // ===== GESTION DES SWIPES =====
@@ -628,6 +718,7 @@ async function loadFollowers() {
 function initSearchAndFilters() {
     document.getElementById('communitySearch').addEventListener('input', (e) => {
         searchTerm = e.target.value.toLowerCase();
+        // Implémentez le filtrage ici
     });
 
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -635,6 +726,7 @@ function initSearchAndFilters() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentFilter = btn.dataset.filter;
+            // Implémentez le filtrage ici
         });
     });
 }
@@ -685,20 +777,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         const url = URL.createObjectURL(file);
         if (file.type.startsWith('image/')) {
             preview.innerHTML = `<img src="${url}" alt="Aperçu">`;
-        } else if (file.type.startsWith('video/')) {
+        } else {
             preview.innerHTML = `<video src="${url}" controls></video>`;
         }
+        previewMedia = url;
+        previewMediaType = file.type;
     });
 
-    document.getElementById('previewPostBtn').addEventListener('click', previewPost);
+    document.getElementById('previewPostBtn').addEventListener('click', openPreview);
+
     document.getElementById('schedulePostBtn').addEventListener('click', () => {
-        showToast('Fonctionnalité de programmation (simulation)', 'info');
+        showToast('Fonctionnalité de programmation bientôt disponible', 'info');
     });
-    document.getElementById('publishBtn').addEventListener('click', () => {
+
+    document.getElementById('publishBtn').addEventListener('click', async () => {
         const content = document.getElementById('postContent').value.trim();
         const file = document.getElementById('mediaInput').files[0];
-        if (!content && !file) return;
-        createPost(content, file);
+        if (!content && !file) {
+            showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
+            return;
+        }
+        const publishBtn = document.getElementById('publishBtn');
+        publishBtn.disabled = true;
+        publishBtn.innerHTML = '<span class="button-spinner"></span> Publication...';
+        try {
+            await createPost(content, file);
+        } finally {
+            publishBtn.disabled = false;
+            publishBtn.innerHTML = 'Publier';
+        }
     });
 
     initSearchAndFilters();
@@ -710,6 +817,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .channel('feed_posts_changes')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_posts' }, payload => {
             loadPosts();
+            showToast('Nouvelle publication !', 'info');
         })
         .subscribe();
 
@@ -717,6 +825,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
         showToast('Changement de langue bientôt disponible', 'info');
     });
+
+    // Attacher les événements pour l'édition de profil
+    document.getElementById('editProfileForm').addEventListener('submit', saveProfileChanges);
 
     console.log('✅ Initialisation terminée');
 });
@@ -735,5 +846,11 @@ window.toggleSavePost = toggleSavePost;
 window.hidePost = hidePost;
 window.reportPost = reportPost;
 window.toggleFollow = toggleFollow;
-window.editBio = () => showToast('Modification de la bio (simulation)', 'info');
-window.editContact = () => showToast('Modification des coordonnées (simulation)', 'info');
+window.openPreview = openPreview;
+window.closePreview = closePreview;
+window.publishFromPreview = publishFromPreview;
+window.editBio = openEditProfileModal;
+window.editContact = openEditProfileModal;
+window.openEditProfileModal = openEditProfileModal;
+window.closeEditProfileModal = closeEditProfileModal;
+window.saveProfileChanges = saveProfileChanges;
