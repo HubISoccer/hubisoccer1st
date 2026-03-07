@@ -173,7 +173,7 @@
 }
 
 .product-price::before {
-    content: '€';
+    content: 'XOF';
     font-size: 1rem;
     position: relative;
     top: -5px;
