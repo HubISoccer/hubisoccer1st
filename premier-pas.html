@@ -166,12 +166,22 @@
                     <input type="text" id="diplome" placeholder="Ex: BEPC, BAC ou Apprenti Menuisier" required>
                 </div>
 
+                <!-- Zone upload diplôme avec indicateur -->
                 <div class="form-group">
                     <label>Attestation de Scolarité ou Diplôme <span class="required">*</span></label>
-                    <div class="file-upload-box">
+                    <div class="file-upload-box" id="upload-diplome">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <span>Cliquez pour télécharger (PDF, JPG, PNG)</span>
                         <input type="file" id="diplomeFile" accept=".jpg,.png,.pdf" required>
+                        <!-- Indicateur de progression -->
+                        <div class="progress-indicator" style="display: none;">
+                            <svg class="progress-circle" width="40" height="40">
+                                <circle class="progress-bg" cx="20" cy="20" r="18" stroke="#e9ecef" stroke-width="3" fill="none"/>
+                                <circle class="progress-bar" cx="20" cy="20" r="18" stroke="#551B8C" stroke-width="3" fill="none" 
+                                        stroke-dasharray="113.1" stroke-dashoffset="113.1" transform="rotate(-90 20 20)"/>
+                            </svg>
+                            <span class="progress-text">0%</span>
+                        </div>
                     </div>
                     <p class="file-note">Document obligatoire pour justifier votre "Double Projet".</p>
                 </div>
@@ -180,12 +190,23 @@
                     <i class="fas fa-id-card"></i>
                     <span>Identité & Justificatifs</span>
                 </div>
+
+                <!-- Zone upload pièce d'identité avec indicateur -->
                 <div class="form-group">
                     <label>Pièce d'Identité <span class="required">*</span></label>
-                    <div class="file-upload-box">
+                    <div class="file-upload-box" id="upload-piece">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <span>Cliquez pour télécharger (PDF, JPG, PNG)</span>
                         <input type="file" id="pieceIdentite" accept=".jpg,.png,.pdf" required>
+                        <!-- Indicateur de progression -->
+                        <div class="progress-indicator" style="display: none;">
+                            <svg class="progress-circle" width="40" height="40">
+                                <circle class="progress-bg" cx="20" cy="20" r="18" stroke="#e9ecef" stroke-width="3" fill="none"/>
+                                <circle class="progress-bar" cx="20" cy="20" r="18" stroke="#551B8C" stroke-width="3" fill="none" 
+                                        stroke-dasharray="113.1" stroke-dashoffset="113.1" transform="rotate(-90 20 20)"/>
+                            </svg>
+                            <span class="progress-text">0%</span>
+                        </div>
                     </div>
                     <p class="file-note">CIP, Acte de Naissance ou Carte Scolaire (photo claire ou scan).</p>
                 </div>
@@ -200,7 +221,7 @@
                     <label for="certifie">Je certifie l'exactitude des documents fournis. Toute fraude entraînera une exclusion définitive.</label>
                 </div>
 
-                <button type="submit" class="btn-submit">
+                <button type="submit" class="btn-submit" id="submitBtn">
                     <i class="fas fa-paper-plane"></i>
                     Valider mon Premier Pas
                 </button>
