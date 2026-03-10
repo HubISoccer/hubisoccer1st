@@ -264,6 +264,11 @@
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .file-upload-box:hover {
@@ -291,6 +296,65 @@
     height: 100%;
     opacity: 0;
     cursor: pointer;
+}
+
+/* Styles pour l'indicateur de progression */
+.progress-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 8px 15px;
+    border-radius: 40px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    z-index: 5;
+}
+
+.progress-circle {
+    width: 40px;
+    height: 40px;
+}
+
+.progress-bg {
+    stroke: var(--light-gray);
+}
+
+.progress-bar {
+    stroke: var(--primary);
+    transition: stroke-dashoffset 0.2s;
+    stroke-linecap: round;
+}
+
+.progress-text {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--primary);
+    min-width: 40px;
+    text-align: center;
+}
+
+/* État uploading : atténuer l'icône et le texte */
+.file-upload-box.uploading i,
+.file-upload-box.uploading > span {
+    opacity: 0.2;
+}
+
+/* État success : fond vert, texte blanc */
+.file-upload-box.success .progress-indicator {
+    background: #28a745;
+    color: white;
+}
+
+.file-upload-box.success .progress-bar {
+    stroke: white;
+}
+
+.file-upload-box.success .progress-text {
+    color: white;
 }
 
 .file-note {
@@ -353,6 +417,13 @@
 
 .btn-submit i {
     font-size: 1.3rem;
+}
+
+.btn-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }
 
 /* Modale de succès */
