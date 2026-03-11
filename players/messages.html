@@ -6,15 +6,12 @@
     <title>Mes Messages | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles globaux -->
     <link rel="stylesheet" href="css/global.css">
-    <!-- Styles spécifiques -->
     <link rel="stylesheet" href="css/messages.css">
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- Navbar -->
+    <!-- Navbar (identique) -->
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
@@ -23,7 +20,7 @@
         <div class="nav-right">
             <div class="notif-icon" id="notifIcon">
                 <i class="fas fa-bell"></i>
-                <span class="notif-badge" id="notifBadge">3</span>
+                <span class="notif-badge" id="notifBadge">0</span>
             </div>
             <div class="user-menu" id="userMenu">
                 <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
@@ -42,7 +39,7 @@
         </div>
     </nav>
 
-    <!-- Sidebar -->
+    <!-- Sidebar gauche (menu joueur) -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h3>Menu Joueur</h3>
@@ -59,7 +56,7 @@
             <hr>
             <a href="videos.html"><i class="fas fa-video"></i> Mes Vidéos</a>
             <a href="revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
-            <a href="messages.html" class="active"><i class="fas fa-envelope"></i> Messages <span class="sidebar-badge">3</span></a>
+            <a href="messages.html" class="active"><i class="fas fa-envelope"></i> Messages</a>
             <a href="support.html"><i class="fas fa-headset"></i> Support</a>
             <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
         </nav>
@@ -69,14 +66,11 @@
     <!-- Contenu principal -->
     <main class="messages-main">
         <div class="messages-container">
-            <!-- En-tête avec titre (optionnel) -->
             <div class="messages-header">
                 <h1><i class="fas fa-envelope"></i> Mes messages</h1>
             </div>
-
-            <!-- Zone de messagerie à deux colonnes -->
             <div class="messaging-area">
-                <!-- Colonne gauche : liste des conversations -->
+                <!-- Liste des conversations -->
                 <div class="conversations-panel">
                     <div class="conversations-header">
                         <h2>Conversations</h2>
@@ -85,28 +79,21 @@
                             <input type="text" id="searchConv" placeholder="Rechercher...">
                         </div>
                     </div>
-                    <div class="conversations-list" id="conversationsList">
-                        <!-- Les conversations seront chargées dynamiquement -->
-                    </div>
+                    <div class="conversations-list" id="conversationsList"></div>
                 </div>
-
-                <!-- Colonne droite : zone de chat active -->
+                <!-- Zone de chat -->
                 <div class="chat-panel" id="chatPanel">
-                    <div class="chat-header" id="chatHeader">
-                        <!-- En-tête dynamique (nom du contact, actions) -->
-                    </div>
-                    <div class="chat-messages-area" id="chatMessagesArea">
-                        <!-- Historique des messages -->
-                    </div>
-                    <div class="chat-input-area" id="chatInputArea">
-                        <!-- Formulaire d'envoi -->
-                    </div>
+                    <div class="chat-header" id="chatHeader"></div>
+                    <div class="chat-messages-area" id="chatMessagesArea"></div>
+                    <div class="chat-input-area" id="chatInputArea"></div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Footer -->
+    <!-- Toast container -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
