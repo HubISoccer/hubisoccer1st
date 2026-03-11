@@ -1,7 +1,6 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-// Utiliser un nom différent pour éviter les conflits
 const supabaseMessages = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
@@ -73,7 +72,7 @@ async function loadProfile() {
 // ===== CHARGEMENT DES CONVERSATIONS =====
 async function loadConversations() {
     const { data, error } = await supabaseMessages
-        .from('conversations')
+        .from('player_conversations')
         .select(`
             id,
             participant1_id,
@@ -100,8 +99,8 @@ async function loadConversations() {
             contactAvatar: contact.avatar_url,
             lastMessage: conv.last_message_content,
             lastTime: conv.last_message_time,
-            unread: 0,
-            online: false
+            unread: 0, // à gérer plus tard avec un compteur non lus
+            online: false // statut en ligne (à implémenter si besoin)
         };
     });
 
@@ -155,8 +154,8 @@ async function selectConversation(convId) {
     renderConversations();
     await loadMessages(convId);
     messagesSubscription = supabaseMessages
-        .channel(`messages:${convId}`)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${convId}` }, payload => {
+        .channel(`player_messages:${convId}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'player_messages', filter: `conversation_id=eq.${convId}` }, payload => {
             if (currentConversationId === convId) {
                 appendMessage(payload.new);
             }
@@ -173,7 +172,7 @@ async function selectConversation(convId) {
 // ===== CHARGEMENT DES MESSAGES =====
 async function loadMessages(convId) {
     const { data, error } = await supabaseMessages
-        .from('messages')
+        .from('player_messages')
         .select(`
             id,
             sender_id,
@@ -269,7 +268,7 @@ async function sendMessage(e) {
         reply_to_id: replyingTo ? replyingTo.id : null
     };
     const { error } = await supabaseMessages
-        .from('messages')
+        .from('player_messages')
         .insert(newMsg)
         .select()
         .single();
@@ -278,7 +277,7 @@ async function sendMessage(e) {
         return;
     }
     await supabaseMessages
-        .from('conversations')
+        .from('player_conversations')
         .update({
             last_message_content: content,
             last_message_time: new Date().toISOString()
@@ -293,7 +292,7 @@ async function sendMessage(e) {
 async function deleteMessage(msgId) {
     if (!confirm('Supprimer ce message ?')) return;
     const { error } = await supabaseMessages
-        .from('messages')
+        .from('player_messages')
         .delete()
         .eq('id', msgId)
         .eq('sender_id', currentProfile.id);
@@ -383,13 +382,13 @@ async function ensureSupportConversation() {
         supportProfileId = supportData.id;
     }
     const { data: existingConv } = await supabaseMessages
-        .from('conversations')
+        .from('player_conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${supportProfileId}),and(participant1_id.eq.${supportProfileId},participant2_id.eq.${currentProfile.id})`)
         .maybeSingle();
     if (existingConv) return;
     const { data: newConv, error: convError } = await supabaseMessages
-        .from('conversations')
+        .from('player_conversations')
         .insert([{
             participant1_id: currentProfile.id,
             participant2_id: supportProfileId
@@ -401,7 +400,7 @@ async function ensureSupportConversation() {
         return;
     }
     await supabaseMessages
-        .from('messages')
+        .from('player_messages')
         .insert([{
             conversation_id: newConv.id,
             sender_id: supportProfileId,
@@ -421,7 +420,7 @@ function initSearch() {
     }
 }
 
-// ===== GESTION DES SWIPES (copié de feed.js) =====
+// ===== GESTION DES SWIPES =====
 let touchStartX = 0;
 let touchEndX = 0;
 const swipeThreshold = 50;
@@ -436,17 +435,13 @@ document.addEventListener('touchend', (e) => {
 }, false);
 
 function handleSwipe() {
-    const leftSidebar = document.getElementById('sidebar'); // Attention : dans messages.html, la sidebar gauche a l'id "sidebar"
-    const rightSidebar = null; // Il n'y a pas de sidebar droite dans messages.html
+    const leftSidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const diff = touchEndX - touchStartX;
 
     if (diff > swipeThreshold && touchStartX < 50) {
-        // Ouvrir la sidebar gauche
         leftSidebar?.classList.add('active');
         overlay?.classList.add('active');
-    } else if (diff < -swipeThreshold && touchStartX > window.innerWidth - 50) {
-        // Pas de sidebar droite dans messages, on ignore
     }
 }
 
@@ -507,7 +502,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderConversations();
     renderChatInput();
 
-    // Initialiser l'état mobile
     if (window.innerWidth <= 900) {
         document.querySelector('.conversations-panel')?.classList.remove('hide');
         document.querySelector('.chat-panel')?.classList.add('hide');
