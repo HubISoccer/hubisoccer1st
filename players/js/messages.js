@@ -1,120 +1,114 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
-let playerProfile = null;
+let currentProfile = null;
 let conversations = [];
 let currentConversationId = null;
-let replyingTo = null; // { id, content }
+let messagesSubscription = null;
+let replyingTo = null;
 let searchTerm = '';
 
-// ===== DONNÉES FICTIVES =====
-const fakeConversations = [
-    {
-        id: 1,
-        contactId: 101,
-        contactName: "Jean-Michel Scout",
-        avatar: null,
-        online: true,
-        lastMessage: "Bonjour, j'ai vu votre profil, intéressant !",
-        lastTime: "2025-03-03T14:30:00",
-        unread: 2,
-        messages: [
-            { id: 1001, from: "contact", content: "Bonjour, j'ai vu votre profil, intéressant !", time: "2025-03-03T14:30:00", read: true },
-            { id: 1002, from: "me", content: "Merci beaucoup ! Je suis ouvert aux opportunités.", time: "2025-03-03T14:32:00", read: true },
-            { id: 1003, from: "contact", content: "Aimeriez-vous passer un test la semaine prochaine ?", time: "2025-03-03T14:35:00", read: false }
-        ]
-    },
-    {
-        id: 2,
-        contactId: 102,
-        contactName: "Koffi (Académie)",
-        avatar: null,
-        online: false,
-        lastMessage: "Rappel : entraînement demain 9h",
-        lastTime: "2025-03-02T18:00:00",
-        unread: 0,
-        messages: [
-            { id: 2001, from: "contact", content: "Salut ! Prêt pour le match de samedi ?", time: "2025-03-01T10:00:00", read: true },
-            { id: 2002, from: "me", content: "Oui, je suis à fond !", time: "2025-03-01T10:05:00", read: true },
-            { id: 2003, from: "contact", content: "Rappel : entraînement demain 9h", time: "2025-03-02T18:00:00", read: true }
-        ]
-    },
-    {
-        id: 3,
-        contactId: 103,
-        contactName: "Support HubISoccer",
-        avatar: null,
-        online: true,
-        lastMessage: "Comment pouvons-nous vous aider ?",
-        lastTime: "2025-03-03T09:00:00",
-        unread: 0,
-        messages: [
-            { id: 3001, from: "contact", content: "Bienvenue sur HubISoccer !", time: "2025-02-28T08:00:00", read: true },
-            { id: 3002, from: "contact", content: "Comment pouvons-nous vous aider ?", time: "2025-03-03T09:00:00", read: true }
-        ]
+// ===== TOAST =====
+function showToast(message, type = 'info', duration = 3000) {
+    const container = document.getElementById('toastContainer');
+    if (!container) {
+        const div = document.createElement('div');
+        div.id = 'toastContainer';
+        div.className = 'toast-container';
+        document.body.appendChild(div);
+        container = div;
     }
-];
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i></div>
+        <div class="toast-content">${message}</div>
+        <button class="toast-close"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(toast);
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.style.animation = 'fadeOut 0.3s forwards';
+        setTimeout(() => toast.remove(), 300);
+    });
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.animation = 'fadeOut 0.3s forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    try {
-        const { data: { session }, error } = await supabaseClient.auth.getSession();
-        if (error || !session) {
-            window.location.href = '../public/auth/login.html';
-            return null;
-        }
-        currentUser = session.user;
-        console.log('✅ Utilisateur connecté :', currentUser.email);
-        return currentUser;
-    } catch (err) {
-        console.error('❌ Erreur checkSession :', err);
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session) {
         window.location.href = '../public/auth/login.html';
         return null;
     }
+    currentUser = session.user;
+    return currentUser;
 }
 
 // ===== CHARGEMENT DU PROFIL =====
-async function loadPlayerProfile() {
-    if (!currentUser?.id) {
-        playerProfile = { nom_complet: 'Joueur', id: 999 };
+async function loadProfile() {
+    const { data, error } = await supabase
+        .from('player_profiles')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .single();
+    if (error) {
+        console.error('Erreur chargement profil:', error);
+        return null;
+    }
+    currentProfile = data;
+    document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
+    document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
+    return currentProfile;
+}
+
+// ===== CHARGEMENT DES CONVERSATIONS =====
+async function loadConversations() {
+    const { data, error } = await supabase
+        .from('conversations')
+        .select(`
+            id,
+            participant1_id,
+            participant2_id,
+            last_message_content,
+            last_message_time,
+            participant1:player_profiles!participant1_id (id, nom_complet, avatar_url, hub_id),
+            participant2:player_profiles!participant2_id (id, nom_complet, avatar_url, hub_id)
+        `)
+        .or(`participant1_id.eq.${currentProfile.id},participant2_id.eq.${currentProfile.id}`)
+        .order('last_message_time', { ascending: false, nullsFirst: false });
+
+    if (error) {
+        console.error('Erreur chargement conversations:', error);
         return;
     }
-    try {
-        const { data, error } = await supabaseClient
-            .from('player_profiles')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .maybeSingle();
 
-        if (error) {
-            console.error('Erreur chargement profil:', error);
-            playerProfile = { nom_complet: 'Joueur', id: 999 };
-        } else {
-            playerProfile = data || { nom_complet: 'Joueur', id: 999 };
-        }
-        document.getElementById('userName').textContent = playerProfile.nom_complet || 'Joueur';
-    } catch (err) {
-        console.error('❌ Exception loadPlayerProfile :', err);
-        playerProfile = { nom_complet: 'Joueur', id: 999 };
-    }
+    conversations = data.map(conv => {
+        const contact = (conv.participant1.id === currentProfile.id) ? conv.participant2 : conv.participant1;
+        return {
+            id: conv.id,
+            contactId: contact.id,
+            contactName: contact.nom_complet,
+            contactAvatar: contact.avatar_url,
+            lastMessage: conv.last_message_content,
+            lastTime: conv.last_message_time,
+            unread: 0,
+            online: false
+        };
+    });
+
+    renderConversations();
 }
 
-// ===== INITIALISATION DES DONNÉES =====
-function initData() {
-    conversations = fakeConversations.map(conv => ({
-        ...conv,
-        messages: conv.messages.map(m => ({ ...m, replyTo: null }))
-    }));
-    if (conversations.length > 0) {
-        currentConversationId = conversations[0].id;
-    }
-}
-
-// ===== RENDU DE LA LISTE DES CONVERSATIONS =====
+// ===== RENDU DES CONVERSATIONS =====
 function renderConversations() {
     const list = document.getElementById('conversationsList');
     if (!list) return;
@@ -124,30 +118,28 @@ function renderConversations() {
     );
 
     list.innerHTML = filtered.map(conv => {
-        const lastMsg = conv.messages[conv.messages.length - 1];
-        const lastTime = lastMsg ? new Date(lastMsg.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
-        const unread = conv.messages.filter(m => !m.read && m.from !== 'me').length;
+        const lastTime = conv.lastTime ? new Date(conv.lastTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
         const isActive = conv.id === currentConversationId;
-        const avatarHtml = `<div class="conversation-avatar ${conv.online ? 'online' : ''}"><i class="fas fa-user"></i></div>`;
 
         return `
             <div class="conversation-item ${isActive ? 'active' : ''}" data-conv-id="${conv.id}">
-                ${avatarHtml}
+                <div class="conversation-avatar ${conv.online ? 'online' : ''}">
+                    <img src="${conv.contactAvatar || 'img/user-default.jpg'}" alt="Avatar" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">
+                </div>
                 <div class="conversation-info">
                     <div class="conversation-name">
                         <span>${conv.contactName}</span>
                         <span class="conversation-time">${lastTime}</span>
                     </div>
                     <div class="conversation-last">
-                        ${lastMsg ? lastMsg.content.substring(0, 30) : ''}${lastMsg && lastMsg.content.length > 30 ? '…' : ''}
-                        ${unread > 0 ? `<span class="conversation-badge">${unread}</span>` : ''}
+                        ${conv.lastMessage ? conv.lastMessage.substring(0, 30) : ''}${conv.lastMessage && conv.lastMessage.length > 30 ? '…' : ''}
+                        ${conv.unread > 0 ? `<span class="conversation-badge">${conv.unread}</span>` : ''}
                     </div>
                 </div>
             </div>
         `;
     }).join('');
 
-    // Ajouter les événements de clic
     document.querySelectorAll('.conversation-item').forEach(item => {
         item.addEventListener('click', () => {
             const convId = parseInt(item.dataset.convId);
@@ -157,104 +149,193 @@ function renderConversations() {
 }
 
 // ===== SÉLECTION D'UNE CONVERSATION =====
-function selectConversation(convId) {
+async function selectConversation(convId) {
+    if (messagesSubscription) messagesSubscription.unsubscribe();
     currentConversationId = convId;
-    const conv = conversations.find(c => c.id === convId);
-    if (conv) {
-        conv.messages.forEach(m => { if (m.from !== 'me') m.read = true; });
-    }
     renderConversations();
-    renderChat();
+    await loadMessages(convId);
+    messagesSubscription = supabase
+        .channel(`messages:${convId}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${convId}` }, payload => {
+            if (currentConversationId === convId) {
+                appendMessage(payload.new);
+            }
+            updateConversationLastMessage(convId, payload.new);
+        })
+        .subscribe();
 
-    // Sur mobile, cacher la liste et montrer le chat
     if (window.innerWidth <= 900) {
         document.querySelector('.conversations-panel').classList.add('hide');
         document.querySelector('.chat-panel').classList.remove('hide');
     }
 }
 
-// ===== RETOUR À LA LISTE (mobile) =====
-function backToConversations() {
-    document.querySelector('.conversations-panel').classList.remove('hide');
-    document.querySelector('.chat-panel').classList.add('hide');
-}
+// ===== CHARGEMENT DES MESSAGES =====
+async function loadMessages(convId) {
+    const { data, error } = await supabase
+        .from('messages')
+        .select(`
+            id,
+            sender_id,
+            content,
+            reply_to_id,
+            created_at,
+            reply:reply_to_id (content)
+        `)
+        .eq('conversation_id', convId)
+        .order('created_at', { ascending: true });
 
-// ===== RENDU DU CHAT =====
-function renderChat() {
-    const conv = conversations.find(c => c.id === currentConversationId);
-    const chatHeader = document.getElementById('chatHeader');
-    const chatMessagesArea = document.getElementById('chatMessagesArea');
-    const chatInputArea = document.getElementById('chatInputArea');
-
-    if (!conv) {
-        chatHeader.innerHTML = '<div class="chat-header">Sélectionnez une conversation</div>';
-        chatMessagesArea.innerHTML = '';
-        chatInputArea.innerHTML = '';
+    if (error) {
+        console.error('Erreur chargement messages:', error);
         return;
     }
 
-    // En-tête
-    const contact = conv;
-    chatHeader.innerHTML = `
-        <div class="chat-contact" onclick="showContactInfo(${contact.id})">
-            <div class="chat-contact-avatar ${contact.online ? 'online' : ''}"><i class="fas fa-user"></i></div>
-            <div class="chat-contact-info">
-                <h3>${contact.contactName}</h3>
-                <p>${contact.online ? 'En ligne' : 'Hors ligne'}</p>
-            </div>
-        </div>
-        <div class="chat-actions">
-            <button class="chat-action-btn mobile-back-btn" onclick="backToConversations()" title="Retour"><i class="fas fa-arrow-left"></i></button>
-            <button class="chat-action-btn" title="Bloquer" onclick="blockContact(${contact.id})"><i class="fas fa-ban"></i></button>
-            <button class="chat-action-btn" title="Archiver" onclick="archiveContact(${contact.id})"><i class="fas fa-archive"></i></button>
-            <button class="chat-action-btn" title="Inviter" onclick="inviteContact(${contact.id})"><i class="fas fa-user-plus"></i></button>
-        </div>
-    `;
+    renderMessages(data);
+}
 
-    // Messages
-    chatMessagesArea.innerHTML = conv.messages.map(msg => {
-        const isMe = msg.from === 'me';
-        const time = new Date(msg.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        const replyQuote = msg.replyTo ? `<div class="reply-quote">${msg.replyTo.content}</div>` : '';
-
-        return `
+// ===== RENDU DES MESSAGES =====
+function renderMessages(messages) {
+    const area = document.getElementById('chatMessagesArea');
+    if (!area) return;
+    const conv = conversations.find(c => c.id === currentConversationId);
+    const contactName = conv ? conv.contactName : 'Contact';
+    let html = '';
+    messages.forEach(msg => {
+        const isMe = msg.sender_id === currentProfile.id;
+        const time = new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        const replyQuote = msg.reply ? `<div class="reply-quote">${msg.reply.content}</div>` : '';
+        html += `
             <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}">
                 ${replyQuote}
                 <div class="message-content">${msg.content}</div>
                 <span class="message-time">${time}</span>
                 <div class="message-actions">
                     <button class="message-action" onclick="replyToMessage(${msg.id})"><i class="fas fa-reply"></i></button>
-                    <button class="message-action" onclick="copyMessage(${msg.id})"><i class="fas fa-copy"></i></button>
+                    <button class="message-action" onclick="copyMessage('${msg.content}')"><i class="fas fa-copy"></i></button>
                     ${isMe ? `<button class="message-action delete" onclick="deleteMessage(${msg.id})"><i class="fas fa-trash"></i></button>` : ''}
                 </div>
             </div>
         `;
-    }).join('');
+    });
+    area.innerHTML = html;
+    area.scrollTop = area.scrollHeight;
+}
 
-    // Zone de saisie
+// ===== AJOUTER UN MESSAGE (Realtime) =====
+function appendMessage(msg) {
+    const area = document.getElementById('chatMessagesArea');
+    if (!area) return;
+    const isMe = msg.sender_id === currentProfile.id;
+    const time = new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const replyHtml = msg.reply_to_id ? `<div class="reply-quote">${msg.reply_content || ''}</div>` : '';
+    const msgHtml = `
+        <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}">
+            ${replyHtml}
+            <div class="message-content">${msg.content}</div>
+            <span class="message-time">${time}</span>
+            <div class="message-actions">
+                <button class="message-action" onclick="replyToMessage(${msg.id})"><i class="fas fa-reply"></i></button>
+                <button class="message-action" onclick="copyMessage('${msg.content}')"><i class="fas fa-copy"></i></button>
+                ${isMe ? `<button class="message-action delete" onclick="deleteMessage(${msg.id})"><i class="fas fa-trash"></i></button>` : ''}
+            </div>
+        </div>
+    `;
+    area.insertAdjacentHTML('beforeend', msgHtml);
+    area.scrollTop = area.scrollHeight;
+}
+
+function updateConversationLastMessage(convId, msg) {
+    const conv = conversations.find(c => c.id === convId);
+    if (conv) {
+        conv.lastMessage = msg.content;
+        conv.lastTime = msg.created_at;
+        renderConversations();
+    }
+}
+
+// ===== ENVOI D'UN MESSAGE =====
+async function sendMessage(e) {
+    e.preventDefault();
+    const input = document.getElementById('messageInput');
+    const content = input.value.trim();
+    if (!content) return;
+    const conv = conversations.find(c => c.id === currentConversationId);
+    if (!conv) return;
+
+    const newMsg = {
+        conversation_id: currentConversationId,
+        sender_id: currentProfile.id,
+        content: content,
+        reply_to_id: replyingTo ? replyingTo.id : null
+    };
+    const { error } = await supabase
+        .from('messages')
+        .insert(newMsg)
+        .select()
+        .single();
+    if (error) {
+        showToast('Erreur lors de l\'envoi', 'error');
+        return;
+    }
+    await supabase
+        .from('conversations')
+        .update({
+            last_message_content: content,
+            last_message_time: new Date().toISOString()
+        })
+        .eq('id', currentConversationId);
+    input.value = '';
+    input.style.height = 'auto';
+    if (replyingTo) cancelReply();
+}
+
+// ===== SUPPRESSION D'UN MESSAGE =====
+async function deleteMessage(msgId) {
+    if (!confirm('Supprimer ce message ?')) return;
+    const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', msgId)
+        .eq('sender_id', currentProfile.id);
+    if (error) showToast('Erreur lors de la suppression', 'error');
+    else await loadMessages(currentConversationId);
+}
+
+// ===== RÉPONDRE =====
+function replyToMessage(msgId) {
+    const msgElement = document.querySelector(`[data-msg-id="${msgId}"] .message-content`);
+    if (msgElement) {
+        replyingTo = { id: msgId, content: msgElement.textContent };
+        renderChatInput();
+    }
+}
+function cancelReply() {
+    replyingTo = null;
+    renderChatInput();
+}
+function renderChatInput() {
+    const area = document.getElementById('chatInputArea');
+    if (!area) return;
     const replyIndicator = replyingTo ? `
         <div class="reply-indicator">
             <span><i class="fas fa-reply"></i> Réponse à : "${replyingTo.content.substring(0, 30)}${replyingTo.content.length > 30 ? '…' : ''}"</span>
             <button class="cancel-reply" onclick="cancelReply()"><i class="fas fa-times"></i></button>
         </div>
     ` : '';
-
-    chatInputArea.innerHTML = `
+    area.innerHTML = `
         <form class="message-form" id="messageForm" onsubmit="sendMessage(event)">
             ${replyIndicator}
             <div class="input-row">
-                <button type="button" class="attach-btn" onclick="attachFile()"><i class="fas fa-paperclip"></i></button>
+                <button type="button" class="attach-btn" onclick="showToast('Fonction à venir','info')"><i class="fas fa-paperclip"></i></button>
                 <div class="message-input-wrapper">
                     <textarea class="message-input" id="messageInput" placeholder="Votre message..." rows="1"></textarea>
                 </div>
-                <button type="button" class="emoji-btn" onclick="openEmoji()"><i class="fas fa-smile"></i></button>
-                <button type="button" class="sticker-btn" onclick="openSticker()"><i class="fas fa-sticker-mule"></i></button>
+                <button type="button" class="emoji-btn" onclick="showToast('Fonction à venir','info')"><i class="fas fa-smile"></i></button>
+                <button type="button" class="sticker-btn" onclick="showToast('Fonction à venir','info')"><i class="fas fa-sticker-mule"></i></button>
                 <button type="submit" class="send-btn"><i class="fas fa-paper-plane"></i></button>
             </div>
         </form>
     `;
-
-    // Auto-resize textarea
     const textarea = document.getElementById('messageInput');
     if (textarea) {
         textarea.addEventListener('input', function() {
@@ -262,137 +343,93 @@ function renderChat() {
             this.style.height = (this.scrollHeight) + 'px';
         });
     }
-
-    // Scroll en bas
-    chatMessagesArea.scrollTop = chatMessagesArea.scrollHeight;
 }
 
-// ===== ENVOI D'UN MESSAGE =====
-function sendMessage(e) {
-    e.preventDefault();
-    const input = document.getElementById('messageInput');
-    const content = input.value.trim();
-    if (!content) return;
-
-    const conv = conversations.find(c => c.id === currentConversationId);
-    if (!conv) return;
-
-    const newMsg = {
-        id: Date.now(),
-        from: 'me',
-        content: content,
-        time: new Date().toISOString(),
-        read: true,
-        replyTo: replyingTo ? { id: replyingTo.id, content: replyingTo.content } : null
-    };
-    conv.messages.push(newMsg);
-    conv.lastMessage = content;
-    conv.lastTime = newMsg.time;
-    if (replyingTo) cancelReply();
-
-    input.value = '';
-    input.style.height = 'auto';
-
-    renderConversations();
-    renderChat();
+// ===== ACTIONS DIVERSES =====
+function copyMessage(text) {
+    navigator.clipboard.writeText(text);
+    showToast('Message copié !', 'success');
+}
+function backToConversations() {
+    document.querySelector('.conversations-panel').classList.remove('hide');
+    document.querySelector('.chat-panel').classList.add('hide');
 }
 
-// ===== SUPPRESSION D'UN MESSAGE =====
-function deleteMessage(msgId) {
-    if (!confirm('Supprimer ce message ?')) return;
-    const conv = conversations.find(c => c.id === currentConversationId);
-    if (!conv) return;
-    const index = conv.messages.findIndex(m => m.id === msgId);
-    if (index !== -1) {
-        conv.messages.splice(index, 1);
-        // Mettre à jour le dernier message si nécessaire
-        if (conv.messages.length > 0) {
-            const last = conv.messages[conv.messages.length - 1];
-            conv.lastMessage = last.content;
-            conv.lastTime = last.time;
-        } else {
-            conv.lastMessage = '';
-            conv.lastTime = null;
+// ===== MESSAGE DE BIENVENUE AUTOMATIQUE =====
+async function ensureSupportConversation() {
+    let supportProfileId;
+    const { data: supportData } = await supabase
+        .from('player_profiles')
+        .select('id')
+        .eq('hub_id', 'SUPPORT')
+        .maybeSingle();
+    if (!supportData) {
+        const { data: newSupport, error } = await supabase
+            .from('player_profiles')
+            .insert([{
+                user_id: null,
+                hub_id: 'SUPPORT',
+                nom_complet: 'Support HubISoccer',
+                avatar_url: 'img/support.jpg'
+            }])
+            .select()
+            .single();
+        if (error) {
+            console.error('Erreur création support:', error);
+            return;
         }
-        renderConversations();
-        renderChat();
+        supportProfileId = newSupport.id;
+    } else {
+        supportProfileId = supportData.id;
     }
-}
-
-// ===== ACTIONS =====
-function replyToMessage(msgId) {
-    const conv = conversations.find(c => c.id === currentConversationId);
-    const msg = conv?.messages.find(m => m.id === msgId);
-    if (msg) {
-        replyingTo = { id: msg.id, content: msg.content };
-        renderChat();
-        document.getElementById('messageInput').focus();
+    const { data: existingConv } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${supportProfileId}),and(participant1_id.eq.${supportProfileId},participant2_id.eq.${currentProfile.id})`)
+        .maybeSingle();
+    if (existingConv) return;
+    const { data: newConv, error: convError } = await supabase
+        .from('conversations')
+        .insert([{
+            participant1_id: currentProfile.id,
+            participant2_id: supportProfileId
+        }])
+        .select()
+        .single();
+    if (convError) {
+        console.error('Erreur création conversation support:', convError);
+        return;
     }
-}
-
-function cancelReply() {
-    replyingTo = null;
-    renderChat();
-}
-
-function copyMessage(msgId) {
-    const conv = conversations.find(c => c.id === currentConversationId);
-    const msg = conv?.messages.find(m => m.id === msgId);
-    if (msg) {
-        navigator.clipboard.writeText(msg.content);
-        alert('Message copié !');
-    }
-}
-
-function blockContact(convId) {
-    alert(`Contact ${convId} bloqué (simulation)`);
-}
-
-function archiveContact(convId) {
-    alert(`Conversation ${convId} archivée (simulation)`);
-}
-
-function inviteContact(convId) {
-    alert(`Invitation envoyée à ${convId} (simulation)`);
-}
-
-function showContactInfo(contactId) {
-    alert(`Informations du contact ${contactId} (simulation)`);
-}
-
-function attachFile() {
-    alert('Fonction d\'attachement de fichier (simulation)');
-}
-
-function openEmoji() {
-    alert('Sélecteur d\'émoji (simulation)');
-}
-
-function openSticker() {
-    alert('Sélecteur de sticker (simulation)');
+    await supabase
+        .from('messages')
+        .insert([{
+            conversation_id: newConv.id,
+            sender_id: supportProfileId,
+            content: 'Bienvenue sur HubISoccer ! Nous sommes là pour vous aider. N\'hésitez pas à poser vos questions.'
+        }]);
+    await loadConversations();
 }
 
 // ===== RECHERCHE =====
 function initSearch() {
-    const searchInput = document.getElementById('searchConv');
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
+    const input = document.getElementById('searchConv');
+    if (input) {
+        input.addEventListener('input', (e) => {
             searchTerm = e.target.value;
             renderConversations();
         });
     }
 }
 
-// ===== FONCTIONS UI =====
+// ===== MENU UTILISATEUR =====
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
-    if (!userMenu || !dropdown) return;
-    userMenu.addEventListener('click', (e) => {
+    userMenu?.addEventListener('click', (e) => {
         e.stopPropagation();
-        dropdown.classList.toggle('show');
+        dropdown?.classList.toggle('show');
     });
-    document.addEventListener('click', () => dropdown.classList.remove('show'));
+    document.addEventListener('click', () => dropdown?.classList.remove('show'));
 }
 
 function initSidebar() {
@@ -400,74 +437,54 @@ function initSidebar() {
     const sidebar = document.getElementById('sidebar');
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
-
-    function openSidebar() {
-        sidebar.classList.add('active');
-        overlay.classList.add('active');
-    }
-    function closeSidebarFunc() {
-        sidebar.classList.remove('active');
-        overlay.classList.remove('active');
-    }
-    if (menuBtn) menuBtn.addEventListener('click', openSidebar);
-    if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
-    if (overlay) overlay.addEventListener('click', closeSidebarFunc);
+    function openSidebar() { sidebar?.classList.add('active'); overlay?.classList.add('active'); }
+    function closeSidebarFunc() { sidebar?.classList.remove('active'); overlay?.classList.remove('active'); }
+    menuBtn?.addEventListener('click', openSidebar);
+    closeBtn?.addEventListener('click', closeSidebarFunc);
+    overlay?.addEventListener('click', closeSidebarFunc);
 }
 
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabaseClient.auth.signOut().then(() => {
-                window.location.href = '../index.html';
-            });
+            supabase.auth.signOut().then(() => window.location.href = '../index.html');
         });
     });
 }
 
-// ===== INITIALISATION PRINCIPALE =====
+// ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation de la page messages');
-
+    console.log('🚀 Initialisation messages');
     const user = await checkSession();
     if (!user) return;
-
-    await loadPlayerProfile();
-    initData();
+    await loadProfile();
+    await loadConversations();
+    await ensureSupportConversation();
     renderConversations();
-    if (currentConversationId) renderChat();
-
-    // Initialiser l'état mobile
+    renderChatInput();
     if (window.innerWidth <= 900) {
-        document.querySelector('.conversations-panel').classList.remove('hide');
-        document.querySelector('.chat-panel').classList.add('hide');
+        document.querySelector('.conversations-panel')?.classList.remove('hide');
+        document.querySelector('.chat-panel')?.classList.add('hide');
     }
-
     initSearch();
     initUserMenu();
     initSidebar();
     initLogout();
-
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
-        alert('Changement de langue bientôt disponible');
+        showToast('Changement de langue bientôt disponible', 'info');
     });
-
     console.log('✅ Initialisation terminée');
 });
 
-// Rendre les fonctions globales pour les appels onclick
-window.selectConversation = selectConversation;
+// Fonctions globales
 window.backToConversations = backToConversations;
 window.sendMessage = sendMessage;
 window.replyToMessage = replyToMessage;
 window.cancelReply = cancelReply;
 window.copyMessage = copyMessage;
 window.deleteMessage = deleteMessage;
-window.blockContact = blockContact;
-window.archiveContact = archiveContact;
-window.inviteContact = inviteContact;
-window.showContactInfo = showContactInfo;
-window.attachFile = attachFile;
-window.openEmoji = openEmoji;
-window.openSticker = openSticker;
+window.attachFile = () => showToast('Fonction à venir', 'info');
+window.openEmoji = () => showToast('Fonction à venir', 'info');
+window.openSticker = () => showToast('Fonction à venir', 'info');
