@@ -71,6 +71,7 @@ async function loadProfile() {
 
 // ===== CHARGEMENT DES CONVERSATIONS =====
 async function loadConversations() {
+    console.log('Chargement des conversations...');
     const { data, error } = await supabaseMessages
         .from('player_conversations')
         .select(`
@@ -99,8 +100,8 @@ async function loadConversations() {
             contactAvatar: contact.avatar_url,
             lastMessage: conv.last_message_content,
             lastTime: conv.last_message_time,
-            unread: 0, // à gérer plus tard avec un compteur non lus
-            online: false // statut en ligne (à implémenter si besoin)
+            unread: 0, // à gérer plus tard
+            online: false
         };
     });
 
@@ -123,7 +124,7 @@ function renderConversations() {
         return `
             <div class="conversation-item ${isActive ? 'active' : ''}" data-conv-id="${conv.id}">
                 <div class="conversation-avatar ${conv.online ? 'online' : ''}">
-                    <img src="${conv.contactAvatar || 'img/user-default.jpg'}" alt="Avatar" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">
+                    <img src="${conv.contactAvatar || 'img/user-default.jpg'}" alt="Avatar">
                 </div>
                 <div class="conversation-info">
                     <div class="conversation-name">
@@ -149,13 +150,22 @@ function renderConversations() {
 
 // ===== SÉLECTION D'UNE CONVERSATION =====
 async function selectConversation(convId) {
+    console.log('Sélection conversation', convId);
     if (messagesSubscription) messagesSubscription.unsubscribe();
     currentConversationId = convId;
     renderConversations();
     await loadMessages(convId);
+
+    // S'abonner aux nouveaux messages
     messagesSubscription = supabaseMessages
         .channel(`player_messages:${convId}`)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'player_messages', filter: `conversation_id=eq.${convId}` }, payload => {
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'player_messages',
+            filter: `conversation_id=eq.${convId}`
+        }, payload => {
+            console.log('Nouveau message reçu', payload.new);
             if (currentConversationId === convId) {
                 appendMessage(payload.new);
             }
@@ -171,6 +181,7 @@ async function selectConversation(convId) {
 
 // ===== CHARGEMENT DES MESSAGES =====
 async function loadMessages(convId) {
+    console.log('Chargement des messages pour conversation', convId);
     const { data, error } = await supabaseMessages
         .from('player_messages')
         .select(`
@@ -226,7 +237,8 @@ function appendMessage(msg) {
     if (!area) return;
     const isMe = msg.sender_id === currentProfile.id;
     const time = new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    const replyHtml = msg.reply_to_id ? `<div class="reply-quote">${msg.reply_content || ''}</div>` : '';
+    // On n'a pas le reply content ici, on le laisse vide pour l'instant
+    const replyHtml = msg.reply_to_id ? `<div class="reply-quote">Réponse à un message</div>` : '';
     const msgHtml = `
         <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}">
             ${replyHtml}
@@ -258,34 +270,54 @@ async function sendMessage(e) {
     const input = document.getElementById('messageInput');
     const content = input.value.trim();
     if (!content) return;
-    const conv = conversations.find(c => c.id === currentConversationId);
-    if (!conv) return;
 
-    const newMsg = {
-        conversation_id: currentConversationId,
-        sender_id: currentProfile.id,
-        content: content,
-        reply_to_id: replyingTo ? replyingTo.id : null
-    };
-    const { error } = await supabaseMessages
+    const conv = conversations.find(c => c.id === currentConversationId);
+    if (!conv) {
+        showToast('Aucune conversation sélectionnée', 'error');
+        return;
+    }
+
+    console.log('Envoi message:', content);
+
+    // 1. Insérer le message
+    const { data: newMsg, error: msgError } = await supabaseMessages
         .from('player_messages')
-        .insert(newMsg)
+        .insert({
+            conversation_id: currentConversationId,
+            sender_id: currentProfile.id,
+            content: content,
+            reply_to_id: replyingTo ? replyingTo.id : null
+        })
         .select()
         .single();
-    if (error) {
+
+    if (msgError) {
+        console.error('Erreur envoi message:', msgError);
         showToast('Erreur lors de l\'envoi', 'error');
         return;
     }
-    await supabaseMessages
+
+    // 2. Mettre à jour la conversation (last_message)
+    const { error: convError } = await supabaseMessages
         .from('player_conversations')
         .update({
             last_message_content: content,
             last_message_time: new Date().toISOString()
         })
         .eq('id', currentConversationId);
+
+    if (convError) {
+        console.error('Erreur mise à jour conversation:', convError);
+    }
+
+    // 3. Réinitialiser
     input.value = '';
     input.style.height = 'auto';
     if (replyingTo) cancelReply();
+
+    // Le message apparaîtra via Realtime, pas besoin d'ajouter manuellement
+    // Mais on peut le faire pour être sûr
+    // appendMessage(newMsg);
 }
 
 // ===== SUPPRESSION D'UN MESSAGE =====
@@ -296,8 +328,12 @@ async function deleteMessage(msgId) {
         .delete()
         .eq('id', msgId)
         .eq('sender_id', currentProfile.id);
-    if (error) showToast('Erreur lors de la suppression', 'error');
-    else await loadMessages(currentConversationId);
+    if (error) {
+        showToast('Erreur lors de la suppression', 'error');
+    } else {
+        // Recharger les messages
+        await loadMessages(currentConversationId);
+    }
 }
 
 // ===== RÉPONDRE =====
@@ -306,12 +342,15 @@ function replyToMessage(msgId) {
     if (msgElement) {
         replyingTo = { id: msgId, content: msgElement.textContent };
         renderChatInput();
+        document.getElementById('messageInput').focus();
     }
 }
+
 function cancelReply() {
     replyingTo = null;
     renderChatInput();
 }
+
 function renderChatInput() {
     const area = document.getElementById('chatInputArea');
     if (!area) return;
@@ -335,6 +374,7 @@ function renderChatInput() {
             </div>
         </form>
     `;
+
     const textarea = document.getElementById('messageInput');
     if (textarea) {
         textarea.addEventListener('input', function() {
@@ -349,6 +389,7 @@ function copyMessage(text) {
     navigator.clipboard.writeText(text);
     showToast('Message copié !', 'success');
 }
+
 function backToConversations() {
     document.querySelector('.conversations-panel').classList.remove('hide');
     document.querySelector('.chat-panel').classList.add('hide');
@@ -356,37 +397,61 @@ function backToConversations() {
 
 // ===== MESSAGE DE BIENVENUE AUTOMATIQUE =====
 async function ensureSupportConversation() {
+    console.log('Création conversation support...');
     let supportProfileId;
-    const { data: supportData } = await supabaseMessages
+
+    // Chercher le profil support (hub_id = 'SUPPORT')
+    const { data: supportData, error: searchError } = await supabaseMessages
         .from('player_profiles')
         .select('id')
         .eq('hub_id', 'SUPPORT')
         .maybeSingle();
+
+    if (searchError) {
+        console.error('Erreur recherche support:', searchError);
+        return;
+    }
+
     if (!supportData) {
-        const { data: newSupport, error } = await supabaseMessages
+        // Créer le profil support
+        const { data: newSupport, error: insertError } = await supabaseMessages
             .from('player_profiles')
             .insert([{
                 user_id: null,
                 hub_id: 'SUPPORT',
                 nom_complet: 'Support HubISoccer',
-                avatar_url: 'img/support.jpg'
+                avatar_url: 'img/user-default.jpg' // image par défaut
             }])
             .select()
             .single();
-        if (error) {
-            console.error('Erreur création support:', error);
+
+        if (insertError) {
+            console.error('Erreur création support:', insertError);
             return;
         }
         supportProfileId = newSupport.id;
     } else {
         supportProfileId = supportData.id;
     }
-    const { data: existingConv } = await supabaseMessages
+
+    // Vérifier si une conversation existe déjà
+    const { data: existingConv, error: convCheckError } = await supabaseMessages
         .from('player_conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${supportProfileId}),and(participant1_id.eq.${supportProfileId},participant2_id.eq.${currentProfile.id})`)
         .maybeSingle();
-    if (existingConv) return;
+
+    if (convCheckError) {
+        console.error('Erreur vérification conversation support:', convCheckError);
+        return;
+    }
+
+    if (existingConv) {
+        console.log('Conversation support déjà existante');
+        return;
+    }
+
+    // Créer la conversation
     const { data: newConv, error: convError } = await supabaseMessages
         .from('player_conversations')
         .insert([{
@@ -395,18 +460,28 @@ async function ensureSupportConversation() {
         }])
         .select()
         .single();
+
     if (convError) {
         console.error('Erreur création conversation support:', convError);
         return;
     }
-    await supabaseMessages
+
+    // Envoyer le message de bienvenue
+    const { error: msgError } = await supabaseMessages
         .from('player_messages')
         .insert([{
             conversation_id: newConv.id,
             sender_id: supportProfileId,
             content: 'Bienvenue sur HubISoccer ! Nous sommes là pour vous aider. N\'hésitez pas à poser vos questions.'
         }]);
-    await loadConversations();
+
+    if (msgError) {
+        console.error('Erreur envoi message bienvenue:', msgError);
+    } else {
+        console.log('Message de bienvenue envoyé');
+        // Recharger les conversations pour que la nouvelle apparaisse
+        await loadConversations();
+    }
 }
 
 // ===== RECHERCHE =====
@@ -442,6 +517,9 @@ function handleSwipe() {
     if (diff > swipeThreshold && touchStartX < 50) {
         leftSidebar?.classList.add('active');
         overlay?.classList.add('active');
+    } else if (diff < -swipeThreshold && leftSidebar?.classList.contains('active')) {
+        leftSidebar?.classList.remove('active');
+        overlay?.classList.remove('active');
     }
 }
 
@@ -494,14 +572,17 @@ function initLogout() {
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Initialisation messages');
+
     const user = await checkSession();
     if (!user) return;
+
     await loadProfile();
     await loadConversations();
     await ensureSupportConversation();
-    renderConversations();
-    renderChatInput();
 
+    renderChatInput(); // affiche la zone de saisie (vide)
+
+    // État mobile initial
     if (window.innerWidth <= 900) {
         document.querySelector('.conversations-panel')?.classList.remove('hide');
         document.querySelector('.chat-panel')?.classList.add('hide');
