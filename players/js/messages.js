@@ -9,9 +9,10 @@ let currentProfile = null;
 let conversations = [];
 let currentConversationId = null;
 let messagesSubscription = null;
+let conversationsSubscription = null;
 let replyingTo = null;
 let searchTerm = '';
-let targetUserId = null; // ID de l'utilisateur à qui on veut envoyer un message (depuis l'URL)
+let targetUserId = null;
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -94,11 +95,13 @@ async function loadConversations() {
 
     conversations = data.map(conv => {
         const contact = (conv.participant1.id === currentProfile.id) ? conv.participant2 : conv.participant1;
+        // Sécuriser le nom du contact
+        const contactName = contact?.nom_complet || 'Utilisateur inconnu';
         return {
             id: conv.id,
-            contactId: contact.id,
-            contactName: contact.nom_complet,
-            contactAvatar: contact.avatar_url,
+            contactId: contact?.id,
+            contactName: contactName,
+            contactAvatar: contact?.avatar_url,
             lastMessage: conv.last_message_content,
             lastTime: conv.last_message_time,
             unread: 0,
@@ -115,7 +118,7 @@ function renderConversations() {
     if (!list) return;
 
     const filtered = conversations.filter(conv =>
-        conv.contactName.toLowerCase().includes(searchTerm.toLowerCase())
+        (conv.contactName || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     list.innerHTML = filtered.map(conv => {
@@ -153,7 +156,6 @@ function renderConversations() {
 async function findOrCreateConversationWithUser(userId) {
     console.log('Recherche/création conversation avec utilisateur', userId);
 
-    // Vérifier si une conversation existe déjà
     const { data: existingConv, error: searchError } = await supabaseMessages
         .from('player_conversations')
         .select('id')
@@ -170,7 +172,6 @@ async function findOrCreateConversationWithUser(userId) {
         return existingConv.id;
     }
 
-    // Créer une nouvelle conversation
     const { data: newConv, error: createError } = await supabaseMessages
         .from('player_conversations')
         .insert([{
@@ -197,7 +198,6 @@ async function selectConversation(convId) {
     renderConversations();
     await loadMessages(convId);
 
-    // S'abonner aux nouveaux messages
     messagesSubscription = supabaseMessages
         .channel(`player_messages:${convId}`)
         .on('postgres_changes', {
@@ -248,7 +248,6 @@ async function loadMessages(convId) {
 function renderMessages(messages) {
     const area = document.getElementById('chatMessagesArea');
     if (!area) return;
-    const conv = conversations.find(c => c.id === currentConversationId);
     let html = '';
     messages.forEach(msg => {
         const isMe = msg.sender_id === currentProfile.id;
@@ -516,6 +515,23 @@ function initSearch() {
     }
 }
 
+// ===== SOUSCRIPTION AUX NOUVELLES CONVERSATIONS =====
+function subscribeToNewConversations() {
+    conversationsSubscription = supabaseMessages
+        .channel('player_conversations_changes')
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'player_conversations',
+            filter: `participant1_id=eq.${currentProfile.id} OR participant2_id=eq.${currentProfile.id}`
+        }, async (payload) => {
+            console.log('Nouvelle conversation créée', payload.new);
+            // Recharger les conversations pour mettre à jour la liste
+            await loadConversations();
+        })
+        .subscribe();
+}
+
 // ===== GESTION DES SWIPES =====
 let touchStartX = 0;
 let touchEndX = 0;
@@ -606,23 +622,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await loadProfile();
 
-    // Récupérer l'ID de l'utilisateur cible depuis l'URL (si présent)
     targetUserId = getTargetUserIdFromUrl();
     console.log('Target user ID from URL:', targetUserId);
 
-    // Charger les conversations
     await loadConversations();
-
-    // Créer la conversation avec le support (toujours utile)
     await ensureSupportConversation();
 
-    // Si on a un targetUserId, créer/sélectionner la conversation avec cet utilisateur
+    // Souscrire aux nouvelles conversations
+    subscribeToNewConversations();
+
     if (targetUserId && targetUserId !== currentProfile.id) {
         const convId = await findOrCreateConversationWithUser(targetUserId);
         if (convId) {
-            // Recharger les conversations pour inclure la nouvelle
-            await loadConversations();
-            // Sélectionner cette conversation
+            await loadConversations(); // recharger pour inclure la nouvelle
             await selectConversation(convId);
         } else {
             showToast('Impossible de créer la conversation', 'error');
