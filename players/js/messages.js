@@ -1,7 +1,8 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Utiliser un nom différent pour éviter les conflits
+const supabaseMessages = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -14,13 +15,12 @@ let searchTerm = '';
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
-    const container = document.getElementById('toastContainer');
+    let container = document.getElementById('toastContainer');
     if (!container) {
-        const div = document.createElement('div');
-        div.id = 'toastContainer';
-        div.className = 'toast-container';
-        document.body.appendChild(div);
-        container = div;
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
     }
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -44,7 +44,7 @@ function showToast(message, type = 'info', duration = 3000) {
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const { data: { session }, error } = await supabaseMessages.auth.getSession();
     if (error || !session) {
         window.location.href = '../public/auth/login.html';
         return null;
@@ -55,7 +55,7 @@ async function checkSession() {
 
 // ===== CHARGEMENT DU PROFIL =====
 async function loadProfile() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseMessages
         .from('player_profiles')
         .select('*')
         .eq('user_id', currentUser.id)
@@ -72,7 +72,7 @@ async function loadProfile() {
 
 // ===== CHARGEMENT DES CONVERSATIONS =====
 async function loadConversations() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseMessages
         .from('conversations')
         .select(`
             id,
@@ -154,7 +154,7 @@ async function selectConversation(convId) {
     currentConversationId = convId;
     renderConversations();
     await loadMessages(convId);
-    messagesSubscription = supabase
+    messagesSubscription = supabaseMessages
         .channel(`messages:${convId}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${convId}` }, payload => {
             if (currentConversationId === convId) {
@@ -172,7 +172,7 @@ async function selectConversation(convId) {
 
 // ===== CHARGEMENT DES MESSAGES =====
 async function loadMessages(convId) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseMessages
         .from('messages')
         .select(`
             id,
@@ -268,7 +268,7 @@ async function sendMessage(e) {
         content: content,
         reply_to_id: replyingTo ? replyingTo.id : null
     };
-    const { error } = await supabase
+    const { error } = await supabaseMessages
         .from('messages')
         .insert(newMsg)
         .select()
@@ -277,7 +277,7 @@ async function sendMessage(e) {
         showToast('Erreur lors de l\'envoi', 'error');
         return;
     }
-    await supabase
+    await supabaseMessages
         .from('conversations')
         .update({
             last_message_content: content,
@@ -292,7 +292,7 @@ async function sendMessage(e) {
 // ===== SUPPRESSION D'UN MESSAGE =====
 async function deleteMessage(msgId) {
     if (!confirm('Supprimer ce message ?')) return;
-    const { error } = await supabase
+    const { error } = await supabaseMessages
         .from('messages')
         .delete()
         .eq('id', msgId)
@@ -358,13 +358,13 @@ function backToConversations() {
 // ===== MESSAGE DE BIENVENUE AUTOMATIQUE =====
 async function ensureSupportConversation() {
     let supportProfileId;
-    const { data: supportData } = await supabase
+    const { data: supportData } = await supabaseMessages
         .from('player_profiles')
         .select('id')
         .eq('hub_id', 'SUPPORT')
         .maybeSingle();
     if (!supportData) {
-        const { data: newSupport, error } = await supabase
+        const { data: newSupport, error } = await supabaseMessages
             .from('player_profiles')
             .insert([{
                 user_id: null,
@@ -382,13 +382,13 @@ async function ensureSupportConversation() {
     } else {
         supportProfileId = supportData.id;
     }
-    const { data: existingConv } = await supabase
+    const { data: existingConv } = await supabaseMessages
         .from('conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${supportProfileId}),and(participant1_id.eq.${supportProfileId},participant2_id.eq.${currentProfile.id})`)
         .maybeSingle();
     if (existingConv) return;
-    const { data: newConv, error: convError } = await supabase
+    const { data: newConv, error: convError } = await supabaseMessages
         .from('conversations')
         .insert([{
             participant1_id: currentProfile.id,
@@ -400,7 +400,7 @@ async function ensureSupportConversation() {
         console.error('Erreur création conversation support:', convError);
         return;
     }
-    await supabase
+    await supabaseMessages
         .from('messages')
         .insert([{
             conversation_id: newConv.id,
@@ -421,34 +421,77 @@ function initSearch() {
     }
 }
 
+// ===== GESTION DES SWIPES (copié de feed.js) =====
+let touchStartX = 0;
+let touchEndX = 0;
+const swipeThreshold = 50;
+
+document.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+}, false);
+
+document.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+}, false);
+
+function handleSwipe() {
+    const leftSidebar = document.getElementById('sidebar'); // Attention : dans messages.html, la sidebar gauche a l'id "sidebar"
+    const rightSidebar = null; // Il n'y a pas de sidebar droite dans messages.html
+    const overlay = document.getElementById('sidebarOverlay');
+    const diff = touchEndX - touchStartX;
+
+    if (diff > swipeThreshold && touchStartX < 50) {
+        // Ouvrir la sidebar gauche
+        leftSidebar?.classList.add('active');
+        overlay?.classList.add('active');
+    } else if (diff < -swipeThreshold && touchStartX > window.innerWidth - 50) {
+        // Pas de sidebar droite dans messages, on ignore
+    }
+}
+
 // ===== MENU UTILISATEUR =====
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
-    userMenu?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown?.classList.toggle('show');
-    });
-    document.addEventListener('click', () => dropdown?.classList.remove('show'));
+    if (userMenu && dropdown) {
+        userMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+        document.addEventListener('click', () => dropdown.classList.remove('show'));
+    }
 }
 
+// ===== SIDEBAR GAUCHE =====
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    function openSidebar() { sidebar?.classList.add('active'); overlay?.classList.add('active'); }
-    function closeSidebarFunc() { sidebar?.classList.remove('active'); overlay?.classList.remove('active'); }
+
+    function openSidebar() {
+        sidebar?.classList.add('active');
+        overlay?.classList.add('active');
+    }
+    function closeSidebarFunc() {
+        sidebar?.classList.remove('active');
+        overlay?.classList.remove('active');
+    }
+
     menuBtn?.addEventListener('click', openSidebar);
     closeBtn?.addEventListener('click', closeSidebarFunc);
     overlay?.addEventListener('click', closeSidebarFunc);
 }
 
+// ===== DÉCONNEXION =====
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabase.auth.signOut().then(() => window.location.href = '../index.html');
+            supabaseMessages.auth.signOut().then(() => {
+                window.location.href = '../index.html';
+            });
         });
     });
 }
@@ -463,22 +506,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     await ensureSupportConversation();
     renderConversations();
     renderChatInput();
+
+    // Initialiser l'état mobile
     if (window.innerWidth <= 900) {
         document.querySelector('.conversations-panel')?.classList.remove('hide');
         document.querySelector('.chat-panel')?.classList.add('hide');
     }
+
     initSearch();
     initUserMenu();
     initSidebar();
     initLogout();
+
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
         showToast('Changement de langue bientôt disponible', 'info');
     });
+
     console.log('✅ Initialisation terminée');
 });
 
-// Fonctions globales
+// Fonctions globales pour les appels onclick
 window.backToConversations = backToConversations;
 window.sendMessage = sendMessage;
 window.replyToMessage = replyToMessage;
