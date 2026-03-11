@@ -11,6 +11,7 @@ let currentConversationId = null;
 let messagesSubscription = null;
 let replyingTo = null;
 let searchTerm = '';
+let targetUserId = null; // ID de l'utilisateur à qui on veut envoyer un message (depuis l'URL)
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -100,7 +101,7 @@ async function loadConversations() {
             contactAvatar: contact.avatar_url,
             lastMessage: conv.last_message_content,
             lastTime: conv.last_message_time,
-            unread: 0, // à gérer plus tard
+            unread: 0,
             online: false
         };
     });
@@ -146,6 +147,46 @@ function renderConversations() {
             selectConversation(convId);
         });
     });
+}
+
+// ===== CRÉER UNE CONVERSATION AVEC UN UTILISATEUR =====
+async function findOrCreateConversationWithUser(userId) {
+    console.log('Recherche/création conversation avec utilisateur', userId);
+
+    // Vérifier si une conversation existe déjà
+    const { data: existingConv, error: searchError } = await supabaseMessages
+        .from('player_conversations')
+        .select('id')
+        .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${userId}),and(participant1_id.eq.${userId},participant2_id.eq.${currentProfile.id})`)
+        .maybeSingle();
+
+    if (searchError) {
+        console.error('Erreur recherche conversation:', searchError);
+        return null;
+    }
+
+    if (existingConv) {
+        console.log('Conversation existante trouvée', existingConv.id);
+        return existingConv.id;
+    }
+
+    // Créer une nouvelle conversation
+    const { data: newConv, error: createError } = await supabaseMessages
+        .from('player_conversations')
+        .insert([{
+            participant1_id: currentProfile.id,
+            participant2_id: userId
+        }])
+        .select()
+        .single();
+
+    if (createError) {
+        console.error('Erreur création conversation:', createError);
+        return null;
+    }
+
+    console.log('Nouvelle conversation créée', newConv.id);
+    return newConv.id;
 }
 
 // ===== SÉLECTION D'UNE CONVERSATION =====
@@ -208,7 +249,6 @@ function renderMessages(messages) {
     const area = document.getElementById('chatMessagesArea');
     if (!area) return;
     const conv = conversations.find(c => c.id === currentConversationId);
-    const contactName = conv ? conv.contactName : 'Contact';
     let html = '';
     messages.forEach(msg => {
         const isMe = msg.sender_id === currentProfile.id;
@@ -237,7 +277,6 @@ function appendMessage(msg) {
     if (!area) return;
     const isMe = msg.sender_id === currentProfile.id;
     const time = new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    // On n'a pas le reply content ici, on le laisse vide pour l'instant
     const replyHtml = msg.reply_to_id ? `<div class="reply-quote">Réponse à un message</div>` : '';
     const msgHtml = `
         <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}">
@@ -279,7 +318,6 @@ async function sendMessage(e) {
 
     console.log('Envoi message:', content);
 
-    // 1. Insérer le message
     const { data: newMsg, error: msgError } = await supabaseMessages
         .from('player_messages')
         .insert({
@@ -297,8 +335,7 @@ async function sendMessage(e) {
         return;
     }
 
-    // 2. Mettre à jour la conversation (last_message)
-    const { error: convError } = await supabaseMessages
+    await supabaseMessages
         .from('player_conversations')
         .update({
             last_message_content: content,
@@ -306,18 +343,9 @@ async function sendMessage(e) {
         })
         .eq('id', currentConversationId);
 
-    if (convError) {
-        console.error('Erreur mise à jour conversation:', convError);
-    }
-
-    // 3. Réinitialiser
     input.value = '';
     input.style.height = 'auto';
     if (replyingTo) cancelReply();
-
-    // Le message apparaîtra via Realtime, pas besoin d'ajouter manuellement
-    // Mais on peut le faire pour être sûr
-    // appendMessage(newMsg);
 }
 
 // ===== SUPPRESSION D'UN MESSAGE =====
@@ -331,7 +359,6 @@ async function deleteMessage(msgId) {
     if (error) {
         showToast('Erreur lors de la suppression', 'error');
     } else {
-        // Recharger les messages
         await loadMessages(currentConversationId);
     }
 }
@@ -400,7 +427,6 @@ async function ensureSupportConversation() {
     console.log('Création conversation support...');
     let supportProfileId;
 
-    // Chercher le profil support (hub_id = 'SUPPORT')
     const { data: supportData, error: searchError } = await supabaseMessages
         .from('player_profiles')
         .select('id')
@@ -413,14 +439,13 @@ async function ensureSupportConversation() {
     }
 
     if (!supportData) {
-        // Créer le profil support
         const { data: newSupport, error: insertError } = await supabaseMessages
             .from('player_profiles')
             .insert([{
                 user_id: null,
                 hub_id: 'SUPPORT',
                 nom_complet: 'Support HubISoccer',
-                avatar_url: 'img/user-default.jpg' // image par défaut
+                avatar_url: 'img/user-default.jpg'
             }])
             .select()
             .single();
@@ -434,7 +459,6 @@ async function ensureSupportConversation() {
         supportProfileId = supportData.id;
     }
 
-    // Vérifier si une conversation existe déjà
     const { data: existingConv, error: convCheckError } = await supabaseMessages
         .from('player_conversations')
         .select('id')
@@ -451,7 +475,6 @@ async function ensureSupportConversation() {
         return;
     }
 
-    // Créer la conversation
     const { data: newConv, error: convError } = await supabaseMessages
         .from('player_conversations')
         .insert([{
@@ -466,7 +489,6 @@ async function ensureSupportConversation() {
         return;
     }
 
-    // Envoyer le message de bienvenue
     const { error: msgError } = await supabaseMessages
         .from('player_messages')
         .insert([{
@@ -479,7 +501,6 @@ async function ensureSupportConversation() {
         console.error('Erreur envoi message bienvenue:', msgError);
     } else {
         console.log('Message de bienvenue envoyé');
-        // Recharger les conversations pour que la nouvelle apparaisse
         await loadConversations();
     }
 }
@@ -569,6 +590,13 @@ function initLogout() {
     });
 }
 
+// ===== EXTRAIRE LE PARAMÈTRE "TO" DE L'URL =====
+function getTargetUserIdFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const to = urlParams.get('to');
+    return to ? parseInt(to) : null;
+}
+
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Initialisation messages');
@@ -577,12 +605,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!user) return;
 
     await loadProfile();
+
+    // Récupérer l'ID de l'utilisateur cible depuis l'URL (si présent)
+    targetUserId = getTargetUserIdFromUrl();
+    console.log('Target user ID from URL:', targetUserId);
+
+    // Charger les conversations
     await loadConversations();
+
+    // Créer la conversation avec le support (toujours utile)
     await ensureSupportConversation();
 
-    renderChatInput(); // affiche la zone de saisie (vide)
+    // Si on a un targetUserId, créer/sélectionner la conversation avec cet utilisateur
+    if (targetUserId && targetUserId !== currentProfile.id) {
+        const convId = await findOrCreateConversationWithUser(targetUserId);
+        if (convId) {
+            // Recharger les conversations pour inclure la nouvelle
+            await loadConversations();
+            // Sélectionner cette conversation
+            await selectConversation(convId);
+        } else {
+            showToast('Impossible de créer la conversation', 'error');
+        }
+    }
 
-    // État mobile initial
+    renderChatInput();
+
     if (window.innerWidth <= 900) {
         document.querySelector('.conversations-panel')?.classList.remove('hide');
         document.querySelector('.chat-panel')?.classList.add('hide');
@@ -601,7 +649,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('✅ Initialisation terminée');
 });
 
-// Fonctions globales pour les appels onclick
+// Fonctions globales
 window.backToConversations = backToConversations;
 window.sendMessage = sendMessage;
 window.replyToMessage = replyToMessage;
