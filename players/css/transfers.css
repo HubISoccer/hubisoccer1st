@@ -213,3 +213,10 @@
         display: none;
     }
 }
+
+.empty-message {
+    text-align: center;
+    color: var(--gray);
+    padding: 40px;
+    font-style: italic;
+}
