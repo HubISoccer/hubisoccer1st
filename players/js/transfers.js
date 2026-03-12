@@ -1,182 +1,148 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseTransfers = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
-let playerProfile = null;
-
-// ===== DONNÉES FICTIVES POUR L'EXEMPLE =====
-const fakeTransfers = [
-    {
-        id: 1,
-        fromClub: "Académie Cotonou",
-        toClub: "Aspire Academy",
-        date: "2024-06-15",
-        type: "transfer", // transfer, loan, end
-        fee: 15000000,
-        currency: "FCFA"
-    },
-    {
-        id: 2,
-        fromClub: "Aspire Academy",
-        toClub: "Djoliba AC",
-        date: "2025-01-10",
-        type: "loan",
-        fee: 0,
-        currency: "FCFA"
-    },
-    {
-        id: 3,
-        fromClub: "Djoliba AC",
-        toClub: "Joueur libre",
-        date: "2025-06-30",
-        type: "end",
-        fee: 0,
-        currency: "FCFA"
-    }
-];
-
-const fakeOffers = [
-    {
-        id: 101,
-        fromClub: "ASEC Mimosas",
-        date: "2025-02-20",
-        amount: 25000000,
-        status: "accepted", // accepted, pending, rejected
-        type: "transfer"
-    },
-    {
-        id: 102,
-        fromClub: "Stade Malien",
-        date: "2025-03-05",
-        amount: 18000000,
-        status: "pending",
-        type: "transfer"
-    },
-    {
-        id: 103,
-        fromClub: "Horoya AC",
-        date: "2025-03-10",
-        amount: 30000000,
-        status: "rejected",
-        type: "transfer"
-    }
-];
+let currentProfile = null;
+let transfers = [];
+let offers = [];
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    try {
-        const { data: { session }, error } = await supabaseClient.auth.getSession();
-        if (error || !session) {
-            window.location.href = '../public/auth/login.html';
-            return null;
-        }
-        currentUser = session.user;
-        console.log('✅ Utilisateur connecté :', currentUser.email);
-        return currentUser;
-    } catch (err) {
-        console.error('❌ Erreur checkSession :', err);
+    const { data: { session }, error } = await supabaseTransfers.auth.getSession();
+    if (error || !session) {
         window.location.href = '../public/auth/login.html';
         return null;
     }
+    currentUser = session.user;
+    return currentUser;
 }
 
 // ===== CHARGEMENT DU PROFIL =====
-async function loadPlayerProfile() {
-    if (!currentUser?.id) {
-        playerProfile = { nom_complet: 'Joueur' };
-        return;
+async function loadProfile() {
+    const { data, error } = await supabaseTransfers
+        .from('player_profiles')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .single();
+    if (error) {
+        console.error('Erreur chargement profil:', error);
+        return null;
     }
-    try {
-        const { data, error } = await supabaseClient
-            .from('player_profiles')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .maybeSingle();
-
-        if (error) {
-            console.error('Erreur chargement profil:', error);
-            playerProfile = { nom_complet: 'Joueur' };
-        } else {
-            playerProfile = data || { nom_complet: 'Joueur' };
-        }
-        document.getElementById('userName').textContent = playerProfile.nom_complet || 'Joueur';
-    } catch (err) {
-        console.error('❌ Exception loadPlayerProfile :', err);
-        playerProfile = { nom_complet: 'Joueur' };
-    }
+    currentProfile = data;
+    document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
+    document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
+    return currentProfile;
 }
 
-// ===== AFFICHAGE DES TRANSFERTS =====
+// ===== CHARGEMENT DES TRANSFERTS =====
+async function loadTransfers() {
+    const { data, error } = await supabaseTransfers
+        .from('player_transfers')
+        .select('*')
+        .eq('player_id', currentProfile.id)
+        .order('transfer_date', { ascending: false });
+
+    if (error) {
+        console.error('Erreur chargement transferts:', error);
+        return;
+    }
+    transfers = data || [];
+    renderTransfers();
+}
+
+// ===== CHARGEMENT DES OFFRES =====
+async function loadOffers() {
+    const { data, error } = await supabaseTransfers
+        .from('player_offers')
+        .select('*')
+        .eq('player_id', currentProfile.id)
+        .order('offer_date', { ascending: false });
+
+    if (error) {
+        console.error('Erreur chargement offres:', error);
+        return;
+    }
+    offers = data || [];
+    renderOffers();
+}
+
+// ===== RENDU DES TRANSFERTS =====
 function renderTransfers() {
     const list = document.getElementById('transfersList');
-    list.innerHTML = '';
+    if (!list) return;
 
-    fakeTransfers.forEach(transfer => {
-        const card = document.createElement('div');
-        card.className = 'transfer-card';
+    if (transfers.length === 0) {
+        list.innerHTML = '<p class="empty-message">Aucun transfert pour le moment.</p>';
+        return;
+    }
 
+    list.innerHTML = transfers.map(t => {
         const typeLabel = {
             transfer: 'Transfert',
             loan: 'Prêt',
             end: 'Fin de contrat'
-        }[transfer.type] || 'Transfert';
+        }[t.type] || 'Transfert';
 
         const typeClass = {
             transfer: 'transfer',
             loan: 'loan',
             end: 'end'
-        }[transfer.type] || 'transfer';
+        }[t.type] || 'transfer';
 
-        const feeDisplay = transfer.fee > 0 
-            ? `${transfer.fee.toLocaleString()} ${transfer.currency}` 
+        const feeDisplay = t.fee > 0 
+            ? `${t.fee.toLocaleString()} ${t.currency}` 
             : 'Gratuit (libre)';
 
-        card.innerHTML = `
-            <div class="transfer-info">
-                <span class="transfer-type ${typeClass}">${typeLabel}</span>
-                <div class="transfer-clubs">
-                    ${transfer.fromClub} <i class="fas fa-arrow-right"></i> ${transfer.toClub}
+        return `
+            <div class="transfer-card">
+                <div class="transfer-info">
+                    <span class="transfer-type ${typeClass}">${typeLabel}</span>
+                    <div class="transfer-clubs">
+                        ${t.from_club} <i class="fas fa-arrow-right"></i> ${t.to_club}
+                    </div>
+                    <div class="transfer-date">${new Date(t.transfer_date).toLocaleDateString('fr-FR')}</div>
+                    <div class="transfer-fee ${t.fee === 0 ? 'free' : ''}">${feeDisplay}</div>
                 </div>
-                <div class="transfer-date">${new Date(transfer.date).toLocaleDateString('fr-FR')}</div>
-                <div class="transfer-fee ${transfer.fee === 0 ? 'free' : ''}">${feeDisplay}</div>
             </div>
         `;
-        list.appendChild(card);
-    });
+    }).join('');
 }
 
-// ===== AFFICHAGE DES OFFRES =====
+// ===== RENDU DES OFFRES =====
 function renderOffers() {
     const list = document.getElementById('offersList');
-    list.innerHTML = '';
+    if (!list) return;
 
-    fakeOffers.forEach(offer => {
-        const card = document.createElement('div');
-        card.className = 'offer-card';
+    if (offers.length === 0) {
+        list.innerHTML = '<p class="empty-message">Aucune offre reçue pour le moment.</p>';
+        return;
+    }
 
+    list.innerHTML = offers.map(o => {
         const statusLabel = {
             accepted: 'Acceptée',
             pending: 'En attente',
             rejected: 'Rejetée'
-        }[offer.status] || 'En attente';
+        }[o.status] || 'En attente';
 
-        const amountDisplay = offer.amount.toLocaleString() + ' FCFA';
+        const amountDisplay = o.amount.toLocaleString() + ' FCFA';
 
-        card.innerHTML = `
-            <div class="offer-info">
-                <div class="offer-club">${offer.fromClub}</div>
-                <div class="offer-details">
-                    <span>Offre du ${new Date(offer.date).toLocaleDateString('fr-FR')}</span>
-                    <span class="offer-amount">${amountDisplay}</span>
+        return `
+            <div class="offer-card">
+                <div class="offer-info">
+                    <div class="offer-club">${o.from_club}</div>
+                    <div class="offer-details">
+                        <span>Offre du ${new Date(o.offer_date).toLocaleDateString('fr-FR')}</span>
+                        <span class="offer-amount">${amountDisplay}</span>
+                    </div>
                 </div>
+                <div class="offer-status ${o.status}">${statusLabel}</div>
             </div>
-            <div class="offer-status ${offer.status}">${statusLabel}</div>
         `;
-        list.appendChild(card);
-    });
+    }).join('');
 }
 
 // ===== GESTION DES ONGLETS =====
@@ -184,11 +150,9 @@ function initTabs() {
     const tabs = document.querySelectorAll('.tab-btn');
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            // Retirer la classe active de tous les onglets et contenus
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-            // Activer l'onglet cliqué
             tab.classList.add('active');
             const tabId = tab.dataset.tab;
             document.getElementById(`${tabId}-tab`).classList.add('active');
@@ -196,48 +160,74 @@ function initTabs() {
     });
 }
 
-// ===== FONCTIONS UI (menus) =====
+// ===== MENU UTILISATEUR =====
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
-    if (!userMenu || !dropdown) return;
-    userMenu.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle('show');
-    });
-    document.addEventListener('click', () => dropdown.classList.remove('show'));
+    if (userMenu && dropdown) {
+        userMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+        document.addEventListener('click', () => dropdown.classList.remove('show'));
+    }
 }
 
+// ===== SIDEBAR =====
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
 
-    if (!menuBtn || !sidebar || !closeBtn || !overlay) {
-        console.warn('Éléments de la sidebar manquants');
-        return;
-    }
-
     function openSidebar() {
-        sidebar.classList.add('active');
-        overlay.classList.add('active');
+        sidebar?.classList.add('active');
+        overlay?.classList.add('active');
     }
     function closeSidebarFunc() {
-        sidebar.classList.remove('active');
-        overlay.classList.remove('active');
+        sidebar?.classList.remove('active');
+        overlay?.classList.remove('active');
     }
 
-    menuBtn.addEventListener('click', openSidebar);
-    closeBtn.addEventListener('click', closeSidebarFunc);
-    overlay.addEventListener('click', closeSidebarFunc);
+    menuBtn?.addEventListener('click', openSidebar);
+    closeBtn?.addEventListener('click', closeSidebarFunc);
+    overlay?.addEventListener('click', closeSidebarFunc);
 }
 
+// ===== GESTION DES SWIPES =====
+let touchStartX = 0;
+let touchEndX = 0;
+const swipeThreshold = 50;
+
+document.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+}, false);
+
+document.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+}, false);
+
+function handleSwipe() {
+    const leftSidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const diff = touchEndX - touchStartX;
+
+    if (diff > swipeThreshold && touchStartX < 50) {
+        leftSidebar?.classList.add('active');
+        overlay?.classList.add('active');
+    } else if (diff < -swipeThreshold && leftSidebar?.classList.contains('active')) {
+        leftSidebar?.classList.remove('active');
+        overlay?.classList.remove('active');
+    }
+}
+
+// ===== DÉCONNEXION =====
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabaseClient.auth.signOut().then(() => {
+            supabaseTransfers.auth.signOut().then(() => {
                 window.location.href = '../index.html';
             });
         });
@@ -246,16 +236,19 @@ function initLogout() {
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation de la page transfers');
+    console.log('🚀 Initialisation transfers.js');
 
     const user = await checkSession();
     if (!user) return;
 
-    await loadPlayerProfile();
+    await loadProfile();
+    if (!currentProfile) {
+        console.error('Impossible de charger le profil');
+        return;
+    }
 
-    // Remplir avec les données fictives
-    renderTransfers();
-    renderOffers();
+    await loadTransfers();
+    await loadOffers();
 
     initTabs();
     initUserMenu();
