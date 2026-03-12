@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scouting détaillé | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/scouting-detail.css">
+    <!-- Chart.js pour le radar -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar (identique) -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Espace Joueur</span>
+        </div>
+        <div class="nav-right">
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="edit-cv.html">Mon profil</a>
+                    <a href="support.html">Support</a>
+                    <a href="#" id="languageLink">Langue (Français)</a>
+                    <a href="#" id="logoutLink">Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Sidebar (identique) -->
+    <div class="sidebar" id="sidebar">
+        <!-- ... identique à dashboard ... -->
+        <div class="sidebar-header">
+            <h3>Menu Joueur</h3>
+            <button class="close-sidebar" id="closeSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+            <a href="feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
+            <a href="verification.html"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
+            <a href="edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV Pro</a>
+            <a href="certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
+            <a href="tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournoi (Live)</a>
+            <a href="transfers.html"><i class="fas fa-exchange-alt"></i> Historique Transferts</a>
+            <hr>
+            <a href="videos.html"><i class="fas fa-video"></i> Mes Vidéos</a>
+            <a href="revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
+            <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
+            <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Contenu principal -->
+    <main class="scouting-main">
+        <div class="scouting-container">
+            <h1 class="page-title"><i class="fas fa-chart-pie"></i> Scouting détaillé</h1>
+
+            <!-- En-tête avec postes et pieds -->
+            <div class="scouting-header">
+                <div class="positions">
+                    <span class="position-badge" id="primaryPosition">-</span>
+                    <span class="position-badge secondary" id="secondaryPositions">-</span>
+                </div>
+                <div class="foot-stats">
+                    <div class="foot-item">
+                        <span class="foot-label">Pied gauche</span>
+                        <div class="foot-bar-container">
+                            <div class="foot-bar" id="leftFootBar" style="width: 0%;"></div>
+                        </div>
+                        <span class="foot-value" id="leftFootLabel">-</span>
+                    </div>
+                    <div class="foot-item">
+                        <span class="foot-label">Pied droit</span>
+                        <div class="foot-bar-container">
+                            <div class="foot-bar" id="rightFootBar" style="width: 0%;"></div>
+                        </div>
+                        <span class="foot-value" id="rightFootLabel">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Graphique radar (octogone) -->
+            <div class="radar-container">
+                <canvas id="skillsRadar"></canvas>
+            </div>
+
+            <!-- Dates clés -->
+            <div class="key-dates">
+                <h3>Dates clés</h3>
+                <div class="dates-grid">
+                    <div class="date-item">
+                        <span class="date-label">Expiration contrat</span>
+                        <span class="date-value" id="contractExpiry">-</span>
+                    </div>
+                    <div class="date-item">
+                        <span class="date-label">Prochain rapport</span>
+                        <span class="date-value" id="nextReport">-</span>
+                    </div>
+                    <div class="date-item">
+                        <span class="date-label">Dernière mise à jour</span>
+                        <span class="date-value" id="lastUpdate">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Points forts / Points faibles -->
+            <div class="strengths-weaknesses">
+                <div class="strengths">
+                    <h3>Points forts</h3>
+                    <p id="strengths">Aucun atout exceptionnel</p>
+                </div>
+                <div class="weaknesses">
+                    <h3>Points faibles</h3>
+                    <p id="weaknesses">Aucune faiblesse exceptionnelle</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer (identique) -->
+    <footer class="dashboard-footer">
+        <!-- ... -->
+    </footer>
+
+    <script src="js/scouting-detail.js"></script>
+</body>
+</html>
