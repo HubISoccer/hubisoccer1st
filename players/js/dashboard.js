@@ -118,15 +118,15 @@ function updateUIWithProfile() {
     document.getElementById('playerFullName').textContent = fullName;
     document.getElementById('playerPosition').textContent = playerProfile.position || 'Poste non renseigné';
 
-    // Informations de base
-    document.getElementById('playerAge').textContent = playerProfile.age || '0'; // Si vous avez une colonne age
-    document.getElementById('playerHeight').textContent = playerProfile.height || '0';
+    // Informations de base (si les colonnes existent dans player_profiles)
+    document.getElementById('playerAge').textContent = playerProfile.age || '0'; // À calculer si vous avez date_naissance
+    document.getElementById('playerHeight').textContent = playerProfile.height || playerProfile.taille_cm || '0';
     document.getElementById('playerWeight').textContent = playerProfile.poids_kg || '0';
     document.getElementById('playerNationality').textContent = playerProfile.nationalite || '-';
-    document.getElementById('playerFoot').textContent = playerProfile.preferred_foot || '-';
+    document.getElementById('playerFoot').textContent = playerProfile.preferred_foot || playerProfile.pied_fort || '-';
     document.getElementById('playerClub').textContent = playerProfile.club || '-';
 
-    // ID HubISoccer
+    // ID HubISoccer (sur la carte de gauche)
     document.getElementById('playerID').textContent = `ID: ${playerProfile.hub_id || '-'}`;
 
     // Avatar
@@ -202,6 +202,118 @@ function updateScoutingUI() {
 
     // Rapports
     setText('scoutingReports', scoutingData.rapports_recruteurs || 'Aucun rapport pour le moment.');
+
+    // Mettre à jour les compétences principales (jauges)
+    updateMainSkills();
+}
+
+// ===== MISE À JOUR DES COMPÉTENCES PRINCIPALES =====
+function updateMainSkills() {
+    if (!scoutingData) return;
+
+    // Calcul des moyennes (valeurs sur 20)
+    const defense = average([
+        scoutingData.technique_marquage,
+        scoutingData.mental_agressivite,
+        scoutingData.mental_anticipation,
+        scoutingData.physique_puissance
+    ]);
+
+    const mental = average([
+        scoutingData.mental_agressivite,
+        scoutingData.mental_anticipation,
+        scoutingData.mental_appels_de_balle,
+        scoutingData.mental_concentration,
+        scoutingData.mental_courage,
+        scoutingData.mental_decisions,
+        scoutingData.mental_determination,
+        scoutingData.mental_inspiration,
+        scoutingData.mental_jeu_collectif,
+        scoutingData.mental_leadership,
+        scoutingData.mental_placement,
+        scoutingData.mental_sang_froid,
+        scoutingData.mental_vision_du_jeu,
+        scoutingData.mental_volume_de_jeu
+    ]);
+
+    const physique = average([
+        scoutingData.physique_acceleration,
+        scoutingData.physique_agilite,
+        scoutingData.physique_detente_verticale,
+        scoutingData.physique_endurance,
+        scoutingData.physique_equilibre,
+        scoutingData.physique_puissance,
+        scoutingData.physique_qualites_physiques_nat,
+        scoutingData.physique_vitesse
+    ]);
+
+    const aerien = average([
+        scoutingData.technique_jeu_de_tete,
+        scoutingData.physique_detente_verticale
+    ]);
+
+    const vitesse = average([
+        scoutingData.physique_vitesse,
+        scoutingData.physique_acceleration
+    ]);
+
+    const technique = average([
+        scoutingData.technique_centres,
+        scoutingData.technique_controle_balle,
+        scoutingData.technique_corners,
+        scoutingData.technique_coups_francs,
+        scoutingData.technique_dribbles,
+        scoutingData.technique_finition,
+        scoutingData.technique_jeu_de_tete,
+        scoutingData.technique_marquage,
+        scoutingData.technique_passes,
+        scoutingData.technique_penalty,
+        scoutingData.technique_tactics,
+        scoutingData.technique_technique,
+        scoutingData.technique_tirs_de_loin,
+        scoutingData.technique_touches_longues
+    ]);
+
+    const vision = average([
+        scoutingData.mental_vision_du_jeu,
+        scoutingData.technique_passes,
+        scoutingData.technique_tactics
+    ]);
+
+    const attaque = average([
+        scoutingData.technique_finition,
+        scoutingData.technique_dribbles,
+        scoutingData.technique_tirs_de_loin
+    ]);
+
+    // Mettre à jour les barres et les valeurs
+    setSkill('skill_defense', defense);
+    setSkill('skill_mental', mental);
+    setSkill('skill_physique', physique);
+    setSkill('skill_aerien', aerien);
+    setSkill('skill_vitesse', vitesse);
+    setSkill('skill_technique', technique);
+    setSkill('skill_vision', vision);
+    setSkill('skill_attaque', attaque);
+}
+
+// Fonction utilitaire pour calculer la moyenne (ignore les null/undefined)
+function average(arr) {
+    const valid = arr.filter(v => v != null && !isNaN(v));
+    if (valid.length === 0) return 0;
+    const sum = valid.reduce((a, b) => a + b, 0);
+    return Math.round(sum / valid.length);
+}
+
+// Met à jour la barre et la valeur
+function setSkill(elementId, value) {
+    const bar = document.getElementById(elementId);
+    const valueSpan = document.getElementById(elementId + '_value');
+    if (bar) {
+        const percent = (value / 20) * 100; // On suppose que les notes sont sur 20
+        bar.style.width = percent + '%';
+    }
+    if (valueSpan) valueSpan.textContent = value;
 }
 
 // ===== FONCTIONS UTILITAIRES =====
@@ -216,9 +328,42 @@ function formatMoney(value) {
     return value + ' €';
 }
 
-// ===== UPLOAD AVATAR (inchangé) =====
+// ===== UPLOAD AVATAR =====
 async function uploadAvatar(file) {
-    // ... (identique à votre code actuel)
+    if (!currentUser || !playerProfile) return;
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
+    const filePath = fileName;
+
+    const { error: uploadError } = await supabaseClient.storage
+        .from(avatarBucket)
+        .upload(filePath, file);
+
+    if (uploadError) {
+        alert('Erreur upload : ' + uploadError.message);
+        return;
+    }
+
+    const { data: urlData } = supabaseClient.storage
+        .from(avatarBucket)
+        .getPublicUrl(filePath);
+
+    const publicUrl = urlData.publicUrl;
+
+    const { error: updateError } = await supabaseClient
+        .from('player_profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', playerProfile.id);
+
+    if (updateError) {
+        alert('Erreur mise à jour avatar : ' + updateError.message);
+        return;
+    }
+
+    playerProfile.avatar_url = publicUrl;
+    document.getElementById('profileDisplay').src = publicUrl;
+    document.getElementById('userAvatar').src = publicUrl;
 }
 
 function triggerUpload() {
@@ -232,6 +377,7 @@ document.addEventListener('change', function(e) {
     }
 });
 
+// ===== COPIER ID =====
 async function copyID() {
     if (!playerProfile?.hub_id) return;
     try {
@@ -330,7 +476,8 @@ function addMenuHandle() {
 
 // ===== DÉCONNEXION =====
 async function logout() {
-    await supabaseClient.auth.signOut();
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) console.error('Erreur déconnexion:', error);
     window.location.href = '../index.html';
 }
 
@@ -340,6 +487,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!user) return;
 
     await loadPlayerProfile();
+    if (!playerProfile) return;
+
     await loadScoutingData();
 
     addMenuHandle();
@@ -359,6 +508,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast('Changement de langue bientôt disponible', 'info');
     });
 
+    // Exposer les fonctions globales nécessaires
     window.triggerUpload = triggerUpload;
     window.copyID = copyID;
 });
