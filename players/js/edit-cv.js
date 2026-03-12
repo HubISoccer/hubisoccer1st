@@ -1,19 +1,20 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Renommer pour éviter les conflits
+const supabaseCV = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
 let playerProfile = null;
-let cvData = null; // Données du CV (objet)
-let cvValidationStatus = 'pending'; // 'pending' ou 'approved'
-let signatureDataURL = null; // signature en base64
+let cvData = null;
+let cvValidationStatus = 'pending';
+let signatureDataURL = null;
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
     try {
-        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        const { data: { session }, error } = await supabaseCV.auth.getSession();
         if (error || !session) {
             window.location.href = '../public/auth/login.html';
             return null;
@@ -36,7 +37,7 @@ async function loadPlayerProfile() {
         return;
     }
     try {
-        const { data, error } = await supabaseClient
+        const { data, error } = await supabaseCV
             .from('player_profiles')
             .select('*')
             .eq('user_id', currentUser.id)
@@ -60,8 +61,7 @@ async function loadPlayerProfile() {
 async function loadCV() {
     if (!playerProfile?.id) return;
     try {
-        // On suppose une table "player_cv" avec une colonne "data" JSONB et "validation_status"
-        const { data, error } = await supabaseClient
+        const { data, error } = await supabaseCV
             .from('player_cv')
             .select('*')
             .eq('player_id', playerProfile.id)
@@ -76,7 +76,6 @@ async function loadCV() {
             cvValidationStatus = data.validation_status || 'pending';
             populateForm(cvData);
         }
-        // Afficher le statut de validation
         updateValidationStatus();
     } catch (err) {
         console.error('❌ Exception loadCV :', err);
@@ -128,7 +127,6 @@ function populateForm(data) {
     if (data.experiences && Array.isArray(data.experiences)) {
         data.experiences.forEach(exp => addExperienceItem(exp));
     } else {
-        // Ajouter une ligne vide par défaut
         addExperienceItem();
     }
 
@@ -159,7 +157,6 @@ function populateForm(data) {
 // ===== GESTION DES ÉLÉMENTS DYNAMIQUES =====
 function addExperienceItem(data = {}) {
     const container = document.getElementById('experiences-container');
-    const index = container.children.length;
     const item = document.createElement('div');
     item.className = 'experience-item';
     item.innerHTML = `
@@ -194,7 +191,6 @@ function addExperienceItem(data = {}) {
 
 function addFormationItem(data = {}) {
     const container = document.getElementById('formations-container');
-    const index = container.children.length;
     const item = document.createElement('div');
     item.className = 'formation-item';
     item.innerHTML = `
@@ -221,7 +217,6 @@ function addFormationItem(data = {}) {
 
 function addLangueItem(data = {}) {
     const container = document.getElementById('langues-container');
-    const index = container.children.length;
     const item = document.createElement('div');
     item.className = 'langue-item';
     item.innerHTML = `
@@ -244,7 +239,6 @@ function addLangueItem(data = {}) {
 function collectFormData() {
     const data = {};
 
-    // Champs simples
     data.nom = document.getElementById('nom').value;
     data.prenom = document.getElementById('prenom').value;
     data.telephone = document.getElementById('telephone').value;
@@ -267,7 +261,6 @@ function collectFormData() {
     data.dateSignature = document.getElementById('dateSignature').value;
     data.lieuSignature = document.getElementById('lieuSignature').value;
 
-    // Expériences
     data.experiences = [];
     document.querySelectorAll('#experiences-container .experience-item').forEach(item => {
         data.experiences.push({
@@ -279,7 +272,6 @@ function collectFormData() {
         });
     });
 
-    // Formations
     data.formations = [];
     document.querySelectorAll('#formations-container .formation-item').forEach(item => {
         data.formations.push({
@@ -289,7 +281,6 @@ function collectFormData() {
         });
     });
 
-    // Langues
     data.langues = [];
     document.querySelectorAll('#langues-container .langue-item').forEach(item => {
         data.langues.push({
@@ -298,7 +289,6 @@ function collectFormData() {
         });
     });
 
-    // Signature
     data.signature = signatureDataURL;
 
     return data;
@@ -313,8 +303,7 @@ async function saveCV() {
     const formData = collectFormData();
 
     try {
-        // Vérifier si une entrée existe déjà
-        const { data: existing, error: selectError } = await supabaseClient
+        const { data: existing, error: selectError } = await supabaseCV
             .from('player_cv')
             .select('id')
             .eq('player_id', playerProfile.id)
@@ -322,20 +311,18 @@ async function saveCV() {
 
         if (selectError) throw selectError;
 
-        let result;
         if (existing) {
-            // Mise à jour
-            result = await supabaseClient
+            const result = await supabaseCV
                 .from('player_cv')
                 .update({
                     data: formData,
-                    validation_status: 'pending', // remet en attente après modification
+                    validation_status: 'pending',
                     updated_at: new Date()
                 })
                 .eq('player_id', playerProfile.id);
+            if (result.error) throw result.error;
         } else {
-            // Insertion
-            result = await supabaseClient
+            const result = await supabaseCV
                 .from('player_cv')
                 .insert([{
                     player_id: playerProfile.id,
@@ -344,9 +331,8 @@ async function saveCV() {
                     created_at: new Date(),
                     updated_at: new Date()
                 }]);
+            if (result.error) throw result.error;
         }
-
-        if (result.error) throw result.error;
 
         alert('CV enregistré avec succès ! En attente de validation.');
         cvValidationStatus = 'pending';
@@ -356,64 +342,80 @@ async function saveCV() {
     }
 }
 
-// ===== GÉNÉRATION DE L'APERÇU =====
+// ===== GÉNÉRATION DE L'APERÇU (NOUVELLE VERSION) =====
 function generatePreview() {
     const data = collectFormData();
     const previewDiv = document.getElementById('previewContent');
+    const fullName = `${data.prenom} ${data.nom}`.trim() || 'Nom Prénom';
+
+    // Compétences (convertir les chaînes en listes)
+    const skillsTech = data.skillsTech ? data.skillsTech.split(',').map(s => s.trim()).filter(s => s) : [];
+    const skillsSoft = data.skillsSoft ? data.skillsSoft.split(',').map(s => s.trim()).filter(s => s) : [];
+    const allSkills = [...skillsTech, ...skillsSoft];
+
     const html = `
-        <div style="font-family: 'Poppins', sans-serif; max-width: 800px; margin: 0 auto;">
-            <h1 style="color: #551B8C; border-bottom: 3px solid #ffcc00; padding-bottom: 10px;">${data.prenom} ${data.nom}</h1>
-            <p><i class="fas fa-phone"></i> ${data.telephone} | <i class="fas fa-envelope"></i> ${data.email} | <i class="fas fa-map-marker-alt"></i> ${data.ville}</p>
-            ${data.social ? `<p><i class="fas fa-link"></i> <a href="${data.social}" target="_blank">${data.social}</a></p>` : ''}
-
-            <h3>Profil</h3>
-            <p>${data.profil || 'Non renseigné'}</p>
-
-            <h3>Informations sportives</h3>
-            <p>Taille: ${data.taille || '-'} cm | Poids: ${data.poids || '-'} kg | Pied: ${data.piedFort || '-'} | Club: ${data.club || '-'}</p>
-            <p>Matchs: ${data.matchs || '0'} | Buts: ${data.buts || '0'} | Passes: ${data.passes || '0'} | Valeur: ${data.valeur || '0'} FCFA</p>
-
-            <h3>Expériences professionnelles</h3>
-            <ul>
-                ${data.experiences.map(exp => `
-                    <li>
-                        <strong>${exp.poste}</strong> chez ${exp.employeur}<br>
-                        ${exp.debut} - ${exp.fin}<br>
-                        ${exp.description}
-                    </li>
-                `).join('')}
-            </ul>
-
-            <h3>Formations</h3>
-            <ul>
-                ${data.formations.map(formation => `
-                    <li><strong>${formation.diplome}</strong> - ${formation.etablissement} (${formation.date})</li>
-                `).join('')}
-            </ul>
-
-            <h3>Compétences</h3>
-            <p><strong>Techniques:</strong> ${data.skillsTech || '-'}</p>
-            <p><strong>Savoir-être:</strong> ${data.skillsSoft || '-'}</p>
-
-            <h3>Langues</h3>
-            <ul>
-                ${data.langues.map(lang => `<li>${lang.nom} : ${lang.niveau}</li>`).join('')}
-            </ul>
-
-            <h3>Centres d'intérêt</h3>
-            <p>${data.interets || '-'}</p>
-
-            <h3>Biographie</h3>
-            <p>${data.bio || '-'}</p>
-
-            <div style="margin-top: 40px; display: flex; justify-content: space-between;">
-                <div>Fait le ${data.dateSignature || '...'} à ${data.lieuSignature || '...'}</div>
-                <div>
-                    <img src="${data.signature || ''}" style="max-width: 200px; max-height: 80px;" />
+        <div class="cv-preview-layout">
+            <div class="cv-header">
+                <h1>${fullName}</h1>
+                <div class="cv-subtitle">${data.profil || 'CV'}</div>
+                <div class="cv-contact">
+                    ${data.telephone ? `<span><i class="fas fa-phone"></i> ${data.telephone}</span>` : ''}
+                    ${data.email ? `<span><i class="fas fa-envelope"></i> ${data.email}</span>` : ''}
+                    ${data.ville ? `<span><i class="fas fa-map-marker-alt"></i> ${data.ville}</span>` : ''}
                 </div>
+            </div>
+
+            <div class="cv-left">
+                <!-- Formation -->
+                <div class="cv-section">
+                    <div class="cv-section-title">Formation</div>
+                    ${data.formations.map(f => `
+                        <div class="cv-item">
+                            <div class="cv-item-date">${f.date || ''}</div>
+                            <div class="cv-item-title">${f.diplome || ''}</div>
+                            <div class="cv-item-subtitle">${f.etablissement || ''}</div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <!-- A propos / Profil -->
+                <div class="cv-section">
+                    <div class="cv-section-title">À propos</div>
+                    <p>${data.profil || 'Non renseigné'}</p>
+                </div>
+            </div>
+
+            <div class="cv-right">
+                <!-- Compétences -->
+                <div class="cv-section">
+                    <div class="cv-section-title">Compétences</div>
+                    <div class="cv-skills">
+                        ${allSkills.map(skill => `<span class="cv-skill-badge">${skill}</span>`).join('')}
+                    </div>
+                </div>
+
+                <!-- Expériences professionnelles -->
+                <div class="cv-section">
+                    <div class="cv-section-title">Expérience professionnelle</div>
+                    ${data.experiences.map(exp => `
+                        <div class="cv-item">
+                            <div class="cv-item-date">${exp.debut || ''} – ${exp.fin || ''}</div>
+                            <div class="cv-item-title">${exp.poste || ''}</div>
+                            <div class="cv-item-subtitle">${exp.employeur || ''}</div>
+                            <div class="cv-item-description">${exp.description || ''}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- Signature et date -->
+            <div class="cv-signature">
+                <div>Fait le ${data.dateSignature || '...'} à ${data.lieuSignature || '...'}</div>
+                ${data.signature ? `<img src="${data.signature}" alt="Signature">` : ''}
             </div>
         </div>
     `;
+
     previewDiv.innerHTML = html;
     document.getElementById('cvPreview').style.display = 'block';
 }
@@ -431,7 +433,7 @@ function exportPDF() {
     html2pdf().set(opt).from(element).save();
 }
 
-// ===== MODALE DE SIGNATURE (réutilisée) =====
+// ===== MODALE DE SIGNATURE =====
 let signaturePadModal = null;
 let signatureLocked = false;
 
@@ -519,11 +521,6 @@ function initSidebar() {
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
 
-    if (!menuBtn || !sidebar || !closeBtn || !overlay) {
-        console.warn('Éléments de la sidebar manquants');
-        return;
-    }
-
     function openSidebar() {
         sidebar.classList.add('active');
         overlay.classList.add('active');
@@ -542,7 +539,7 @@ function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabaseClient.auth.signOut().then(() => {
+            supabaseCV.auth.signOut().then(() => {
                 window.location.href = '../index.html';
             });
         });
@@ -559,21 +556,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadPlayerProfile();
     await loadCV();
 
-    // Attacher les événements des boutons d'ajout
     document.getElementById('addExperience').addEventListener('click', () => addExperienceItem());
     document.getElementById('addFormation').addEventListener('click', () => addFormationItem());
     document.getElementById('addLangue').addEventListener('click', () => addLangueItem());
 
-    // Soumission du formulaire
     document.getElementById('cvForm').addEventListener('submit', (e) => {
         e.preventDefault();
         saveCV();
     });
 
-    // Aperçu
     document.getElementById('previewBtn').addEventListener('click', generatePreview);
-
-    // Export PDF
     document.getElementById('exportBtn').addEventListener('click', exportPDF);
 
     initUserMenu();
