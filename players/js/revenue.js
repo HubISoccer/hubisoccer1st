@@ -1,7 +1,6 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-// Renommer pour éviter le conflit
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabaseRevenue = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
@@ -15,15 +14,19 @@ let followersCount = 0;
 async function checkSession() {
     const { data: { session }, error } = await supabaseRevenue.auth.getSession();
     if (error || !session) {
+        console.log('Session invalide, redirection vers login');
         window.location.href = '../public/auth/login.html';
         return null;
     }
     currentUser = session.user;
+    console.log('Utilisateur connecté:', currentUser.email);
     return currentUser;
 }
 
 // ===== CHARGEMENT DU PROFIL =====
 async function loadProfile() {
+    if (!currentUser) return null;
+    console.log('Chargement du profil pour user_id:', currentUser.id);
     const { data, error } = await supabaseRevenue
         .from('player_profiles')
         .select('*')
@@ -41,6 +44,8 @@ async function loadProfile() {
 
 // ===== CHARGEMENT / CRÉATION DU PORTEFEUILLE AVEC BONUS =====
 async function loadOrCreateWallet() {
+    if (!currentProfile) return null;
+    console.log('Chargement du portefeuille pour player_id:', currentProfile.id);
     const { data: existing, error: selectError } = await supabaseRevenue
         .from('player_wallets')
         .select('*')
@@ -54,7 +59,9 @@ async function loadOrCreateWallet() {
 
     if (existing) {
         wallet = existing;
+        console.log('Portefeuille existant:', wallet);
     } else {
+        console.log('Création nouveau portefeuille avec bonus');
         const { data: newWallet, error: insertError } = await supabaseRevenue
             .from('player_wallets')
             .insert([{
@@ -70,8 +77,10 @@ async function loadOrCreateWallet() {
             return null;
         }
         wallet = newWallet;
+        console.log('Nouveau portefeuille créé:', wallet);
 
-        await supabaseRevenue
+        // Ajouter une transaction de bonus
+        const { error: transError } = await supabaseRevenue
             .from('player_transactions')
             .insert([{
                 player_id: currentProfile.id,
@@ -80,12 +89,14 @@ async function loadOrCreateWallet() {
                 status: 'completed',
                 description: 'Bonus d\'inscription'
             }]);
+        if (transError) console.error('Erreur création transaction bonus:', transError);
     }
     return wallet;
 }
 
 // ===== CHARGEMENT DES TRANSACTIONS =====
 async function loadTransactions() {
+    if (!currentProfile) return;
     const { data, error } = await supabaseRevenue
         .from('player_transactions')
         .select('*')
@@ -102,6 +113,7 @@ async function loadTransactions() {
 
 // ===== COMPTER LES ABONNÉS =====
 async function loadFollowersCount() {
+    if (!currentProfile) return;
     const { count, error } = await supabaseRevenue
         .from('feed_follows')
         .select('*', { count: 'exact', head: true })
@@ -312,7 +324,7 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
-// ===== FONCTIONS DE MENU (SIDEBAR) =====
+// ===== MENU UTILISATEUR =====
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
@@ -325,6 +337,7 @@ function initUserMenu() {
     }
 }
 
+// ===== SIDEBAR =====
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
@@ -345,7 +358,7 @@ function initSidebar() {
     overlay?.addEventListener('click', closeSidebarFunc);
 }
 
-// ===== GESTION DES SWIPES (pour ouvrir le menu) =====
+// ===== GESTION DES SWIPES =====
 let touchStartX = 0;
 let touchEndX = 0;
 const swipeThreshold = 50;
@@ -391,6 +404,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!user) return;
 
     await loadProfile();
+    if (!currentProfile) {
+        console.error('Impossible de charger le profil');
+        return;
+    }
     await loadOrCreateWallet();
     await loadTransactions();
     await loadFollowersCount();
