@@ -340,19 +340,19 @@ async function saveCV() {
     }
 }
 
-// ===== GÉNÉRATION DE L'APERÇU (STYLE PHOTO) =====
+// ===== GÉNÉRATION DE L'APERÇU (DEUX COLONNES) =====
 function generatePreview() {
     const data = collectFormData();
     const previewDiv = document.getElementById('previewContent');
     const fullName = `${data.prenom} ${data.nom}`.trim() || 'Nom Prénom';
     const avatarUrl = playerProfile?.avatar_url || 'img/user-default.jpg';
 
-    // Compétences (fusion des deux listes)
+    // Compétences (fusion)
     const skillsTech = data.skillsTech ? data.skillsTech.split(',').map(s => s.trim()).filter(s => s) : [];
     const skillsSoft = data.skillsSoft ? data.skillsSoft.split(',').map(s => s.trim()).filter(s => s) : [];
     const allSkills = [...skillsTech, ...skillsSoft];
 
-    // Formation
+    // Formations HTML
     const formationsHtml = data.formations.map(f => `
         <div class="cv-item">
             <div class="cv-item-date">${f.date || ''}</div>
@@ -361,7 +361,7 @@ function generatePreview() {
         </div>
     `).join('');
 
-    // Expériences
+    // Expériences HTML
     const experiencesHtml = data.experiences.map(e => `
         <div class="cv-item">
             <div class="cv-item-date">${e.debut || ''} – ${e.fin || ''}</div>
@@ -371,7 +371,7 @@ function generatePreview() {
         </div>
     `).join('');
 
-    // Langues
+    // Langues HTML
     const languesHtml = data.langues.map(l => `
         <div class="cv-lang-item">
             <span class="cv-lang-name">${l.nom || ''}</span>
@@ -379,99 +379,95 @@ function generatePreview() {
         </div>
     `).join('');
 
-    // Compétences (liste à puces)
+    // Compétences liste
     const skillsListHtml = allSkills.map(skill => `<li>${skill}</li>`).join('');
 
+    // Coordonnées
+    const contactHtml = `
+        ${data.telephone ? `<div class="cv-contact-item"><i class="fas fa-phone"></i> ${data.telephone}</div>` : ''}
+        ${data.email ? `<div class="cv-contact-item"><i class="fas fa-envelope"></i> ${data.email}</div>` : ''}
+        ${data.ville ? `<div class="cv-contact-item"><i class="fas fa-map-marker-alt"></i> ${data.ville}</div>` : ''}
+        ${data.social ? `<div class="cv-contact-item"><i class="fas fa-link"></i> ${data.social}</div>` : ''}
+    `;
+
+    // Informations sportives
+    const sportInfoHtml = `
+        <div class="cv-sport-info">
+            ${data.taille ? `<span><i class="fas fa-ruler"></i> ${data.taille} cm</span>` : ''}
+            ${data.poids ? `<span><i class="fas fa-weight-scale"></i> ${data.poids} kg</span>` : ''}
+            ${data.piedFort ? `<span><i class="fas fa-shoe-prints"></i> ${data.piedFort}</span>` : ''}
+            ${data.club ? `<span><i class="fas fa-futbol"></i> ${data.club}</span>` : ''}
+        </div>
+        <div class="cv-sport-info">
+            ${data.matchs ? `<span><i class="fas fa-chart-line"></i> Matchs: ${data.matchs}</span>` : ''}
+            ${data.buts ? `<span><i class="fas fa-futbol"></i> Buts: ${data.buts}</span>` : ''}
+            ${data.passes ? `<span><i class="fas fa-person-running"></i> Passes: ${data.passes}</span>` : ''}
+            ${data.valeur ? `<span><i class="fas fa-coins"></i> ${data.valeur} FCFA</span>` : ''}
+        </div>
+    `;
+
+    // Assemblage final
     const html = `
-        <div class="cv-preview-layout">
-            <!-- En-tête avec photo -->
-            <div class="cv-header">
-                <div class="cv-avatar">
-                    <img src="${avatarUrl}" alt="Avatar">
+        <div class="cv-two-columns">
+            <!-- Colonne gauche (violet) -->
+            <div class="cv-left">
+                <div class="cv-photo">
+                    <img src="${avatarUrl}" alt="Photo">
                 </div>
-                <div class="cv-header-info">
-                    <h1>${fullName}</h1>
-                    <div class="cv-subtitle">${data.profil || 'CV'}</div>
-                    <div class="cv-contact">
-                        ${data.telephone ? `<span><i class="fas fa-phone"></i> ${data.telephone}</span>` : ''}
-                        ${data.email ? `<span><i class="fas fa-envelope"></i> ${data.email}</span>` : ''}
-                        ${data.ville ? `<span><i class="fas fa-map-marker-alt"></i> ${data.ville}</span>` : ''}
-                    </div>
+                <div class="cv-section">
+                    <div class="cv-section-title"><i class="fas fa-graduation-cap"></i> Formation</div>
+                    ${formationsHtml || '<p>Aucune formation renseignée.</p>'}
+                </div>
+                <div class="cv-section">
+                    <div class="cv-section-title"><i class="fas fa-cogs"></i> Compétences</div>
+                    <ul class="cv-skills-list">
+                        ${skillsListHtml || '<li>Aucune compétence renseignée.</li>'}
+                    </ul>
+                </div>
+                ${languesHtml ? `
+                <div class="cv-section">
+                    <div class="cv-section-title"><i class="fas fa-language"></i> Langues</div>
+                    ${languesHtml}
+                </div>
+                ` : ''}
+                ${data.interets ? `
+                <div class="cv-section">
+                    <div class="cv-section-title"><i class="fas fa-heart"></i> Centres d'intérêt</div>
+                    <p class="cv-interets">${data.interets}</p>
+                </div>
+                ` : ''}
+            </div>
+
+            <!-- Colonne droite (blanche) -->
+            <div class="cv-right">
+                <div class="cv-section">
+                    <div class="cv-section-title"><i class="fas fa-address-card"></i> Coordonnées</div>
+                    ${contactHtml || '<p>Non renseigné</p>'}
+                </div>
+                <div class="cv-section">
+                    <div class="cv-section-title"><i class="fas fa-futbol"></i> Informations sportives</div>
+                    ${sportInfoHtml || '<p>Non renseigné</p>'}
+                </div>
+                <div class="cv-section">
+                    <div class="cv-section-title"><i class="fas fa-user-tag"></i> Profil professionnel</div>
+                    <p>${data.profil || 'Non renseigné'}</p>
+                </div>
+                <div class="cv-section">
+                    <div class="cv-section-title"><i class="fas fa-pencil-alt"></i> Biographie</div>
+                    <p class="cv-bio">${data.bio || 'Non renseigné'}</p>
+                </div>
+                <div class="cv-section">
+                    <div class="cv-section-title"><i class="fas fa-briefcase"></i> Expériences professionnelles</div>
+                    ${experiencesHtml || '<p>Aucune expérience renseignée.</p>'}
                 </div>
             </div>
-
-            <!-- Informations sportives -->
-            <div class="cv-section">
-                <div class="cv-section-title">Informations sportives</div>
-                <div class="cv-sport-info">
-                    ${data.taille ? `<span>Taille: ${data.taille} cm</span>` : ''}
-                    ${data.poids ? `<span>Poids: ${data.poids} kg</span>` : ''}
-                    ${data.piedFort ? `<span>Pied: ${data.piedFort}</span>` : ''}
-                    ${data.club ? `<span>Club: ${data.club}</span>` : ''}
-                </div>
-                <div class="cv-sport-info">
-                    ${data.matchs ? `<span>Matchs: ${data.matchs}</span>` : ''}
-                    ${data.buts ? `<span>Buts: ${data.buts}</span>` : ''}
-                    ${data.passes ? `<span>Passes: ${data.passes}</span>` : ''}
-                    ${data.valeur ? `<span>Valeur: ${data.valeur} FCFA</span>` : ''}
-                </div>
+        </div>
+        <!-- Pied de page (signature) -->
+        <div class="cv-footer">
+            <div class="signature-info">
+                Fait le ${data.dateSignature || '...'} à ${data.lieuSignature || '...'}
             </div>
-
-            <!-- Formation -->
-            <div class="cv-section">
-                <div class="cv-section-title">Formation</div>
-                ${formationsHtml || '<p>Aucune formation renseignée.</p>'}
-            </div>
-
-            <!-- À propos (profil) -->
-            <div class="cv-section">
-                <div class="cv-section-title">À propos</div>
-                <p>${data.profil || 'Non renseigné'}</p>
-            </div>
-
-            <!-- Compétences -->
-            <div class="cv-section">
-                <div class="cv-section-title">Compétences</div>
-                <ul class="cv-skills-list">
-                    ${skillsListHtml || '<li>Aucune compétence renseignée.</li>'}
-                </ul>
-            </div>
-
-            <!-- Expériences professionnelles -->
-            <div class="cv-section">
-                <div class="cv-section-title">Expérience professionnelle</div>
-                ${experiencesHtml || '<p>Aucune expérience renseignée.</p>'}
-            </div>
-
-            <!-- Langues -->
-            ${languesHtml ? `
-            <div class="cv-section">
-                <div class="cv-section-title">Langues</div>
-                ${languesHtml}
-            </div>
-            ` : ''}
-
-            <!-- Centres d'intérêt -->
-            ${data.interets ? `
-            <div class="cv-section">
-                <div class="cv-section-title">Centres d'intérêt</div>
-                <p class="cv-interets">${data.interets}</p>
-            </div>
-            ` : ''}
-
-            <!-- Biographie -->
-            ${data.bio ? `
-            <div class="cv-section">
-                <div class="cv-section-title">Biographie</div>
-                <p class="cv-bio">${data.bio}</p>
-            </div>
-            ` : ''}
-
-            <!-- Signature -->
-            <div class="cv-signature">
-                <div>Fait le ${data.dateSignature || '...'} à ${data.lieuSignature || '...'}</div>
-                ${signatureDataURL ? `<img src="${signatureDataURL}" alt="Signature">` : ''}
-            </div>
+            ${signatureDataURL ? `<img src="${signatureDataURL}" alt="Signature">` : ''}
         </div>
     `;
 
