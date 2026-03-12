@@ -1,7 +1,8 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+// Renommer pour éviter le conflit
+const supabaseRevenue = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -12,7 +13,7 @@ let followersCount = 0;
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const { data: { session }, error } = await supabaseRevenue.auth.getSession();
     if (error || !session) {
         window.location.href = '../public/auth/login.html';
         return null;
@@ -23,7 +24,7 @@ async function checkSession() {
 
 // ===== CHARGEMENT DU PROFIL =====
 async function loadProfile() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRevenue
         .from('player_profiles')
         .select('*')
         .eq('user_id', currentUser.id)
@@ -40,7 +41,7 @@ async function loadProfile() {
 
 // ===== CHARGEMENT / CRÉATION DU PORTEFEUILLE AVEC BONUS =====
 async function loadOrCreateWallet() {
-    const { data: existing, error: selectError } = await supabase
+    const { data: existing, error: selectError } = await supabaseRevenue
         .from('player_wallets')
         .select('*')
         .eq('player_id', currentProfile.id)
@@ -54,8 +55,7 @@ async function loadOrCreateWallet() {
     if (existing) {
         wallet = existing;
     } else {
-        // Nouveau portefeuille : créditer le bonus d'inscription
-        const { data: newWallet, error: insertError } = await supabase
+        const { data: newWallet, error: insertError } = await supabaseRevenue
             .from('player_wallets')
             .insert([{
                 player_id: currentProfile.id,
@@ -71,8 +71,7 @@ async function loadOrCreateWallet() {
         }
         wallet = newWallet;
 
-        // Ajouter une transaction de bonus
-        await supabase
+        await supabaseRevenue
             .from('player_transactions')
             .insert([{
                 player_id: currentProfile.id,
@@ -87,7 +86,7 @@ async function loadOrCreateWallet() {
 
 // ===== CHARGEMENT DES TRANSACTIONS =====
 async function loadTransactions() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRevenue
         .from('player_transactions')
         .select('*')
         .eq('player_id', currentProfile.id)
@@ -101,9 +100,9 @@ async function loadTransactions() {
     renderTransactions();
 }
 
-// ===== COMPTER LES ABONNÉS (followers) =====
+// ===== COMPTER LES ABONNÉS =====
 async function loadFollowersCount() {
-    const { count, error } = await supabase
+    const { count, error } = await supabaseRevenue
         .from('feed_follows')
         .select('*', { count: 'exact', head: true })
         .eq('followed_id', currentProfile.id);
@@ -124,13 +123,10 @@ function updateBonusStatus() {
         bonusElement.textContent = `${wallet.bonus_inscription} FCFA (${followersCount}/10 abonnés)`;
     }
     if (withdrawBtn) {
-        if (followersCount >= 10 && wallet.bonus_inscription > 0) {
-            withdrawBtn.disabled = false;
-            withdrawBtn.title = 'Retirer le bonus';
-        } else {
-            withdrawBtn.disabled = true;
-            withdrawBtn.title = `Vous avez besoin de ${10 - followersCount} abonné(s) supplémentaire(s) pour retirer.`;
-        }
+        withdrawBtn.disabled = followersCount < 10 || wallet.bonus_inscription <= 0;
+        withdrawBtn.title = withdrawBtn.disabled 
+            ? `Vous avez besoin de ${10 - followersCount} abonné(s) supplémentaire(s) pour retirer.` 
+            : 'Retirer le bonus';
     }
 }
 
@@ -145,7 +141,6 @@ function renderUI() {
     });
     document.getElementById('totalSpent').textContent = `${totalSpent} FCFA`;
 
-    // Compteurs de bonus (simples, à zéro par défaut)
     document.getElementById('bonusButs').textContent = '0';
     document.getElementById('bonusPasses').textContent = '0';
     document.getElementById('bonusHomme').textContent = '0';
@@ -158,7 +153,7 @@ function renderTransactions() {
     let html = '';
     transactions.forEach(t => {
         const date = new Date(t.created_at).toLocaleDateString('fr-FR');
-        const sign = t.type === 'deposit' ? '+' : (t.type === 'withdraw' ? '-' : (t.type === 'bonus' ? '+' : ''));
+        const sign = t.type === 'deposit' || t.type === 'bonus' ? '+' : '-';
         const amountClass = (t.type === 'deposit' || t.type === 'bonus') ? 'positive' : 'negative';
         const icon = t.type === 'deposit' ? 'fa-arrow-down' : (t.type === 'withdraw' ? 'fa-arrow-up' : 'fa-gift');
         html += `
@@ -187,7 +182,7 @@ async function withdrawBonus() {
         return;
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseRevenue
         .from('player_transactions')
         .insert([{
             player_id: currentProfile.id,
@@ -202,8 +197,7 @@ async function withdrawBonus() {
         return;
     }
 
-    // Mettre à jour le portefeuille : le bonus passe à 0
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseRevenue
         .from('player_wallets')
         .update({ bonus_inscription: 0 })
         .eq('id', wallet.id);
@@ -220,7 +214,7 @@ async function withdrawBonus() {
     renderUI();
 }
 
-// ===== MODALES DE DÉPÔT/RETRAIT =====
+// ===== MODALES =====
 function openDepositModal() { document.getElementById('depositModal').style.display = 'block'; }
 function closeDepositModal() { document.getElementById('depositModal').style.display = 'none'; }
 function openWithdrawModal() { document.getElementById('withdrawModal').style.display = 'block'; }
@@ -236,7 +230,7 @@ document.getElementById('depositForm')?.addEventListener('submit', async (e) => 
         return;
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseRevenue
         .from('player_transactions')
         .insert([{
             player_id: currentProfile.id,
@@ -270,7 +264,7 @@ document.getElementById('withdrawForm')?.addEventListener('submit', async (e) =>
         return;
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseRevenue
         .from('player_transactions')
         .insert([{
             player_id: currentProfile.id,
@@ -318,7 +312,7 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
-// ===== MENU UTILISATEUR =====
+// ===== FONCTIONS DE MENU (SIDEBAR) =====
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
@@ -331,18 +325,52 @@ function initUserMenu() {
     }
 }
 
-// ===== SIDEBAR =====
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
 
-    function openSidebar() { sidebar?.classList.add('active'); overlay?.classList.add('active'); }
-    function closeSidebarFunc() { sidebar?.classList.remove('active'); overlay?.classList.remove('active'); }
+    function openSidebar() {
+        sidebar?.classList.add('active');
+        overlay?.classList.add('active');
+    }
+    function closeSidebarFunc() {
+        sidebar?.classList.remove('active');
+        overlay?.classList.remove('active');
+    }
+
     menuBtn?.addEventListener('click', openSidebar);
     closeBtn?.addEventListener('click', closeSidebarFunc);
     overlay?.addEventListener('click', closeSidebarFunc);
+}
+
+// ===== GESTION DES SWIPES (pour ouvrir le menu) =====
+let touchStartX = 0;
+let touchEndX = 0;
+const swipeThreshold = 50;
+
+document.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+}, false);
+
+document.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+}, false);
+
+function handleSwipe() {
+    const leftSidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const diff = touchEndX - touchStartX;
+
+    if (diff > swipeThreshold && touchStartX < 50) {
+        leftSidebar?.classList.add('active');
+        overlay?.classList.add('active');
+    } else if (diff < -swipeThreshold && leftSidebar?.classList.contains('active')) {
+        leftSidebar?.classList.remove('active');
+        overlay?.classList.remove('active');
+    }
 }
 
 // ===== DÉCONNEXION =====
@@ -350,7 +378,7 @@ function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabase.auth.signOut().then(() => window.location.href = '../index.html');
+            supabaseRevenue.auth.signOut().then(() => window.location.href = '../index.html');
         });
     });
 }
@@ -388,7 +416,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('✅ Initialisation terminée');
 });
 
-// Fonctions globales
+// ===== FONCTIONS GLOBALES =====
 window.openDepositModal = openDepositModal;
 window.openWithdrawModal = openWithdrawModal;
 window.closeDepositModal = closeDepositModal;
