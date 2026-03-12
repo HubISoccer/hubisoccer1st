@@ -85,12 +85,7 @@
                     <p>+229 01 97 20 81 88</p>
                     <a href="tel:+2290197208188">Appeler maintenant</a>
                 </div>
-                <div class="contact-card">
-                    <i class="fas fa-comment-dots"></i>
-                    <h3>Chat en direct</h3>
-                    <p>Lun-Ven, 9h-18h</p>
-                    <button class="chat-btn" id="openChatModal">Démarrer un chat</button>
-                </div>
+                <!-- Chat retiré car non fonctionnel -->
             </div>
 
             <!-- FAQ -->
@@ -134,22 +129,8 @@
         </div>
     </main>
 
-    <!-- MODALE DE CHAT -->
-    <div id="chatModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Chat en direct</h2>
-                <span class="close-modal" onclick="closeChatModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="chat-messages" id="chatMessages"></div>
-                <div class="chat-input">
-                    <input type="text" id="chatInput" placeholder="Tapez votre message...">
-                    <button onclick="sendChatMessage()"><i class="fas fa-paper-plane"></i></button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Toast container -->
+    <div id="toastContainer" class="toast-container"></div>
 
     <!-- Footer -->
     <footer class="dashboard-footer">
