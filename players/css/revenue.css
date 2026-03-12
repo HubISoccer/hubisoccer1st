@@ -160,6 +160,51 @@
     color: var(--primary);
 }
 
+/* ===== BONUS D'INSCRIPTION ===== */
+.bonus-withdraw {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--light-gray);
+    text-align: center;
+}
+.bonus-inscription-label {
+    font-size: 1rem;
+    color: var(--dark);
+    margin-bottom: 15px;
+}
+.bonus-inscription-label i {
+    color: var(--gold);
+    margin-right: 5px;
+}
+.btn-withdraw-bonus {
+    background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 30px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition);
+}
+.btn-withdraw-bonus:disabled {
+    background: var(--gray);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+.btn-withdraw-bonus:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(85,27,140,0.3);
+}
+.bonus-info {
+    font-size: 0.8rem;
+    color: var(--gray);
+    margin-top: 10px;
+}
+
 /* ===== TRANSACTIONS ===== */
 .transactions {
     background: white;
@@ -307,7 +352,83 @@
     opacity: 0.9;
 }
 
-/* Responsive */
+/* ===== TOASTS (ajouté) ===== */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    min-width: 250px;
+    background: white;
+    border-radius: 8px;
+    padding: 12px 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transform: translateX(400px);
+    animation: slideIn 0.3s forwards;
+    pointer-events: auto;
+    border-left: 4px solid transparent;
+}
+.toast.success {
+    border-left-color: var(--success);
+}
+.toast.error {
+    border-left-color: var(--danger);
+}
+.toast.info {
+    border-left-color: var(--primary);
+}
+.toast.warning {
+    border-left-color: var(--warning);
+}
+
+.toast-icon {
+    font-size: 1.2rem;
+}
+.toast.success .toast-icon {
+    color: var(--success);
+}
+.toast.error .toast-icon {
+    color: var(--danger);
+}
+.toast.info .toast-icon {
+    color: var(--primary);
+}
+.toast.warning .toast-icon {
+    color: var(--warning);
+}
+
+.toast-content {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--dark);
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: var(--gray);
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+@keyframes slideIn {
+    to { transform: translateX(0); }
+}
+@keyframes fadeOut {
+    to { opacity: 0; transform: translateX(400px); }
+}
+
+/* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
     .wallet-overview {
         grid-template-columns: 1fr;
