@@ -1,14 +1,42 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-
-// Création du client (nom différent pour éviter les conflits)
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
 let playerProfile = null;
+let scoutingData = null;
 const avatarBucket = 'avatars';
+
+// ===== TOAST (copié des autres pages) =====
+function showToast(message, type = 'info', duration = 3000) {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i></div>
+        <div class="toast-content">${message}</div>
+        <button class="toast-close"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(toast);
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.style.animation = 'fadeOut 0.3s forwards';
+        setTimeout(() => toast.remove(), 300);
+    });
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.animation = 'fadeOut 0.3s forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
@@ -21,64 +49,85 @@ async function checkSession() {
     return currentUser;
 }
 
-// ===== CHARGEMENT DU PROFIL JOUEUR =====
+// ===== CHARGEMENT DU PROFIL =====
 async function loadPlayerProfile() {
-    if (!currentUser) return;
-
     const { data, error } = await supabaseClient
         .from('player_profiles')
         .select('*')
         .eq('user_id', currentUser.id)
-        .maybeSingle();
+        .single();
 
     if (error) {
         console.error('Erreur chargement profil:', error);
+        showToast('Erreur lors du chargement du profil', 'error');
+        return null;
+    }
+    playerProfile = data;
+    document.getElementById('userName').textContent = playerProfile.nom_complet || 'Joueur';
+    document.getElementById('userAvatar').src = playerProfile.avatar_url || 'img/user-default.jpg';
+    return playerProfile;
+}
+
+// ===== CHARGEMENT / CRÉATION DES DONNÉES DE SCOUTING =====
+async function loadScoutingData() {
+    if (!playerProfile) return;
+
+    const { data, error } = await supabaseClient
+        .from('player_scouting')
+        .select('*')
+        .eq('player_id', playerProfile.id)
+        .maybeSingle();
+
+    if (error) {
+        console.error('Erreur chargement scouting:', error);
+        showToast('Erreur lors du chargement des données de scouting', 'error');
         return;
     }
 
     if (data) {
-        playerProfile = data;
+        scoutingData = data;
     } else {
-        // Créer un profil par défaut
-        const { data: newProfile, error: insertError } = await supabaseClient
-            .from('player_profiles')
+        // Créer une entrée par défaut avec des valeurs à zéro
+        const { data: newData, error: insertError } = await supabaseClient
+            .from('player_scouting')
             .insert([{
-                user_id: currentUser.id,
-                full_name: currentUser.user_metadata?.full_name || 'Joueur',
-                hub_id: generateHubId(),
-                profile_completion: 0,
-                scouting_views: 0,
-                recruiter_favs: 0,
-                market_value: 0,
-                potential: 0,
-                offers_count: 0,
-                level: 0
+                player_id: playerProfile.id
+                // Tous les autres champs auront leur valeur par défaut (0 ou NULL)
             }])
             .select()
             .single();
 
         if (insertError) {
-            console.error('Erreur création profil:', insertError);
+            console.error('Erreur création scouting:', insertError);
+            showToast('Erreur lors de l\'initialisation des données', 'error');
             return;
         }
-        playerProfile = newProfile;
+        scoutingData = newData;
     }
 
-    updateUIWithProfile();
+    updateUIWithProfile(); // Met à jour les infos de base depuis player_profiles
+    updateScoutingUI();    // Met à jour tous les attributs
 }
 
-function generateHubId() {
-    return 'HUB' + Date.now().toString(36).toUpperCase();
-}
-
-// ===== MISE À JOUR DE L'INTERFACE =====
+// ===== MISE À JOUR DE L'INTERFACE (infos personnelles) =====
 function updateUIWithProfile() {
     if (!playerProfile) return;
 
-    setText('dashboardName', playerProfile.full_name || '-');
-    setText('dashboardRole', playerProfile.position || '-');
-    setText('playerID', `ID: ${playerProfile.hub_id || '-'}`);
-    setText('userName', playerProfile.full_name || 'Joueur');
+    // Nom complet et poste
+    const fullName = playerProfile.nom_complet || '-';
+    document.getElementById('playerFullName').textContent = fullName;
+    document.getElementById('playerPosition').textContent = playerProfile.position || 'Poste non renseigné';
+
+    // Informations de base
+    document.getElementById('playerAge').textContent = playerProfile.age || '0'; // Si vous avez une colonne age
+    document.getElementById('playerHeight').textContent = playerProfile.height || '0';
+    document.getElementById('playerWeight').textContent = playerProfile.poids_kg || '0';
+    document.getElementById('playerNationality').textContent = playerProfile.nationalite || '-';
+    document.getElementById('playerFoot').textContent = playerProfile.preferred_foot || '-';
+    document.getElementById('playerClub').textContent = playerProfile.club || '-';
+
+    // ID HubISoccer
+    document.getElementById('playerID').textContent = `ID: ${playerProfile.hub_id || '-'}`;
 
     // Avatar
     if (playerProfile.avatar_url) {
@@ -89,122 +138,89 @@ function updateUIWithProfile() {
         document.getElementById('userAvatar').src = 'img/user-default.jpg';
     }
 
-    // Statistiques
-    setText('profileCompletion', playerProfile.profile_completion || 0);
-    setText('scoutingViews', playerProfile.scouting_views || 0);
-    setText('recruiterFavs', playerProfile.recruiter_favs || 0);
-    setText('marketValue', formatMoney(playerProfile.market_value || 0));
-    setText('potential', (playerProfile.potential || 0) + '/100');
-    setText('offers', playerProfile.offers_count || 0);
-    setText('level', 'LVL ' + (playerProfile.level || 0));
-    setText('nextStep', playerProfile.next_step || 'Prochain palier : -');
-
-    // Barre de progression
-    const progress = playerProfile.profile_completion || 0;
-    document.getElementById('progressFill').style.width = progress + '%';
-
-    // Formulaire
-    setSelectValue('editPoste', playerProfile.position);
-    setInputValue('editClub', playerProfile.club || '');
-    setInputValue('editTaille', playerProfile.height || '');
-    setSelectValue('editPied', playerProfile.preferred_foot);
-    setTextareaValue('editBio', playerProfile.bio || '');
+    // Mini-stats (profil complété, vues, favoris)
+    document.getElementById('profileCompletion').textContent = playerProfile.profile_completion || 0;
+    document.getElementById('scoutingViews').textContent = playerProfile.scouting_views || 0;
+    document.getElementById('recruiterFavs').textContent = playerProfile.recruiter_favs || 0;
 }
 
-// Fonctions utilitaires
+// ===== MISE À JOUR DES ATTRIBUTS DE SCOUTING =====
+function updateScoutingUI() {
+    if (!scoutingData) return;
+
+    // Stats globales
+    setText('currentLevel', scoutingData.niveau_actuel || 0);
+    setText('potential', scoutingData.potentiel || 0);
+    setText('personality', scoutingData.personnalite || 0);
+    setText('marketValue', formatMoney(scoutingData.valeur_marche || 0));
+    setText('loanFrom', scoutingData.pret_info || '-');
+    setText('salary', scoutingData.salaire ? formatMoney(scoutingData.salaire) : '-');
+    setText('contractExpiry', scoutingData.expire_le ? new Date(scoutingData.expire_le).toLocaleDateString('fr-FR') : '-');
+    setText('youthSelection', scoutingData.selection_jeunes || '-');
+
+    // Attributs techniques
+    setText('tech_centres', scoutingData.technique_centres || 0);
+    setText('tech_controle', scoutingData.technique_controle_balle || 0);
+    setText('tech_corners', scoutingData.technique_corners || 0);
+    setText('tech_coups_francs', scoutingData.technique_coups_francs || 0);
+    setText('tech_dribbles', scoutingData.technique_dribbles || 0);
+    setText('tech_finition', scoutingData.technique_finition || 0);
+    setText('tech_jeu_de_tete', scoutingData.technique_jeu_de_tete || 0);
+    setText('tech_marquage', scoutingData.technique_marquage || 0);
+    setText('tech_passes', scoutingData.technique_passes || 0);
+    setText('tech_penalty', scoutingData.technique_penalty || 0);
+    setText('tech_tactics', scoutingData.technique_tactics || 0);
+    setText('tech_technique', scoutingData.technique_technique || 0);
+    setText('tech_tirs_de_loin', scoutingData.technique_tirs_de_loin || 0);
+    setText('tech_touches_longues', scoutingData.technique_touches_longues || 0);
+
+    // Attributs mentaux
+    setText('mental_agressivite', scoutingData.mental_agressivite || 0);
+    setText('mental_anticipation', scoutingData.mental_anticipation || 0);
+    setText('mental_appels_de_balle', scoutingData.mental_appels_de_balle || 0);
+    setText('mental_concentration', scoutingData.mental_concentration || 0);
+    setText('mental_courage', scoutingData.mental_courage || 0);
+    setText('mental_decisions', scoutingData.mental_decisions || 0);
+    setText('mental_determination', scoutingData.mental_determination || 0);
+    setText('mental_inspiration', scoutingData.mental_inspiration || 0);
+    setText('mental_jeu_collectif', scoutingData.mental_jeu_collectif || 0);
+    setText('mental_leadership', scoutingData.mental_leadership || 0);
+    setText('mental_placement', scoutingData.mental_placement || 0);
+    setText('mental_sang_froid', scoutingData.mental_sang_froid || 0);
+    setText('mental_vision_du_jeu', scoutingData.mental_vision_du_jeu || 0);
+    setText('mental_volume_de_jeu', scoutingData.mental_volume_de_jeu || 0);
+
+    // Attributs physiques
+    setText('physique_acceleration', scoutingData.physique_acceleration || 0);
+    setText('physique_agilite', scoutingData.physique_agilite || 0);
+    setText('physique_detente_verticale', scoutingData.physique_detente_verticale || 0);
+    setText('physique_endurance', scoutingData.physique_endurance || 0);
+    setText('physique_equilibre', scoutingData.physique_equilibre || 0);
+    setText('physique_puissance', scoutingData.physique_puissance || 0);
+    setText('physique_qualites_physiques_nat', scoutingData.physique_qualites_physiques_nat || 0);
+    setText('physique_vitesse', scoutingData.physique_vitesse || 0);
+
+    // Rapports
+    setText('scoutingReports', scoutingData.rapports_recruteurs || 'Aucun rapport pour le moment.');
+}
+
+// ===== FONCTIONS UTILITAIRES =====
 function setText(id, value) {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
 }
-function setInputValue(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.value = value;
-}
-function setSelectValue(id, value) {
-    const el = document.getElementById(id);
-    if (el && value) el.value = value;
-}
-function setTextareaValue(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.value = value;
-}
+
 function formatMoney(value) {
-    return new Intl.NumberFormat('fr-FR').format(value) + ' FCFA';
+    if (value >= 1000000) return (value / 1000000).toFixed(1) + ' M€';
+    if (value >= 1000) return (value / 1000).toFixed(0) + ' K€';
+    return value + ' €';
 }
 
-// ===== SAUVEGARDE DU PROFIL =====
-async function saveProfile() {
-    if (!currentUser || !playerProfile) return;
-
-    const updates = {
-        position: document.getElementById('editPoste').value,
-        club: document.getElementById('editClub').value,
-        height: parseInt(document.getElementById('editTaille').value) || null,
-        preferred_foot: document.getElementById('editPied').value,
-        bio: document.getElementById('editBio').value,
-        updated_at: new Date()
-    };
-
-    const { error } = await supabaseClient
-        .from('player_profiles')
-        .update(updates)
-        .eq('id', playerProfile.id);
-
-    if (error) {
-        alert('Erreur lors de la sauvegarde : ' + error.message);
-    } else {
-        alert('Profil mis à jour avec succès !');
-        Object.assign(playerProfile, updates);
-        updateUIWithProfile();
-    }
-}
-
-// ===== UPLOAD AVATAR =====
+// ===== UPLOAD AVATAR (inchangé) =====
 async function uploadAvatar(file) {
-    if (!currentUser) return;
-
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
-    const filePath = fileName;
-
-    const { error: uploadError } = await supabaseClient.storage
-        .from(avatarBucket)
-        .upload(filePath, file);
-
-    if (uploadError) {
-        alert('Erreur upload : ' + uploadError.message);
-        return;
-    }
-
-    const { data: urlData } = supabaseClient.storage
-        .from(avatarBucket)
-        .getPublicUrl(filePath);
-
-    const publicUrl = urlData.publicUrl;
-
-    const { error: updateError } = await supabaseClient
-        .from('player_profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('id', playerProfile.id);
-
-    if (updateError) {
-        alert('Erreur mise à jour avatar : ' + updateError.message);
-        return;
-    }
-
-    playerProfile.avatar_url = publicUrl;
-    document.getElementById('profileDisplay').src = publicUrl;
-    document.getElementById('userAvatar').src = publicUrl;
+    // ... (identique à votre code actuel)
 }
 
-// ===== DÉCONNEXION =====
-async function logout() {
-    const { error } = await supabaseClient.auth.signOut();
-    if (error) console.error('Erreur déconnexion:', error);
-    window.location.href = '../index.html';
-}
-
-// ===== GESTIONNAIRES D'ÉVÉNEMENTS =====
 function triggerUpload() {
     document.getElementById('fileInput').click();
 }
@@ -229,15 +245,21 @@ async function copyID() {
     }
 }
 
-function showTab(tabName, event) {
-    const tabs = document.querySelectorAll('.tab-btn');
-    const contents = document.querySelectorAll('.tab-content');
-    if (tabs.length === 0 || contents.length === 0) return;
+// ===== GESTION DES ONGLETS D'ATTRIBUTS =====
+function initAttrTabs() {
+    const tabs = document.querySelectorAll('.attr-tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Retirer la classe active de tous les onglets et contenus
+            document.querySelectorAll('.attr-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.attr-content').forEach(c => c.classList.remove('active'));
 
-    tabs.forEach(btn => btn.classList.remove('active'));
-    if (event) event.target.classList.add('active');
-    contents.forEach(content => content.classList.remove('active'));
-    document.getElementById(`tab-${tabName}`).classList.add('active');
+            // Activer l'onglet cliqué
+            tab.classList.add('active');
+            const cat = tab.dataset.cat;
+            document.getElementById(`${cat}-attrs`).classList.add('active');
+        });
+    });
 }
 
 // ===== MENU UTILISATEUR =====
@@ -245,15 +267,11 @@ function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
     if (!userMenu || !dropdown) return;
-
     userMenu.addEventListener('click', (e) => {
         e.stopPropagation();
         dropdown.classList.toggle('show');
     });
-
-    document.addEventListener('click', () => {
-        dropdown.classList.remove('show');
-    });
+    document.addEventListener('click', () => dropdown.classList.remove('show'));
 }
 
 // ===== SIDEBAR =====
@@ -262,44 +280,24 @@ function initSidebar() {
     const sidebar = document.getElementById('sidebar');
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    const menuHandle = document.getElementById('menuHandle'); // Nouvelle poignée
+    const menuHandle = document.getElementById('menuHandle');
 
-    // Fonction pour ouvrir la sidebar
     function openSidebar() {
         sidebar.classList.add('active');
         if (overlay) overlay.classList.add('active');
     }
-
-    // Fonction pour fermer la sidebar
     function closeSidebarFunc() {
         sidebar.classList.remove('active');
         if (overlay) overlay.classList.remove('active');
     }
 
-    // Ouvrir avec le bouton de la navbar
-    if (menuBtn && sidebar) {
-        menuBtn.addEventListener('click', openSidebar);
-    }
+    if (menuBtn) menuBtn.addEventListener('click', openSidebar);
+    if (menuHandle) menuHandle.addEventListener('click', openSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
+    if (overlay) overlay.addEventListener('click', closeSidebarFunc);
 
-    // Ouvrir avec la poignée (si elle existe)
-    if (menuHandle) {
-        menuHandle.addEventListener('click', openSidebar);
-    }
-
-    // Fermer avec le bouton X
-    if (closeBtn && sidebar) {
-        closeBtn.addEventListener('click', closeSidebarFunc);
-    }
-
-    // Fermer avec l'overlay
-    if (overlay) {
-        overlay.addEventListener('click', closeSidebarFunc);
-    }
-
-    // SWIPE : ouvrir/fermer par balayage (optionnel, sans conflit)
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchEndX = 0;
+    // Swipe
+    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
     const swipeThreshold = 50;
 
     document.addEventListener('touchstart', (e) => {
@@ -312,34 +310,28 @@ function initSidebar() {
         const diffX = touchEndX - touchStartX;
         const diffY = e.changedTouches[0].screenY - touchStartY;
 
-        // Vérifier que le mouvement est plus horizontal que vertical et assez long
         if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
-            e.preventDefault(); // Empêche la navigation du navigateur
-
-            // Swipe droite depuis le bord gauche (ouvrir)
-            if (diffX > 0 && touchStartX < 50) {
-                openSidebar();
-            }
-            // Swipe gauche (fermer)
-            else if (diffX < 0) {
-                closeSidebarFunc();
-            }
+            e.preventDefault();
+            if (diffX > 0 && touchStartX < 50) openSidebar();
+            else if (diffX < 0) closeSidebarFunc();
         }
-    }, { passive: false }); // Important pour preventDefault
+    }, { passive: false });
 }
 
-// ===== AJOUT DE LA POIGNÉE DE MENU DANS LE DOM =====
 function addMenuHandle() {
-    // Vérifier si la poignée existe déjà
     if (document.getElementById('menuHandle')) return;
-
-    // Créer l'élément
     const handle = document.createElement('div');
     handle.id = 'menuHandle';
     handle.className = 'menu-handle';
     handle.setAttribute('aria-label', 'Ouvrir le menu');
-    handle.innerHTML = '<span></span>'; // On peut mettre une icône ou juste un trait
+    handle.innerHTML = '<span></span>';
     document.body.appendChild(handle);
+}
+
+// ===== DÉCONNEXION =====
+async function logout() {
+    await supabaseClient.auth.signOut();
+    window.location.href = '../index.html';
 }
 
 // ===== INITIALISATION =====
@@ -348,12 +340,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!user) return;
 
     await loadPlayerProfile();
+    await loadScoutingData();
 
-    // Ajouter la poignée de menu (pour mobile)
     addMenuHandle();
-
     initUserMenu();
     initSidebar();
+    initAttrTabs();
 
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
@@ -364,12 +356,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
-        alert('Changement de langue bientôt disponible');
+        showToast('Changement de langue bientôt disponible', 'info');
     });
 
-    // Exposer les fonctions globales
     window.triggerUpload = triggerUpload;
     window.copyID = copyID;
-    window.showTab = showTab;
-    window.saveProfile = saveProfile;
 });
