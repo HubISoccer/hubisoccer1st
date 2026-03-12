@@ -292,7 +292,7 @@
     box-shadow: none;
 }
 
-/* ===== APERÇU ===== */
+/* ===== APERÇU DU CV (STYLE PHOTO) ===== */
 .cv-preview {
     background: white;
     border-radius: 20px;
@@ -312,52 +312,65 @@
     box-shadow: 0 0 10px rgba(0,0,0,0.05);
     font-family: 'Poppins', sans-serif;
     line-height: 1.6;
-    max-width: 900px;
+    max-width: 800px;
     margin: 0 auto;
 }
 
-/* Nouvelle mise en page à deux colonnes */
-.cv-preview-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-}
-.cv-left, .cv-right {
-    overflow: hidden;
-}
+/* En-tête avec photo */
 .cv-header {
-    grid-column: 1 / -1;
-    margin-bottom: 20px;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 30px;
+    border-bottom: 2px solid var(--gold);
+    padding-bottom: 20px;
 }
-.cv-header h1 {
+.cv-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--gold);
+    flex-shrink: 0;
+}
+.cv-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.cv-header-info {
+    flex: 1;
+}
+.cv-header-info h1 {
     font-size: 2rem;
     color: var(--primary);
     margin-bottom: 5px;
 }
-.cv-header .cv-subtitle {
+.cv-header-info .cv-subtitle {
     font-size: 1.2rem;
     color: var(--gray);
     font-weight: 500;
     margin-bottom: 10px;
 }
-.cv-header .cv-contact {
+.cv-header-info .cv-contact {
     display: flex;
-    justify-content: center;
-    gap: 20px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 5px;
     color: var(--dark);
     font-size: 0.9rem;
 }
-.cv-header .cv-contact i {
+.cv-header-info .cv-contact i {
     color: var(--gold);
+    width: 20px;
     margin-right: 5px;
 }
+
+/* Sections */
 .cv-section {
     margin-bottom: 25px;
 }
 .cv-section-title {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     font-weight: 700;
     color: var(--primary);
     border-bottom: 2px solid var(--gold);
@@ -365,8 +378,26 @@
     margin-bottom: 15px;
     text-transform: uppercase;
 }
-.cv-item {
+
+/* Informations sportives (une ligne) */
+.cv-sport-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
     margin-bottom: 15px;
+}
+.cv-sport-info span {
+    background: var(--bg-light);
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+
+/* Éléments de formation/expérience */
+.cv-item {
+    margin-bottom: 20px;
+    padding-left: 15px;
+    border-left: 3px solid var(--gold);
 }
 .cv-item-date {
     font-weight: 600;
@@ -376,6 +407,7 @@
 .cv-item-title {
     font-weight: 600;
     color: var(--dark);
+    font-size: 1.1rem;
 }
 .cv-item-subtitle {
     color: var(--gray);
@@ -383,27 +415,37 @@
     margin-bottom: 5px;
 }
 .cv-item-description {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     color: var(--dark);
+    white-space: pre-line;
 }
-.cv-skills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+
+/* Compétences (liste simple) */
+.cv-skills-list {
+    list-style: none;
+    padding-left: 0;
 }
-.cv-skill-badge {
-    background: var(--bg-light);
-    color: var(--primary);
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    border: 1px solid var(--primary);
+.cv-skills-list li {
+    position: relative;
+    padding-left: 20px;
+    margin-bottom: 5px;
 }
+.cv-skills-list li::before {
+    content: "•";
+    color: var(--gold);
+    font-size: 1.2rem;
+    position: absolute;
+    left: 0;
+    top: -2px;
+}
+
+/* Langues */
 .cv-lang-item {
     display: flex;
     justify-content: space-between;
     margin-bottom: 5px;
+    padding-left: 15px;
+    border-left: 3px solid var(--gold);
 }
 .cv-lang-name {
     font-weight: 600;
@@ -411,8 +453,19 @@
 .cv-lang-level {
     color: var(--gray);
 }
+
+/* Centres d'intérêt */
+.cv-interets {
+    margin-bottom: 15px;
+}
+
+/* Biographie */
+.cv-bio {
+    margin-bottom: 15px;
+}
+
+/* Signature */
 .cv-signature {
-    grid-column: 1 / -1;
     margin-top: 30px;
     display: flex;
     justify-content: space-between;
@@ -443,13 +496,14 @@
         flex-direction: column;
         align-items: stretch;
     }
-    .cv-preview-layout {
-        grid-template-columns: 1fr;
-        gap: 0;
-    }
-    .cv-header .cv-contact {
+    .cv-header {
         flex-direction: column;
+        text-align: center;
+    }
+    .cv-avatar {
+        margin-bottom: 10px;
+    }
+    .cv-header-info .cv-contact {
         align-items: center;
-        gap: 5px;
     }
 }
