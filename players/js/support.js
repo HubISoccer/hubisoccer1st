@@ -1,40 +1,45 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseSupport = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
-let playerProfile = null;
+let currentProfile = null;
 
-// ===== DONNÉES FICTIVES POUR FAQ ET CHAT =====
-const faqItems = [
-    {
-        question: "Comment puis-je modifier mon profil ?",
-        answer: "Rendez-vous dans 'Mon CV Pro' depuis le menu. Vous pourrez y modifier toutes vos informations personnelles et sportives."
-    },
-    {
-        question: "Comment soumettre une vidéo pour validation ?",
-        answer: "Allez dans 'Mes Vidéos', cliquez sur 'Ajouter une vidéo', remplissez le formulaire et soumettez. Notre équipe l'examinera sous 48h."
-    },
-    {
-        question: "Comment retirer de l'argent de mon portefeuille ?",
-        answer: "Dans 'Mes Revenus', cliquez sur 'Retirer', indiquez le montant et la méthode de retrait. Le traitement peut prendre jusqu'à 72h."
-    },
-    {
-        question: "Que faire si je ne reçois pas de code de vérification ?",
-        answer: "Vérifiez vos spams. Si le problème persiste, contactez le support via le formulaire ci-dessous."
+// ===== TOAST =====
+function showToast(message, type = 'info', duration = 3000) {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
     }
-];
-
-let chatMessages = [
-    { author: "Support", text: "Bonjour ! Comment puis-je vous aider ?", time: "10:00", isSupport: true }
-];
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i></div>
+        <div class="toast-content">${message}</div>
+        <button class="toast-close"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(toast);
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.style.animation = 'fadeOut 0.3s forwards';
+        setTimeout(() => toast.remove(), 300);
+    });
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.animation = 'fadeOut 0.3s forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
     try {
-        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        const { data: { session }, error } = await supabaseSupport.auth.getSession();
         if (error || !session) {
             window.location.href = '../public/auth/login.html';
             return null;
@@ -50,39 +55,57 @@ async function checkSession() {
 }
 
 // ===== CHARGEMENT DU PROFIL =====
-async function loadPlayerProfile() {
-    if (!currentUser?.id) {
-        playerProfile = { nom_complet: 'Joueur' };
-        return;
-    }
+async function loadProfile() {
     try {
-        const { data, error } = await supabaseClient
+        const { data, error } = await supabaseSupport
             .from('player_profiles')
             .select('*')
             .eq('user_id', currentUser.id)
-            .maybeSingle();
+            .single();
 
         if (error) {
             console.error('Erreur chargement profil:', error);
-            playerProfile = { nom_complet: 'Joueur' };
-        } else {
-            playerProfile = data || { nom_complet: 'Joueur' };
+            return null;
         }
-        document.getElementById('userName').textContent = playerProfile.nom_complet || 'Joueur';
+        currentProfile = data;
+        document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
+        document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
+        return currentProfile;
     } catch (err) {
-        console.error('❌ Exception loadPlayerProfile :', err);
-        playerProfile = { nom_complet: 'Joueur' };
+        console.error('❌ Exception loadProfile:', err);
+        return null;
     }
 }
 
-// ===== FAQ =====
-function renderFAQ() {
+// ===== CHARGEMENT DE LA FAQ =====
+async function loadFAQ() {
+    try {
+        const { data, error } = await supabaseSupport
+            .from('support_faq')
+            .select('*')
+            .eq('is_active', true)
+            .order('position', { ascending: true });
+
+        if (error) throw error;
+        renderFAQ(data || []);
+    } catch (err) {
+        console.error('Erreur chargement FAQ:', err);
+        showToast('Erreur lors du chargement de la FAQ', 'error');
+    }
+}
+
+// ===== RENDU DE LA FAQ =====
+function renderFAQ(items) {
     const container = document.getElementById('faqList');
-    container.innerHTML = '';
-    faqItems.forEach((item, index) => {
-        const faqDiv = document.createElement('div');
-        faqDiv.className = 'faq-item';
-        faqDiv.innerHTML = `
+    if (!container) return;
+
+    if (items.length === 0) {
+        container.innerHTML = '<p>Aucune question fréquente pour le moment.</p>';
+        return;
+    }
+
+    container.innerHTML = items.map((item, index) => `
+        <div class="faq-item">
             <div class="faq-question" onclick="toggleFAQ(${index})">
                 <span>${item.question}</span>
                 <i class="fas fa-chevron-down"></i>
@@ -90,11 +113,11 @@ function renderFAQ() {
             <div class="faq-answer" id="faq-${index}">
                 ${item.answer}
             </div>
-        `;
-        container.appendChild(faqDiv);
-    });
+        </div>
+    `).join('');
 }
 
+// Fonction globale pour le toggle (doit être accessible)
 window.toggleFAQ = function(index) {
     const answer = document.getElementById(`faq-${index}`);
     const question = answer.previousElementSibling;
@@ -103,74 +126,64 @@ window.toggleFAQ = function(index) {
 };
 
 // ===== FORMULAIRE DE TICKET =====
-document.getElementById('ticketForm').addEventListener('submit', async (e) => {
+async function handleTicketSubmit(e) {
     e.preventDefault();
 
-    const subject = document.getElementById('ticketSubject').value;
+    const subject = document.getElementById('ticketSubject').value.trim();
     const category = document.getElementById('ticketCategory').value;
-    const description = document.getElementById('ticketDescription').value;
+    const description = document.getElementById('ticketDescription').value.trim();
     const file = document.getElementById('ticketAttachment').files[0];
 
-    // Simulation d'envoi (ici on affiche juste une alerte)
-    alert(`Ticket soumis : ${subject}\nCatégorie : ${category}\nDescription : ${description}\nFichier : ${file ? file.name : 'aucun'}`);
+    if (!subject || !description) {
+        showToast('Veuillez remplir tous les champs obligatoires.', 'warning');
+        return;
+    }
 
-    // Réinitialiser
+    let attachmentUrl = null;
+
+    // Upload du fichier si présent
+    if (file) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `ticket_${currentProfile.id}_${Date.now()}.${fileExt}`;
+        const filePath = `support/${fileName}`;
+
+        const { error: uploadError } = await supabaseSupport.storage
+            .from('documents')
+            .upload(filePath, file);
+
+        if (uploadError) {
+            console.error('Erreur upload:', uploadError);
+            showToast('Erreur lors de l\'upload du fichier.', 'error');
+            return;
+        }
+
+        const { data: urlData } = supabaseSupport.storage
+            .from('documents')
+            .getPublicUrl(filePath);
+        attachmentUrl = urlData.publicUrl;
+    }
+
+    // Insertion du ticket
+    const { error: insertError } = await supabaseSupport
+        .from('support_tickets')
+        .insert([{
+            player_id: currentProfile.id,
+            subject,
+            category,
+            description,
+            attachment_url: attachmentUrl,
+            status: 'new'
+        }]);
+
+    if (insertError) {
+        console.error('Erreur création ticket:', insertError);
+        showToast('Erreur lors de l\'envoi du ticket.', 'error');
+        return;
+    }
+
+    showToast('Votre demande a été envoyée avec succès !', 'success');
     document.getElementById('ticketForm').reset();
-});
-
-// ===== CHAT =====
-function openChatModal() {
-    document.getElementById('chatModal').style.display = 'block';
-    renderChatMessages();
 }
-
-function closeChatModal() {
-    document.getElementById('chatModal').style.display = 'none';
-}
-
-function renderChatMessages() {
-    const container = document.getElementById('chatMessages');
-    container.innerHTML = '';
-    chatMessages.forEach(msg => {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `chat-message ${msg.isSupport ? 'support' : ''}`;
-        msgDiv.innerHTML = `
-            <div class="author">${msg.author}</div>
-            <div class="text">${msg.text}</div>
-            <div class="time" style="font-size:0.6rem; color:gray;">${msg.time}</div>
-        `;
-        container.appendChild(msgDiv);
-    });
-    container.scrollTop = container.scrollHeight;
-}
-
-window.sendChatMessage = function() {
-    const input = document.getElementById('chatInput');
-    const text = input.value.trim();
-    if (!text) return;
-
-    // Message de l'utilisateur
-    chatMessages.push({
-        author: playerProfile.nom_complet || 'Vous',
-        text: text,
-        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-        isSupport: false
-    });
-
-    // Réponse automatique du support (simulation)
-    setTimeout(() => {
-        chatMessages.push({
-            author: 'Support',
-            text: 'Merci pour votre message. Un conseiller vous répondra dans quelques instants.',
-            time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-            isSupport: true
-        });
-        renderChatMessages();
-    }, 1000);
-
-    renderChatMessages();
-    input.value = '';
-};
 
 // ===== FONCTIONS UI =====
 function initUserMenu() {
@@ -198,16 +211,17 @@ function initSidebar() {
         sidebar.classList.remove('active');
         overlay.classList.remove('active');
     }
-    if (menuBtn) menuBtn.addEventListener('click', openSidebar);
-    if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
-    if (overlay) overlay.addEventListener('click', closeSidebarFunc);
+
+    menuBtn?.addEventListener('click', openSidebar);
+    closeBtn?.addEventListener('click', closeSidebarFunc);
+    overlay?.addEventListener('click', closeSidebarFunc);
 }
 
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabaseClient.auth.signOut().then(() => {
+            supabaseSupport.auth.signOut().then(() => {
                 window.location.href = '../index.html';
             });
         });
@@ -221,13 +235,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = await checkSession();
     if (!user) return;
 
-    await loadPlayerProfile();
+    await loadProfile();
+    if (!currentProfile) return;
 
-    renderFAQ();
+    await loadFAQ();
 
-    // Modale chat
-    document.getElementById('openChatModal').addEventListener('click', openChatModal);
-    window.closeChatModal = closeChatModal;
+    // Attacher le formulaire
+    document.getElementById('ticketForm').addEventListener('submit', handleTicketSubmit);
 
     initUserMenu();
     initSidebar();
@@ -235,7 +249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
-        alert('Changement de langue bientôt disponible');
+        showToast('Changement de langue bientôt disponible', 'info');
     });
 
     console.log('✅ Initialisation terminée');
