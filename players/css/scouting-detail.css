@@ -1,0 +1,208 @@
+/* ===== MAIN ===== */
+.scouting-main {
+    min-height: calc(100vh - 70px);
+    padding: 40px 5%;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+}
+
+.scouting-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.page-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.page-title i {
+    color: var(--gold);
+    font-size: 2.2rem;
+}
+
+/* ===== EN-TÊTE ===== */
+.scouting-header {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.positions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.position-badge {
+    background: var(--primary);
+    color: white;
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 1rem;
+}
+.position-badge.secondary {
+    background: var(--gray);
+}
+
+.foot-stats {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.foot-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.foot-label {
+    font-weight: 600;
+    color: var(--dark);
+    min-width: 90px;
+}
+
+.foot-bar-container {
+    width: 120px;
+    height: 12px;
+    background: var(--light-gray);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.foot-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--gold));
+    border-radius: 6px;
+    transition: width 0.3s;
+}
+
+.foot-value {
+    font-weight: 600;
+    color: var(--primary);
+    min-width: 60px;
+}
+
+/* ===== RADAR ===== */
+.radar-container {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: var(--shadow);
+    display: flex;
+    justify-content: center;
+}
+#skillsRadar {
+    max-width: 500px;
+    max-height: 500px;
+    width: 100%;
+    height: auto;
+}
+
+/* ===== DATES CLÉS ===== */
+.key-dates {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: var(--shadow);
+}
+.key-dates h3 {
+    color: var(--primary);
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.key-dates h3 i {
+    color: var(--gold);
+}
+.dates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+.date-item {
+    background: var(--bg-light);
+    padding: 10px 15px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    border-left: 4px solid var(--gold);
+}
+.date-label {
+    font-weight: 600;
+    color: var(--gray);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+.date-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+/* ===== POINTS FORTS / FAIBLES ===== */
+.strengths-weaknesses {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+.strengths, .weaknesses {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+}
+.strengths h3, .weaknesses h3 {
+    color: var(--primary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.strengths h3 i, .weaknesses h3 i {
+    color: var(--gold);
+}
+.strengths p, .weaknesses p {
+    color: var(--dark);
+    line-height: 1.6;
+    background: var(--bg-light);
+    padding: 15px;
+    border-radius: 8px;
+    min-height: 80px;
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+    .scouting-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .strengths-weaknesses {
+        grid-template-columns: 1fr;
+    }
+    .foot-stats {
+        flex-direction: column;
+        gap: 15px;
+        width: 100%;
+    }
+    .foot-item {
+        justify-content: space-between;
+        width: 100%;
+    }
+}
