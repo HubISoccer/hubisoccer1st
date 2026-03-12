@@ -1,122 +1,143 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseTournaments = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
-let playerProfile = null;
-let currentTournament = null;
+let currentProfile = null;
 let tournaments = [];
-let messages = []; // Messages du chat pour le tournoi courant
-let starredPlayers = new Set(); // IDs des joueurs favoris
-
-// ===== DONNÉES FICTIVES =====
-const fakeTournaments = [
-    {
-        id: 1,
-        name: "Coupe HubISoccer 2026 - Phase de groupes",
-        date: "2026-03-03",
-        streamUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-        players: [
-            { id: 101, name: "Koffi SOGLO", position: "Ailier droit", avatar: "img/user-default.jpg" },
-            { id: 102, name: "Yao KOFFI", position: "Milieu offensif", avatar: "img/user-default.jpg" },
-            { id: 103, name: "Amadou DIALLO", position: "Buteur", avatar: "img/user-default.jpg" },
-            { id: 104, name: "Jean-Claude", position: "Défenseur central", avatar: "img/user-default.jpg" }
-        ]
-    },
-    {
-        id: 2,
-        name: "Tournoi des Espoirs - Demi-finale",
-        date: "2026-03-04",
-        streamUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-        players: [
-            { id: 201, name: "Moussa TRAORE", position: "Gardien", avatar: "img/user-default.jpg" },
-            { id: 202, name: "Ibrahim SOW", position: "Arrière droit", avatar: "img/user-default.jpg" }
-        ]
-    },
-    {
-        id: 3,
-        name: "Ligue des Champions Junior",
-        date: "2026-03-05",
-        streamUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-        players: [
-            { id: 301, name: "Ousmane DEMBELE", position: "Ailier gauche", avatar: "img/user-default.jpg" }
-        ]
-    }
-];
-
-const fakeMessages = {
-    1: [
-        { id: 1, author: "Koffi S.", text: "Super match !", time: "15:30", userId: 1 },
-        { id: 2, author: "Yao K.", text: "Allez l'équipe !", time: "15:32", userId: 2 },
-        { id: 3, author: "Admin", text: "Belle action de Koffi !", time: "15:35", userId: 999 }
-    ],
-    2: [
-        { id: 1, author: "Moussa", text: "Prêt pour la finale", time: "16:00", userId: 201 }
-    ],
-    3: []
-};
+let currentTournament = null;
+let messages = [];
+let starredPlayers = new Set();
+let messagesSubscription = null;
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    try {
-        const { data: { session }, error } = await supabaseClient.auth.getSession();
-        if (error || !session) {
-            window.location.href = '../public/auth/login.html';
-            return null;
-        }
-        currentUser = session.user;
-        console.log('✅ Utilisateur connecté :', currentUser.email);
-        return currentUser;
-    } catch (err) {
-        console.error('❌ Erreur checkSession :', err);
+    const { data: { session }, error } = await supabaseTournaments.auth.getSession();
+    if (error || !session) {
         window.location.href = '../public/auth/login.html';
         return null;
     }
+    currentUser = session.user;
+    return currentUser;
 }
 
 // ===== CHARGEMENT DU PROFIL =====
-async function loadPlayerProfile() {
-    if (!currentUser?.id) {
-        playerProfile = { nom_complet: 'Joueur', id: 999 };
+async function loadProfile() {
+    const { data, error } = await supabaseTournaments
+        .from('player_profiles')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .single();
+    if (error) {
+        console.error('Erreur chargement profil:', error);
+        return null;
+    }
+    currentProfile = data;
+    document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
+    document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
+    return currentProfile;
+}
+
+// ===== CHARGEMENT DES TOURNOIS =====
+async function loadTournaments() {
+    const { data, error } = await supabaseTournaments
+        .from('tournaments')
+        .select('*')
+        .order('date', { ascending: true });
+
+    if (error) {
+        console.error('Erreur chargement tournois:', error);
         return;
     }
-    try {
-        const { data, error } = await supabaseClient
-            .from('player_profiles')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .maybeSingle();
 
-        if (error) {
-            console.error('Erreur chargement profil:', error);
-            playerProfile = { nom_complet: 'Joueur', id: 999 };
-        } else {
-            playerProfile = data || { nom_complet: 'Joueur', id: 999 };
-        }
-        document.getElementById('userName').textContent = playerProfile.nom_complet || 'Joueur';
-    } catch (err) {
-        console.error('❌ Exception loadPlayerProfile :', err);
-        playerProfile = { nom_complet: 'Joueur', id: 999 };
+    tournaments = data || [];
+    if (tournaments.length > 0) {
+        currentTournament = tournaments[0];
+        await loadTournamentDetails(currentTournament.id);
+        await loadStarredPlayers(currentTournament.id);
     }
-}
-
-// ===== INITIALISATION =====
-function init() {
-    tournaments = fakeTournaments;
-    currentTournament = tournaments[0];
-    messages = fakeMessages[currentTournament.id] || [];
-    renderLiveTournament();
     renderTournamentList();
+    renderLiveTournament();
 }
 
-// ===== AFFICHAGE DU TOURNOI EN DIRECT =====
+// ===== CHARGEMENT DES DÉTAILS D'UN TOURNOI (joueurs) =====
+async function loadTournamentDetails(tournamentId) {
+    const { data, error } = await supabaseTournaments
+        .from('tournament_players')
+        .select(`
+            id,
+            position,
+            jersey_number,
+            player:player_profiles(id, nom_complet, avatar_url, hub_id)
+        `)
+        .eq('tournament_id', tournamentId);
+
+    if (error) {
+        console.error('Erreur chargement joueurs:', error);
+        return;
+    }
+
+    currentTournament = {
+        ...currentTournament,
+        players: data.map(p => ({
+            id: p.id,
+            playerId: p.player.id,
+            name: p.player.nom_complet,
+            avatar: p.player.avatar_url,
+            position: p.position,
+            jersey_number: p.jersey_number
+        }))
+    };
+}
+
+// ===== CHARGEMENT DES ÉTOILES (favoris) =====
+async function loadStarredPlayers(tournamentId) {
+    const { data, error } = await supabaseTournaments
+        .from('player_stars')
+        .select('player_id')
+        .eq('user_id', currentProfile.id)
+        .eq('tournament_id', tournamentId);
+
+    if (error) {
+        console.error('Erreur chargement étoiles:', error);
+        return;
+    }
+
+    starredPlayers = new Set(data.map(s => s.player_id));
+}
+
+// ===== RENDU DE LA LISTE DES TOURNOIS (modale) =====
+function renderTournamentList() {
+    const list = document.getElementById('tournamentList');
+    if (!list) return;
+
+    list.innerHTML = tournaments.map(t => `
+        <div class="tournament-item" data-tournament-id="${t.id}">
+            <span class="tournament-item-name">${t.name}</span>
+            <span class="tournament-item-date">${new Date(t.date).toLocaleDateString('fr-FR')}</span>
+        </div>
+    `).join('');
+
+    document.querySelectorAll('.tournament-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const tournamentId = parseInt(item.dataset.tournamentId);
+            selectTournament(tournamentId);
+        });
+    });
+}
+
+// ===== RENDU DU TOURNOI EN DIRECT =====
 function renderLiveTournament() {
+    if (!currentTournament) return;
+
     const container = document.getElementById('liveTournament');
+    const streamUrl = currentTournament.stream_url || 'https://www.youtube.com/embed/dQw4w9WgXcQ'; // URL par défaut
+
     container.innerHTML = `
         <div class="tournament-video">
-            <iframe src="${currentTournament.streamUrl}" frameborder="0" allowfullscreen></iframe>
+            <iframe src="${streamUrl}" frameborder="0" allowfullscreen></iframe>
         </div>
         <div class="tournament-info">
             <h2 class="tournament-name">${currentTournament.name}</h2>
@@ -134,75 +155,133 @@ function renderLiveTournament() {
             </div>
         </div>
     `;
+
     renderChatMessages();
 }
 
+// ===== CHARGEMENT DES MESSAGES DU CHAT =====
+async function loadMessages(tournamentId) {
+    const { data, error } = await supabaseTournaments
+        .from('tournament_messages')
+        .select(`
+            id,
+            message,
+            created_at,
+            user:player_profiles(id, nom_complet, avatar_url)
+        `)
+        .eq('tournament_id', tournamentId)
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        console.error('Erreur chargement messages:', error);
+        return;
+    }
+
+    messages = data.map(m => ({
+        id: m.id,
+        userId: m.user.id,
+        author: m.user.nom_complet,
+        text: m.message,
+        time: new Date(m.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    }));
+
+    renderChatMessages();
+}
+
+// ===== RENDU DES MESSAGES DU CHAT =====
 function renderChatMessages() {
     const chatDiv = document.getElementById('chatMessages');
     if (!chatDiv) return;
-    chatDiv.innerHTML = '';
-    messages.forEach(msg => {
-        const isOwn = msg.userId === playerProfile.id || msg.author === playerProfile.nom_complet;
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `chat-message ${isOwn ? 'own' : ''}`;
-        msgDiv.innerHTML = `
-            <div class="author">${msg.author}</div>
-            <div class="text">${msg.text}</div>
-            <div class="time">${msg.time}</div>
+
+    chatDiv.innerHTML = messages.map(msg => {
+        const isOwn = msg.userId === currentProfile.id;
+        return `
+            <div class="chat-message ${isOwn ? 'own' : ''}">
+                <div class="author">${msg.author}</div>
+                <div class="text">${msg.text}</div>
+                <div class="time">${msg.time}</div>
+            </div>
         `;
-        chatDiv.appendChild(msgDiv);
-    });
+    }).join('');
+
     chatDiv.scrollTop = chatDiv.scrollHeight;
 }
 
-function sendMessage() {
+// ===== ENVOI D'UN MESSAGE =====
+async function sendMessage() {
     const input = document.getElementById('chatInput');
     const text = input.value.trim();
-    if (!text) return;
+    if (!text || !currentTournament) return;
 
-    const newMsg = {
-        id: Date.now(),
-        author: playerProfile.nom_complet || 'Joueur',
-        text: text,
-        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-        userId: playerProfile.id
-    };
-    messages.push(newMsg);
-    renderChatMessages();
+    const { error } = await supabaseTournaments
+        .from('tournament_messages')
+        .insert([{
+            tournament_id: currentTournament.id,
+            user_id: currentProfile.id,
+            message: text
+        }]);
+
+    if (error) {
+        console.error('Erreur envoi message:', error);
+        alert('Erreur lors de l\'envoi du message');
+        return;
+    }
+
     input.value = '';
+    // Le message apparaîtra via Realtime
 }
 
-// ===== MODALE LISTE DES TOURNOIS =====
+// ===== SOUSCRIPTION AUX NOUVEAUX MESSAGES =====
+function subscribeToMessages(tournamentId) {
+    if (messagesSubscription) messagesSubscription.unsubscribe();
+
+    messagesSubscription = supabaseTournaments
+        .channel(`tournament_messages:${tournamentId}`)
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'tournament_messages',
+            filter: `tournament_id=eq.${tournamentId}`
+        }, async (payload) => {
+            // Récupérer les infos de l'utilisateur pour le nouveau message
+            const { data: userData } = await supabaseTournaments
+                .from('player_profiles')
+                .select('nom_complet')
+                .eq('id', payload.new.user_id)
+                .single();
+
+            const newMsg = {
+                id: payload.new.id,
+                userId: payload.new.user_id,
+                author: userData?.nom_complet || 'Inconnu',
+                text: payload.new.message,
+                time: new Date(payload.new.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+            };
+
+            messages.push(newMsg);
+            renderChatMessages();
+        })
+        .subscribe();
+}
+
+// ===== SÉLECTION D'UN TOURNOI =====
+async function selectTournament(tournamentId) {
+    currentTournament = tournaments.find(t => t.id === tournamentId);
+    await loadTournamentDetails(tournamentId);
+    await loadStarredPlayers(tournamentId);
+    await loadMessages(tournamentId);
+    subscribeToMessages(tournamentId);
+    renderLiveTournament();
+    closeTournamentModal();
+}
+
+// ===== MODALES =====
 function openTournamentModal() {
     document.getElementById('tournamentModal').style.display = 'block';
 }
 function closeTournamentModal() {
     document.getElementById('tournamentModal').style.display = 'none';
 }
-
-function renderTournamentList() {
-    const list = document.getElementById('tournamentList');
-    list.innerHTML = '';
-    tournaments.forEach(t => {
-        const item = document.createElement('div');
-        item.className = 'tournament-item';
-        item.onclick = () => selectTournament(t.id);
-        item.innerHTML = `
-            <span class="tournament-item-name">${t.name}</span>
-            <span class="tournament-item-date">${new Date(t.date).toLocaleDateString('fr-FR')}</span>
-        `;
-        list.appendChild(item);
-    });
-}
-
-function selectTournament(id) {
-    currentTournament = tournaments.find(t => t.id === id);
-    messages = fakeMessages[id] || [];
-    renderLiveTournament();
-    closeTournamentModal();
-}
-
-// ===== MODALE FICHE JOUEURS =====
 function openPlayersModal() {
     renderPlayersList();
     document.getElementById('playersModal').style.display = 'block';
@@ -211,46 +290,72 @@ function closePlayersModal() {
     document.getElementById('playersModal').style.display = 'none';
 }
 
+// ===== RENDU DE LA LISTE DES JOUEURS =====
 function renderPlayersList() {
     const list = document.getElementById('playersList');
-    list.innerHTML = '';
-    currentTournament.players.forEach(p => {
-        const item = document.createElement('div');
-        item.className = 'player-item';
+    if (!list || !currentTournament?.players) return;
+
+    list.innerHTML = currentTournament.players.map(p => {
         const isStarred = starredPlayers.has(p.id);
-        item.innerHTML = `
-            <div class="player-avatar"><i class="fas fa-user"></i></div>
-            <div class="player-info">
-                <div class="player-name">${p.name}</div>
-                <div class="player-position">${p.position}</div>
-            </div>
-            <div class="player-star ${isStarred ? 'active' : ''}" onclick="toggleStar(${p.id})">
-                <i class="fas fa-star"></i>
+        return `
+            <div class="player-item">
+                <div class="player-avatar">
+                    <img src="${p.avatar || 'img/user-default.jpg'}" alt="${p.name}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">
+                </div>
+                <div class="player-info">
+                    <div class="player-name">${p.name}</div>
+                    <div class="player-position">${p.position || 'Poste inconnu'}</div>
+                </div>
+                <div class="player-star ${isStarred ? 'active' : ''}" onclick="toggleStar(${p.id})">
+                    <i class="fas fa-star"></i>
+                </div>
             </div>
         `;
-        list.appendChild(item);
-    });
+    }).join('');
 }
 
-function toggleStar(playerId) {
-    if (starredPlayers.has(playerId)) {
-        starredPlayers.delete(playerId);
+// ===== AJOUT/SUPPRESSION D'UNE ÉTOILE =====
+async function toggleStar(playerTournamentId) {
+    if (starredPlayers.has(playerTournamentId)) {
+        // Supprimer l'étoile
+        const { error } = await supabaseTournaments
+            .from('player_stars')
+            .delete()
+            .eq('user_id', currentProfile.id)
+            .eq('tournament_id', currentTournament.id)
+            .eq('player_id', playerTournamentId);
+
+        if (!error) {
+            starredPlayers.delete(playerTournamentId);
+        }
     } else {
-        starredPlayers.add(playerId);
+        // Ajouter une étoile
+        const { error } = await supabaseTournaments
+            .from('player_stars')
+            .insert([{
+                user_id: currentProfile.id,
+                tournament_id: currentTournament.id,
+                player_id: playerTournamentId
+            }]);
+
+        if (!error) {
+            starredPlayers.add(playerTournamentId);
+        }
     }
-    renderPlayersList(); // Rafraîchir pour mettre à jour les étoiles
+    renderPlayersList();
 }
 
 // ===== FONCTIONS UI =====
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
-    if (!userMenu || !dropdown) return;
-    userMenu.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle('show');
-    });
-    document.addEventListener('click', () => dropdown.classList.remove('show'));
+    if (userMenu && dropdown) {
+        userMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+        document.addEventListener('click', () => dropdown.classList.remove('show'));
+    }
 }
 
 function initSidebar() {
@@ -259,52 +364,82 @@ function initSidebar() {
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
 
-    if (!menuBtn || !sidebar || !closeBtn || !overlay) {
-        console.warn('Éléments de la sidebar manquants');
-        return;
-    }
-
     function openSidebar() {
-        sidebar.classList.add('active');
-        overlay.classList.add('active');
+        sidebar?.classList.add('active');
+        overlay?.classList.add('active');
     }
     function closeSidebarFunc() {
-        sidebar.classList.remove('active');
-        overlay.classList.remove('active');
+        sidebar?.classList.remove('active');
+        overlay?.classList.remove('active');
     }
 
-    menuBtn.addEventListener('click', openSidebar);
-    closeBtn.addEventListener('click', closeSidebarFunc);
-    overlay.addEventListener('click', closeSidebarFunc);
+    menuBtn?.addEventListener('click', openSidebar);
+    closeBtn?.addEventListener('click', closeSidebarFunc);
+    overlay?.addEventListener('click', closeSidebarFunc);
 }
 
+// ===== GESTION DES SWIPES =====
+let touchStartX = 0;
+let touchEndX = 0;
+const swipeThreshold = 50;
+
+document.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+}, false);
+
+document.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+}, false);
+
+function handleSwipe() {
+    const leftSidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const diff = touchEndX - touchStartX;
+
+    if (diff > swipeThreshold && touchStartX < 50) {
+        leftSidebar?.classList.add('active');
+        overlay?.classList.add('active');
+    } else if (diff < -swipeThreshold && leftSidebar?.classList.contains('active')) {
+        leftSidebar?.classList.remove('active');
+        overlay?.classList.remove('active');
+    }
+}
+
+// ===== DÉCONNEXION =====
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabaseClient.auth.signOut().then(() => {
+            supabaseTournaments.auth.signOut().then(() => {
                 window.location.href = '../index.html';
             });
         });
     });
 }
 
-// ===== INITIALISATION PRINCIPALE =====
+// ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation de la page tournaments');
+    console.log('🚀 Initialisation tournaments.js');
 
     const user = await checkSession();
     if (!user) return;
 
-    await loadPlayerProfile();
-    init();
+    await loadProfile();
+    await loadTournaments();
 
-    // Ouvrir/fermer modales
+    if (currentTournament) {
+        await loadMessages(currentTournament.id);
+        subscribeToMessages(currentTournament.id);
+    }
+
     document.getElementById('openTournamentModal').addEventListener('click', openTournamentModal);
+
     window.closeTournamentModal = closeTournamentModal;
     window.closePlayersModal = closePlayersModal;
     window.openPlayersModal = openPlayersModal;
     window.toggleStar = toggleStar;
+    window.sendMessage = sendMessage;
 
     initUserMenu();
     initSidebar();
