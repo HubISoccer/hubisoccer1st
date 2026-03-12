@@ -1,7 +1,6 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-// Renommer pour éviter les conflits
 const supabaseCV = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
@@ -33,7 +32,7 @@ async function checkSession() {
 async function loadPlayerProfile() {
     if (!currentUser?.id) {
         console.error('currentUser.id manquant');
-        playerProfile = { id: null, nom_complet: 'Joueur' };
+        playerProfile = { id: null, nom_complet: 'Joueur', avatar_url: 'img/user-default.jpg' };
         return;
     }
     try {
@@ -45,15 +44,15 @@ async function loadPlayerProfile() {
 
         if (error) {
             console.error('Erreur chargement profil:', error);
-            playerProfile = { id: null, nom_complet: 'Joueur' };
+            playerProfile = { id: null, nom_complet: 'Joueur', avatar_url: 'img/user-default.jpg' };
         } else {
-            playerProfile = data || { id: null, nom_complet: 'Joueur' };
+            playerProfile = data || { id: null, nom_complet: 'Joueur', avatar_url: 'img/user-default.jpg' };
         }
         document.getElementById('userName').textContent = playerProfile.nom_complet || 'Joueur';
         console.log('✅ Profil utilisé :', playerProfile);
     } catch (err) {
         console.error('❌ Exception loadPlayerProfile :', err);
-        playerProfile = { id: null, nom_complet: 'Joueur' };
+        playerProfile = { id: null, nom_complet: 'Joueur', avatar_url: 'img/user-default.jpg' };
     }
 }
 
@@ -100,7 +99,6 @@ function updateValidationStatus() {
 // ===== REMPLIR LE FORMULAIRE AVEC LES DONNÉES EXISTANTES =====
 function populateForm(data) {
     if (!data) return;
-    // Champs simples
     document.getElementById('nom').value = data.nom || '';
     document.getElementById('prenom').value = data.prenom || '';
     document.getElementById('telephone').value = data.telephone || '';
@@ -123,7 +121,7 @@ function populateForm(data) {
     document.getElementById('dateSignature').value = data.dateSignature || '';
     document.getElementById('lieuSignature').value = data.lieuSignature || '';
 
-    // Expériences dynamiques
+    // Expériences
     if (data.experiences && Array.isArray(data.experiences)) {
         data.experiences.forEach(exp => addExperienceItem(exp));
     } else {
@@ -144,7 +142,7 @@ function populateForm(data) {
         addLangueItem();
     }
 
-    // Signature (si présente)
+    // Signature
     if (data.signature) {
         signatureDataURL = data.signature;
         const img = document.getElementById('signatureImage');
@@ -342,76 +340,137 @@ async function saveCV() {
     }
 }
 
-// ===== GÉNÉRATION DE L'APERÇU (NOUVELLE VERSION) =====
+// ===== GÉNÉRATION DE L'APERÇU (STYLE PHOTO) =====
 function generatePreview() {
     const data = collectFormData();
     const previewDiv = document.getElementById('previewContent');
     const fullName = `${data.prenom} ${data.nom}`.trim() || 'Nom Prénom';
+    const avatarUrl = playerProfile?.avatar_url || 'img/user-default.jpg';
 
-    // Compétences (convertir les chaînes en listes)
+    // Compétences (fusion des deux listes)
     const skillsTech = data.skillsTech ? data.skillsTech.split(',').map(s => s.trim()).filter(s => s) : [];
     const skillsSoft = data.skillsSoft ? data.skillsSoft.split(',').map(s => s.trim()).filter(s => s) : [];
     const allSkills = [...skillsTech, ...skillsSoft];
 
+    // Formation
+    const formationsHtml = data.formations.map(f => `
+        <div class="cv-item">
+            <div class="cv-item-date">${f.date || ''}</div>
+            <div class="cv-item-title">${f.diplome || ''}</div>
+            <div class="cv-item-subtitle">${f.etablissement || ''}</div>
+        </div>
+    `).join('');
+
+    // Expériences
+    const experiencesHtml = data.experiences.map(e => `
+        <div class="cv-item">
+            <div class="cv-item-date">${e.debut || ''} – ${e.fin || ''}</div>
+            <div class="cv-item-title">${e.poste || ''}</div>
+            <div class="cv-item-subtitle">${e.employeur || ''}</div>
+            <div class="cv-item-description">${e.description || ''}</div>
+        </div>
+    `).join('');
+
+    // Langues
+    const languesHtml = data.langues.map(l => `
+        <div class="cv-lang-item">
+            <span class="cv-lang-name">${l.nom || ''}</span>
+            <span class="cv-lang-level">${l.niveau || ''}</span>
+        </div>
+    `).join('');
+
+    // Compétences (liste à puces)
+    const skillsListHtml = allSkills.map(skill => `<li>${skill}</li>`).join('');
+
     const html = `
         <div class="cv-preview-layout">
+            <!-- En-tête avec photo -->
             <div class="cv-header">
-                <h1>${fullName}</h1>
-                <div class="cv-subtitle">${data.profil || 'CV'}</div>
-                <div class="cv-contact">
-                    ${data.telephone ? `<span><i class="fas fa-phone"></i> ${data.telephone}</span>` : ''}
-                    ${data.email ? `<span><i class="fas fa-envelope"></i> ${data.email}</span>` : ''}
-                    ${data.ville ? `<span><i class="fas fa-map-marker-alt"></i> ${data.ville}</span>` : ''}
+                <div class="cv-avatar">
+                    <img src="${avatarUrl}" alt="Avatar">
                 </div>
-            </div>
-
-            <div class="cv-left">
-                <!-- Formation -->
-                <div class="cv-section">
-                    <div class="cv-section-title">Formation</div>
-                    ${data.formations.map(f => `
-                        <div class="cv-item">
-                            <div class="cv-item-date">${f.date || ''}</div>
-                            <div class="cv-item-title">${f.diplome || ''}</div>
-                            <div class="cv-item-subtitle">${f.etablissement || ''}</div>
-                        </div>
-                    `).join('')}
-                </div>
-
-                <!-- A propos / Profil -->
-                <div class="cv-section">
-                    <div class="cv-section-title">À propos</div>
-                    <p>${data.profil || 'Non renseigné'}</p>
-                </div>
-            </div>
-
-            <div class="cv-right">
-                <!-- Compétences -->
-                <div class="cv-section">
-                    <div class="cv-section-title">Compétences</div>
-                    <div class="cv-skills">
-                        ${allSkills.map(skill => `<span class="cv-skill-badge">${skill}</span>`).join('')}
+                <div class="cv-header-info">
+                    <h1>${fullName}</h1>
+                    <div class="cv-subtitle">${data.profil || 'CV'}</div>
+                    <div class="cv-contact">
+                        ${data.telephone ? `<span><i class="fas fa-phone"></i> ${data.telephone}</span>` : ''}
+                        ${data.email ? `<span><i class="fas fa-envelope"></i> ${data.email}</span>` : ''}
+                        ${data.ville ? `<span><i class="fas fa-map-marker-alt"></i> ${data.ville}</span>` : ''}
                     </div>
                 </div>
+            </div>
 
-                <!-- Expériences professionnelles -->
-                <div class="cv-section">
-                    <div class="cv-section-title">Expérience professionnelle</div>
-                    ${data.experiences.map(exp => `
-                        <div class="cv-item">
-                            <div class="cv-item-date">${exp.debut || ''} – ${exp.fin || ''}</div>
-                            <div class="cv-item-title">${exp.poste || ''}</div>
-                            <div class="cv-item-subtitle">${exp.employeur || ''}</div>
-                            <div class="cv-item-description">${exp.description || ''}</div>
-                        </div>
-                    `).join('')}
+            <!-- Informations sportives -->
+            <div class="cv-section">
+                <div class="cv-section-title">Informations sportives</div>
+                <div class="cv-sport-info">
+                    ${data.taille ? `<span>Taille: ${data.taille} cm</span>` : ''}
+                    ${data.poids ? `<span>Poids: ${data.poids} kg</span>` : ''}
+                    ${data.piedFort ? `<span>Pied: ${data.piedFort}</span>` : ''}
+                    ${data.club ? `<span>Club: ${data.club}</span>` : ''}
+                </div>
+                <div class="cv-sport-info">
+                    ${data.matchs ? `<span>Matchs: ${data.matchs}</span>` : ''}
+                    ${data.buts ? `<span>Buts: ${data.buts}</span>` : ''}
+                    ${data.passes ? `<span>Passes: ${data.passes}</span>` : ''}
+                    ${data.valeur ? `<span>Valeur: ${data.valeur} FCFA</span>` : ''}
                 </div>
             </div>
 
-            <!-- Signature et date -->
+            <!-- Formation -->
+            <div class="cv-section">
+                <div class="cv-section-title">Formation</div>
+                ${formationsHtml || '<p>Aucune formation renseignée.</p>'}
+            </div>
+
+            <!-- À propos (profil) -->
+            <div class="cv-section">
+                <div class="cv-section-title">À propos</div>
+                <p>${data.profil || 'Non renseigné'}</p>
+            </div>
+
+            <!-- Compétences -->
+            <div class="cv-section">
+                <div class="cv-section-title">Compétences</div>
+                <ul class="cv-skills-list">
+                    ${skillsListHtml || '<li>Aucune compétence renseignée.</li>'}
+                </ul>
+            </div>
+
+            <!-- Expériences professionnelles -->
+            <div class="cv-section">
+                <div class="cv-section-title">Expérience professionnelle</div>
+                ${experiencesHtml || '<p>Aucune expérience renseignée.</p>'}
+            </div>
+
+            <!-- Langues -->
+            ${languesHtml ? `
+            <div class="cv-section">
+                <div class="cv-section-title">Langues</div>
+                ${languesHtml}
+            </div>
+            ` : ''}
+
+            <!-- Centres d'intérêt -->
+            ${data.interets ? `
+            <div class="cv-section">
+                <div class="cv-section-title">Centres d'intérêt</div>
+                <p class="cv-interets">${data.interets}</p>
+            </div>
+            ` : ''}
+
+            <!-- Biographie -->
+            ${data.bio ? `
+            <div class="cv-section">
+                <div class="cv-section-title">Biographie</div>
+                <p class="cv-bio">${data.bio}</p>
+            </div>
+            ` : ''}
+
+            <!-- Signature -->
             <div class="cv-signature">
                 <div>Fait le ${data.dateSignature || '...'} à ${data.lieuSignature || '...'}</div>
-                ${data.signature ? `<img src="${data.signature}" alt="Signature">` : ''}
+                ${signatureDataURL ? `<img src="${signatureDataURL}" alt="Signature">` : ''}
             </div>
         </div>
     `;
