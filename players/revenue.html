@@ -119,6 +119,17 @@
                         <span class="bonus-value" id="bonusPrimes">0</span>
                     </div>
                 </div>
+
+                <!-- Section bonus d'inscription (ajoutée) -->
+                <div class="bonus-withdraw">
+                    <p class="bonus-inscription-label">
+                        <i class="fas fa-gift"></i> Bonus d'inscription : <strong id="bonusInscription">5000 FCFA (0/10 abonnés)</strong>
+                    </p>
+                    <button class="btn-withdraw-bonus" id="withdrawBonusBtn" disabled>
+                        <i class="fas fa-arrow-right"></i> Retirer le bonus
+                    </button>
+                    <p class="bonus-info">Vous devez avoir 10 abonnés pour retirer votre bonus.</p>
+                </div>
             </div>
 
             <!-- Historique des transactions -->
@@ -187,6 +198,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Toast container (ajouté) -->
+    <div id="toastContainer" class="toast-container"></div>
 
     <!-- Footer -->
     <footer class="dashboard-footer">
