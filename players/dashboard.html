@@ -97,100 +97,129 @@
             </aside>
 
             <!-- Panneau principal -->
-            <main class="main-panel">
-                <div class="evolution-box">
-                    <div class="evolution-header">
-                        <h3>ÉVOLUTION PERFORMANCE</h3>
-                        <span class="level-badge" id="level">LVL 0</span>
-                    </div>
-                    <div class="progress-track">
-                        <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
-                    </div>
-                    <p class="next-step" id="nextStep">Prochain palier : -</p>
-                </div>
-
-                <div class="stats-summary">
-                    <div class="stat-card">
-                        <button class="stat-btn" onclick="#">
-                            <b id="marketValue">0</b><small>Valeur (FCFA)</small>
-                        </button>
-                    </div>
-                    <div class="stat-card">
-                        <button class="stat-btn" onclick="#">
-                            <b id="potential">0/100</b><small>Potentiel</small>
-                        </button>
-                    </div>
-                    <div class="stat-card">
-                        <button class="stat-btn" onclick="#">
-                            <b id="offers">0</b><small>Offres reçues</small>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="tab-nav">
-                    <button class="tab-btn active" onclick="showTab('edit', event)">Édition Profil</button>
-                    <button class="tab-btn" onclick="showTab('stats', event)">Performances Data</button>
-                    <button class="tab-btn" onclick="showTab('videos', event)">Vidéos Highlights</button>
-                </div>
-
-                <!-- Onglet Édition Profil -->
-                <div id="tab-edit" class="tab-content active">
-                    <div class="form-section">
-                        <div class="section-title">
-                            <h3>Informations de Carrière</h3>
-                        </div>
-                        <form id="careerForm">
-                            <div class="input-group">
-                                <div class="field">
-                                    <label>Poste Précis</label>
-                                    <select id="editPoste">
-                                        <option value="">Sélectionnez</option>
-                                        <option>Ailier Droit</option>
-                                        <option>Buteur</option>
-                                        <option>Milieu Offensif</option>
-                                        <option>Défenseur Central</option>
-                                    </select>
-                                </div>
-                                <div class="field">
-                                    <label>Club / Académie</label>
-                                    <input type="text" id="editClub" value="">
-                                </div>
-                                <div class="field">
-                                    <label>Taille (cm)</label>
-                                    <input type="number" id="editTaille" value="">
-                                </div>
-                                <div class="field">
-                                    <label>Pied Fort</label>
-                                    <select id="editPied">
-                                        <option value="">Sélectionnez</option>
-                                        <option>Droitier</option>
-                                        <option>Gaucher</option>
-                                        <option>Ambidextre</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="field full-width">
-                                <label>Description (Bio pour les recruteurs & investisseurs)</label>
-                                <textarea id="editBio" rows="4"></textarea>
-                            </div>
-                            <button type="button" class="btn-save" onclick="saveProfile()">SAUVEGARDER LES MODIFICATIONS</button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Onglet Performances -->
-                <div id="tab-stats" class="tab-content">
-                    <p>Graphiques et statistiques détaillées à venir...</p>
-                </div>
-
-                <!-- Onglet Vidéos -->
-                <div id="tab-videos" class="tab-content">
-                    <p>Vos vidéos de matchs et entraînements apparaîtront ici.</p>
-                </div>
-            </main>
+            <!-- Panneau principal (NOUVEAU) -->
+<main class="main-panel">
+    <!-- En-tête avec informations personnelles -->
+    <div class="player-header">
+        <div class="player-header-left">
+            <h1 id="playerFullName">-</h1>
+            <p id="playerPosition">-</p>
         </div>
-    </main>
+        <div class="player-header-right">
+            <div class="player-basic-info">
+                <span><i class="fas fa-calendar-alt"></i> <span id="playerAge">0</span> ans</span>
+                <span><i class="fas fa-ruler"></i> <span id="playerHeight">0</span> cm</span>
+                <span><i class="fas fa-weight-scale"></i> <span id="playerWeight">0</span> kg</span>
+                <span><i class="fas fa-flag"></i> <span id="playerNationality">-</span></span>
+                <span><i class="fas fa-futbol"></i> <span id="playerFoot">-</span></span>
+                <span><i class="fas fa-shield"></i> <span id="playerClub">-</span></span>
+            </div>
+        </div>
+    </div>
 
+    <!-- Cartes de statistiques globales -->
+    <div class="global-stats">
+        <div class="stat-card-global">
+            <div class="stat-label">NIVEAU ACTUEL</div>
+            <div class="stat-value" id="currentLevel">0</div>
+        </div>
+        <div class="stat-card-global">
+            <div class="stat-label">POTENTIEL</div>
+            <div class="stat-value" id="potential">0</div>
+        </div>
+        <div class="stat-card-global">
+            <div class="stat-label">PERSONNALITÉ</div>
+            <div class="stat-value" id="personality">0</div>
+        </div>
+        <div class="stat-card-global">
+            <div class="stat-label">VALEUR</div>
+            <div class="stat-value" id="marketValue">0 €</div>
+        </div>
+    </div>
+
+    <!-- Informations de prêt/salaire -->
+    <div class="loan-info">
+        <div class="info-item"><span class="info-label">Prêté par :</span> <span id="loanFrom">-</span></div>
+        <div class="info-item"><span class="info-label">Salaire :</span> <span id="salary">-</span></div>
+        <div class="info-item"><span class="info-label">Expire le :</span> <span id="contractExpiry">-</span></div>
+        <div class="info-item"><span class="info-label">Sélections jeunes :</span> <span id="youthSelection">-</span></div>
+    </div>
+
+    <!-- Onglets pour les catégories d'attributs -->
+    <div class="attributes-tabs">
+        <button class="attr-tab active" data-cat="technique">TECHNIQUE</button>
+        <button class="attr-tab" data-cat="mental">MENTAL</button>
+        <button class="attr-tab" data-cat="physique">PHYSIQUE</button>
+    </div>
+
+    <!-- Contenu des onglets (attributs) -->
+    <div id="technique-attrs" class="attr-content active">
+        <div class="attr-grid">
+            <div class="attr-item"><span class="attr-name">Centres</span> <span class="attr-value" id="tech_centres">0</span></div>
+            <div class="attr-item"><span class="attr-name">Contrôle de balle</span> <span class="attr-value" id="tech_controle">0</span></div>
+            <div class="attr-item"><span class="attr-name">Corners</span> <span class="attr-value" id="tech_corners">0</span></div>
+            <div class="attr-item"><span class="attr-name">Coups francs</span> <span class="attr-value" id="tech_coups_francs">0</span></div>
+            <div class="attr-item"><span class="attr-name">Dribbles</span> <span class="attr-value" id="tech_dribbles">0</span></div>
+            <div class="attr-item"><span class="attr-name">Finition</span> <span class="attr-value" id="tech_finition">0</span></div>
+            <div class="attr-item"><span class="attr-name">Jeu de tête</span> <span class="attr-value" id="tech_jeu_de_tete">0</span></div>
+            <div class="attr-item"><span class="attr-name">Marquage</span> <span class="attr-value" id="tech_marquage">0</span></div>
+            <div class="attr-item"><span class="attr-name">Passes</span> <span class="attr-value" id="tech_passes">0</span></div>
+            <div class="attr-item"><span class="attr-name">Penalty</span> <span class="attr-value" id="tech_penalty">0</span></div>
+            <div class="attr-item"><span class="attr-name">Tactique</span> <span class="attr-value" id="tech_tactics">0</span></div>
+            <div class="attr-item"><span class="attr-name">Technique</span> <span class="attr-value" id="tech_technique">0</span></div>
+            <div class="attr-item"><span class="attr-name">Tirs de loin</span> <span class="attr-value" id="tech_tirs_de_loin">0</span></div>
+            <div class="attr-item"><span class="attr-name">Touches longues</span> <span class="attr-value" id="tech_touches_longues">0</span></div>
+        </div>
+    </div>
+
+    <div id="mental-attrs" class="attr-content">
+        <div class="attr-grid">
+            <div class="attr-item"><span class="attr-name">Agressivité</span> <span class="attr-value" id="mental_agressivite">0</span></div>
+            <div class="attr-item"><span class="attr-name">Anticipation</span> <span class="attr-value" id="mental_anticipation">0</span></div>
+            <div class="attr-item"><span class="attr-name">Appels de balle</span> <span class="attr-value" id="mental_appels_de_balle">0</span></div>
+            <div class="attr-item"><span class="attr-name">Concentration</span> <span class="attr-value" id="mental_concentration">0</span></div>
+            <div class="attr-item"><span class="attr-name">Courage</span> <span class="attr-value" id="mental_courage">0</span></div>
+            <div class="attr-item"><span class="attr-name">Décisions</span> <span class="attr-value" id="mental_decisions">0</span></div>
+            <div class="attr-item"><span class="attr-name">Détermination</span> <span class="attr-value" id="mental_determination">0</span></div>
+            <div class="attr-item"><span class="attr-name">Inspiration</span> <span class="attr-value" id="mental_inspiration">0</span></div>
+            <div class="attr-item"><span class="attr-name">Jeu collectif</span> <span class="attr-value" id="mental_jeu_collectif">0</span></div>
+            <div class="attr-item"><span class="attr-name">Leadership</span> <span class="attr-value" id="mental_leadership">0</span></div>
+            <div class="attr-item"><span class="attr-name">Placement</span> <span class="attr-value" id="mental_placement">0</span></div>
+            <div class="attr-item"><span class="attr-name">Sang-froid</span> <span class="attr-value" id="mental_sang_froid">0</span></div>
+            <div class="attr-item"><span class="attr-name">Vision du jeu</span> <span class="attr-value" id="mental_vision_du_jeu">0</span></div>
+            <div class="attr-item"><span class="attr-name">Volume de jeu</span> <span class="attr-value" id="mental_volume_de_jeu">0</span></div>
+        </div>
+    </div>
+
+    <div id="physique-attrs" class="attr-content">
+        <div class="attr-grid">
+            <div class="attr-item"><span class="attr-name">Accélération</span> <span class="attr-value" id="physique_acceleration">0</span></div>
+            <div class="attr-item"><span class="attr-name">Agilité</span> <span class="attr-value" id="physique_agilite">0</span></div>
+            <div class="attr-item"><span class="attr-name">Détente verticale</span> <span class="attr-value" id="physique_detente_verticale">0</span></div>
+            <div class="attr-item"><span class="attr-name">Endurance</span> <span class="attr-value" id="physique_endurance">0</span></div>
+            <div class="attr-item"><span class="attr-name">Équilibre</span> <span class="attr-value" id="physique_equilibre">0</span></div>
+            <div class="attr-item"><span class="attr-name">Puissance</span> <span class="attr-value" id="physique_puissance">0</span></div>
+            <div class="attr-item"><span class="attr-name">Qualités phys. nat.</span> <span class="attr-value" id="physique_qualites_physiques_nat">0</span></div>
+            <div class="attr-item"><span class="attr-name">Vitesse</span> <span class="attr-value" id="physique_vitesse">0</span></div>
+        </div>
+    </div>
+
+    <!-- Section Vidéos (placeholder) -->
+    <div class="video-section">
+        <h3><i class="fas fa-video"></i> Vidéos récentes</h3>
+        <div class="video-placeholder">
+            <p>Highlights et matchs complets seront disponibles ici après validation par l'équipe.</p>
+        </div>
+    </div>
+
+    <!-- Section Rapports (placeholder) -->
+    <div class="reports-section">
+        <h3><i class="fas fa-file-alt"></i> Rapports des recruteurs</h3>
+        <div class="reports-placeholder">
+            <p id="scoutingReports">Aucun rapport pour le moment.</p>
+        </div>
+    </div>
+</main>
     <!-- Footer -->
     <footer class="dashboard-footer">
         <div class="footer-content">
