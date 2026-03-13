@@ -1,4 +1,4 @@
-// ===== ADMIN VERIFICATION =====
+// ===== ADMIN VERIFICATION (CORRIGÉ) =====
 
 // ===== ÉTAT GLOBAL =====
 let currentTab = 'licenses';
@@ -7,6 +7,49 @@ let documentsData = [];
 let historyData = [];
 let currentLicenseId = null;
 let currentDocumentId = null;
+let currentAction = null;
+
+// ===== LOADER (ajouté) =====
+function showLoader(show) {
+    let loader = document.getElementById('globalLoader');
+    if (!loader) {
+        loader = document.createElement('div');
+        loader.id = 'globalLoader';
+        loader.className = 'global-loader';
+        loader.innerHTML = '<div class="spinner"></div>';
+        document.body.appendChild(loader);
+    }
+    loader.style.display = show ? 'flex' : 'none';
+}
+
+// ===== TOAST (si non défini dans admin-common, on le définit) =====
+function showToast(message, type = 'info', duration = 3000) {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i></div>
+        <div class="toast-content">${message}</div>
+        <button class="toast-close"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(toast);
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.style.animation = 'fadeOut 0.3s forwards';
+        setTimeout(() => toast.remove(), 300);
+    });
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.animation = 'fadeOut 0.3s forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
 
 // ===== CHARGEMENT DES DEMANDES DE LICENCE =====
 async function loadLicenses() {
@@ -45,7 +88,7 @@ function renderLicenses() {
         const matchesSearch = license.player?.nom_complet?.toLowerCase().includes(searchTerm) ||
                              license.nom?.toLowerCase().includes(searchTerm) ||
                              license.prenom?.toLowerCase().includes(searchTerm);
-        const matchesFilter = filter === 'all' || license.admin_validated === (filter === 'approved');
+        const matchesFilter = filter === 'all' || (filter === 'approved' && license.admin_validated) || (filter === 'pending' && !license.admin_validated);
         return matchesSearch && matchesFilter;
     });
 
@@ -64,9 +107,9 @@ function renderLicenses() {
                     <span class="license-date">${date}</span>
                 </div>
                 <div class="license-info">
-                    <span>👤 ${license.prenom} ${license.nom}</span>
-                    <span>📧 ${license.email || '-'}</span>
-                    <span>📞 ${license.telephone || '-'}</span>
+                    <span><i class="fas fa-user"></i> ${license.prenom} ${license.nom}</span>
+                    <span><i class="fas fa-phone"></i> ${license.telephone || '-'}</span>
+                    <span><i class="fas fa-envelope"></i> ${license.email || '-'}</span>
                 </div>
                 <div class="license-status ${status}">${statusText}</div>
                 <div class="license-actions">
@@ -82,10 +125,9 @@ function renderLicenses() {
         `;
     }).join('');
 
-    // Ajouter l'événement de clic sur la carte pour ouvrir le détail
     document.querySelectorAll('.license-card').forEach(card => {
         card.addEventListener('click', (e) => {
-            if (e.target.tagName === 'BUTTON') return; // Ignorer si on clique sur un bouton
+            if (e.target.tagName === 'BUTTON') return;
             const id = card.dataset.licenseId;
             viewLicense(parseInt(id));
         });
@@ -165,7 +207,7 @@ function renderDocuments() {
     }).join('');
 }
 
-// ===== CHARGEMENT DE L'HISTORIQUE (toutes les demandes, validées et rejetées) =====
+// ===== CHARGEMENT DE L'HISTORIQUE =====
 async function loadHistory() {
     showLoader(true);
     try {
@@ -200,7 +242,7 @@ function renderHistory() {
     const filtered = historyData.filter(license => {
         const matchesSearch = license.player?.nom_complet?.toLowerCase().includes(searchTerm) ||
                              license.nom?.toLowerCase().includes(searchTerm);
-        const matchesFilter = filter === 'all' || (license.admin_validated && filter === 'approved') || (!license.admin_validated && filter === 'pending');
+        const matchesFilter = filter === 'all' || (filter === 'approved' && license.admin_validated) || (filter === 'pending' && !license.admin_validated);
         return matchesSearch && matchesFilter;
     });
 
@@ -219,8 +261,8 @@ function renderHistory() {
                     <span class="license-date">${date}</span>
                 </div>
                 <div class="license-info">
-                    <span>👤 ${license.prenom} ${license.nom}</span>
-                    <span>📞 ${license.telephone || '-'}</span>
+                    <span><i class="fas fa-user"></i> ${license.prenom} ${license.nom}</span>
+                    <span><i class="fas fa-phone"></i> ${license.telephone || '-'}</span>
                 </div>
                 <div class="license-status ${status}">${statusText}</div>
             </div>
@@ -372,7 +414,7 @@ async function approveLicense(licenseId) {
 
 async function rejectLicense(licenseId) {
     const reason = prompt('Motif du rejet (optionnel) :');
-    if (reason === null) return; // Annulé
+    if (reason === null) return;
 
     currentAction = { type: 'rejectLicense', licenseId, reason };
     document.getElementById('confirmModalBody').innerHTML = `
@@ -464,7 +506,7 @@ async function rejectDocument(docId) {
     document.getElementById('confirmModal').style.display = 'block';
 }
 
-// ===== EXÉCUTION DES ACTIONS (après confirmation) =====
+// ===== EXÉCUTION DES ACTIONS =====
 async function executeAction() {
     if (!currentAction) return;
 
@@ -472,7 +514,6 @@ async function executeAction() {
 
     try {
         if (type === 'approveLicense') {
-            // Ouvrir la modale d'upload de carte
             closeConfirmModal();
             showCardUploadModal(licenseId);
         } else if (type === 'rejectLicense') {
@@ -512,7 +553,7 @@ async function executeAction() {
     }
 }
 
-// ===== UPLOAD DE LA CARTE DE LICENCE =====
+// ===== UPLOAD DE LA CARTE =====
 function showCardUploadModal(licenseId) {
     currentLicenseId = licenseId;
     document.getElementById('cardUploadModal').style.display = 'block';
@@ -522,7 +563,7 @@ function closeCardUploadModal() {
     document.getElementById('cardUploadModal').style.display = 'none';
 }
 
-document.getElementById('uploadCardBtn').addEventListener('click', async () => {
+document.getElementById('uploadCardBtn')?.addEventListener('click', async () => {
     const fileInput = document.getElementById('cardFile');
     const file = fileInput.files[0];
     if (!file) {
@@ -531,7 +572,6 @@ document.getElementById('uploadCardBtn').addEventListener('click', async () => {
     }
 
     try {
-        // Upload du fichier vers le bucket 'documents'
         const fileExt = file.name.split('.').pop();
         const fileName = `licence_${currentLicenseId}_${Date.now()}.${fileExt}`;
         const filePath = `licences/${fileName}`;
@@ -539,7 +579,6 @@ document.getElementById('uploadCardBtn').addEventListener('click', async () => {
         const { error: uploadError } = await supabaseAdmin.storage
             .from('documents')
             .upload(filePath, file);
-
         if (uploadError) throw uploadError;
 
         const { data: urlData } = supabaseAdmin.storage
@@ -547,7 +586,6 @@ document.getElementById('uploadCardBtn').addEventListener('click', async () => {
             .getPublicUrl(filePath);
         const carteUrl = urlData.publicUrl;
 
-        // Mettre à jour la demande de licence
         const { error: updateError } = await supabaseAdmin
             .from('license_requests')
             .update({
@@ -555,7 +593,6 @@ document.getElementById('uploadCardBtn').addEventListener('click', async () => {
                 carte_url: carteUrl
             })
             .eq('id', currentLicenseId);
-
         if (updateError) throw updateError;
 
         showToast('Licence validée et carte uploadée', 'success');
@@ -581,11 +618,9 @@ function initTabs() {
             document.getElementById(`tab-${tab}`).classList.add('active');
             currentTab = tab;
 
-            // Réinitialiser la recherche
             document.getElementById('searchInput').value = '';
             document.getElementById('filterSelect').value = 'all';
 
-            // Charger les données
             if (tab === 'licenses') loadLicenses();
             else if (tab === 'documents') loadDocuments();
             else if (tab === 'history') loadHistory();
@@ -623,7 +658,7 @@ function closeConfirmModal() {
 document.addEventListener('DOMContentLoaded', async () => {
     await initAdminPage();
     initTabs();
-    loadLicenses(); // onglet par défaut
+    loadLicenses();
 });
 
 // Exposer les fonctions globales
