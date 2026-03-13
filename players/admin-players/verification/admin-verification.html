@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Vérifications | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../css/admin-global.css">
+    <link rel="stylesheet" href="admin-verification.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar admin -->
+    <nav class="admin-nav">
+        <div class="nav-left" onclick="window.location.href='../index.html'" style="cursor: pointer;">
+            <img src="../../img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+            <span class="admin-title">Administration - Vérifications & Licences</span>
+        </div>
+        <div class="nav-right">
+            <span class="user-name" id="userName">Admin</span>
+            <button class="logout-link" id="logoutBtn">Déconnexion</button>
+        </div>
+    </nav>
+
+    <div class="admin-main">
+        <div class="admin-container">
+            <div class="admin-header">
+                <h1><i class="fas fa-shield-alt"></i> Gestion des vérifications</h1>
+                <button class="btn-refresh" id="refreshBtn"><i class="fas fa-sync-alt"></i> Rafraîchir</button>
+            </div>
+
+            <!-- Onglets -->
+            <div class="admin-tabs">
+                <button class="tab-btn active" data-tab="licenses">📋 Demandes de licence</button>
+                <button class="tab-btn" data-tab="documents">📎 Documents</button>
+                <button class="tab-btn" data-tab="history">📜 Historique</button>
+            </div>
+
+            <!-- Panneau de recherche (selon onglet) -->
+            <div class="search-panel" id="searchPanel">
+                <input type="text" id="searchInput" placeholder="Rechercher...">
+                <select id="filterSelect">
+                    <option value="all">Tous les statuts</option>
+                    <option value="pending">En attente</option>
+                    <option value="approved">Validé</option>
+                    <option value="rejected">Rejeté</option>
+                </select>
+            </div>
+
+            <!-- Contenu des onglets -->
+            <div id="tab-licenses" class="tab-content active">
+                <div id="licensesList" class="admin-list"></div>
+            </div>
+
+            <div id="tab-documents" class="tab-content">
+                <div id="documentsList" class="admin-list"></div>
+            </div>
+
+            <div id="tab-history" class="tab-content">
+                <div id="historyList" class="admin-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE DÉTAIL DEMANDE DE LICENCE -->
+    <div id="licenseModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Détail de la demande de licence</h2>
+                <span class="close-modal" onclick="closeLicenseModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="licenseModalBody">
+                <!-- Rempli dynamiquement -->
+            </div>
+            <div class="modal-actions" id="licenseModalActions">
+                <!-- Actions (valider/rejeter/générer carte) -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE DÉTAIL DOCUMENT -->
+    <div id="documentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Détail du document</h2>
+                <span class="close-modal" onclick="closeDocumentModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="documentModalBody">
+                <!-- Rempli dynamiquement -->
+            </div>
+            <div class="modal-actions" id="documentModalActions">
+                <!-- Actions (approuver/rejeter) -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE CONFIRMATION -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h2>Confirmation</h2>
+                <span class="close-modal" onclick="closeConfirmModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                <p>Êtes-vous sûr de vouloir effectuer cette action ?</p>
+                <div class="modal-actions">
+                    <button class="btn-cancel" onclick="closeConfirmModal()">Annuler</button>
+                    <button class="btn-confirm" id="confirmActionBtn">Confirmer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE D'UPLOAD DE CARTE (pour générer la licence après validation) -->
+    <div id="cardUploadModal" class="modal">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h2>Générer la carte de licence</h2>
+                <span class="close-modal" onclick="closeCardUploadModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Vous pouvez uploader le fichier PDF de la carte de licence.</p>
+                <input type="file" id="cardFile" accept=".pdf,.jpg,.jpeg,.png">
+                <div class="modal-actions">
+                    <button class="btn-cancel" onclick="closeCardUploadModal()">Annuler</button>
+                    <button class="btn-confirm" id="uploadCardBtn">Uploader et valider</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="../js/admin-common.js"></script>
+    <script src="admin-verification.js"></script>
+</body>
+</html>
