@@ -15,7 +15,7 @@
     <!-- Navbar Admin -->
     <nav class="admin-nav">
         <div class="nav-left">
-            <img src="../img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <img src="../../../img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="admin-title">Administration - Gestion des CV</span>
         </div>
         <div class="nav-right">
@@ -73,12 +73,12 @@
         <div class="modal-content modal-xl">
             <div class="modal-header">
                 <h2><i class="fas fa-file-alt"></i> Aperçu du CV</h2>
-                <span class="close-modal" onclick="closeViewModal()">&times;</span>
+                <span class="close-modal" id="closeViewModalBtn">&times;</span>
             </div>
             <div class="modal-body">
                 <div id="cvPreviewContent" class="preview-content"></div>
                 <div class="modal-actions">
-                    <button class="btn-secondary" onclick="closeViewModal()">Fermer</button>
+                    <button class="btn-secondary" id="closeViewModalBtn2">Fermer</button>
                     <button class="btn-approve" id="modalApproveBtn">Approuver</button>
                     <button class="btn-reject" id="modalRejectBtn">Rejeter</button>
                 </div>
@@ -91,14 +91,31 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Rejeter le CV</h2>
-                <span class="close-modal" onclick="closeRejectModal()">&times;</span>
+                <span class="close-modal" id="closeRejectModalBtn">&times;</span>
             </div>
             <div class="modal-body">
                 <p>Veuillez indiquer le motif du rejet (optionnel) :</p>
-                <textarea id="rejectReason" rows="3" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ddd;"></textarea>
-                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                    <button class="btn-secondary" onclick="closeRejectModal()">Annuler</button>
+                <textarea id="rejectReason" rows="3" placeholder="Motif du rejet..."></textarea>
+                <div class="modal-actions">
+                    <button class="btn-secondary" id="closeRejectModalBtn2">Annuler</button>
                     <button class="btn-reject" id="confirmRejectBtn">Confirmer le rejet</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE CONFIRMATION DE SUPPRESSION -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirmer la suppression</h2>
+                <span class="close-modal" id="closeDeleteModalBtn">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer définitivement ce CV ? Cette action est irréversible.</p>
+                <div class="modal-actions">
+                    <button class="btn-secondary" id="closeDeleteModalBtn2">Annuler</button>
+                    <button class="btn-delete" id="confirmDeleteBtn">Supprimer</button>
                 </div>
             </div>
         </div>
