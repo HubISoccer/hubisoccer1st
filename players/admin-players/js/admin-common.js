@@ -4,8 +4,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabaseAdmin = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
-let currentUser = null;
-let currentProfile = null;
+let currentAdmin = null;
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -36,53 +35,50 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
-// ===== VÉRIFICATION DE SESSION ET RÔLE ADMIN =====
+// ===== VÉRIFICATION DE SESSION ADMIN =====
 async function checkAdmin() {
     const { data: { session }, error } = await supabaseAdmin.auth.getSession();
     if (error || !session) {
-        window.location.href = '../../public/auth/login.html';
+        window.location.href = 'auth/admin-login.html';
         return false;
     }
-    currentUser = session.user;
 
-    const { data: profile, error: profileError } = await supabaseAdmin
-        .from('player_profiles')
+    // Vérifier que l'utilisateur est bien dans admin_users
+    const { data: admin, error: adminError } = await supabaseAdmin
+        .from('admin_users')
         .select('*')
-        .eq('user_id', currentUser.id)
-        .single();
+        .eq('user_id', session.user.id)
+        .maybeSingle();
 
-    if (profileError || !profile || !profile.is_admin) {
-        // Rediriger vers le dashboard joueur si pas admin
-        window.location.href = '../dashboard.html';
+    if (adminError || !admin) {
+        await supabaseAdmin.auth.signOut();
+        window.location.href = 'auth/admin-login.html';
         return false;
     }
 
-    currentProfile = profile;
-    document.getElementById('userName').textContent = currentProfile.nom_complet || 'Admin';
-    document.getElementById('userAvatar').src = currentProfile.avatar_url || '../img/user-default.jpg';
+    currentAdmin = admin;
+    // Mettre à jour l'affichage du nom si nécessaire
+    const userNameSpan = document.getElementById('userName');
+    if (userNameSpan) userNameSpan.textContent = session.user.email || 'Admin';
     return true;
 }
 
 // ===== DÉCONNEXION =====
 async function logout() {
     await supabaseAdmin.auth.signOut();
-    window.location.href = '../../public/auth/login.html';
+    window.location.href = 'auth/admin-login.html';
 }
 
-// ===== INITIALISATION COMMUNE (à appeler dans chaque page) =====
+// ===== INITIALISATION COMMUNE =====
 async function initAdminPage() {
     const isAdmin = await checkAdmin();
     if (!isAdmin) return;
 
-    document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
+    // Attacher les événements de déconnexion
+    document.querySelectorAll('.logout-link').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             logout();
         });
-    });
-
-    document.getElementById('languageLink')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        showToast('Changement de langue bientôt disponible', 'info');
     });
 }
