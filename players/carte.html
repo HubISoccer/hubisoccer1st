@@ -270,7 +270,7 @@
     <script>
         const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-        const supabaseCarte = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseCard = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const urlParams = new URLSearchParams(window.location.search);
         const licenseId = urlParams.get('id');
@@ -282,7 +282,7 @@
             }
 
             // Charger la demande de licence avec les infos du joueur
-            const { data: license, error } = await supabase
+            const { data: license, error } = await supabaseCard
                 .from('license_requests')
                 .select(`
                     *,
@@ -301,7 +301,7 @@
             }
 
             // Charger la configuration
-            const { data: config } = await supabase
+            const { data: config } = await supabaseCard
                 .from('license_config')
                 .select('*')
                 .eq('id', 1)
