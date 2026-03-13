@@ -33,19 +33,30 @@
 
             <!-- Onglets -->
             <div class="admin-tabs">
-                <button class="tab-btn active" data-tab="posts">Posts</button>
-                <button class="tab-btn" data-tab="reports">Signalements</button>
-                <button class="tab-btn" data-tab="users">Utilisateurs</button>
+                <button class="tab-btn active" data-tab="posts">📝 Posts</button>
+                <button class="tab-btn" data-tab="reports">🚨 Signalements</button>
+                <button class="tab-btn" data-tab="users">👥 Utilisateurs</button>
+            </div>
+
+            <!-- Panneau de recherche (s'affiche selon l'onglet) -->
+            <div class="search-panel" id="searchPanel">
+                <input type="text" id="searchInput" placeholder="Rechercher...">
+                <select id="filterSelect" style="display: none;">
+                    <option value="all">Tous</option>
+                </select>
             </div>
 
             <!-- Contenu des onglets -->
             <div id="tab-posts" class="tab-content active">
-                <div class="search-panel">
-                    <input type="text" id="postSearch" placeholder="Rechercher par auteur, contenu...">
-                    <select id="postFilter">
-                        <option value="all">Tous les posts</option>
-                        <option value="reported">Signalés uniquement</option>
-                    </select>
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <span class="stat-label">Total posts</span>
+                        <span class="stat-value" id="totalPosts">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Posts signalés</span>
+                        <span class="stat-value" id="reportedPosts">0</span>
+                    </div>
                 </div>
                 <div id="postsList" class="admin-list"></div>
             </div>
@@ -55,10 +66,37 @@
             </div>
 
             <div id="tab-users" class="tab-content">
-                <div class="search-panel">
-                    <input type="text" id="userSearch" placeholder="Rechercher par nom, email...">
-                </div>
                 <div id="usersList" class="admin-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE DÉTAIL POST -->
+    <div id="postModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Détail du post</h2>
+                <span class="close-modal" onclick="closePostModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="postModalBody">
+                <!-- Rempli dynamiquement -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE CONFIRMATION -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h2>Confirmation</h2>
+                <span class="close-modal" onclick="closeConfirmModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                <p>Êtes-vous sûr de vouloir effectuer cette action ?</p>
+                <div class="modal-actions">
+                    <button class="btn-cancel" onclick="closeConfirmModal()">Annuler</button>
+                    <button class="btn-confirm" id="confirmActionBtn">Confirmer</button>
+                </div>
             </div>
         </div>
     </div>
