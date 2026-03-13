@@ -185,8 +185,8 @@ function renderTransactions() {
 
 // ===== RETRAIT DU BONUS =====
 async function withdrawBonus() {
-    if (followersCount < 10) {
-        showToast(`Vous devez avoir au moins 10 abonnés (actuellement ${followersCount})`, 'warning');
+    if (followersCount < 50) {
+        showToast(`Vous devez avoir au moins 50 abonnés (actuellement ${followersCount})`, 'warning');
         return;
     }
     if (wallet.bonus_inscription <= 0) {
