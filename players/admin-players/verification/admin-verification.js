@@ -9,7 +9,7 @@ let currentLicenseId = null;
 let currentDocumentId = null;
 let currentAction = null;
 
-// ===== LOADER (ajouté) =====
+// ===== LOADER =====
 function showLoader(show) {
     let loader = document.getElementById('globalLoader');
     if (!loader) {
@@ -22,7 +22,7 @@ function showLoader(show) {
     loader.style.display = show ? 'flex' : 'none';
 }
 
-// ===== TOAST (si non défini dans admin-common, on le définit) =====
+// ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -49,6 +49,19 @@ function showToast(message, type = 'info', duration = 3000) {
             setTimeout(() => toast.remove(), 300);
         }
     }, duration);
+}
+
+// ===== FONCTION POUR NETTOYER LES URLS DE SIGNATURE (correction 400) =====
+function fixSignatureUrl(url) {
+    if (!url) return url;
+    // Si l'URL commence déjà par http, on la laisse
+    if (url.startsWith('http')) return url;
+    // Sinon, on suppose que c'est un chemin relatif vers le bucket 'documents'
+    // On reconstruit l'URL complète avec l'URL de base de Supabase
+    const baseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co/storage/v1/object/public/';
+    // Si l'URL commence par un slash, on l'enlève
+    const cleanUrl = url.startsWith('/') ? url.substring(1) : url;
+    return baseUrl + cleanUrl;
 }
 
 // ===== CHARGEMENT DES DEMANDES DE LICENCE =====
@@ -278,6 +291,9 @@ async function viewLicense(licenseId) {
         return;
     }
 
+    // Corriger l'URL de signature si nécessaire
+    const signatureUrl = fixSignatureUrl(license.signature_url);
+
     const modalBody = document.getElementById('licenseModalBody');
     const actionsDiv = document.getElementById('licenseModalActions');
 
@@ -358,7 +374,8 @@ async function viewLicense(licenseId) {
 
             <div class="license-detail-section">
                 <h3>Signature</h3>
-                <img src="${license.signature_url}" class="license-signature" alt="Signature">
+                <img src="${signatureUrl}" class="license-signature" alt="Signature" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <p style="display:none; color:var(--danger);">Signature non disponible</p>
             </div>
 
             <div class="license-detail-section">
@@ -525,6 +542,7 @@ async function executeAction() {
             showToast('Demande rejetée', 'success');
             closeLicenseModal();
             loadLicenses();
+            loadHistory();
         } else if (type === 'approveDocument') {
             const { error } = await supabaseAdmin
                 .from('document_requests')
@@ -562,6 +580,12 @@ function showCardUploadModal(licenseId) {
 function closeCardUploadModal() {
     document.getElementById('cardUploadModal').style.display = 'none';
 }
+
+// Affichage du nom de fichier sélectionné
+document.getElementById('cardFile')?.addEventListener('change', function(e) {
+    const fileName = e.target.files[0]?.name || 'Aucun fichier choisi';
+    document.getElementById('file-name').textContent = fileName;
+});
 
 document.getElementById('uploadCardBtn')?.addEventListener('click', async () => {
     const fileInput = document.getElementById('cardFile');
@@ -658,7 +682,7 @@ function closeConfirmModal() {
 document.addEventListener('DOMContentLoaded', async () => {
     await initAdminPage();
     initTabs();
-    loadLicenses();
+    loadLicenses(); // onglet par défaut
 });
 
 // Exposer les fonctions globales
