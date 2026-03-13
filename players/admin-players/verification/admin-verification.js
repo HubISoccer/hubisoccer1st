@@ -1,4 +1,4 @@
-// ===== ADMIN VERIFICATION (CORRIGÉ) =====
+// ===== ADMIN VERIFICATION (AVEC SUPPRESSION ET ÉDITION) =====
 
 // ===== ÉTAT GLOBAL =====
 let currentTab = 'licenses';
@@ -51,15 +51,21 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
-// ===== FONCTION POUR NETTOYER LES URLS DE SIGNATURE (correction 400) =====
+// ===== FONCTION POUR VÉRIFIER SI UN FICHIER EXISTE =====
+async function checkFileExists(url) {
+    try {
+        const response = await fetch(url, { method: 'HEAD' });
+        return response.ok;
+    } catch {
+        return false;
+    }
+}
+
+// ===== FONCTION POUR NETTOYER LES URLS (si besoin) =====
 function fixSignatureUrl(url) {
     if (!url) return url;
-    // Si l'URL commence déjà par http, on la laisse
     if (url.startsWith('http')) return url;
-    // Sinon, on suppose que c'est un chemin relatif vers le bucket 'documents'
-    // On reconstruit l'URL complète avec l'URL de base de Supabase
     const baseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co/storage/v1/object/public/';
-    // Si l'URL commence par un slash, on l'enlève
     const cleanUrl = url.startsWith('/') ? url.substring(1) : url;
     return baseUrl + cleanUrl;
 }
@@ -127,6 +133,7 @@ function renderLicenses() {
                 <div class="license-status ${status}">${statusText}</div>
                 <div class="license-actions">
                     <button class="btn-action view" onclick="viewLicense(${license.id})"><i class="fas fa-eye"></i> Voir</button>
+                    <button class="btn-action edit" onclick="editLicense(${license.id})"><i class="fas fa-edit"></i> Modifier</button>
                     ${!license.admin_validated ? `
                         <button class="btn-action approve" onclick="approveLicense(${license.id})"><i class="fas fa-check"></i> Valider</button>
                         <button class="btn-action reject" onclick="rejectLicense(${license.id})"><i class="fas fa-times"></i> Rejeter</button>
@@ -208,6 +215,8 @@ function renderDocuments() {
                 <div class="document-status ${doc.status}">${doc.status === 'approved' ? 'Validé' : doc.status === 'pending' ? 'En attente' : 'Rejeté'}</div>
                 <div class="document-actions">
                     <button class="btn-action view" onclick="viewDocument(${doc.id})"><i class="fas fa-eye"></i> Voir</button>
+                    <button class="btn-action edit" onclick="editDocument(${doc.id})"><i class="fas fa-edit"></i> Modifier</button>
+                    <button class="btn-action delete" onclick="deleteDocument(${doc.id})"><i class="fas fa-trash"></i> Supprimer</button>
                     ${doc.status !== 'approved' ? `
                         <button class="btn-action approve" onclick="approveDocument(${doc.id})"><i class="fas fa-check"></i> Approuver</button>
                     ` : ''}
@@ -291,7 +300,6 @@ async function viewLicense(licenseId) {
         return;
     }
 
-    // Corriger l'URL de signature si nécessaire
     const signatureUrl = fixSignatureUrl(license.signature_url);
 
     const modalBody = document.getElementById('licenseModalBody');
@@ -402,6 +410,7 @@ async function viewLicense(licenseId) {
 
     actionsDiv.innerHTML = `
         <button class="btn-cancel" onclick="closeLicenseModal()">Fermer</button>
+        <button class="btn-confirm" onclick="editLicense(${license.id})">Modifier</button>
         ${!license.admin_validated ? `
             <button class="btn-confirm" onclick="approveLicense(${license.id})">Valider</button>
             <button class="btn-reject" onclick="rejectLicense(${license.id})">Rejeter</button>
@@ -414,6 +423,174 @@ async function viewLicense(licenseId) {
 
 function closeLicenseModal() {
     document.getElementById('licenseModal').style.display = 'none';
+}
+
+// ===== MODALE D'ÉDITION DE LICENCE =====
+async function editLicense(licenseId) {
+    const license = licensesData.find(l => l.id === licenseId) || historyData.find(l => l.id === licenseId);
+    if (!license) {
+        showToast('Demande introuvable', 'error');
+        return;
+    }
+
+    // Créer une modale d'édition (si elle n'existe pas)
+    let editModal = document.getElementById('editLicenseModal');
+    if (!editModal) {
+        editModal = document.createElement('div');
+        editModal.id = 'editLicenseModal';
+        editModal.className = 'modal';
+        editModal.innerHTML = `
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h2>Modifier la demande de licence</h2>
+                    <span class="close-modal" onclick="closeEditLicenseModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form id="editLicenseForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nom</label>
+                                <input type="text" id="edit_nom" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Prénom</label>
+                                <input type="text" id="edit_prenom" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Date de naissance</label>
+                                <input type="date" id="edit_date_naissance" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Lieu de naissance</label>
+                                <input type="text" id="edit_lieu_naissance" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Adresse</label>
+                                <input type="text" id="edit_adresse" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Nationalité</label>
+                                <input type="text" id="edit_nationalite" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Pays</label>
+                                <input type="text" id="edit_pays" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Langue(s)</label>
+                                <input type="text" id="edit_langue" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Téléphone</label>
+                                <input type="tel" id="edit_telephone" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" id="edit_email" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Taille (cm)</label>
+                                <input type="number" id="edit_taille">
+                            </div>
+                            <div class="form-group">
+                                <label>Poids (kg)</label>
+                                <input type="number" id="edit_poids">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Pied fort</label>
+                                <select id="edit_pied_fort">
+                                    <option value="">Sélectionnez</option>
+                                    <option>Droitier</option>
+                                    <option>Gaucher</option>
+                                    <option>Ambidextre</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Club</label>
+                                <input type="text" id="edit_club">
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn-cancel" onclick="closeEditLicenseModal()">Annuler</button>
+                            <button type="submit" class="btn-confirm">Enregistrer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(editModal);
+
+        // Gestionnaire de soumission
+        document.getElementById('editLicenseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const updates = {
+                nom: document.getElementById('edit_nom').value,
+                prenom: document.getElementById('edit_prenom').value,
+                date_naissance: document.getElementById('edit_date_naissance').value,
+                lieu_naissance: document.getElementById('edit_lieu_naissance').value,
+                adresse: document.getElementById('edit_adresse').value,
+                nationalite: document.getElementById('edit_nationalite').value,
+                pays: document.getElementById('edit_pays').value,
+                langue: document.getElementById('edit_langue').value,
+                telephone: document.getElementById('edit_telephone').value,
+                email: document.getElementById('edit_email').value,
+                taille: document.getElementById('edit_taille').value || null,
+                poids: document.getElementById('edit_poids').value || null,
+                pied_fort: document.getElementById('edit_pied_fort').value || null,
+                club: document.getElementById('edit_club').value || null,
+            };
+
+            const { error } = await supabaseAdmin
+                .from('license_requests')
+                .update(updates)
+                .eq('id', currentLicenseId);
+
+            if (error) {
+                showToast('Erreur lors de la mise à jour: ' + error.message, 'error');
+            } else {
+                showToast('Demande mise à jour avec succès', 'success');
+                closeEditLicenseModal();
+                closeLicenseModal();
+                loadLicenses();
+                loadHistory();
+            }
+        });
+    }
+
+    // Remplir le formulaire avec les données actuelles
+    document.getElementById('edit_nom').value = license.nom || '';
+    document.getElementById('edit_prenom').value = license.prenom || '';
+    document.getElementById('edit_date_naissance').value = license.date_naissance || '';
+    document.getElementById('edit_lieu_naissance').value = license.lieu_naissance || '';
+    document.getElementById('edit_adresse').value = license.adresse || '';
+    document.getElementById('edit_nationalite').value = license.nationalite || '';
+    document.getElementById('edit_pays').value = license.pays || '';
+    document.getElementById('edit_langue').value = license.langue || '';
+    document.getElementById('edit_telephone').value = license.telephone || '';
+    document.getElementById('edit_email').value = license.email || '';
+    document.getElementById('edit_taille').value = license.taille || '';
+    document.getElementById('edit_poids').value = license.poids || '';
+    document.getElementById('edit_pied_fort').value = license.pied_fort || '';
+    document.getElementById('edit_club').value = license.club || '';
+
+    currentLicenseId = license.id;
+    editModal.style.display = 'block';
+}
+
+function closeEditLicenseModal() {
+    document.getElementById('editLicenseModal').style.display = 'none';
 }
 
 async function approveLicense(licenseId) {
@@ -458,6 +635,9 @@ async function viewDocument(docId) {
     const doc = documentsData.find(d => d.id === docId);
     if (!doc) return;
 
+    // Vérifier si le fichier existe
+    const fileExists = doc.file_url ? await checkFileExists(doc.file_url) : false;
+
     const modalBody = document.getElementById('documentModalBody');
     const actionsDiv = document.getElementById('documentModalActions');
 
@@ -469,17 +649,28 @@ async function viewDocument(docId) {
         justificatif_domicile: 'Justificatif de domicile'
     }[doc.document_type] || doc.document_type;
 
+    let fileHtml = '';
+    if (doc.file_url) {
+        if (fileExists) {
+            fileHtml = `<a href="${doc.file_url}" target="_blank" class="btn-action view">Voir le fichier</a>`;
+        } else {
+            fileHtml = `<p style="color: var(--danger);">⚠️ Le fichier est introuvable dans le stockage.</p>`;
+        }
+    }
+
     modalBody.innerHTML = `
         <div style="text-align: center;">
             <p><strong>${doc.player?.nom_complet || 'Inconnu'}</strong> - ${typeLabel}</p>
             <p>Fichier : ${doc.file_name || ''}</p>
-            ${doc.file_url ? `<a href="${doc.file_url}" target="_blank" class="btn-action view">Voir le fichier</a>` : ''}
+            ${fileHtml}
             <p>Statut actuel : <span class="document-status ${doc.status}">${doc.status}</span></p>
         </div>
     `;
 
     actionsDiv.innerHTML = `
         <button class="btn-cancel" onclick="closeDocumentModal()">Fermer</button>
+        <button class="btn-confirm" onclick="editDocument(${doc.id})">Modifier</button>
+        <button class="btn-reject" onclick="deleteDocument(${doc.id})">Supprimer</button>
         ${doc.status !== 'approved' ? `
             <button class="btn-confirm" onclick="approveDocument(${doc.id})">Approuver</button>
         ` : ''}
@@ -494,6 +685,75 @@ async function viewDocument(docId) {
 
 function closeDocumentModal() {
     document.getElementById('documentModal').style.display = 'none';
+}
+
+// ===== MODALE D'ÉDITION DE DOCUMENT =====
+async function editDocument(docId) {
+    const doc = documentsData.find(d => d.id === docId);
+    if (!doc) return;
+
+    // Créer une modale d'édition simple (on ne peut modifier que le statut et le type ?)
+    // Pour l'instant, on peut permettre de changer le type et le statut
+    const newStatus = prompt('Nouveau statut (pending/approved/rejected) :', doc.status);
+    if (!newStatus || !['pending', 'approved', 'rejected'].includes(newStatus)) {
+        showToast('Statut invalide', 'warning');
+        return;
+    }
+
+    const newType = prompt('Nouveau type (id_card/photo/certificat_medical/diplome/justificatif_domicile) :', doc.document_type);
+    if (!newType) return;
+
+    const updates = { status: newStatus, document_type: newType };
+
+    const { error } = await supabaseAdmin
+        .from('document_requests')
+        .update(updates)
+        .eq('id', docId);
+
+    if (error) {
+        showToast('Erreur: ' + error.message, 'error');
+    } else {
+        showToast('Document mis à jour', 'success');
+        closeDocumentModal();
+        loadDocuments();
+    }
+}
+
+// ===== SUPPRESSION DE DOCUMENT =====
+async function deleteDocument(docId) {
+    const doc = documentsData.find(d => d.id === docId);
+    if (!doc) return;
+
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce document ? Cette action est irréversible.')) return;
+
+    // Supprimer d'abord le fichier du storage (si présent)
+    if (doc.file_url) {
+        // Extraire le chemin du fichier de l'URL
+        const urlParts = doc.file_url.split('/storage/v1/object/public/documents/');
+        if (urlParts.length > 1) {
+            const filePath = urlParts[1];
+            const { error: deleteError } = await supabaseAdmin.storage
+                .from('documents')
+                .remove([filePath]);
+            if (deleteError) {
+                console.error('Erreur suppression fichier:', deleteError);
+                showToast('Fichier non trouvé, suppression de l\'entrée quand même', 'warning');
+            }
+        }
+    }
+
+    // Supprimer l'entrée de la base
+    const { error } = await supabaseAdmin
+        .from('document_requests')
+        .delete()
+        .eq('id', docId);
+
+    if (error) {
+        showToast('Erreur suppression: ' + error.message, 'error');
+    } else {
+        showToast('Document supprimé', 'success');
+        loadDocuments();
+    }
 }
 
 async function approveDocument(docId) {
@@ -688,11 +948,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Exposer les fonctions globales
 window.viewLicense = viewLicense;
 window.closeLicenseModal = closeLicenseModal;
+window.editLicense = editLicense;
+window.closeEditLicenseModal = closeEditLicenseModal;
 window.approveLicense = approveLicense;
 window.rejectLicense = rejectLicense;
 window.downloadCard = downloadCard;
 window.viewDocument = viewDocument;
 window.closeDocumentModal = closeDocumentModal;
+window.editDocument = editDocument;
+window.deleteDocument = deleteDocument;
 window.approveDocument = approveDocument;
 window.rejectDocument = rejectDocument;
 window.executeAction = executeAction;
