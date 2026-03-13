@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des CV | Administration HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="../css/admin-global.css">
+    <style>
+        /* Styles spécifiques à la page */
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-approved { background: #d4edda; color: #155724; }
+        .actions { display: flex; gap: 8px; }
+        .btn-icon {
+            width: 35px; height: 35px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .btn-view { background: #e7f0ff; color: #0d6efd; }
+        .btn-view:hover { background: #0d6efd; color: white; }
+        .btn-approve { background: #d4edda; color: #28a745; }
+        .btn-approve:hover { background: #28a745; color: white; }
+        .btn-reject { background: #f8d7da; color: #dc3545; }
+        .btn-reject:hover { background: #dc3545; color: white; }
+
+        /* Modale de visualisation */
+        .modal-xl { max-width: 1000px; width: 90%; }
+        .preview-content { max-height: 70vh; overflow-y: auto; padding: 20px; background: white; border-radius: 10px; }
+        .modal-actions { display: flex; gap: 15px; justify-content: flex-end; margin-top: 20px; }
+
+        /* Responsive */
+        @media (max-width: 700px) {
+            .table-container { overflow-x: auto; }
+            .actions { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar Admin -->
+    <nav class="admin-nav">
+        <div class="nav-left">
+            <img src="../../img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="admin-title">Administration - Gestion des CV</span>
+        </div>
+        <div class="nav-right">
+            <span class="admin-user" id="adminEmail">Chargement...</span>
+            <button class="btn-logout" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Déconnexion</button>
+        </div>
+    </nav>
+
+    <!-- Sous-navigation -->
+    <div class="admin-subnav">
+        <a href="../dashboard/admin-dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="../verification/admin-verification.html"><i class="fas fa-shield-alt"></i> Vérifications</a>
+        <a href="../edit-cv/admin-cv.html" class="active"><i class="fas fa-file-alt"></i> CV</a>
+        <a href="../certifications/admin-certifications.html"><i class="fas fa-certificate"></i> Diplômes</a>
+        <a href="../feed/admin-feed.html"><i class="fas fa-users"></i> Communauté</a>
+        <!-- autres liens selon votre menu -->
+    </div>
+
+    <!-- Contenu principal -->
+    <main class="admin-main">
+        <div class="container">
+            <!-- Header avec bouton de rafraîchissement -->
+            <div class="page-header">
+                <h1><i class="fas fa-file-alt"></i> Gestion des Curriculum Vitæ</h1>
+                <button class="btn-refresh" id="refreshBtn"><i class="fas fa-sync-alt"></i> Rafraîchir</button>
+            </div>
+
+            <!-- Tableau des CV -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Joueur</th>
+                                    <th>Email</th>
+                                    <th>Téléphone</th>
+                                    <th>Dernière modification</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cvTableBody">
+                                <tr><td colspan="6" class="text-center">Chargement des CV...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODALE DE VISUALISATION DU CV -->
+    <div id="viewModal" class="modal">
+        <div class="modal-content modal-xl">
+            <div class="modal-header">
+                <h2><i class="fas fa-file-alt"></i> Aperçu du CV</h2>
+                <span class="close-modal" onclick="closeViewModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="cvPreviewContent" class="preview-content"></div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeViewModal()">Fermer</button>
+                    <button class="btn-approve" id="modalApproveBtn">Approuver</button>
+                    <button class="btn-reject" id="modalRejectBtn">Rejeter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE CONFIRMATION DE REJET (avec motif) -->
+    <div id="rejectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Rejeter le CV</h2>
+                <span class="close-modal" onclick="closeRejectModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Veuillez indiquer le motif du rejet (optionnel) :</p>
+                <textarea id="rejectReason" rows="3" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ddd;"></textarea>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button class="btn-secondary" onclick="closeRejectModal()">Annuler</button>
+                    <button class="btn-reject" id="confirmRejectBtn">Confirmer le rejet</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast de notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/admin-common.js"></script>
+    <script src="../js/admin-cv.js"></script>
+</body>
+</html>
