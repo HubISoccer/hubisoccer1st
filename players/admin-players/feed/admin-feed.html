@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Communauté | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../css/admin-global.css">
+    <link rel="stylesheet" href="admin-feed.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar admin -->
+    <nav class="admin-nav">
+        <div class="nav-left" onclick="window.location.href='../index.html'" style="cursor: pointer;">
+            <img src="../../img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+            <span class="admin-title">Administration - Communauté</span>
+        </div>
+        <div class="nav-right">
+            <span class="user-name" id="userName">Admin</span>
+            <button class="logout-link" id="logoutBtn">Déconnexion</button>
+        </div>
+    </nav>
+
+    <div class="admin-main">
+        <div class="admin-container">
+            <div class="admin-header">
+                <h1><i class="fas fa-users"></i> Gestion de la communauté</h1>
+                <button class="btn-refresh" id="refreshBtn"><i class="fas fa-sync-alt"></i> Rafraîchir</button>
+            </div>
+
+            <!-- Onglets -->
+            <div class="admin-tabs">
+                <button class="tab-btn active" data-tab="posts">Posts</button>
+                <button class="tab-btn" data-tab="reports">Signalements</button>
+                <button class="tab-btn" data-tab="users">Utilisateurs</button>
+            </div>
+
+            <!-- Contenu des onglets -->
+            <div id="tab-posts" class="tab-content active">
+                <div class="search-panel">
+                    <input type="text" id="postSearch" placeholder="Rechercher par auteur, contenu...">
+                    <select id="postFilter">
+                        <option value="all">Tous les posts</option>
+                        <option value="reported">Signalés uniquement</option>
+                    </select>
+                </div>
+                <div id="postsList" class="admin-list"></div>
+            </div>
+
+            <div id="tab-reports" class="tab-content">
+                <div id="reportsList" class="admin-list"></div>
+            </div>
+
+            <div id="tab-users" class="tab-content">
+                <div class="search-panel">
+                    <input type="text" id="userSearch" placeholder="Rechercher par nom, email...">
+                </div>
+                <div id="usersList" class="admin-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="../js/admin-common.js"></script>
+    <script src="admin-feed.js"></script>
+</body>
+</html>
