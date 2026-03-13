@@ -134,7 +134,8 @@
     <script>
         const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Correction : renommer pour éviter le conflit avec l'objet global 'supabase'
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const urlParams = new URLSearchParams(window.location.search);
         const licenseId = urlParams.get('id');
@@ -145,37 +146,45 @@
                 return;
             }
 
-            // Charger la demande de licence
-            const { data: license, error } = await supabase
+            // Charger la demande de licence avec les informations du joueur via la jointure
+            const { data: license, error } = await supabaseClient
                 .from('license_requests')
                 .select('*, player:player_profiles!license_requests_player_id_fkey(*)')
                 .eq('id', licenseId)
                 .single();
 
             if (error || !license) {
+                console.error('Erreur chargement licence:', error);
                 document.querySelector('.card-body').innerHTML = '<p>Licence introuvable.</p>';
                 return;
             }
 
-            // Charger la configuration
-            const { data: config } = await supabase
+            // Charger la configuration de la carte
+            const { data: config, error: configError } = await supabaseClient
                 .from('license_config')
                 .select('*')
                 .eq('id', 1)
                 .single();
 
-            renderCard(license, config);
+            if (configError) {
+                console.error('Erreur chargement config:', configError);
+            }
+
+            renderCard(license, config || {});
         }
 
         function renderCard(license, config) {
             const recto = document.getElementById('recto');
             const verso = document.getElementById('verso');
 
+            // Récupérer les infos du joueur depuis license.player (jointure)
+            const player = license.player || {};
+
             // Recto
             recto.innerHTML = `
                 <div class="flag-logo">
-                    <img src="${config?.recto_flag_url || ''}" alt="Drapeau">
-                    <img src="${config?.recto_logo_url || ''}" alt="Logo">
+                    <img src="${config?.recto_flag_url || ''}" alt="Drapeau" onerror="this.style.display='none'">
+                    <img src="${config?.recto_logo_url || ''}" alt="Logo" onerror="this.style.display='none'">
                 </div>
                 <div class="title-section">
                     <h3>${config?.recto_country || ''}</h3>
@@ -184,34 +193,34 @@
                     <h1>${config?.recto_title || ''}</h1>
                 </div>
                 <div style="text-align: center;">
-                    <img src="${license.player?.avatar_url || '../../img/user-default.jpg'}" class="player-photo">
+                    <img src="${player?.avatar_url || '../../img/user-default.jpg'}" class="player-photo" alt="Photo joueur" onerror="this.src='../../img/user-default.jpg'">
                 </div>
                 <div class="info-grid">
-                    <div class="info-item"><strong>Nom:</strong> ${license.prenom} ${license.nom}</div>
-                    <div class="info-item"><strong>Date naiss.:</strong> ${new Date(license.date_naissance).toLocaleDateString()}</div>
-                    <div class="info-item"><strong>Lieu:</strong> ${license.lieu_naissance || '-'}</div>
-                    <div class="info-item"><strong>Nationalité:</strong> ${license.nationalite || '-'}</div>
-                    <div class="info-item"><strong>Pays:</strong> ${license.pays || '-'}</div>
-                    <div class="info-item"><strong>Taille:</strong> ${license.taille || '-'} cm</div>
-                    <div class="info-item"><strong>Poids:</strong> ${license.poids || '-'} kg</div>
-                    <div class="info-item"><strong>Pied:</strong> ${license.pied_fort || '-'}</div>
-                    <div class="info-item"><strong>Club:</strong> ${license.club || '-'}</div>
+                    <div class="info-item"><strong>Nom:</strong> ${player?.first_name || ''} ${player?.last_name || ''}</div>
+                    <div class="info-item"><strong>Date naiss.:</strong> ${player?.birth_date ? new Date(player.birth_date).toLocaleDateString() : '-'}</div>
+                    <div class="info-item"><strong>Lieu:</strong> ${player?.birth_place || '-'}</div>
+                    <div class="info-item"><strong>Nationalité:</strong> ${player?.nationality || '-'}</div>
+                    <div class="info-item"><strong>Pays:</strong> ${player?.country || '-'}</div>
+                    <div class="info-item"><strong>Taille:</strong> ${player?.height || '-'} cm</div>
+                    <div class="info-item"><strong>Poids:</strong> ${player?.weight || '-'} kg</div>
+                    <div class="info-item"><strong>Pied:</strong> ${player?.preferred_foot || '-'}</div>
+                    <div class="info-item"><strong>Club:</strong> ${player?.current_club || '-'}</div>
                 </div>
                 <div class="signature-stamp">
-                    <img src="${license.signature_url}" alt="Signature joueur" style="max-height: 50px;">
-                    <img src="${config?.president_stamp_url || ''}" alt="Cachet" style="max-height: 50px;">
+                    ${license.signature_url ? `<img src="${license.signature_url}" alt="Signature joueur" style="max-height: 50px;">` : ''}
+                    ${config?.president_stamp_url ? `<img src="${config.president_stamp_url}" alt="Cachet" style="max-height: 50px;">` : ''}
                 </div>
             `;
 
             // Verso
-            const id = license.player?.hub_id || license.player?.id || licenseId;
+            const id = player?.hub_id || player?.id || licenseId;
             const qrUrl = `https://hubisoccer.github.io/hubisoccer1st/verify.html?id=${id}`; // à créer plus tard
 
             verso.innerHTML = `
                 <div style="position: relative;">
-                    <img src="${config?.verso_background_logo_url || ''}" class="watermark" style="width:100%; opacity:0.1;">
+                    ${config?.verso_background_logo_url ? `<img src="${config.verso_background_logo_url}" class="watermark" style="width:100%; opacity:0.1;">` : ''}
                     <div style="position: relative; z-index: 1;">
-                        <p><strong>ID HubISoccer:</strong> ${license.player?.hub_id || ''}</p>
+                        <p><strong>ID HubISoccer:</strong> ${player?.hub_id || ''}</p>
                         <p><strong>Délivrée par:</strong> ${config?.verso_issued_by || ''}</p>
                         <p>${config?.verso_legal_info || ''}</p>
                         <div class="qr-code">
@@ -220,7 +229,7 @@
                         </div>
                         <div class="signature-stamp">
                             <span>${config?.president_name || ''}</span>
-                            <img src="${config?.president_signature_url || ''}" alt="Signature président" style="max-height: 50px;">
+                            ${config?.president_signature_url ? `<img src="${config.president_signature_url}" alt="Signature président" style="max-height: 50px;">` : ''}
                         </div>
                     </div>
                 </div>
