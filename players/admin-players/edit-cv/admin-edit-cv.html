@@ -80,10 +80,50 @@
                 <!-- Rempli dynamiquement -->
             </div>
             <div class="modal-footer">
-                <button class="btn-action approve" id="modalApproveBtn">Approuver</button>
-                <button class="btn-action reject" id="modalRejectBtn">Rejeter</button>
-                <button class="btn-action pending" id="modalPendingBtn">Remettre en attente</button>
-                <button class="btn-action close" onclick="closeCvModal()">Fermer</button>
+                <button class="btn-action approve" id="modalApproveBtn"><i class="fas fa-check"></i> Approuver</button>
+                <button class="btn-action reject" id="modalRejectBtn"><i class="fas fa-times"></i> Rejeter</button>
+                <button class="btn-action pending" id="modalPendingBtn"><i class="fas fa-clock"></i> En attente</button>
+                <button class="btn-action delete" id="modalDeleteBtn"><i class="fas fa-trash"></i> Supprimer</button>
+                <button class="btn-action edit" id="modalEditBtn"><i class="fas fa-edit"></i> Modifier</button>
+                <button class="btn-action close" onclick="closeCvModal()"><i class="fas fa-times"></i> Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE D'ÉDITION RAPIDE DU CV -->
+    <div id="editCvModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Modifier le CV</h2>
+                <span class="close-modal" onclick="closeEditModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editCvForm">
+                    <div class="form-group">
+                        <label>Nom complet</label>
+                        <input type="text" id="editNom" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Poste</label>
+                        <input type="text" id="editPoste" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Téléphone</label>
+                        <input type="text" id="editTelephone" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="editEmail" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Club</label>
+                        <input type="text" id="editClub" class="form-control">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-save">Enregistrer</button>
+                        <button type="button" class="btn-cancel" onclick="closeEditModal()">Annuler</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
