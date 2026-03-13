@@ -113,7 +113,7 @@
         </div>
     </div>
 
-    <!-- MODALE D'UPLOAD DE CARTE (pour générer la licence après validation) -->
+    <!-- MODALE D'UPLOAD DE CARTE (améliorée avec affichage du nom de fichier) -->
     <div id="cardUploadModal" class="modal">
         <div class="modal-content small">
             <div class="modal-header">
@@ -121,8 +121,12 @@
                 <span class="close-modal" onclick="closeCardUploadModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <p>Vous pouvez uploader le fichier PDF de la carte de licence.</p>
-                <input type="file" id="cardFile" accept=".pdf,.jpg,.jpeg,.png">
+                <p>Vous pouvez uploader le fichier PDF ou image de la carte de licence.</p>
+                <div class="file-upload">
+                    <input type="file" id="cardFile" accept=".pdf,.jpg,.jpeg,.png">
+                    <label for="cardFile" class="btn-action view">Choisir un fichier</label>
+                    <span id="file-name">Aucun fichier choisi</span>
+                </div>
                 <div class="modal-actions">
                     <button class="btn-cancel" onclick="closeCardUploadModal()">Annuler</button>
                     <button class="btn-confirm" id="uploadCardBtn">Uploader et valider</button>
