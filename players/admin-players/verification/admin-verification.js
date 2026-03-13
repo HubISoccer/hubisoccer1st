@@ -1,4 +1,4 @@
-// ===== ADMIN VERIFICATION (AVEC SUPPRESSION ET ÉDITION) =====
+// ===== ADMIN VERIFICATION (AVEC WORKFLOW PRÉSIDENT) =====
 
 // ===== ÉTAT GLOBAL =====
 let currentTab = 'licenses';
@@ -61,7 +61,7 @@ async function checkFileExists(url) {
     }
 }
 
-// ===== FONCTION POUR NETTOYER LES URLS (si besoin) =====
+// ===== FONCTION POUR NETTOYER LES URLS =====
 function fixSignatureUrl(url) {
     if (!url) return url;
     if (url.startsWith('http')) return url;
@@ -107,7 +107,7 @@ function renderLicenses() {
         const matchesSearch = license.player?.nom_complet?.toLowerCase().includes(searchTerm) ||
                              license.nom?.toLowerCase().includes(searchTerm) ||
                              license.prenom?.toLowerCase().includes(searchTerm);
-        const matchesFilter = filter === 'all' || (filter === 'approved' && license.admin_validated) || (filter === 'pending' && !license.admin_validated);
+        const matchesFilter = filter === 'all' || license.status === filter;
         return matchesSearch && matchesFilter;
     });
 
@@ -115,12 +115,17 @@ function renderLicenses() {
     if (!container) return;
 
     container.innerHTML = filtered.map(license => {
-        const status = license.admin_validated ? 'approved' : 'pending';
-        const statusText = license.admin_validated ? 'Validée' : 'En attente';
+        const statusClass = license.status;
+        const statusText = {
+            admin_pending: 'Admin en attente',
+            president_pending: 'Président en attente',
+            approved: 'Validée',
+            rejected: 'Rejetée'
+        }[license.status] || 'En attente';
         const date = new Date(license.created_at).toLocaleDateString('fr-FR');
 
         return `
-            <div class="license-card ${status}" data-license-id="${license.id}">
+            <div class="license-card ${statusClass}" data-license-id="${license.id}">
                 <div class="license-header">
                     <span class="license-player">${license.player?.nom_complet || 'Inconnu'}</span>
                     <span class="license-date">${date}</span>
@@ -130,16 +135,19 @@ function renderLicenses() {
                     <span><i class="fas fa-phone"></i> ${license.telephone || '-'}</span>
                     <span><i class="fas fa-envelope"></i> ${license.email || '-'}</span>
                 </div>
-                <div class="license-status ${status}">${statusText}</div>
+                <div class="license-status ${statusClass}">${statusText}</div>
                 <div class="license-actions">
                     <button class="btn-action view" onclick="viewLicense(${license.id})"><i class="fas fa-eye"></i> Voir</button>
                     <button class="btn-action edit" onclick="editLicense(${license.id})"><i class="fas fa-edit"></i> Modifier</button>
-                    ${!license.admin_validated ? `
-                        <button class="btn-action approve" onclick="approveLicense(${license.id})"><i class="fas fa-check"></i> Valider</button>
+                    ${license.status === 'admin_pending' ? `
+                        <button class="btn-action approve" onclick="approveLicense(${license.id})"><i class="fas fa-check"></i> Valider (admin)</button>
                         <button class="btn-action reject" onclick="rejectLicense(${license.id})"><i class="fas fa-times"></i> Rejeter</button>
-                    ` : `
+                    ` : license.status === 'president_pending' ? `
+                        <button class="btn-action approve" onclick="presidentApproveLicense(${license.id})"><i class="fas fa-check"></i> Approuver (président)</button>
+                        <button class="btn-action reject" onclick="rejectLicense(${license.id})"><i class="fas fa-times"></i> Rejeter</button>
+                    ` : license.status === 'approved' ? `
                         <button class="btn-action download" onclick="downloadCard(${license.id})"><i class="fas fa-download"></i> Carte</button>
-                    `}
+                    ` : ''}
                 </div>
             </div>
         `;
@@ -264,7 +272,7 @@ function renderHistory() {
     const filtered = historyData.filter(license => {
         const matchesSearch = license.player?.nom_complet?.toLowerCase().includes(searchTerm) ||
                              license.nom?.toLowerCase().includes(searchTerm);
-        const matchesFilter = filter === 'all' || (filter === 'approved' && license.admin_validated) || (filter === 'pending' && !license.admin_validated);
+        const matchesFilter = filter === 'all' || license.status === filter;
         return matchesSearch && matchesFilter;
     });
 
@@ -272,12 +280,17 @@ function renderHistory() {
     if (!container) return;
 
     container.innerHTML = filtered.map(license => {
-        const status = license.admin_validated ? 'approved' : 'pending';
-        const statusText = license.admin_validated ? 'Validée' : 'En attente';
+        const statusClass = license.status;
+        const statusText = {
+            admin_pending: 'Admin en attente',
+            president_pending: 'Président en attente',
+            approved: 'Validée',
+            rejected: 'Rejetée'
+        }[license.status] || 'En attente';
         const date = new Date(license.created_at).toLocaleDateString('fr-FR');
 
         return `
-            <div class="license-card ${status}" data-license-id="${license.id}" onclick="viewLicense(${license.id})">
+            <div class="license-card ${statusClass}" data-license-id="${license.id}" onclick="viewLicense(${license.id})">
                 <div class="license-header">
                     <span class="license-player">${license.player?.nom_complet || 'Inconnu'}</span>
                     <span class="license-date">${date}</span>
@@ -286,7 +299,7 @@ function renderHistory() {
                     <span><i class="fas fa-user"></i> ${license.prenom} ${license.nom}</span>
                     <span><i class="fas fa-phone"></i> ${license.telephone || '-'}</span>
                 </div>
-                <div class="license-status ${status}">${statusText}</div>
+                <div class="license-status ${statusClass}">${statusText}</div>
             </div>
         `;
     }).join('');
@@ -395,7 +408,7 @@ async function viewLicense(licenseId) {
                     </div>
                     <div class="license-detail-item">
                         <span class="label">Statut</span>
-                        <span class="value">${license.admin_validated ? 'Validée' : 'En attente'}</span>
+                        <span class="value">${{admin_pending:'Admin en attente', president_pending:'Président en attente', approved:'Validée', rejected:'Rejetée'}[license.status] || license.status}</span>
                     </div>
                     ${license.carte_url ? `
                     <div class="license-detail-item">
@@ -408,14 +421,18 @@ async function viewLicense(licenseId) {
         </div>
     `;
 
-    actionsDiv.innerHTML = `
-        <button class="btn-cancel" onclick="closeLicenseModal()">Fermer</button>
-        <button class="btn-confirm" onclick="editLicense(${license.id})">Modifier</button>
-        ${!license.admin_validated ? `
-            <button class="btn-confirm" onclick="approveLicense(${license.id})">Valider</button>
-            <button class="btn-reject" onclick="rejectLicense(${license.id})">Rejeter</button>
-        ` : ''}
-    `;
+    let actionsHtml = `<button class="btn-cancel" onclick="closeLicenseModal()">Fermer</button>
+                       <button class="btn-confirm" onclick="editLicense(${license.id})">Modifier</button>`;
+    if (license.status === 'admin_pending') {
+        actionsHtml += `<button class="btn-confirm" onclick="approveLicense(${license.id})">Valider (admin)</button>
+                        <button class="btn-reject" onclick="rejectLicense(${license.id})">Rejeter</button>`;
+    } else if (license.status === 'president_pending') {
+        actionsHtml += `<button class="btn-confirm" onclick="presidentApproveLicense(${license.id})">Approuver (président)</button>
+                        <button class="btn-reject" onclick="rejectLicense(${license.id})">Rejeter</button>`;
+    } else if (license.status === 'approved') {
+        actionsHtml += `<button class="btn-action download" onclick="downloadCard(${license.id})">Télécharger la carte</button>`;
+    }
+    actionsDiv.innerHTML = actionsHtml;
 
     document.getElementById('licenseModal').style.display = 'block';
     currentLicenseId = license.id;
@@ -433,7 +450,6 @@ async function editLicense(licenseId) {
         return;
     }
 
-    // Créer une modale d'édition (si elle n'existe pas)
     let editModal = document.getElementById('editLicenseModal');
     if (!editModal) {
         editModal = document.createElement('div');
@@ -532,7 +548,6 @@ async function editLicense(licenseId) {
         `;
         document.body.appendChild(editModal);
 
-        // Gestionnaire de soumission
         document.getElementById('editLicenseForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const updates = {
@@ -569,7 +584,6 @@ async function editLicense(licenseId) {
         });
     }
 
-    // Remplir le formulaire avec les données actuelles
     document.getElementById('edit_nom').value = license.nom || '';
     document.getElementById('edit_prenom').value = license.prenom || '';
     document.getElementById('edit_date_naissance').value = license.date_naissance || '';
@@ -593,32 +607,43 @@ function closeEditLicenseModal() {
     document.getElementById('editLicenseModal').style.display = 'none';
 }
 
+// ===== ACTIONS SUR LES DEMANDES =====
 async function approveLicense(licenseId) {
-    currentAction = { type: 'approveLicense', licenseId };
-    document.getElementById('confirmModalBody').innerHTML = `
-        <p>Voulez-vous valider cette demande de licence ?</p>
-        <p>Vous pourrez ensuite télécharger la carte de licence.</p>
-        <div class="modal-actions">
-            <button class="btn-cancel" onclick="closeConfirmModal()">Annuler</button>
-            <button class="btn-confirm" onclick="executeAction()">Valider</button>
-        </div>
-    `;
-    document.getElementById('confirmModal').style.display = 'block';
+    const { error } = await supabaseAdmin
+        .from('license_requests')
+        .update({ status: 'president_pending' })
+        .eq('id', licenseId);
+    if (error) {
+        showToast('Erreur: ' + error.message, 'error');
+    } else {
+        showToast('Demande envoyée au président', 'success');
+        loadLicenses();
+        closeLicenseModal();
+    }
+}
+
+async function presidentApproveLicense(licenseId) {
+    currentAction = { type: 'presidentApprove', licenseId };
+    // Ouvrir la modale d'upload de carte (existante)
+    showCardUploadModal(licenseId);
 }
 
 async function rejectLicense(licenseId) {
     const reason = prompt('Motif du rejet (optionnel) :');
     if (reason === null) return;
 
-    currentAction = { type: 'rejectLicense', licenseId, reason };
-    document.getElementById('confirmModalBody').innerHTML = `
-        <p>Êtes-vous sûr de vouloir rejeter cette demande ?</p>
-        <div class="modal-actions">
-            <button class="btn-cancel" onclick="closeConfirmModal()">Annuler</button>
-            <button class="btn-confirm" onclick="executeAction()">Confirmer</button>
-        </div>
-    `;
-    document.getElementById('confirmModal').style.display = 'block';
+    const { error } = await supabaseAdmin
+        .from('license_requests')
+        .update({ status: 'rejected' })
+        .eq('id', licenseId);
+    if (error) {
+        showToast('Erreur: ' + error.message, 'error');
+    } else {
+        showToast('Demande rejetée', 'success');
+        loadLicenses();
+        loadHistory();
+        closeLicenseModal();
+    }
 }
 
 async function downloadCard(licenseId) {
@@ -635,7 +660,6 @@ async function viewDocument(docId) {
     const doc = documentsData.find(d => d.id === docId);
     if (!doc) return;
 
-    // Vérifier si le fichier existe
     const fileExists = doc.file_url ? await checkFileExists(doc.file_url) : false;
 
     const modalBody = document.getElementById('documentModalBody');
@@ -687,13 +711,10 @@ function closeDocumentModal() {
     document.getElementById('documentModal').style.display = 'none';
 }
 
-// ===== MODALE D'ÉDITION DE DOCUMENT =====
 async function editDocument(docId) {
     const doc = documentsData.find(d => d.id === docId);
     if (!doc) return;
 
-    // Créer une modale d'édition simple (on ne peut modifier que le statut et le type ?)
-    // Pour l'instant, on peut permettre de changer le type et le statut
     const newStatus = prompt('Nouveau statut (pending/approved/rejected) :', doc.status);
     if (!newStatus || !['pending', 'approved', 'rejected'].includes(newStatus)) {
         showToast('Statut invalide', 'warning');
@@ -719,16 +740,13 @@ async function editDocument(docId) {
     }
 }
 
-// ===== SUPPRESSION DE DOCUMENT =====
 async function deleteDocument(docId) {
     const doc = documentsData.find(d => d.id === docId);
     if (!doc) return;
 
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce document ? Cette action est irréversible.')) return;
 
-    // Supprimer d'abord le fichier du storage (si présent)
     if (doc.file_url) {
-        // Extraire le chemin du fichier de l'URL
         const urlParts = doc.file_url.split('/storage/v1/object/public/documents/');
         if (urlParts.length > 1) {
             const filePath = urlParts[1];
@@ -742,7 +760,6 @@ async function deleteDocument(docId) {
         }
     }
 
-    // Supprimer l'entrée de la base
     const { error } = await supabaseAdmin
         .from('document_requests')
         .delete()
@@ -790,19 +807,9 @@ async function executeAction() {
     const { type, licenseId, docId, reason } = currentAction;
 
     try {
-        if (type === 'approveLicense') {
+        if (type === 'presidentApprove') {
+            // L'upload de carte est géré dans la modale, on ne fait rien ici
             closeConfirmModal();
-            showCardUploadModal(licenseId);
-        } else if (type === 'rejectLicense') {
-            const { error } = await supabaseAdmin
-                .from('license_requests')
-                .update({ admin_validated: false })
-                .eq('id', licenseId);
-            if (error) throw error;
-            showToast('Demande rejetée', 'success');
-            closeLicenseModal();
-            loadLicenses();
-            loadHistory();
         } else if (type === 'approveDocument') {
             const { error } = await supabaseAdmin
                 .from('document_requests')
@@ -831,7 +838,7 @@ async function executeAction() {
     }
 }
 
-// ===== UPLOAD DE LA CARTE =====
+// ===== UPLOAD DE LA CARTE (pour le président) =====
 function showCardUploadModal(licenseId) {
     currentLicenseId = licenseId;
     document.getElementById('cardUploadModal').style.display = 'block';
@@ -841,7 +848,6 @@ function closeCardUploadModal() {
     document.getElementById('cardUploadModal').style.display = 'none';
 }
 
-// Affichage du nom de fichier sélectionné
 document.getElementById('cardFile')?.addEventListener('change', function(e) {
     const fileName = e.target.files[0]?.name || 'Aucun fichier choisi';
     document.getElementById('file-name').textContent = fileName;
@@ -870,14 +876,29 @@ document.getElementById('uploadCardBtn')?.addEventListener('click', async () => 
             .getPublicUrl(filePath);
         const carteUrl = urlData.publicUrl;
 
+        // Mettre à jour la demande : statut approved, carte_url
         const { error: updateError } = await supabaseAdmin
             .from('license_requests')
             .update({
-                admin_validated: true,
+                status: 'approved',
                 carte_url: carteUrl
             })
             .eq('id', currentLicenseId);
         if (updateError) throw updateError;
+
+        // Récupérer l'ID du joueur pour la notification
+        const license = licensesData.find(l => l.id === currentLicenseId) || historyData.find(l => l.id === currentLicenseId);
+        const playerId = license?.player?.id;
+        if (playerId) {
+            await supabaseAdmin
+                .from('notifications')
+                .insert([{
+                    player_id: playerId,
+                    title: 'Votre licence est prête !',
+                    content: 'Votre carte de licence HubISoccer est disponible. Cliquez pour la voir.',
+                    link: `../../carte.html?id=${currentLicenseId}`
+                }]);
+        }
 
         showToast('Licence validée et carte uploadée', 'success');
         closeCardUploadModal();
@@ -942,7 +963,7 @@ function closeConfirmModal() {
 document.addEventListener('DOMContentLoaded', async () => {
     await initAdminPage();
     initTabs();
-    loadLicenses(); // onglet par défaut
+    loadLicenses();
 });
 
 // Exposer les fonctions globales
@@ -951,6 +972,7 @@ window.closeLicenseModal = closeLicenseModal;
 window.editLicense = editLicense;
 window.closeEditLicenseModal = closeEditLicenseModal;
 window.approveLicense = approveLicense;
+window.presidentApproveLicense = presidentApproveLicense;
 window.rejectLicense = rejectLicense;
 window.downloadCard = downloadCard;
 window.viewDocument = viewDocument;
