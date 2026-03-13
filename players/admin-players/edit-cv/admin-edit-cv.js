@@ -3,9 +3,12 @@
 // (admin-common.js doit initialiser supabaseAdmin avec les mêmes clés)
 
 // ===== ÉTAT GLOBAL =====
-let currentAdmin = null;
+// On évite les conflits de noms : on utilise adminInfo au lieu de currentAdmin
+let adminInfo = null;
 let currentCVList = [];
 let selectedCV = null; // Pour la modale de visualisation
+let rejectCvId = null;
+let deleteCvId = null;
 
 // ===== VÉRIFICATION DE SESSION ADMIN =====
 async function checkAdminSession() {
@@ -15,6 +18,7 @@ async function checkAdminSession() {
             window.location.href = '../auth/admin-login.html';
             return null;
         }
+
         // Vérifier que l'utilisateur est bien dans la table admin_users
         const { data: adminData, error: adminError } = await supabaseAdmin
             .from('admin_users')
@@ -29,7 +33,7 @@ async function checkAdminSession() {
             return null;
         }
 
-        currentAdmin = adminData;
+        adminInfo = adminData;
         document.getElementById('adminEmail').textContent = session.user.email;
         return session.user;
     } catch (err) {
@@ -98,15 +102,35 @@ function renderCVList() {
                 <td>${new Date(cv.updated_at).toLocaleString()}</td>
                 <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                 <td class="actions">
-                    <button class="btn-icon btn-view" onclick="viewCV('${cv.id}')" title="Voir le CV"><i class="fas fa-eye"></i></button>
+                    <button class="btn-icon btn-view" data-id="${cv.id}" data-action="view" title="Voir le CV"><i class="fas fa-eye"></i></button>
                     ${cv.validation_status !== 'approved' ? `
-                        <button class="btn-icon btn-approve" onclick="approveCV('${cv.id}')" title="Approuver"><i class="fas fa-check"></i></button>
-                        <button class="btn-icon btn-reject" onclick="openRejectModal('${cv.id}')" title="Rejeter"><i class="fas fa-times"></i></button>
+                        <button class="btn-icon btn-approve" data-id="${cv.id}" data-action="approve" title="Approuver"><i class="fas fa-check"></i></button>
+                        <button class="btn-icon btn-reject" data-id="${cv.id}" data-action="reject" title="Rejeter"><i class="fas fa-times"></i></button>
                     ` : ''}
+                    <button class="btn-icon btn-delete" data-id="${cv.id}" data-action="delete" title="Supprimer"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
         `;
     }).join('');
+}
+
+// ===== GESTION DES ACTIONS SUR LES BOUTONS =====
+function setupActionButtons() {
+    document.querySelectorAll('[data-action]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const action = btn.dataset.action;
+            const id = btn.dataset.id;
+            if (action === 'view') {
+                await viewCV(id);
+            } else if (action === 'approve') {
+                await approveCV(id);
+            } else if (action === 'reject') {
+                openRejectModal(id);
+            } else if (action === 'delete') {
+                openDeleteModal(id);
+            }
+        });
+    });
 }
 
 // ===== GÉNÉRATION DE L'APERÇU DU CV =====
@@ -263,14 +287,17 @@ async function viewCV(cvId) {
     } else {
         approveBtn.style.display = 'inline-block';
         rejectBtn.style.display = 'inline-block';
-        approveBtn.onclick = () => {
+        // On enlève les anciens écouteurs pour éviter les doublons
+        approveBtn.replaceWith(approveBtn.cloneNode(true));
+        rejectBtn.replaceWith(rejectBtn.cloneNode(true));
+        document.getElementById('modalApproveBtn').addEventListener('click', () => {
             closeViewModal();
             approveCV(cv.id);
-        };
-        rejectBtn.onclick = () => {
+        });
+        document.getElementById('modalRejectBtn').addEventListener('click', () => {
             closeViewModal();
             openRejectModal(cv.id);
-        };
+        });
     }
 
     document.getElementById('viewModal').style.display = 'block';
@@ -304,8 +331,6 @@ async function approveCV(cvId) {
 }
 
 // ===== REJETER UN CV =====
-let rejectCvId = null;
-
 function openRejectModal(cvId) {
     rejectCvId = cvId;
     document.getElementById('rejectReason').value = '';
@@ -345,6 +370,39 @@ async function confirmReject() {
     }
 }
 
+// ===== SUPPRIMER UN CV =====
+function openDeleteModal(cvId) {
+    deleteCvId = cvId;
+    document.getElementById('deleteModal').style.display = 'block';
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+    deleteCvId = null;
+}
+
+async function confirmDelete() {
+    if (!deleteCvId) return;
+
+    if (!confirm('Êtes-vous sûr de vouloir supprimer définitivement ce CV ?')) return;
+
+    try {
+        const { error } = await supabaseAdmin
+            .from('player_cv')
+            .delete()
+            .eq('id', deleteCvId);
+
+        if (error) throw error;
+
+        showToast('CV supprimé avec succès', 'success');
+        closeDeleteModal();
+        loadCVList();
+    } catch (err) {
+        console.error('Erreur suppression:', err);
+        showToast('Erreur : ' + err.message, 'error');
+    }
+}
+
 // ===== TOAST =====
 function showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
@@ -377,21 +435,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '../auth/admin-login.html';
     });
 
+    // Fermeture des modales
+    document.getElementById('closeViewModalBtn').addEventListener('click', closeViewModal);
+    document.getElementById('closeViewModalBtn2').addEventListener('click', closeViewModal);
+    document.getElementById('closeRejectModalBtn').addEventListener('click', closeRejectModal);
+    document.getElementById('closeRejectModalBtn2').addEventListener('click', closeRejectModal);
+    document.getElementById('closeDeleteModalBtn').addEventListener('click', closeDeleteModal);
+    document.getElementById('closeDeleteModalBtn2').addEventListener('click', closeDeleteModal);
+
     // Confirmation de rejet
     document.getElementById('confirmRejectBtn').addEventListener('click', confirmReject);
 
-    // Fermeture des modales au clic sur la croix ou à l'extérieur
-    window.onclick = function(event) {
+    // Confirmation de suppression
+    document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+
+    // Fermeture des modales au clic sur l'overlay
+    window.addEventListener('click', (event) => {
         const viewModal = document.getElementById('viewModal');
         const rejectModal = document.getElementById('rejectModal');
+        const deleteModal = document.getElementById('deleteModal');
         if (event.target === viewModal) closeViewModal();
         if (event.target === rejectModal) closeRejectModal();
-    };
-});
+        if (event.target === deleteModal) closeDeleteModal();
+    });
 
-// Rendre les fonctions accessibles globalement pour les attributs onclick
-window.viewCV = viewCV;
-window.approveCV = approveCV;
-window.openRejectModal = openRejectModal;
-window.closeViewModal = closeViewModal;
-window.closeRejectModal = closeRejectModal;
+    // Les boutons d'action sont générés dynamiquement, on utilise la délégation d'événements
+    document.getElementById('cvTableBody').addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const id = btn.dataset.id;
+        if (action === 'view') {
+            await viewCV(id);
+        } else if (action === 'approve') {
+            await approveCV(id);
+        } else if (action === 'reject') {
+            openRejectModal(id);
+        } else if (action === 'delete') {
+            openDeleteModal(id);
+        }
+    });
+});
