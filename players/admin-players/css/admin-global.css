@@ -1,62 +1,121 @@
-/* ===== MAIN ===== */
+/* Variables (reprises de global.css) */
+:root {
+    --primary: #551B8C;
+    --primary-dark: #3d1266;
+    --gold: #ffcc00;
+    --bg-light: #F0F8FF;
+    --white: #ffffff;
+    --dark: #1a1a1a;
+    --gray: #6c757d;
+    --light-gray: #e9ecef;
+    --shadow: 0 10px 30px rgba(0,0,0,0.05);
+    --shadow-hover: 0 15px 40px rgba(85,27,140,0.1);
+    --transition: all 0.3s ease;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+    color: var(--dark);
+    min-height: 100vh;
+}
+
+/* Navbar admin */
+.admin-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 5%;
+    background: var(--white);
+    box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.logo-nav { height: 40px; }
+.admin-title {
+    font-weight: 600;
+    color: var(--primary);
+    border-left: 2px solid var(--light-gray);
+    padding-left: 15px;
+}
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.user-name {
+    font-weight: 500;
+    color: var(--dark);
+}
+.logout-link {
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 5px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.logout-link:hover {
+    background: var(--primary);
+    color: white;
+}
+
+/* Contenu principal */
 .admin-main {
     padding: 40px 5%;
     min-height: calc(100vh - 70px);
-    background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
 }
 .admin-container {
     max-width: 1400px;
     margin: 0 auto;
 }
-.admin-container h1 {
-    font-size: 2rem;
+h1 {
     color: var(--primary-dark);
-    margin-bottom: 10px;
-}
-.admin-subtitle {
-    color: var(--gray);
     margin-bottom: 30px;
 }
 
-/* ===== GRILLE DES CARTES ===== */
-.admin-cards-grid {
+/* Cartes */
+.admin-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 25px;
 }
-.admin-card {
+.card {
     background: white;
     border-radius: 15px;
-    padding: 25px 20px;
-    text-decoration: none;
-    color: inherit;
-    box-shadow: var(--shadow);
-    transition: var(--transition);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    padding: 25px;
     text-align: center;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: var(--transition);
 }
-.admin-card:hover {
+.card:hover {
     transform: translateY(-5px);
     box-shadow: var(--shadow-hover);
 }
-.admin-card i {
+.card i {
     font-size: 2.5rem;
     color: var(--primary);
     margin-bottom: 15px;
 }
-.admin-card h3 {
-    font-size: 1.2rem;
-    margin-bottom: 8px;
+.card h3 {
     color: var(--dark);
+    margin-bottom: 10px;
 }
-.admin-card p {
-    font-size: 0.9rem;
+.card p {
     color: var(--gray);
+    font-size: 0.9rem;
 }
 
-/* ===== TOASTS (identique aux autres pages) ===== */
+/* Toasts */
 .toast-container {
     position: fixed;
     top: 20px;
@@ -83,17 +142,10 @@
 }
 .toast.success { border-left-color: #28a745; }
 .toast.error { border-left-color: #dc3545; }
-.toast.info { border-left-color: #551B8C; }
+.toast.info { border-left-color: var(--primary); }
 .toast.warning { border-left-color: #ffc107; }
 .toast-icon { font-size: 1.2rem; }
-.toast-content { flex: 1; font-size: 0.9rem; color: #1a1a1a; }
-.toast-close { background: none; border: none; color: #6c757d; cursor: pointer; font-size: 1rem; }
+.toast-content { flex: 1; font-size: 0.9rem; color: var(--dark); }
+.toast-close { background: none; border: none; color: var(--gray); cursor: pointer; font-size: 1rem; }
 @keyframes slideIn { to { transform: translateX(0); } }
 @keyframes fadeOut { to { opacity: 0; transform: translateX(400px); } }
-
-/* ===== RESPONSIVE ===== */
-@media (max-width: 600px) {
-    .admin-cards-grid {
-        grid-template-columns: 1fr;
-    }
-}
