@@ -9,6 +9,35 @@ let currentProfile = null;
 let mediaList = [];
 let currentFilter = 'all';
 
+// ===== TOAST =====
+function showToast(message, type = 'info', duration = 3000) {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i></div>
+        <div class="toast-content">${message}</div>
+        <button class="toast-close"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(toast);
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.style.animation = 'fadeOut 0.3s forwards';
+        setTimeout(() => toast.remove(), 300);
+    });
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.animation = 'fadeOut 0.3s forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
+
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
     const { data: { session }, error } = await supabaseVideos.auth.getSession();
@@ -29,6 +58,7 @@ async function loadProfile() {
         .single();
     if (error) {
         console.error('Erreur chargement profil:', error);
+        showToast('Erreur lors du chargement du profil', 'error');
         return null;
     }
     currentProfile = data;
@@ -47,6 +77,7 @@ async function loadMedia() {
 
     if (error) {
         console.error('Erreur chargement médias:', error);
+        showToast('Erreur lors du chargement des médias', 'error');
         return;
     }
     mediaList = data || [];
@@ -120,7 +151,7 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     const file = document.getElementById('mediaFile').files[0];
 
     if (!title || !file) {
-        alert('Veuillez remplir tous les champs obligatoires.');
+        showToast('Veuillez remplir tous les champs obligatoires.', 'warning');
         return;
     }
 
@@ -134,7 +165,8 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
         .upload(filePath, file);
 
     if (uploadError) {
-        alert('Erreur upload : ' + uploadError.message);
+        console.error('Erreur upload:', uploadError);
+        showToast('Erreur lors de l\'upload du fichier.', 'error');
         return;
     }
 
@@ -144,7 +176,7 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     const mediaUrl = urlData.publicUrl;
 
     // Générer une miniature pour les vidéos (optionnel – ici on utilise la même URL)
-    const thumbnailUrl = type === 'video' ? null : mediaUrl; // Pour les photos, la miniature = l'image
+    const thumbnailUrl = type === 'video' ? null : mediaUrl;
 
     // Insérer dans la table player_media
     const { error: insertError } = await supabaseVideos
@@ -160,11 +192,12 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
         }]);
 
     if (insertError) {
-        alert('Erreur lors de l\'enregistrement : ' + insertError.message);
+        console.error('Erreur insertion:', insertError);
+        showToast('Erreur lors de l\'enregistrement.', 'error');
         return;
     }
 
-    alert('Média soumis avec succès ! En attente de validation.');
+    showToast('Média soumis avec succès ! En attente de validation.', 'success');
     closeUploadModal();
     document.getElementById('uploadForm').reset();
     await loadMedia(); // Recharger la liste
@@ -181,6 +214,7 @@ async function showMediaDetail(mediaId) {
 
     if (mediaError) {
         console.error('Erreur chargement média:', mediaError);
+        showToast('Erreur lors du chargement du média', 'error');
         return;
     }
 
@@ -196,6 +230,7 @@ async function showMediaDetail(mediaId) {
 
     if (commentsError) {
         console.error('Erreur chargement commentaires:', commentsError);
+        showToast('Erreur lors du chargement des commentaires', 'error');
         return;
     }
 
@@ -258,8 +293,10 @@ async function addComment(mediaId) {
         }]);
 
     if (error) {
-        alert('Erreur : ' + error.message);
+        console.error('Erreur ajout commentaire:', error);
+        showToast('Erreur lors de l\'ajout du commentaire', 'error');
     } else {
+        showToast('Commentaire ajouté', 'success');
         textarea.value = '';
         showMediaDetail(mediaId); // Recharger le détail pour afficher le nouveau commentaire
     }
@@ -365,7 +402,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
-        alert('Changement de langue bientôt disponible');
+        showToast('Changement de langue bientôt disponible', 'info');
     });
 
     console.log('✅ Initialisation terminée');
