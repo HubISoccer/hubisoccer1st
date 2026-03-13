@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration - HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="../css/global.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar simplifiée -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="../img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../../index.html'">
+            <span class="dashboard-title">Administration</span>
+        </div>
+        <div class="nav-right">
+            <div class="user-menu" id="userMenu">
+                <img src="../img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="#" id="logoutLink">Déconnexion</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenu principal -->
+    <main class="admin-main">
+        <div class="admin-container">
+            <h1>Administration de l'espace joueur</h1>
+            <p class="admin-subtitle">Sélectionnez une section à gérer</p>
+
+            <div class="admin-cards-grid">
+                <!-- Dashboard -->
+                <a href="admin-dashboard.html" class="admin-card">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <h3>Dashboard</h3>
+                    <p>Gérer les attributs scouting et les données du tableau de bord</p>
+                </a>
+                <!-- Feed -->
+                <a href="admin-feed.html" class="admin-card">
+                    <i class="fas fa-users"></i>
+                    <h3>Communauté</h3>
+                    <p>Modérer les posts, commentaires, signalements</p>
+                </a>
+                <!-- Vérification -->
+                <a href="admin-verification.html" class="admin-card">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>Vérification</h3>
+                    <p>Valider les documents et les demandes de licence</p>
+                </a>
+                <!-- CV -->
+                <a href="admin-cv.html" class="admin-card">
+                    <i class="fas fa-file-alt"></i>
+                    <h3>CV Pro</h3>
+                    <p>Valider les CV des joueurs</p>
+                </a>
+                <!-- Certifications -->
+                <a href="admin-certifications.html" class="admin-card">
+                    <i class="fas fa-certificate"></i>
+                    <h3>Diplômes & Certifs</h3>
+                    <p>Valider les certificats et diplômes</p>
+                </a>
+                <!-- Tournois -->
+                <a href="admin-tournaments.html" class="admin-card">
+                    <i class="fas fa-trophy"></i>
+                    <h3>Tournois</h3>
+                    <p>Créer, modifier, supprimer des tournois</p>
+                </a>
+                <!-- Transferts -->
+                <a href="admin-transfers.html" class="admin-card">
+                    <i class="fas fa-exchange-alt"></i>
+                    <h3>Transferts</h3>
+                    <p>Gérer les transferts et offres</p>
+                </a>
+                <!-- Vidéos -->
+                <a href="admin-videos.html" class="admin-card">
+                    <i class="fas fa-video"></i>
+                    <h3>Vidéos & Photos</h3>
+                    <p>Valider les médias et modérer les commentaires</p>
+                </a>
+                <!-- Revenus -->
+                <a href="admin-revenue.html" class="admin-card">
+                    <i class="fas fa-coins"></i>
+                    <h3>Revenus</h3>
+                    <p>Gérer les transactions (dépôts, retraits)</p>
+                </a>
+                <!-- Messages -->
+                <a href="admin-messages.html" class="admin-card">
+                    <i class="fas fa-envelope"></i>
+                    <h3>Messages</h3>
+                    <p>Superviser les conversations (optionnel)</p>
+                </a>
+                <!-- Support -->
+                <a href="admin-support.html" class="admin-card">
+                    <i class="fas fa-headset"></i>
+                    <h3>Support</h3>
+                    <p>Gérer les tickets et la FAQ</p>
+                </a>
+                <!-- Scouting -->
+                <a href="admin-scouting.html" class="admin-card">
+                    <i class="fas fa-chart-pie"></i>
+                    <h3>Scouting</h3>
+                    <p>Éditer les attributs détaillés des joueurs</p>
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="js/admin-common.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Vérifier que l'utilisateur est admin (via admin-common.js)
+            const isAdmin = await checkAdmin();
+            if (!isAdmin) return;
+            // Le reste est géré par admin-common.js (nom, avatar, logout)
+        });
+    </script>
+</body>
+</html>
