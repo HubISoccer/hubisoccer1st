@@ -1,0 +1,205 @@
+/* Styles spécifiques à l'admin dashboard */
+
+.dashboard-admin-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 30px;
+    margin-top: 20px;
+}
+
+/* Liste des joueurs */
+.players-list {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+}
+.players-list h2 {
+    color: var(--primary);
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+#playersListContainer {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+.player-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-bottom: 1px solid var(--light-gray);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.player-item:hover {
+    background: var(--bg-light);
+}
+.player-item.selected {
+    background: rgba(85,27,140,0.1);
+    border-left: 4px solid var(--gold);
+}
+.player-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.player-info {
+    flex: 1;
+}
+.player-name {
+    font-weight: 600;
+    color: var(--dark);
+}
+.player-detail {
+    font-size: 0.8rem;
+    color: var(--gray);
+}
+
+/* Panneau d'édition */
+.edit-panel {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+}
+.edit-panel h2 {
+    color: var(--primary);
+    margin-bottom: 20px;
+}
+#noSelectionMessage {
+    text-align: center;
+    color: var(--gray);
+    padding: 40px 0;
+}
+fieldset {
+    border: 1px solid var(--light-gray);
+    border-radius: 10px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+}
+legend {
+    font-weight: 600;
+    color: var(--primary);
+    padding: 0 10px;
+}
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+.form-group label {
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 3px;
+    color: var(--dark);
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 8px;
+    border: 1px solid var(--light-gray);
+    border-radius: 5px;
+    font-family: 'Poppins', sans-serif;
+}
+.form-group input:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+.attr-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+}
+.attr-grid .form-group {
+    background: var(--bg-light);
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+.btn-save, .btn-delete {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.btn-save {
+    background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+    color: white;
+    flex: 2;
+}
+.btn-save:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(85,27,140,0.3);
+}
+.btn-delete {
+    background: #dc3545;
+    color: white;
+    flex: 1;
+}
+.btn-delete:hover {
+    background: #c82333;
+}
+.search-panel {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+}
+.search-panel input {
+    flex: 2;
+    padding: 10px;
+    border: 1px solid var(--light-gray);
+    border-radius: 5px;
+}
+.search-panel select {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--light-gray);
+    border-radius: 5px;
+}
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.btn-refresh {
+    background: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.btn-refresh:hover {
+    background: var(--primary);
+    color: white;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .dashboard-admin-grid {
+        grid-template-columns: 1fr;
+    }
+    .search-panel {
+        flex-direction: column;
+    }
+}
