@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ma Licence | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/global.css">
+    <style>
+        body {
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .card-container {
+            max-width: 800px;
+            width: 100%;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .card-header {
+            background: var(--primary);
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-body {
+            padding: 20px;
+        }
+        .recto, .verso {
+            display: none;
+        }
+        .recto.active, .verso.active {
+            display: block;
+        }
+        .card-footer {
+            padding: 15px;
+            background: var(--bg-light);
+            text-align: center;
+        }
+        .btn-print {
+            background: var(--gold);
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .flag-logo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .flag-logo img {
+            max-height: 50px;
+        }
+        .title-section {
+            text-align: center;
+            margin: 10px 0;
+        }
+        .player-photo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--gold);
+            margin: 0 auto 15px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .info-item {
+            background: var(--bg-light);
+            padding: 8px;
+            border-radius: 5px;
+        }
+        .signature-stamp {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .qr-code {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .qr-code img {
+            width: 100px;
+            height: 100px;
+        }
+        .watermark {
+            opacity: 0.1;
+            position: absolute;
+            pointer-events: none;
+        }
+        @media print {
+            .btn-print { display: none; }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="card-container">
+        <div class="card">
+            <div class="card-header">
+                <span>Licence HubISoccer</span>
+                <button class="btn-print" onclick="window.print()">Imprimer / PDF</button>
+            </div>
+            <div class="card-body">
+                <div id="recto" class="recto active"></div>
+                <div id="verso" class="verso"></div>
+            </div>
+            <div class="card-footer">
+                <button onclick="showRecto()">Recto</button> | <button onclick="showVerso()">Verso</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const licenseId = urlParams.get('id');
+
+        async function loadData() {
+            if (!licenseId) {
+                document.querySelector('.card-body').innerHTML = '<p>ID de licence manquant.</p>';
+                return;
+            }
+
+            // Charger la demande de licence
+            const { data: license, error } = await supabase
+                .from('license_requests')
+                .select('*, player:player_profiles!license_requests_player_id_fkey(*)')
+                .eq('id', licenseId)
+                .single();
+
+            if (error || !license) {
+                document.querySelector('.card-body').innerHTML = '<p>Licence introuvable.</p>';
+                return;
+            }
+
+            // Charger la configuration
+            const { data: config } = await supabase
+                .from('license_config')
+                .select('*')
+                .eq('id', 1)
+                .single();
+
+            renderCard(license, config);
+        }
+
+        function renderCard(license, config) {
+            const recto = document.getElementById('recto');
+            const verso = document.getElementById('verso');
+
+            // Recto
+            recto.innerHTML = `
+                <div class="flag-logo">
+                    <img src="${config?.recto_flag_url || ''}" alt="Drapeau">
+                    <img src="${config?.recto_logo_url || ''}" alt="Logo">
+                </div>
+                <div class="title-section">
+                    <h3>${config?.recto_country || ''}</h3>
+                    <p>${config?.recto_ministry || ''}</p>
+                    <h2>${config?.recto_company_name || ''}</h2>
+                    <h1>${config?.recto_title || ''}</h1>
+                </div>
+                <div style="text-align: center;">
+                    <img src="${license.player?.avatar_url || '../../img/user-default.jpg'}" class="player-photo">
+                </div>
+                <div class="info-grid">
+                    <div class="info-item"><strong>Nom:</strong> ${license.prenom} ${license.nom}</div>
+                    <div class="info-item"><strong>Date naiss.:</strong> ${new Date(license.date_naissance).toLocaleDateString()}</div>
+                    <div class="info-item"><strong>Lieu:</strong> ${license.lieu_naissance || '-'}</div>
+                    <div class="info-item"><strong>Nationalité:</strong> ${license.nationalite || '-'}</div>
+                    <div class="info-item"><strong>Pays:</strong> ${license.pays || '-'}</div>
+                    <div class="info-item"><strong>Taille:</strong> ${license.taille || '-'} cm</div>
+                    <div class="info-item"><strong>Poids:</strong> ${license.poids || '-'} kg</div>
+                    <div class="info-item"><strong>Pied:</strong> ${license.pied_fort || '-'}</div>
+                    <div class="info-item"><strong>Club:</strong> ${license.club || '-'}</div>
+                </div>
+                <div class="signature-stamp">
+                    <img src="${license.signature_url}" alt="Signature joueur" style="max-height: 50px;">
+                    <img src="${config?.president_stamp_url || ''}" alt="Cachet" style="max-height: 50px;">
+                </div>
+            `;
+
+            // Verso
+            const id = license.player?.hub_id || license.player?.id || licenseId;
+            const qrUrl = `https://hubisoccer.github.io/hubisoccer1st/verify.html?id=${id}`; // à créer plus tard
+
+            verso.innerHTML = `
+                <div style="position: relative;">
+                    <img src="${config?.verso_background_logo_url || ''}" class="watermark" style="width:100%; opacity:0.1;">
+                    <div style="position: relative; z-index: 1;">
+                        <p><strong>ID HubISoccer:</strong> ${license.player?.hub_id || ''}</p>
+                        <p><strong>Délivrée par:</strong> ${config?.verso_issued_by || ''}</p>
+                        <p>${config?.verso_legal_info || ''}</p>
+                        <div class="qr-code">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(qrUrl)}" alt="QR Code">
+                            <p>Scannez pour vérifier l'authenticité</p>
+                        </div>
+                        <div class="signature-stamp">
+                            <span>${config?.president_name || ''}</span>
+                            <img src="${config?.president_signature_url || ''}" alt="Signature président" style="max-height: 50px;">
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            showRecto();
+        }
+
+        window.showRecto = () => {
+            document.getElementById('recto').classList.add('active');
+            document.getElementById('verso').classList.remove('active');
+        };
+        window.showVerso = () => {
+            document.getElementById('verso').classList.add('active');
+            document.getElementById('recto').classList.remove('active');
+        };
+
+        loadData();
+    </script>
+</body>
+</html>
