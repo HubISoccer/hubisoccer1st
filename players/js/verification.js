@@ -10,7 +10,7 @@ let documentsList = [];
 let licenseRequest = null;
 let signaturePadModal = null;
 let signatureLocked = false;
-let signatureDataURL = null; // stocke la signature validée
+let signatureDataURL = null;
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
@@ -210,7 +210,6 @@ function openSignatureModal() {
     const modal = document.getElementById('signatureModal');
     modal.style.display = 'block';
     
-    // Initialiser le canvas si ce n'est pas déjà fait
     if (!signaturePadModal) {
         const canvas = document.getElementById('signatureCanvasModal');
         canvas.width = canvas.offsetWidth || 800;
@@ -225,12 +224,10 @@ function openSignatureModal() {
             maxWidth: 2.5
         });
 
-        // Restaurer si une signature existe déjà
         if (signatureDataURL) {
             signaturePadModal.fromDataURL(signatureDataURL);
         }
 
-        // Boutons
         document.getElementById('clearSignatureModal').addEventListener('click', () => {
             signaturePadModal.clear();
             document.getElementById('signatureStatus').textContent = '';
@@ -258,7 +255,6 @@ function openSignatureModal() {
             }
             signatureDataURL = signaturePadModal.toDataURL('image/png');
             
-            // Afficher l'aperçu dans le formulaire
             const previewImg = document.getElementById('signatureImage');
             previewImg.src = signatureDataURL;
             previewImg.style.display = 'block';
@@ -267,7 +263,6 @@ function openSignatureModal() {
             closeSignatureModal();
         });
 
-        // Empêcher le scroll pendant la signature
         canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
     }
 }
@@ -276,11 +271,10 @@ function closeSignatureModal() {
     document.getElementById('signatureModal').style.display = 'none';
 }
 
-// Rendre les fonctions accessibles globalement pour les appels HTML
 window.openSignatureModal = openSignatureModal;
 window.closeSignatureModal = closeSignatureModal;
 
-// ===== SOUMISSION DE LA DEMANDE DE LICENCE =====
+// ===== SOUMISSION DE LA DEMANDE DE LICENCE (CORRIGÉE) =====
 async function submitLicense(e) {
     e.preventDefault();
 
@@ -310,7 +304,7 @@ async function submitLicense(e) {
             club: document.getElementById('club').value || null,
         };
 
-        // Upload de la signature (convertir dataURL en blob)
+        // Upload de la signature
         const signatureBlob = await (await fetch(signatureDataURL)).blob();
         const signatureFileName = `${currentUser.id}_signature_${Date.now()}.png`;
         const signaturePath = `signatures/${signatureFileName}`;
@@ -325,14 +319,14 @@ async function submitLicense(e) {
             .getPublicUrl(signaturePath);
         const signatureUrl = urlData.publicUrl;
 
-        // Insertion dans license_requests
+        // Insertion dans license_requests avec le nouveau champ "status"
         const { data, error } = await supabaseClient
             .from('license_requests')
             .insert([{
                 player_id: playerProfile.id,
                 ...formData,
                 signature_url: signatureUrl,
-                admin_validated: false,
+                status: 'admin_pending',  // ← remplace admin_validated: false
                 created_at: new Date()
             }])
             .select()
@@ -356,7 +350,7 @@ async function submitLicense(e) {
     }
 }
 
-// ===== VÉRIFICATION DU STATUT =====
+// ===== VÉRIFICATION DU STATUT (CORRIGÉE) =====
 async function checkLicenseStatus() {
     if (!playerProfile || !playerProfile.id) return;
     try {
@@ -379,7 +373,8 @@ async function checkLicenseStatus() {
             const statusCard = document.getElementById('statusCard');
             if (statusSection) statusSection.style.display = 'block';
             if (statusCard) {
-                if (data.admin_validated && data.carte_url) {
+                // Utiliser le champ "status" au lieu de "admin_validated"
+                if (data.status === 'approved' && data.carte_url) {
                     statusCard.innerHTML = `
                         <div class="status-icon"><i class="fas fa-check-circle"></i></div>
                         <div class="status-content">
@@ -389,12 +384,16 @@ async function checkLicenseStatus() {
                         </div>
                     `;
                 } else {
+                    // Afficher un message en fonction du statut (admin_pending, president_pending, etc.)
+                    let message = 'En attente de validation.';
+                    if (data.status === 'admin_pending') message = 'En attente de validation par l\'administration.';
+                    else if (data.status === 'president_pending') message = 'En attente de validation finale par le président.';
                     statusCard.innerHTML = `
                         <div class="status-icon"><i class="fas fa-clock"></i></div>
                         <div class="status-content">
                             <h3>Demande en cours de traitement</h3>
                             <p>Soumise le ${new Date(data.created_at).toLocaleDateString('fr-FR')}</p>
-                            <p>Statut : En attente de validation par l'administration.</p>
+                            <p>Statut : ${message}</p>
                         </div>
                     `;
                 }
@@ -570,9 +569,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
         alert('Changement de langue bientôt disponible');
     });
-
-    // Si une signature était en cours de restauration ?
-    // (optionnel, on pourrait stocker signatureDataURL aussi)
 
     console.log('✅ Initialisation terminée');
 });
