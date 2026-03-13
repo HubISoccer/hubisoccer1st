@@ -8,6 +8,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="css/global.css">
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
         body {
             background: #f0f2f5;
             display: flex;
@@ -15,6 +20,7 @@
             align-items: center;
             min-height: 100vh;
             padding: 20px;
+            font-family: 'Poppins', sans-serif;
         }
         .card-container {
             max-width: 800px;
@@ -28,72 +34,156 @@
             overflow: hidden;
         }
         .card-header {
-            background: var(--primary);
+            background: #551B8C;
             color: white;
             padding: 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .card-body {
-            padding: 20px;
-        }
-        .recto, .verso {
-            display: none;
-        }
-        .recto.active, .verso.active {
-            display: block;
-        }
-        .card-footer {
-            padding: 15px;
-            background: var(--bg-light);
-            text-align: center;
+        .card-header h2 {
+            font-size: 1.2rem;
+            font-weight: 600;
         }
         .btn-print {
-            background: var(--gold);
+            background: #ffcc00;
             color: black;
             border: none;
-            padding: 10px 20px;
+            padding: 8px 16px;
             border-radius: 30px;
             font-weight: 600;
             cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .btn-print:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(255,204,0,0.3);
+        }
+        .card-body {
+            padding: 0;
+        }
+        .card-face {
+            width: 100%;
+            padding: 20px;
+            display: none;
+        }
+        .card-face.active {
+            display: block;
+        }
+        /* Largeur fixe pour que les deux faces aient la même taille */
+        .card-face {
+            max-width: 600px;
+            margin: 0 auto;
         }
         .flag-logo {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
         .flag-logo img {
             max-height: 50px;
+            max-width: 100px;
+            object-fit: contain;
         }
         .title-section {
             text-align: center;
-            margin: 10px 0;
+            margin: 10px 0 20px;
+        }
+        .title-section h3 {
+            font-size: 1.1rem;
+            color: #551B8C;
+            font-weight: 600;
+        }
+        .title-section p {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .title-section h2 {
+            font-size: 1.3rem;
+            color: #551B8C;
+            font-weight: 700;
+            margin: 5px 0;
+        }
+        .title-section h1 {
+            font-size: 1.6rem;
+            color: #ffcc00;
+            font-weight: 800;
+            text-transform: uppercase;
         }
         .player-photo {
             width: 100px;
             height: 100px;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid var(--gold);
-            margin: 0 auto 15px;
+            border: 4px solid #ffcc00;
+            margin: 0 auto 20px;
+            display: block;
         }
         .info-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(2, 1fr);
             gap: 10px;
+            margin-bottom: 20px;
         }
         .info-item {
-            background: var(--bg-light);
-            padding: 8px;
-            border-radius: 5px;
+            background: #F0F8FF;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        .info-item strong {
+            color: #551B8C;
+            display: block;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+        .info-item span {
+            color: #1a1a1a;
+            font-weight: 500;
         }
         .signature-stamp {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-top: 20px;
+            border-top: 1px dashed #e9ecef;
+            padding-top: 15px;
+        }
+        .signature-stamp img {
+            max-height: 50px;
+            max-width: 100px;
+            object-fit: contain;
+        }
+        .verso-content {
+            position: relative;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.1;
+            max-width: 80%;
+            max-height: 80%;
+            pointer-events: none;
+        }
+        .verso-details {
+            position: relative;
+            z-index: 2;
+            padding: 20px;
+        }
+        .verso-details p {
+            margin: 8px 0;
+            font-size: 0.95rem;
+        }
+        .verso-details strong {
+            color: #551B8C;
         }
         .qr-code {
             text-align: center;
@@ -103,13 +193,58 @@
             width: 100px;
             height: 100px;
         }
-        .watermark {
-            opacity: 0.1;
-            position: absolute;
-            pointer-events: none;
+        .card-footer {
+            padding: 15px;
+            background: #F0F8FF;
+            text-align: center;
         }
+        .card-footer button {
+            background: transparent;
+            border: 2px solid #551B8C;
+            color: #551B8C;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin: 0 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .card-footer button:hover {
+            background: #551B8C;
+            color: white;
+        }
+        .card-footer button.active {
+            background: #551B8C;
+            color: white;
+        }
+
+        /* Styles d'impression */
         @media print {
-            .btn-print { display: none; }
+            body {
+                background: white;
+                padding: 0;
+            }
+            .card-header, .card-footer, .btn-print {
+                display: none;
+            }
+            .card {
+                box-shadow: none;
+                border: 1px solid #ccc;
+                page-break-inside: avoid;
+            }
+            .card-face {
+                max-width: 100%;
+                padding: 15px;
+            }
+            .flag-logo img {
+                max-height: 40px;
+            }
+            .title-section h1 {
+                font-size: 1.4rem;
+            }
+            .info-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -118,15 +253,16 @@
     <div class="card-container">
         <div class="card">
             <div class="card-header">
-                <span>Licence HubISoccer</span>
-                <button class="btn-print" onclick="window.print()">Imprimer / PDF</button>
+                <h2>Licence HubISoccer</h2>
+                <button class="btn-print" onclick="window.print()">🖨️ Imprimer / PDF</button>
             </div>
             <div class="card-body">
-                <div id="recto" class="recto active"></div>
-                <div id="verso" class="verso"></div>
+                <div id="recto" class="card-face recto active"></div>
+                <div id="verso" class="card-face verso"></div>
             </div>
             <div class="card-footer">
-                <button onclick="showRecto()">Recto</button> | <button onclick="showVerso()">Verso</button>
+                <button id="btnRecto" class="active" onclick="showFace('recto')">Recto</button>
+                <button id="btnVerso" onclick="showFace('verso')">Verso</button>
             </div>
         </div>
     </div>
@@ -134,54 +270,62 @@
     <script>
         const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-        // Correction : renommer pour éviter le conflit avec l'objet global 'supabase'
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const urlParams = new URLSearchParams(window.location.search);
         const licenseId = urlParams.get('id');
 
         async function loadData() {
             if (!licenseId) {
-                document.querySelector('.card-body').innerHTML = '<p>ID de licence manquant.</p>';
+                document.querySelector('.card-body').innerHTML = '<p style="text-align:center; padding:40px;">ID de licence manquant.</p>';
                 return;
             }
 
-            // Charger la demande de licence avec les informations du joueur via la jointure
-            const { data: license, error } = await supabaseClient
+            // Charger la demande de licence avec les infos du joueur
+            const { data: license, error } = await supabase
                 .from('license_requests')
-                .select('*, player:player_profiles!license_requests_player_id_fkey(*)')
+                .select(`
+                    *,
+                    player:player_profiles!license_requests_player_id_fkey (
+                        hub_id,
+                        avatar_url
+                    )
+                `)
                 .eq('id', licenseId)
                 .single();
 
             if (error || !license) {
                 console.error('Erreur chargement licence:', error);
-                document.querySelector('.card-body').innerHTML = '<p>Licence introuvable.</p>';
+                document.querySelector('.card-body').innerHTML = '<p style="text-align:center; padding:40px;">Licence introuvable.</p>';
                 return;
             }
 
-            // Charger la configuration de la carte
-            const { data: config, error: configError } = await supabaseClient
+            // Charger la configuration
+            const { data: config } = await supabase
                 .from('license_config')
                 .select('*')
                 .eq('id', 1)
                 .single();
 
-            if (configError) {
-                console.error('Erreur chargement config:', configError);
-            }
-
-            renderCard(license, config || {});
+            renderCard(license, config);
         }
 
         function renderCard(license, config) {
-            const recto = document.getElementById('recto');
-            const verso = document.getElementById('verso');
+            const rectoDiv = document.getElementById('recto');
+            const versoDiv = document.getElementById('verso');
 
-            // Récupérer les infos du joueur depuis license.player (jointure)
-            const player = license.player || {};
+            // Préparer les données
+            const fullName = `${license.prenom || ''} ${license.nom || ''}`.trim() || 'Nom non renseigné';
+            const dateNaissance = license.date_naissance ? new Date(license.date_naissance).toLocaleDateString('fr-FR') : '-';
+            const avatarUrl = license.player?.avatar_url || '../../img/user-default.jpg';
+            const hubId = license.player?.hub_id || license.id;
+
+            // QR code URL (à adapter si vous avez une page de vérification)
+            const verifyUrl = `https://hubisoccer.github.io/hubisoccer1st/verify.html?id=${hubId}`;
+            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(verifyUrl)}`;
 
             // Recto
-            recto.innerHTML = `
+            rectoDiv.innerHTML = `
                 <div class="flag-logo">
                     <img src="${config?.recto_flag_url || ''}" alt="Drapeau" onerror="this.style.display='none'">
                     <img src="${config?.recto_logo_url || ''}" alt="Logo" onerror="this.style.display='none'">
@@ -192,59 +336,55 @@
                     <h2>${config?.recto_company_name || ''}</h2>
                     <h1>${config?.recto_title || ''}</h1>
                 </div>
-                <div style="text-align: center;">
-                    <img src="${player?.avatar_url || '../../img/user-default.jpg'}" class="player-photo" alt="Photo joueur" onerror="this.src='../../img/user-default.jpg'">
-                </div>
+                <img src="${avatarUrl}" class="player-photo" alt="Photo">
                 <div class="info-grid">
-                    <div class="info-item"><strong>Nom:</strong> ${player?.first_name || ''} ${player?.last_name || ''}</div>
-                    <div class="info-item"><strong>Date naiss.:</strong> ${player?.birth_date ? new Date(player.birth_date).toLocaleDateString() : '-'}</div>
-                    <div class="info-item"><strong>Lieu:</strong> ${player?.birth_place || '-'}</div>
-                    <div class="info-item"><strong>Nationalité:</strong> ${player?.nationality || '-'}</div>
-                    <div class="info-item"><strong>Pays:</strong> ${player?.country || '-'}</div>
-                    <div class="info-item"><strong>Taille:</strong> ${player?.height || '-'} cm</div>
-                    <div class="info-item"><strong>Poids:</strong> ${player?.weight || '-'} kg</div>
-                    <div class="info-item"><strong>Pied:</strong> ${player?.preferred_foot || '-'}</div>
-                    <div class="info-item"><strong>Club:</strong> ${player?.current_club || '-'}</div>
+                    <div class="info-item"><strong>Nom complet</strong><span>${fullName}</span></div>
+                    <div class="info-item"><strong>Date de naissance</strong><span>${dateNaissance}</span></div>
+                    <div class="info-item"><strong>Lieu de naissance</strong><span>${license.lieu_naissance || '-'}</span></div>
+                    <div class="info-item"><strong>Nationalité</strong><span>${license.nationalite || '-'}</span></div>
+                    <div class="info-item"><strong>Pays</strong><span>${license.pays || '-'}</span></div>
+                    <div class="info-item"><strong>Téléphone</strong><span>${license.telephone || '-'}</span></div>
+                    <div class="info-item"><strong>Taille</strong><span>${license.taille || '-'} cm</span></div>
+                    <div class="info-item"><strong>Poids</strong><span>${license.poids || '-'} kg</span></div>
+                    <div class="info-item"><strong>Pied fort</strong><span>${license.pied_fort || '-'}</span></div>
+                    <div class="info-item"><strong>Club</strong><span>${license.club || '-'}</span></div>
                 </div>
                 <div class="signature-stamp">
-                    ${license.signature_url ? `<img src="${license.signature_url}" alt="Signature joueur" style="max-height: 50px;">` : ''}
-                    ${config?.president_stamp_url ? `<img src="${config.president_stamp_url}" alt="Cachet" style="max-height: 50px;">` : ''}
+                    <img src="${license.signature_url}" alt="Signature joueur" onerror="this.style.display='none'">
+                    <img src="${config?.president_stamp_url || ''}" alt="Cachet" onerror="this.style.display='none'">
                 </div>
             `;
 
             // Verso
-            const id = player?.hub_id || player?.id || licenseId;
-            const qrUrl = `https://hubisoccer.github.io/hubisoccer1st/verify.html?id=${id}`; // à créer plus tard
-
-            verso.innerHTML = `
-                <div style="position: relative;">
-                    ${config?.verso_background_logo_url ? `<img src="${config.verso_background_logo_url}" class="watermark" style="width:100%; opacity:0.1;">` : ''}
-                    <div style="position: relative; z-index: 1;">
-                        <p><strong>ID HubISoccer:</strong> ${player?.hub_id || ''}</p>
-                        <p><strong>Délivrée par:</strong> ${config?.verso_issued_by || ''}</p>
+            versoDiv.innerHTML = `
+                <div class="verso-content">
+                    <img src="${config?.verso_background_logo_url || ''}" class="watermark" alt="" onerror="this.style.display='none'">
+                    <div class="verso-details">
+                        <p><strong>ID HubISoccer :</strong> ${hubId}</p>
+                        <p><strong>Délivrée par :</strong> ${config?.verso_issued_by || ''}</p>
                         <p>${config?.verso_legal_info || ''}</p>
                         <div class="qr-code">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(qrUrl)}" alt="QR Code">
-                            <p>Scannez pour vérifier l'authenticité</p>
+                            <img src="${qrCodeUrl}" alt="QR Code">
+                            <p style="font-size:0.8rem; color:#6c757d;">Scannez pour vérifier</p>
                         </div>
-                        <div class="signature-stamp">
-                            <span>${config?.president_name || ''}</span>
-                            ${config?.president_signature_url ? `<img src="${config.president_signature_url}" alt="Signature président" style="max-height: 50px;">` : ''}
-                        </div>
+                    </div>
+                    <div class="signature-stamp" style="border-top: 1px dashed #e9ecef; margin-top: 10px; padding-top: 10px;">
+                        <span><strong>${config?.president_name || ''}</strong></span>
+                        <img src="${config?.president_signature_url || ''}" alt="Signature président" onerror="this.style.display='none'">
                     </div>
                 </div>
             `;
 
-            showRecto();
+            // Activer le recto par défaut
+            showFace('recto');
         }
 
-        window.showRecto = () => {
-            document.getElementById('recto').classList.add('active');
-            document.getElementById('verso').classList.remove('active');
-        };
-        window.showVerso = () => {
-            document.getElementById('verso').classList.add('active');
-            document.getElementById('recto').classList.remove('active');
+        window.showFace = function(face) {
+            document.querySelectorAll('.card-face').forEach(el => el.classList.remove('active'));
+            document.getElementById(face).classList.add('active');
+            document.querySelectorAll('.card-footer button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('btnRecto').classList.toggle('active', face === 'recto');
+            document.getElementById('btnVerso').classList.toggle('active', face === 'verso');
         };
 
         loadData();
