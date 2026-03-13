@@ -149,3 +149,40 @@ h1 {
 .toast-close { background: none; border: none; color: var(--gray); cursor: pointer; font-size: 1rem; }
 @keyframes slideIn { to { transform: translateX(0); } }
 @keyframes fadeOut { to { opacity: 0; transform: translateX(400px); } }
+
+/* Ajouter ces styles à la fin du fichier admin-global.css existant */
+
+/* Statuts pour les CV */
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+.status-pending { background: #fff3cd; color: #856404; }
+.status-approved { background: #d4edda; color: #155724; }
+
+/* Actions */
+.actions { display: flex; gap: 8px; }
+.btn-icon {
+    width: 35px; height: 35px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+.btn-view { background: #e7f0ff; color: #0d6efd; }
+.btn-view:hover { background: #0d6efd; color: white; }
+.btn-approve { background: #d4edda; color: #28a745; }
+.btn-approve:hover { background: #28a745; color: white; }
+.btn-reject { background: #f8d7da; color: #dc3545; }
+.btn-reject:hover { background: #dc3545; color: white; }
+
+/* Modale large */
+.modal-xl { max-width: 1000px; width: 90%; }
+.preview-content { max-height: 70vh; overflow-y: auto; padding: 20px; background: white; border-radius: 10px; }
+.modal-actions { display: flex; gap: 15px; justify-content: flex-end; margin-top: 20px; }
