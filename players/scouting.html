@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scouting | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Styles globaux -->
+    <link rel="stylesheet" href="css/global.css">
+    <!-- Styles spécifiques -->
+    <link rel="stylesheet" href="css/scouting.css">
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Espace Joueur</span>
+        </div>
+        <div class="nav-right">
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="edit-cv.html">Mon profil</a>
+                    <a href="support.html">Paramètres</a>
+                    <a href="#" id="languageLink">Langue (Français)</a>
+                    <a href="#" id="logoutLink">Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Menu Joueur</h3>
+            <button class="close-sidebar" id="closeSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+            <a href="feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
+            <a href="verification.html"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
+            <a href="edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV Pro</a>
+            <a href="certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
+            <a href="tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournoi (Live)</a>
+            <a href="transfers.html"><i class="fas fa-exchange-alt"></i> Historique Transferts</a>
+            <hr>
+            <a href="videos.html"><i class="fas fa-video"></i> Mes Vidéos</a>
+            <a href="revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
+            <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
+            <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Contenu principal -->
+    <main class="scouting-main">
+        <div class="scouting-container">
+            <h1 class="page-title"><i class="fas fa-chart-pie"></i> Scouting & Analyse</h1>
+
+            <!-- Ligne postes et pieds -->
+            <div class="player-synthesis">
+                <div class="positions">
+                    <span class="position-badge" id="primaryPosition">-</span>
+                    <span class="position-badge" id="secondaryPositions">-</span>
+                </div>
+                <div class="foot-stats">
+                    <div class="foot-item">
+                        <span class="foot-label">Pied gauche</span>
+                        <div class="foot-bar">
+                            <div class="foot-fill" id="leftFootFill" style="width: 0%;"></div>
+                        </div>
+                        <span class="foot-value" id="leftFootLabel">-</span>
+                    </div>
+                    <div class="foot-item">
+                        <span class="foot-label">Pied droit</span>
+                        <div class="foot-bar">
+                            <div class="foot-fill" id="rightFootFill" style="width: 0%;"></div>
+                        </div>
+                        <span class="foot-value" id="rightFootLabel">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Radar des 8 compétences -->
+            <div class="radar-section">
+                <h2><i class="fas fa-chart-line"></i> Profil du joueur</h2>
+                <div class="radar-container">
+                    <canvas id="skillsRadar" width="400" height="400"></canvas>
+                </div>
+                <!-- Légende des valeurs (affichées en pourcentage) -->
+                <div class="radar-values">
+                    <div><span class="value-label">Défense:</span> <span id="val_defense">0</span>%</div>
+                    <div><span class="value-label">Mental:</span> <span id="val_mental">0</span>%</div>
+                    <div><span class="value-label">Physique:</span> <span id="val_physique">0</span>%</div>
+                    <div><span class="value-label">Jeu aérien:</span> <span id="val_aerien">0</span>%</div>
+                    <div><span class="value-label">Vitesse:</span> <span id="val_vitesse">0</span>%</div>
+                    <div><span class="value-label">Technique:</span> <span id="val_technique">0</span>%</div>
+                    <div><span class="value-label">Vision du jeu:</span> <span id="val_vision">0</span>%</div>
+                    <div><span class="value-label">Attaque:</span> <span id="val_attaque">0</span>%</div>
+                </div>
+            </div>
+
+            <!-- Dates clés -->
+            <div class="key-dates">
+                <h3><i class="fas fa-calendar-alt"></i> Échéances</h3>
+                <div class="dates-list">
+                    <span class="date-badge" id="date1">mars 2024</span>
+                    <span class="date-badge" id="date2">mars 2025</span>
+                    <span class="date-badge" id="date3">mars 2026</span>
+                </div>
+            </div>
+
+            <!-- Points forts / points faibles -->
+            <div class="strengths-weaknesses">
+                <div class="strengths">
+                    <h4><i class="fas fa-thumbs-up"></i> Points forts</h4>
+                    <p id="strengthsText">Aucun atout exceptionnel</p>
+                </div>
+                <div class="weaknesses">
+                    <h4><i class="fas fa-thumbs-down"></i> Points faibles</h4>
+                    <p id="weaknessesText">Aucune faiblesse exceptionnelle</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/scouting.js"></script>
+</body>
+</html>
