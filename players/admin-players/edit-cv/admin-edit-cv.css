@@ -6,13 +6,19 @@
     font-size: 0.85rem;
     font-weight: 600;
     text-transform: capitalize;
+    display: inline-block;
 }
 .status-pending { background: #fff3cd; color: #856404; }
 .status-approved { background: #d4edda; color: #155724; }
 
-.actions { display: flex; gap: 8px; }
+.actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
 .btn-icon {
-    width: 35px; height: 35px;
+    width: 36px;
+    height: 36px;
     border-radius: 8px;
     border: none;
     cursor: pointer;
@@ -20,18 +26,56 @@
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
+    font-size: 1rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 .btn-view { background: #e7f0ff; color: #0d6efd; }
-.btn-view:hover { background: #0d6efd; color: white; }
+.btn-view:hover { background: #0d6efd; color: white; transform: translateY(-2px); }
 .btn-approve { background: #d4edda; color: #28a745; }
-.btn-approve:hover { background: #28a745; color: white; }
+.btn-approve:hover { background: #28a745; color: white; transform: translateY(-2px); }
 .btn-reject { background: #f8d7da; color: #dc3545; }
-.btn-reject:hover { background: #dc3545; color: white; }
+.btn-reject:hover { background: #dc3545; color: white; transform: translateY(-2px); }
+.btn-delete { background: #f8d7da; color: #dc3545; }
+.btn-delete:hover { background: #dc3545; color: white; transform: translateY(-2px); }
 
 /* Modale large */
 .modal-xl { max-width: 1000px; width: 90%; }
-.preview-content { max-height: 70vh; overflow-y: auto; padding: 20px; background: white; border-radius: 10px; }
-.modal-actions { display: flex; gap: 15px; justify-content: flex-end; margin-top: 20px; }
+.preview-content { 
+    max-height: 70vh; 
+    overflow-y: auto; 
+    padding: 20px; 
+    background: white; 
+    border-radius: 10px;
+    border: 1px solid #dee2e6;
+}
+.modal-actions { 
+    display: flex; 
+    gap: 15px; 
+    justify-content: flex-end; 
+    margin-top: 20px; 
+}
+.modal-actions .btn-secondary {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.modal-actions .btn-secondary:hover {
+    background: #5a6268;
+}
+.modal-actions .btn-approve, 
+.modal-actions .btn-reject,
+.modal-actions .btn-delete {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
 
 /* Style pour l'aperçu du CV (repris de l'espace joueur) */
 .cv-two-columns {
