@@ -1,4 +1,4 @@
-// ===== ADMIN CV =====
+// ===== ADMIN CV (VERSION CORRIGÉE) =====
 
 let cvsData = [];
 let currentCvId = null;
@@ -89,6 +89,8 @@ function renderCVs() {
                     <button class="btn-action approve" onclick="updateStatus(${cv.id}, 'approved')"><i class="fas fa-check"></i> Approuver</button>
                     <button class="btn-action reject" onclick="updateStatus(${cv.id}, 'rejected')"><i class="fas fa-times"></i> Rejeter</button>
                     <button class="btn-action pending" onclick="updateStatus(${cv.id}, 'pending')"><i class="fas fa-clock"></i> En attente</button>
+                    <button class="btn-action edit" onclick="editCV(${cv.id})"><i class="fas fa-edit"></i> Modifier</button>
+                    <button class="btn-action delete" onclick="confirmDeleteCV(${cv.id})"><i class="fas fa-trash"></i> Supprimer</button>
                 </div>
             </div>
         `;
@@ -212,8 +214,107 @@ async function viewCV(cvId) {
     document.getElementById('modalApproveBtn').onclick = () => updateStatus(cvId, 'approved');
     document.getElementById('modalRejectBtn').onclick = () => updateStatus(cvId, 'rejected');
     document.getElementById('modalPendingBtn').onclick = () => updateStatus(cvId, 'pending');
+    document.getElementById('modalDeleteBtn').onclick = () => confirmDeleteCV(cvId);
+    document.getElementById('modalEditBtn').onclick = () => editCV(cvId);
 
     document.getElementById('cvDetailModal').style.display = 'block';
+}
+
+// ===== ÉDITION RAPIDE D'UN CV =====
+async function editCV(cvId) {
+    const cv = cvsData.find(c => c.id === cvId);
+    if (!cv) return;
+    currentCvId = cvId;
+    const data = cv.data || {};
+
+    // Remplir le formulaire d'édition
+    document.getElementById('editNom').value = `${data.prenom || ''} ${data.nom || ''}`.trim();
+    document.getElementById('editPoste').value = data.position || data.poste_precis || '';
+    document.getElementById('editTelephone').value = data.telephone || '';
+    document.getElementById('editEmail').value = data.email || '';
+    document.getElementById('editClub').value = data.club || '';
+
+    document.getElementById('editCvModal').style.display = 'block';
+}
+
+// ===== SAUVEGARDER LES MODIFICATIONS DU CV =====
+document.getElementById('editCvForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentCvId) return;
+
+    const cv = cvsData.find(c => c.id === currentCvId);
+    if (!cv) return;
+
+    const updatedData = { ...cv.data };
+    // Mettre à jour les champs modifiés
+    const fullName = document.getElementById('editNom').value.trim().split(' ');
+    updatedData.prenom = fullName[0] || '';
+    updatedData.nom = fullName.slice(1).join(' ') || '';
+    updatedData.position = document.getElementById('editPoste').value;
+    updatedData.telephone = document.getElementById('editTelephone').value;
+    updatedData.email = document.getElementById('editEmail').value;
+    updatedData.club = document.getElementById('editClub').value;
+
+    showLoader(true);
+    try {
+        const { error } = await supabaseAdmin
+            .from('player_cv')
+            .update({ data: updatedData, updated_at: new Date() })
+            .eq('id', currentCvId);
+
+        if (error) throw error;
+
+        showToast('CV mis à jour avec succès', 'success');
+        closeEditModal();
+        loadCVs(); // recharger la liste
+    } catch (error) {
+        console.error('Erreur mise à jour CV:', error);
+        showToast('Erreur lors de la mise à jour', 'error');
+    } finally {
+        showLoader(false);
+    }
+});
+
+// ===== SUPPRESSION D'UN CV =====
+async function deleteCV(cvId) {
+    showLoader(true);
+    try {
+        const { error } = await supabaseAdmin
+            .from('player_cv')
+            .delete()
+            .eq('id', cvId);
+
+        if (error) throw error;
+
+        showToast('CV supprimé avec succès', 'success');
+        closeConfirmModal();
+        closeCvModal();
+        loadCVs();
+    } catch (error) {
+        console.error('Erreur suppression CV:', error);
+        showToast('Erreur lors de la suppression', 'error');
+    } finally {
+        showLoader(false);
+    }
+}
+
+function confirmDeleteCV(cvId) {
+    currentAction = { type: 'delete', cvId };
+    document.getElementById('confirmModalBody').innerHTML = `
+        <p>Êtes-vous sûr de vouloir supprimer ce CV ? Cette action est irréversible.</p>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeConfirmModal()">Annuler</button>
+            <button class="btn-confirm" onclick="executeAction()">Confirmer</button>
+        </div>
+    `;
+    document.getElementById('confirmModal').style.display = 'block';
+}
+
+function executeAction() {
+    if (!currentAction) return;
+    if (currentAction.type === 'delete') {
+        deleteCV(currentAction.cvId);
+    }
 }
 
 // ===== CHANGER LE STATUT =====
@@ -255,6 +356,15 @@ function closeCvModal() {
     currentCvId = null;
 }
 
+function closeEditModal() {
+    document.getElementById('editCvModal').style.display = 'none';
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirmModal').style.display = 'none';
+    currentAction = null;
+}
+
 // ===== FILTRES =====
 document.getElementById('searchInput')?.addEventListener('input', renderCVs);
 document.getElementById('statusFilter')?.addEventListener('change', renderCVs);
@@ -285,3 +395,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.viewCV = viewCV;
 window.updateStatus = updateStatus;
 window.closeCvModal = closeCvModal;
+window.confirmDeleteCV = confirmDeleteCV;
+window.executeAction = executeAction;
+window.closeConfirmModal = closeConfirmModal;
+window.editCV = editCV;
+window.closeEditModal = closeEditModal;
