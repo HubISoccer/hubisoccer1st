@@ -1,0 +1,168 @@
+.admin-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--light-gray);
+    padding-bottom: 10px;
+}
+.tab-btn {
+    padding: 10px 25px;
+    background: transparent;
+    border: none;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    color: var(--gray);
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.tab-btn:hover {
+    color: var(--primary);
+}
+.tab-btn.active {
+    color: var(--primary);
+    background: white;
+    box-shadow: 0 -3px 5px rgba(0,0,0,0.05);
+    position: relative;
+}
+.tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--gold);
+}
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
+}
+.admin-list {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    max-height: 70vh;
+    overflow-y: auto;
+}
+.post-item, .report-item, .user-item {
+    background: var(--bg-light);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-left: 4px solid transparent;
+}
+.post-item.reported {
+    border-left-color: var(--danger);
+}
+.post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.post-author {
+    font-weight: 600;
+    color: var(--primary);
+}
+.post-date {
+    font-size: 0.8rem;
+    color: var(--gray);
+}
+.post-content {
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+.post-media {
+    max-width: 200px;
+    max-height: 150px;
+    margin-bottom: 10px;
+}
+.post-stats {
+    display: flex;
+    gap: 15px;
+    font-size: 0.8rem;
+    color: var(--gray);
+    margin-bottom: 10px;
+}
+.post-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.btn-action {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-action.delete {
+    background: #dc3545;
+    color: white;
+}
+.btn-action.delete:hover {
+    background: #c82333;
+}
+.btn-action.view {
+    background: var(--primary);
+    color: white;
+}
+.btn-action.view:hover {
+    background: var(--primary-dark);
+}
+.btn-action.resolve {
+    background: #28a745;
+    color: white;
+}
+.btn-action.resolve:hover {
+    background: #218838;
+}
+.user-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.user-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.user-info {
+    flex: 1;
+}
+.user-name {
+    font-weight: 600;
+    color: var(--primary);
+}
+.user-email {
+    font-size: 0.8rem;
+    color: var(--gray);
+}
+.user-stats {
+    font-size: 0.8rem;
+    color: var(--dark);
+}
+.user-badge.banned {
+    background: var(--danger);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+}
+.btn-ban {
+    background: #ffc107;
+    color: black;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.btn-ban.banned {
+    background: #28a745;
+    color: white;
+}
