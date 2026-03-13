@@ -15,7 +15,6 @@ async function checkAdminSession() {
             window.location.href = '../auth/admin-login.html';
             return null;
         }
-
         // Vérifier que l'utilisateur est bien dans la table admin_users
         const { data: adminData, error: adminError } = await supabaseAdmin
             .from('admin_users')
