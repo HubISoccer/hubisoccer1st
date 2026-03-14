@@ -1,7 +1,8 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Renommé pour éviter le conflit
+const supabaseAdmin = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉLÉMENTS DOM =====
 const joueursList = document.getElementById('joueursList');
@@ -35,7 +36,7 @@ async function loadAll() {
 }
 
 async function loadJoueurs(search = '') {
-    let query = supabase.from('parrain_joueurs').select('*').order('created_at', { ascending: false });
+    let query = supabaseAdmin.from('parrain_joueurs').select('*').order('created_at', { ascending: false });
     if (search) {
         query = query.or(`nom.ilike.%${search}%,description.ilike.%${search}%,region.ilike.%${search}%`);
     }
@@ -45,7 +46,7 @@ async function loadJoueurs(search = '') {
 }
 
 async function loadDons(search = '') {
-    let query = supabase.from('parrain_dons').select('*').order('created_at', { ascending: false });
+    let query = supabaseAdmin.from('parrain_dons').select('*').order('created_at', { ascending: false });
     if (search) {
         query = query.or(`titre.ilike.%${search}%,description.ilike.%${search}%,region.ilike.%${search}%`);
     }
@@ -55,7 +56,7 @@ async function loadDons(search = '') {
 }
 
 async function loadTemoignages(search = '') {
-    let query = supabase.from('parrain_temoignages').select('*').order('created_at', { ascending: false });
+    let query = supabaseAdmin.from('parrain_temoignages').select('*').order('created_at', { ascending: false });
     if (search) {
         query = query.or(`auteur.ilike.%${search}%,texte.ilike.%${search}%`);
     }
@@ -65,7 +66,7 @@ async function loadTemoignages(search = '') {
 }
 
 async function loadMessages(search = '') {
-    let query = supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
+    let query = supabaseAdmin.from('contact_messages').select('*').order('created_at', { ascending: false });
     if (search) {
         query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,message.ilike.%${search}%`);
     }
@@ -79,10 +80,10 @@ async function loadMessages(search = '') {
 
 async function loadStats() {
     const [joueurs, dons, temoignages, messages] = await Promise.all([
-        supabase.from('parrain_joueurs').select('*', { count: 'exact', head: true }),
-        supabase.from('parrain_dons').select('collecte'),
-        supabase.from('parrain_temoignages').select('*', { count: 'exact', head: true }),
-        supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('is_read', false)
+        supabaseAdmin.from('parrain_joueurs').select('*', { count: 'exact', head: true }),
+        supabaseAdmin.from('parrain_dons').select('collecte'),
+        supabaseAdmin.from('parrain_temoignages').select('*', { count: 'exact', head: true }),
+        supabaseAdmin.from('contact_messages').select('*', { count: 'exact', head: true }).eq('is_read', false)
     ]);
     statJoueurs.textContent = joueurs.count || 0;
     statDons.textContent = dons.data?.length || 0;
@@ -314,7 +315,7 @@ window.openModal = (type, id = null) => {
 
 async function loadItemForEdit(type, id) {
     const table = type === 'joueur' ? 'parrain_joueurs' : (type === 'don' ? 'parrain_dons' : 'parrain_temoignages');
-    const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
+    const { data, error } = await supabaseAdmin.from(table).select('*').eq('id', id).single();
     if (error || !data) return;
 
     if (type === 'joueur') {
@@ -350,9 +351,9 @@ async function uploadFile(file, bucket = 'parrain-images') {
     if (!file) return null;
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}.${fileExt}`;
-    const { error } = await supabase.storage.from(bucket).upload(fileName, file);
+    const { error } = await supabaseAdmin.storage.from(bucket).upload(fileName, file);
     if (error) throw error;
-    const { publicURL } = supabase.storage.from(bucket).getPublicUrl(fileName);
+    const { publicURL } = supabaseAdmin.storage.from(bucket).getPublicUrl(fileName);
     return publicURL;
 }
 
@@ -410,10 +411,10 @@ itemForm.addEventListener('submit', async (e) => {
         let result;
         if (id) {
             // Mise à jour
-            result = await supabase.from(table).update(newItem).eq('id', id);
+            result = await supabaseAdmin.from(table).update(newItem).eq('id', id);
         } else {
             // Insertion
-            result = await supabase.from(table).insert([newItem]);
+            result = await supabaseAdmin.from(table).insert([newItem]);
         }
 
         if (result.error) throw result.error;
@@ -430,7 +431,7 @@ itemForm.addEventListener('submit', async (e) => {
 window.deleteItem = async (type, id) => {
     if (!confirm('Supprimer définitivement ?')) return;
     const table = type === 'joueur' ? 'parrain_joueurs' : (type === 'don' ? 'parrain_dons' : 'parrain_temoignages');
-    const { error } = await supabase.from(table).delete().eq('id', id);
+    const { error } = await supabaseAdmin.from(table).delete().eq('id', id);
     if (error) showToast('Erreur : ' + error.message, 'error');
     else {
         showToast('Supprimé', 'success');
@@ -456,7 +457,7 @@ window.viewMessage = async (id) => {
 
     // Marquer comme lu si ce n'est pas déjà fait
     if (!msg.is_read) {
-        await supabase.from('contact_messages').update({ is_read: true }).eq('id', id);
+        await supabaseAdmin.from('contact_messages').update({ is_read: true }).eq('id', id);
         loadMessages();
     }
 };
@@ -468,14 +469,14 @@ window.closeMessageModal = () => {
 
 window.markMessageAsRead = async () => {
     if (!currentMessageId) return;
-    await supabase.from('contact_messages').update({ is_read: true }).eq('id', currentMessageId);
+    await supabaseAdmin.from('contact_messages').update({ is_read: true }).eq('id', currentMessageId);
     closeMessageModal();
     loadMessages();
 };
 
 window.deleteMessage = async (id) => {
     if (!confirm('Supprimer ce message ?')) return;
-    const { error } = await supabase.from('contact_messages').delete().eq('id', id);
+    const { error } = await supabaseAdmin.from('contact_messages').delete().eq('id', id);
     if (error) showToast('Erreur : ' + error.message, 'error');
     else {
         showToast('Message supprimé', 'success');
