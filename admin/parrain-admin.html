@@ -107,6 +107,18 @@
             </div>
             <div id="messagesList" class="admin-list"></div>
         </div>
+
+        <!-- Section Demandes de parrainage -->
+        <div class="admin-card" id="section-parrainages">
+            <div class="card-header">
+                <h2><i class="fas fa-hand-holding-heart"></i> Demandes de parrainage</h2>
+                <div class="section-tools">
+                    <input type="text" class="search-input" id="searchParrainages" placeholder="Rechercher...">
+                    <button class="btn-refresh" id="refreshParrainages" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
+                </div>
+            </div>
+            <div id="parrainagesList" class="admin-list"></div>
+        </div>
     </div>
 
     <!-- MODALE D'AJOUT/ÉDITION -->
@@ -129,7 +141,29 @@
             <span class="close" onclick="closeMessageModal()">&times;</span>
             <h3>Détail du message</h3>
             <div id="messageDetail"></div>
-            <button class="btn-submit" onclick="markMessageAsRead()">Marquer comme lu</button>
+            <textarea id="replyMessage" placeholder="Votre réponse..." rows="3" style="width:100%; margin:10px 0; padding:10px;"></textarea>
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button class="btn-submit" onclick="sendReply()">Envoyer la réponse</button>
+                <button class="btn-secondary" onclick="closeMessageModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE TRAITEMENT DE PARRAINAGE -->
+    <div id="parrainageModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeParrainageModal()">&times;</span>
+            <h3>Traiter la demande de parrainage</h3>
+            <div id="parrainageDetail"></div>
+            <div class="form-group">
+                <label>Montant reçu (FCFA)</label>
+                <input type="number" id="parrainageMontant" placeholder="Ex: 5000">
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+                <button class="btn-approve" onclick="validateParrainage()">Valider</button>
+                <button class="btn-reject" onclick="rejectParrainage()">Rejeter</button>
+                <button class="btn-secondary" onclick="closeParrainageModal()">Annuler</button>
+            </div>
         </div>
     </div>
 
