@@ -1,100 +1,18 @@
-// ===== DONNÉES PAR DÉFAUT =====
-const defaultJoueurs = [
-    {
-        id: 'j1',
-        nom: 'Koffi B.',
-        poste: 'Attaquant',
-        region: 'Bénin',
-        image: '../public/img/pas1.jpg',
-        description: 'Je cherche un parrain pour m’aider à financer ma formation et mon équipement. Objectif : intégrer un centre professionnel.',
-        besoin: 'Équipement + frais de formation',
-        montant: '150 000 FCFA'
-    },
-    {
-        id: 'j2',
-        nom: 'Moussa D.',
-        poste: 'Milieu',
-        region: 'Sénégal',
-        image: '../public/img/pas2.jpg',
-        description: 'Je veux participer à un tournoi international mais je n’ai pas les moyens. Aidez-moi à réaliser mon rêve.',
-        besoin: 'Frais de voyage et inscription',
-        montant: '250 000 FCFA'
-    },
-    {
-        id: 'j3',
-        nom: 'Aminata Diallo',
-        poste: 'Défenseur',
-        region: 'Côte d\'Ivoire',
-        image: '../public/img/pas3.jpg',
-        description: 'Je suis une jeune footballeuse avec du talent, mais je manque de soutien. Rejoignez-moi dans cette aventure.',
-        besoin: 'Soutien financier et moral',
-        montant: '100 000 FCFA'
-    }
-];
-
-const defaultDons = [
-    {
-        id: 'd1',
-        titre: 'Organisation du tournoi de Cotonou',
-        region: 'Bénin',
-        image: '../public/img/tou1.jpg',
-        description: 'Nous organisons un grand tournoi de détection et avons besoin de fonds pour les infrastructures, les repas et l’hébergement des jeunes.',
-        besoin: 'Financement partiel',
-        objectif: '5 000 000 FCFA',
-        collecte: '2 300 000 FCFA'
-    },
-    {
-        id: 'd2',
-        titre: 'Rénovation du terrain de Parakou',
-        region: 'Bénin',
-        image: '../public/img/tou2.jpg',
-        description: 'Le terrain municipal est en mauvais état. Aidez-nous à le rénover pour offrir un espace de jeu décent aux jeunes.',
-        besoin: 'Dons pour les travaux',
-        objectif: '3 000 000 FCFA',
-        collecte: '1 200 000 FCFA'
-    },
-    {
-        id: 'd3',
-        titre: 'Achat d’équipements pour l’académie',
-        region: 'Sénégal',
-        image: '../public/img/tou3.jpg',
-        description: 'Notre académie manque de ballons, de maillots et de chasubles. Chaque don compte.',
-        besoin: 'Équipement sportif',
-        objectif: '500 000 FCFA',
-        collecte: '210 000 FCFA'
-    }
-];
-
-const defaultTemoignages = [
-    {
-        auteur: 'M. Agbodjogbe',
-        role: 'Parrain',
-        texte: 'J’ai parrainé Koffi il y a 6 mois. Aujourd’hui, il a intégré un centre de formation. Une expérience incroyable !',
-        avatar: '../public/img/user-default.jpg'
-    },
-    {
-        auteur: 'A. Salami',
-        role: 'Entraîneur',
-        texte: 'Grâce aux dons, nous avons pu organiser un tournoi régional qui a révélé plusieurs talents.',
-        avatar: '../public/img/user-default.jpg'
-    }
-];
-
-// Initialisation localStorage
-if (!localStorage.getItem('parrain_joueurs')) {
-    localStorage.setItem('parrain_joueurs', JSON.stringify(defaultJoueurs));
-}
-if (!localStorage.getItem('parrain_dons')) {
-    localStorage.setItem('parrain_dons', JSON.stringify(defaultDons));
-}
-if (!localStorage.getItem('parrain_temoignages')) {
-    localStorage.setItem('parrain_temoignages', JSON.stringify(defaultTemoignages));
-}
+// ===== CONFIGURATION SUPABASE =====
+const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉLÉMENTS DOM =====
 const joueursList = document.getElementById('joueursList');
 const donsList = document.getElementById('donsList');
 const temoignagesList = document.getElementById('temoignagesList');
+const messagesList = document.getElementById('messagesList');
+const statJoueurs = document.getElementById('statJoueurs');
+const statDons = document.getElementById('statDons');
+const statCollecte = document.getElementById('statCollecte');
+const statMessages = document.getElementById('statMessages');
+
 const modal = document.getElementById('itemModal');
 const modalTitle = document.getElementById('modalTitle');
 const itemForm = document.getElementById('itemForm');
@@ -102,13 +20,94 @@ const itemType = document.getElementById('itemType');
 const itemId = document.getElementById('itemId');
 const dynamicFields = document.getElementById('dynamicFields');
 
-// ===== FONCTIONS D'AFFICHAGE =====
-function loadJoueurs() {
-    const joueurs = JSON.parse(localStorage.getItem('parrain_joueurs')) || [];
+// ===== ÉTAT =====
+let currentMessages = [];
+
+// ===== CHARGEMENT DES DONNÉES =====
+async function loadAll() {
+    await Promise.all([
+        loadJoueurs(),
+        loadDons(),
+        loadTemoignages(),
+        loadMessages(),
+        loadStats()
+    ]);
+}
+
+async function loadJoueurs(search = '') {
+    let query = supabase.from('parrain_joueurs').select('*').order('created_at', { ascending: false });
+    if (search) {
+        query = query.or(`nom.ilike.%${search}%,description.ilike.%${search}%,region.ilike.%${search}%`);
+    }
+    const { data, error } = await query;
+    if (error) console.error(error);
+    else renderJoueurs(data || []);
+}
+
+async function loadDons(search = '') {
+    let query = supabase.from('parrain_dons').select('*').order('created_at', { ascending: false });
+    if (search) {
+        query = query.or(`titre.ilike.%${search}%,description.ilike.%${search}%,region.ilike.%${search}%`);
+    }
+    const { data, error } = await query;
+    if (error) console.error(error);
+    else renderDons(data || []);
+}
+
+async function loadTemoignages(search = '') {
+    let query = supabase.from('parrain_temoignages').select('*').order('created_at', { ascending: false });
+    if (search) {
+        query = query.or(`auteur.ilike.%${search}%,texte.ilike.%${search}%`);
+    }
+    const { data, error } = await query;
+    if (error) console.error(error);
+    else renderTemoignages(data || []);
+}
+
+async function loadMessages(search = '') {
+    let query = supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
+    if (search) {
+        query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,message.ilike.%${search}%`);
+    }
+    const { data, error } = await query;
+    if (error) console.error(error);
+    else {
+        currentMessages = data || [];
+        renderMessages(currentMessages);
+    }
+}
+
+async function loadStats() {
+    const [joueurs, dons, temoignages, messages] = await Promise.all([
+        supabase.from('parrain_joueurs').select('*', { count: 'exact', head: true }),
+        supabase.from('parrain_dons').select('collecte'),
+        supabase.from('parrain_temoignages').select('*', { count: 'exact', head: true }),
+        supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('is_read', false)
+    ]);
+    statJoueurs.textContent = joueurs.count || 0;
+    statDons.textContent = dons.data?.length || 0;
+    // Calculer somme des collectes (en supposant que collecte est une chaîne comme "2 300 000 FCFA")
+    let total = 0;
+    if (dons.data) {
+        total = dons.data.reduce((acc, d) => {
+            const num = parseFloat(d.collecte.replace(/[^0-9]/g, ''));
+            return acc + (isNaN(num) ? 0 : num);
+        }, 0);
+    }
+    statCollecte.textContent = total.toLocaleString() + ' FCFA';
+    statMessages.textContent = messages.count || 0;
+}
+
+// ===== RENDU DES LISTES =====
+function renderJoueurs(joueurs) {
+    if (!joueurs.length) {
+        joueursList.innerHTML = '<p class="no-data">Aucun joueur.</p>';
+        return;
+    }
     let html = '';
     joueurs.forEach((item, index) => {
         html += `
-            <div class="list-item" data-index="${index}">
+            <div class="list-item" data-id="${item.id}">
                 <div class="info">
                     <strong>${item.nom}</strong>
                     <div class="details">
@@ -120,21 +119,24 @@ function loadJoueurs() {
                     <small>${item.description.substring(0, 80)}...</small>
                 </div>
                 <div class="actions">
-                    <button class="edit" onclick="editItem('joueur', ${index})"><i class="fas fa-edit"></i></button>
-                    <button class="delete" onclick="deleteItem('joueur', ${index})"><i class="fas fa-trash"></i></button>
+                    <button class="edit" onclick="editItem('joueur', '${item.id}')"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="deleteItem('joueur', '${item.id}')"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
     });
-    joueursList.innerHTML = html || '<p class="no-data">Aucun joueur.</p>';
+    joueursList.innerHTML = html;
 }
 
-function loadDons() {
-    const dons = JSON.parse(localStorage.getItem('parrain_dons')) || [];
+function renderDons(dons) {
+    if (!dons.length) {
+        donsList.innerHTML = '<p class="no-data">Aucun appel aux dons.</p>';
+        return;
+    }
     let html = '';
-    dons.forEach((item, index) => {
+    dons.forEach((item) => {
         html += `
-            <div class="list-item" data-index="${index}">
+            <div class="list-item" data-id="${item.id}">
                 <div class="info">
                     <strong>${item.titre}</strong>
                     <div class="details">
@@ -145,215 +147,376 @@ function loadDons() {
                     <small>${item.description.substring(0, 80)}...</small>
                 </div>
                 <div class="actions">
-                    <button class="edit" onclick="editItem('don', ${index})"><i class="fas fa-edit"></i></button>
-                    <button class="delete" onclick="deleteItem('don', ${index})"><i class="fas fa-trash"></i></button>
+                    <button class="edit" onclick="editItem('don', '${item.id}')"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="deleteItem('don', '${item.id}')"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
     });
-    donsList.innerHTML = html || '<p class="no-data">Aucun appel aux dons.</p>';
+    donsList.innerHTML = html;
 }
 
-function loadTemoignages() {
-    const temoignages = JSON.parse(localStorage.getItem('parrain_temoignages')) || [];
+function renderTemoignages(temoignages) {
+    if (!temoignages.length) {
+        temoignagesList.innerHTML = '<p class="no-data">Aucun témoignage.</p>';
+        return;
+    }
     let html = '';
-    temoignages.forEach((item, index) => {
+    temoignages.forEach((item) => {
         html += `
-            <div class="list-item" data-index="${index}">
+            <div class="list-item" data-id="${item.id}">
                 <div class="info">
                     <strong>${item.auteur}</strong> (${item.role})
                     <small>${item.texte}</small>
                 </div>
                 <div class="actions">
-                    <button class="edit" onclick="editItem('temoignage', ${index})"><i class="fas fa-edit"></i></button>
-                    <button class="delete" onclick="deleteItem('temoignage', ${index})"><i class="fas fa-trash"></i></button>
+                    <button class="edit" onclick="editItem('temoignage', '${item.id}')"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="deleteItem('temoignage', '${item.id}')"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
     });
-    temoignagesList.innerHTML = html || '<p class="no-data">Aucun témoignage.</p>';
+    temoignagesList.innerHTML = html;
 }
 
-// ===== OUVERTURE MODALE (AJOUT) =====
-window.openModal = (type) => {
+function renderMessages(messages) {
+    if (!messages.length) {
+        messagesList.innerHTML = '<p class="no-data">Aucun message.</p>';
+        return;
+    }
+    let html = '';
+    messages.forEach((msg) => {
+        html += `
+            <div class="list-item ${!msg.is_read ? 'unread' : ''}" data-id="${msg.id}">
+                <div class="info">
+                    <strong>${msg.name}</strong> (${msg.email})
+                    <div class="details">
+                        <span>Type: ${msg.type}</span>
+                        <span>Cible: ${msg.target_title || msg.target_id || '-'}</span>
+                        <span>${new Date(msg.created_at).toLocaleString()}</span>
+                    </div>
+                    <small>${msg.message.substring(0, 80)}...</small>
+                </div>
+                <div class="actions">
+                    <button class="view" onclick="viewMessage('${msg.id}')"><i class="fas fa-eye"></i></button>
+                    <button class="delete" onclick="deleteMessage('${msg.id}')"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        `;
+    });
+    messagesList.innerHTML = html;
+}
+
+// ===== GESTION DES MODALES =====
+window.openModal = (type, id = null) => {
     itemType.value = type;
-    itemId.value = '';
+    itemId.value = id || '';
     let title = '';
     let fields = '';
 
     if (type === 'joueur') {
-        title = 'Ajouter un joueur';
+        title = id ? 'Modifier un joueur' : 'Ajouter un joueur';
         fields = `
-            <div class="form-group"><label>Nom</label><input type="text" id="nom" required></div>
-            <div class="form-group"><label>Poste</label><input type="text" id="poste" required></div>
-            <div class="form-group"><label>Région</label><input type="text" id="region" required></div>
-            <div class="form-group"><label>Image (chemin)</label><input type="text" id="image" placeholder="../public/img/..." required></div>
-            <div class="form-group"><label>Description</label><textarea id="description" rows="3" required></textarea></div>
-            <div class="form-group"><label>Besoin</label><input type="text" id="besoin" required></div>
-            <div class="form-group"><label>Montant</label><input type="text" id="montant" required></div>
+            <div class="form-group">
+                <label>Nom</label>
+                <input type="text" id="nom" required>
+            </div>
+            <div class="form-group">
+                <label>Poste</label>
+                <input type="text" id="poste" required>
+            </div>
+            <div class="form-group">
+                <label>Région</label>
+                <input type="text" id="region" required>
+            </div>
+            <div class="form-group">
+                <label>Image (fichier)</label>
+                <input type="file" id="imageFile" accept="image/*">
+                <input type="hidden" id="imageUrl">
+                <small>Laissez vide pour ne pas changer</small>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="description" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+                <label>Besoin</label>
+                <input type="text" id="besoin" required>
+            </div>
+            <div class="form-group">
+                <label>Montant</label>
+                <input type="text" id="montant" required>
+            </div>
         `;
     } else if (type === 'don') {
-        title = 'Ajouter un appel aux dons';
+        title = id ? 'Modifier un appel' : 'Ajouter un appel';
         fields = `
-            <div class="form-group"><label>Titre</label><input type="text" id="titre" required></div>
-            <div class="form-group"><label>Région</label><input type="text" id="region" required></div>
-            <div class="form-group"><label>Image (chemin)</label><input type="text" id="image" placeholder="../public/img/..." required></div>
-            <div class="form-group"><label>Description</label><textarea id="description" rows="3" required></textarea></div>
-            <div class="form-group"><label>Objectif</label><input type="text" id="objectif" required></div>
-            <div class="form-group"><label>Collecté</label><input type="text" id="collecte" required></div>
+            <div class="form-group">
+                <label>Titre</label>
+                <input type="text" id="titre" required>
+            </div>
+            <div class="form-group">
+                <label>Région</label>
+                <input type="text" id="region" required>
+            </div>
+            <div class="form-group">
+                <label>Image (fichier)</label>
+                <input type="file" id="imageFile" accept="image/*">
+                <input type="hidden" id="imageUrl">
+                <small>Laissez vide pour ne pas changer</small>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="description" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+                <label>Objectif</label>
+                <input type="text" id="objectif" required>
+            </div>
+            <div class="form-group">
+                <label>Collecté</label>
+                <input type="text" id="collecte" required>
+            </div>
         `;
     } else if (type === 'temoignage') {
-        title = 'Ajouter un témoignage';
+        title = id ? 'Modifier un témoignage' : 'Ajouter un témoignage';
         fields = `
-            <div class="form-group"><label>Auteur</label><input type="text" id="auteur" required></div>
-            <div class="form-group"><label>Rôle</label><input type="text" id="role" required></div>
-            <div class="form-group"><label>Texte</label><textarea id="texte" rows="3" required></textarea></div>
-            <div class="form-group"><label>Avatar (chemin)</label><input type="text" id="avatar" placeholder="../public/img/..." required></div>
+            <div class="form-group">
+                <label>Auteur</label>
+                <input type="text" id="auteur" required>
+            </div>
+            <div class="form-group">
+                <label>Rôle</label>
+                <input type="text" id="role" required>
+            </div>
+            <div class="form-group">
+                <label>Texte</label>
+                <textarea id="texte" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+                <label>Avatar (fichier)</label>
+                <input type="file" id="avatarFile" accept="image/*">
+                <input type="hidden" id="avatarUrl">
+                <small>Laissez vide pour ne pas changer</small>
+            </div>
         `;
     }
 
     modalTitle.textContent = title;
     dynamicFields.innerHTML = fields;
     modal.classList.add('active');
+
+    if (id) {
+        // Charger les données pour édition
+        loadItemForEdit(type, id);
+    }
 };
 
-// ===== ÉDITION =====
-window.editItem = (type, index) => {
-    let data;
-    let key;
-    if (type === 'joueur') {
-        data = JSON.parse(localStorage.getItem('parrain_joueurs'))[index];
-        key = 'parrain_joueurs';
-    } else if (type === 'don') {
-        data = JSON.parse(localStorage.getItem('parrain_dons'))[index];
-        key = 'parrain_dons';
-    } else {
-        data = JSON.parse(localStorage.getItem('parrain_temoignages'))[index];
-        key = 'parrain_temoignages';
-    }
-
-    itemType.value = type;
-    itemId.value = index;
-    let title = type === 'joueur' ? 'Modifier un joueur' : (type === 'don' ? 'Modifier un appel' : 'Modifier un témoignage');
-    let fields = '';
+async function loadItemForEdit(type, id) {
+    const table = type === 'joueur' ? 'parrain_joueurs' : (type === 'don' ? 'parrain_dons' : 'parrain_temoignages');
+    const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
+    if (error || !data) return;
 
     if (type === 'joueur') {
-        fields = `
-            <div class="form-group"><label>Nom</label><input type="text" id="nom" value="${data.nom}" required></div>
-            <div class="form-group"><label>Poste</label><input type="text" id="poste" value="${data.poste}" required></div>
-            <div class="form-group"><label>Région</label><input type="text" id="region" value="${data.region}" required></div>
-            <div class="form-group"><label>Image</label><input type="text" id="image" value="${data.image}" required></div>
-            <div class="form-group"><label>Description</label><textarea id="description" rows="3" required>${data.description}</textarea></div>
-            <div class="form-group"><label>Besoin</label><input type="text" id="besoin" value="${data.besoin}" required></div>
-            <div class="form-group"><label>Montant</label><input type="text" id="montant" value="${data.montant}" required></div>
-        `;
+        document.getElementById('nom').value = data.nom || '';
+        document.getElementById('poste').value = data.poste || '';
+        document.getElementById('region').value = data.region || '';
+        document.getElementById('description').value = data.description || '';
+        document.getElementById('besoin').value = data.besoin || '';
+        document.getElementById('montant').value = data.montant || '';
+        document.getElementById('imageUrl').value = data.image || '';
     } else if (type === 'don') {
-        fields = `
-            <div class="form-group"><label>Titre</label><input type="text" id="titre" value="${data.titre}" required></div>
-            <div class="form-group"><label>Région</label><input type="text" id="region" value="${data.region}" required></div>
-            <div class="form-group"><label>Image</label><input type="text" id="image" value="${data.image}" required></div>
-            <div class="form-group"><label>Description</label><textarea id="description" rows="3" required>${data.description}</textarea></div>
-            <div class="form-group"><label>Objectif</label><input type="text" id="objectif" value="${data.objectif}" required></div>
-            <div class="form-group"><label>Collecté</label><input type="text" id="collecte" value="${data.collecte}" required></div>
-        `;
+        document.getElementById('titre').value = data.titre || '';
+        document.getElementById('region').value = data.region || '';
+        document.getElementById('description').value = data.description || '';
+        document.getElementById('objectif').value = data.objectif || '';
+        document.getElementById('collecte').value = data.collecte || '';
+        document.getElementById('imageUrl').value = data.image || '';
     } else {
-        fields = `
-            <div class="form-group"><label>Auteur</label><input type="text" id="auteur" value="${data.auteur}" required></div>
-            <div class="form-group"><label>Rôle</label><input type="text" id="role" value="${data.role}" required></div>
-            <div class="form-group"><label>Texte</label><textarea id="texte" rows="3" required>${data.texte}</textarea></div>
-            <div class="form-group"><label>Avatar</label><input type="text" id="avatar" value="${data.avatar}" required></div>
-        `;
+        document.getElementById('auteur').value = data.auteur || '';
+        document.getElementById('role').value = data.role || '';
+        document.getElementById('texte').value = data.texte || '';
+        document.getElementById('avatarUrl').value = data.avatar || '';
     }
+}
 
-    modalTitle.textContent = title;
-    dynamicFields.innerHTML = fields;
-    modal.classList.add('active');
-};
-
-// ===== FERMETURE MODALE =====
 window.closeModal = () => {
     modal.classList.remove('active');
+    itemForm.reset();
 };
 
-// ===== SUPPRESSION =====
-window.deleteItem = (type, index) => {
-    if (!confirm('Supprimer cet élément ?')) return;
-    let key;
-    if (type === 'joueur') key = 'parrain_joueurs';
-    else if (type === 'don') key = 'parrain_dons';
-    else key = 'parrain_temoignages';
-
-    let data = JSON.parse(localStorage.getItem(key));
-    data.splice(index, 1);
-    localStorage.setItem(key, JSON.stringify(data));
-    loadJoueurs();
-    loadDons();
-    loadTemoignages();
-};
+// ===== UPLOAD D'IMAGE =====
+async function uploadFile(file, bucket = 'parrain-images') {
+    if (!file) return null;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const { error } = await supabase.storage.from(bucket).upload(fileName, file);
+    if (error) throw error;
+    const { publicURL } = supabase.storage.from(bucket).getPublicUrl(fileName);
+    return publicURL;
+}
 
 // ===== GESTION DU FORMULAIRE =====
-itemForm.addEventListener('submit', (e) => {
+itemForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const type = itemType.value;
-    const index = itemId.value;
-    let key;
+    const id = itemId.value;
+    const table = type === 'joueur' ? 'parrain_joueurs' : (type === 'don' ? 'parrain_dons' : 'parrain_temoignages');
     let newItem = {};
 
-    if (type === 'joueur') {
-        key = 'parrain_joueurs';
-        newItem = {
-            id: index === '' ? Date.now().toString() : JSON.parse(localStorage.getItem(key))[index].id,
-            nom: document.getElementById('nom').value,
-            poste: document.getElementById('poste').value,
-            region: document.getElementById('region').value,
-            image: document.getElementById('image').value,
-            description: document.getElementById('description').value,
-            besoin: document.getElementById('besoin').value,
-            montant: document.getElementById('montant').value
-        };
-    } else if (type === 'don') {
-        key = 'parrain_dons';
-        newItem = {
-            id: index === '' ? Date.now().toString() : JSON.parse(localStorage.getItem(key))[index].id,
-            titre: document.getElementById('titre').value,
-            region: document.getElementById('region').value,
-            image: document.getElementById('image').value,
-            description: document.getElementById('description').value,
-            objectif: document.getElementById('objectif').value,
-            collecte: document.getElementById('collecte').value
-        };
-    } else {
-        key = 'parrain_temoignages';
-        newItem = {
-            auteur: document.getElementById('auteur').value,
-            role: document.getElementById('role').value,
-            texte: document.getElementById('texte').value,
-            avatar: document.getElementById('avatar').value
-        };
-    }
+    try {
+        // Upload des images si présentes
+        if (type === 'joueur' || type === 'don') {
+            const fileInput = document.getElementById('imageFile');
+            if (fileInput.files.length > 0) {
+                const url = await uploadFile(fileInput.files[0]);
+                if (url) newItem.image = url;
+            } else {
+                // Garder l'ancienne image
+                const oldUrl = document.getElementById('imageUrl').value;
+                if (oldUrl) newItem.image = oldUrl;
+            }
+        } else if (type === 'temoignage') {
+            const fileInput = document.getElementById('avatarFile');
+            if (fileInput.files.length > 0) {
+                const url = await uploadFile(fileInput.files[0]);
+                if (url) newItem.avatar = url;
+            } else {
+                const oldUrl = document.getElementById('avatarUrl').value;
+                if (oldUrl) newItem.avatar = oldUrl;
+            }
+        }
 
-    let data = JSON.parse(localStorage.getItem(key)) || [];
-    if (index === '') {
-        data.push(newItem);
-    } else {
-        data[index] = newItem;
+        // Récupérer les champs textuels
+        if (type === 'joueur') {
+            newItem.nom = document.getElementById('nom').value;
+            newItem.poste = document.getElementById('poste').value;
+            newItem.region = document.getElementById('region').value;
+            newItem.description = document.getElementById('description').value;
+            newItem.besoin = document.getElementById('besoin').value;
+            newItem.montant = document.getElementById('montant').value;
+        } else if (type === 'don') {
+            newItem.titre = document.getElementById('titre').value;
+            newItem.region = document.getElementById('region').value;
+            newItem.description = document.getElementById('description').value;
+            newItem.objectif = document.getElementById('objectif').value;
+            newItem.collecte = document.getElementById('collecte').value;
+        } else {
+            newItem.auteur = document.getElementById('auteur').value;
+            newItem.role = document.getElementById('role').value;
+            newItem.texte = document.getElementById('texte').value;
+        }
+
+        let result;
+        if (id) {
+            // Mise à jour
+            result = await supabase.from(table).update(newItem).eq('id', id);
+        } else {
+            // Insertion
+            result = await supabase.from(table).insert([newItem]);
+        }
+
+        if (result.error) throw result.error;
+
+        showToast('Opération réussie', 'success');
+        closeModal();
+        loadAll();
+    } catch (err) {
+        showToast('Erreur : ' + err.message, 'error');
     }
-    localStorage.setItem(key, JSON.stringify(data));
-    closeModal();
-    loadJoueurs();
-    loadDons();
-    loadTemoignages();
 });
 
-// ===== DÉCONNEXION =====
-document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
+// ===== SUPPRESSION =====
+window.deleteItem = async (type, id) => {
+    if (!confirm('Supprimer définitivement ?')) return;
+    const table = type === 'joueur' ? 'parrain_joueurs' : (type === 'don' ? 'parrain_dons' : 'parrain_temoignages');
+    const { error } = await supabase.from(table).delete().eq('id', id);
+    if (error) showToast('Erreur : ' + error.message, 'error');
+    else {
+        showToast('Supprimé', 'success');
+        loadAll();
+    }
+};
+
+// ===== MESSAGES =====
+let currentMessageId = null;
+
+window.viewMessage = async (id) => {
+    const msg = currentMessages.find(m => m.id == id);
+    if (!msg) return;
+    currentMessageId = id;
+    document.getElementById('messageDetail').innerHTML = `
+        <p><strong>De :</strong> ${msg.name} (${msg.email})</p>
+        <p><strong>Type :</strong> ${msg.type}</p>
+        <p><strong>Cible :</strong> ${msg.target_title || msg.target_id || '-'}</p>
+        <p><strong>Date :</strong> ${new Date(msg.created_at).toLocaleString()}</p>
+        <p><strong>Message :</strong><br>${msg.message}</p>
+    `;
+    document.getElementById('messageModal').classList.add('active');
+
+    // Marquer comme lu si ce n'est pas déjà fait
+    if (!msg.is_read) {
+        await supabase.from('contact_messages').update({ is_read: true }).eq('id', id);
+        loadMessages();
+    }
+};
+
+window.closeMessageModal = () => {
+    document.getElementById('messageModal').classList.remove('active');
+    currentMessageId = null;
+};
+
+window.markMessageAsRead = async () => {
+    if (!currentMessageId) return;
+    await supabase.from('contact_messages').update({ is_read: true }).eq('id', currentMessageId);
+    closeMessageModal();
+    loadMessages();
+};
+
+window.deleteMessage = async (id) => {
+    if (!confirm('Supprimer ce message ?')) return;
+    const { error } = await supabase.from('contact_messages').delete().eq('id', id);
+    if (error) showToast('Erreur : ' + error.message, 'error');
+    else {
+        showToast('Message supprimé', 'success');
+        loadMessages();
+    }
+};
+
+// ===== RECHERCHE EN TEMPS RÉEL =====
+document.getElementById('searchJoueurs').addEventListener('input', (e) => loadJoueurs(e.target.value));
+document.getElementById('searchDons').addEventListener('input', (e) => loadDons(e.target.value));
+document.getElementById('searchTemoignages').addEventListener('input', (e) => loadTemoignages(e.target.value));
+document.getElementById('searchMessages').addEventListener('input', (e) => loadMessages(e.target.value));
+
+// ===== BOUTONS DE RAFRAÎCHISSEMENT =====
+document.getElementById('refreshJoueurs').addEventListener('click', () => loadJoueurs());
+document.getElementById('refreshDons').addEventListener('click', () => loadDons());
+document.getElementById('refreshTemoignages').addEventListener('click', () => loadTemoignages());
+document.getElementById('refreshMessages').addEventListener('click', () => loadMessages());
+
+// ===== TOAST =====
+function showToast(message, type = 'info') {
+    let toast = document.getElementById('toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.className = `toast show ${type}`;
+    setTimeout(() => {
+        toast.className = 'toast';
+    }, 3000);
+}
+
+// ===== DÉCONNEXION (pour plus tard) =====
+document.getElementById('logoutAdmin').addEventListener('click', (e) => {
     e.preventDefault();
     if (confirm('Déconnexion ?')) {
         window.location.href = '../../index.html';
     }
 });
 
-// ===== CHARGEMENT INITIAL =====
-loadJoueurs();
-loadDons();
-loadTemoignages();
+// ===== INITIALISATION =====
+document.addEventListener('DOMContentLoaded', loadAll);
