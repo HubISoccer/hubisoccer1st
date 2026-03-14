@@ -33,6 +33,38 @@
     border-radius: 2px;
 }
 
+/* Statistiques */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+.stat-card {
+    background: var(--white);
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+}
+.stat-card i {
+    font-size: 2.5rem;
+    color: var(--gold);
+}
+.stat-card h3 {
+    font-size: 1.8rem;
+    color: var(--primary);
+    margin: 0;
+}
+.stat-card p {
+    color: var(--gray);
+    margin: 0;
+}
+
+/* Cartes admin */
 .parrain-page .admin-card {
     background: var(--white);
     border-radius: 20px;
@@ -66,27 +98,55 @@
     color: var(--gold);
 }
 
+.section-tools {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.section-tools .search-input {
+    padding: 8px 15px;
+    border: 2px solid var(--light-gray);
+    border-radius: 30px;
+    min-width: 200px;
+    font-family: 'Poppins', sans-serif;
+}
+.section-tools .btn-refresh {
+    background: var(--primary);
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.section-tools .btn-refresh:hover {
+    background: var(--primary-light);
+    transform: rotate(180deg);
+}
 .parrain-page .btn-add {
     background: var(--primary);
     color: white;
     border: none;
-    padding: 12px 24px;
-    border-radius: 50px;
+    padding: 10px 20px;
+    border-radius: 30px;
     font-weight: 600;
     cursor: pointer;
     transition: var(--transition);
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 1rem;
-    box-shadow: 0 4px 10px rgba(85,27,140,0.2);
 }
 .parrain-page .btn-add:hover {
     background: var(--primary-light);
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(85,27,140,0.3);
 }
 
+/* Liste des éléments */
 .parrain-page .admin-list {
     display: flex;
     flex-direction: column;
@@ -104,6 +164,10 @@
     border: 1px solid var(--light-gray);
     flex-wrap: wrap;
     gap: 15px;
+}
+.parrain-page .list-item.unread {
+    border-left-color: #dc3545;
+    background: #fff0f0;
 }
 .parrain-page .list-item:hover {
     transform: translateX(5px);
@@ -127,6 +191,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    margin: 5px 0;
 }
 .parrain-page .list-item .info .details span {
     background: rgba(85,27,140,0.05);
@@ -170,8 +235,16 @@
     background: #dc3545;
     color: white;
 }
+.parrain-page .list-item .actions button.view {
+    color: #0d6efd;
+    background: rgba(13,110,253,0.1);
+}
+.parrain-page .list-item .actions button.view:hover {
+    background: #0d6efd;
+    color: white;
+}
 
-/* Modale */
+/* Modales */
 .parrain-page .admin-modal {
     display: none;
     position: fixed;
@@ -271,7 +344,41 @@
     box-shadow: 0 5px 15px rgba(85,27,140,0.3);
 }
 
-.parrain-page .no-data {
+/* Détail du message */
+#messageDetail {
+    background: var(--bg-light);
+    padding: 20px;
+    border-radius: 10px;
+    margin: 15px 0;
+}
+#messageDetail p {
+    margin: 10px 0;
+}
+
+/* Toast */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--primary);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 30px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    z-index: 3000;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+}
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+.toast.success { background: #28a745; }
+.toast.error { background: #dc3545; }
+.toast.info { background: var(--primary); }
+
+.no-data {
     text-align: center;
     color: var(--gray);
     padding: 40px;
@@ -283,15 +390,19 @@
     .parrain-page h1 {
         font-size: 1.8rem;
     }
-    .parrain-page .card-header {
+    .card-header {
         flex-direction: column;
         align-items: flex-start;
     }
-    .parrain-page .list-item {
+    .section-tools {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .list-item {
         flex-direction: column;
         align-items: flex-start;
     }
-    .parrain-page .list-item .actions {
+    .list-item .actions {
         align-self: flex-end;
     }
 }
