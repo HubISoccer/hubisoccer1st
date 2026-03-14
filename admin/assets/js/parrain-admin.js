@@ -86,11 +86,11 @@ async function loadStats() {
     ]);
     statJoueurs.textContent = joueurs.count || 0;
     statDons.textContent = dons.data?.length || 0;
-    // Calculer somme des collectes (en supposant que collecte est une chaîne comme "2 300 000 FCFA")
+    // Calculer somme des collectes
     let total = 0;
     if (dons.data) {
         total = dons.data.reduce((acc, d) => {
-            const num = parseFloat(d.collecte.replace(/[^0-9]/g, ''));
+            const num = parseFloat(String(d.collecte).replace(/[^0-9]/g, ''));
             return acc + (isNaN(num) ? 0 : num);
         }, 0);
     }
@@ -105,7 +105,7 @@ function renderJoueurs(joueurs) {
         return;
     }
     let html = '';
-    joueurs.forEach((item) => {
+    joueurs.forEach(item => {
         html += `
             <div class="list-item" data-id="${item.id}">
                 <div class="info">
@@ -116,7 +116,7 @@ function renderJoueurs(joueurs) {
                         <span>${item.besoin}</span>
                         <span>${item.montant}</span>
                     </div>
-                    <small>${item.description.substring(0, 80)}...</small>
+                    <small>${(item.description || '').substring(0, 80)}...</small>
                 </div>
                 <div class="actions">
                     <button class="edit" onclick="editItem('joueur', '${item.id}')"><i class="fas fa-edit"></i></button>
@@ -134,7 +134,7 @@ function renderDons(dons) {
         return;
     }
     let html = '';
-    dons.forEach((item) => {
+    dons.forEach(item => {
         html += `
             <div class="list-item" data-id="${item.id}">
                 <div class="info">
@@ -144,7 +144,7 @@ function renderDons(dons) {
                         <span>Objectif: ${item.objectif}</span>
                         <span>Collecté: ${item.collecte}</span>
                     </div>
-                    <small>${item.description.substring(0, 80)}...</small>
+                    <small>${(item.description || '').substring(0, 80)}...</small>
                 </div>
                 <div class="actions">
                     <button class="edit" onclick="editItem('don', '${item.id}')"><i class="fas fa-edit"></i></button>
@@ -162,7 +162,7 @@ function renderTemoignages(temoignages) {
         return;
     }
     let html = '';
-    temoignages.forEach((item) => {
+    temoignages.forEach(item => {
         html += `
             <div class="list-item" data-id="${item.id}">
                 <div class="info">
@@ -185,7 +185,7 @@ function renderMessages(messages) {
         return;
     }
     let html = '';
-    messages.forEach((msg) => {
+    messages.forEach(msg => {
         html += `
             <div class="list-item ${!msg.is_read ? 'unread' : ''}" data-id="${msg.id}">
                 <div class="info">
@@ -195,7 +195,7 @@ function renderMessages(messages) {
                         <span>Cible: ${msg.target_title || msg.target_id || '-'}</span>
                         <span>${new Date(msg.created_at).toLocaleString()}</span>
                     </div>
-                    <small>${msg.message.substring(0, 80)}...</small>
+                    <small>${(msg.message || '').substring(0, 80)}...</small>
                 </div>
                 <div class="actions">
                     <button class="view" onclick="viewMessage('${msg.id}')"><i class="fas fa-eye"></i></button>
@@ -349,8 +349,11 @@ async function uploadFile(file, bucket = 'parrain-medias') {
     if (!file) return null;
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}.${fileExt}`;
-    const { error } = await supabaseAdmin.storage.from(bucket).upload(fileName, file);
-    if (error) throw error;
+    const { data, error } = await supabaseAdmin.storage.from(bucket).upload(fileName, file);
+    if (error) {
+        console.error('Upload error:', error);
+        throw error;
+    }
     const { publicURL } = supabaseAdmin.storage.from(bucket).getPublicUrl(fileName);
     return publicURL;
 }
@@ -367,20 +370,20 @@ itemForm.addEventListener('submit', async (e) => {
         // Upload des fichiers
         if (type === 'joueur' || type === 'don') {
             const fileInput = document.getElementById('imageFile');
-            if (fileInput.files.length > 0) {
+            if (fileInput && fileInput.files.length > 0) {
                 const url = await uploadFile(fileInput.files[0]);
                 if (url) newItem.image = url;
             } else {
-                const oldUrl = document.getElementById('imageUrl').value;
+                const oldUrl = document.getElementById('imageUrl')?.value;
                 if (oldUrl) newItem.image = oldUrl;
             }
         } else if (type === 'temoignage') {
             const fileInput = document.getElementById('avatarFile');
-            if (fileInput.files.length > 0) {
+            if (fileInput && fileInput.files.length > 0) {
                 const url = await uploadFile(fileInput.files[0]);
                 if (url) newItem.avatar = url;
             } else {
-                const oldUrl = document.getElementById('avatarUrl').value;
+                const oldUrl = document.getElementById('avatarUrl')?.value;
                 if (oldUrl) newItem.avatar = oldUrl;
             }
         }
@@ -412,12 +415,16 @@ itemForm.addEventListener('submit', async (e) => {
             result = await supabaseAdmin.from(table).insert([newItem]);
         }
 
-        if (result.error) throw result.error;
-
-        showToast('Opération réussie', 'success');
-        closeModal();
-        loadAll();
+        if (result.error) {
+            console.error('Insert error:', result.error);
+            showToast('Erreur : ' + result.error.message, 'error');
+        } else {
+            showToast('Opération réussie', 'success');
+            closeModal();
+            loadAll();
+        }
     } catch (err) {
+        console.error('Exception:', err);
         showToast('Erreur : ' + err.message, 'error');
     }
 });
@@ -478,7 +485,7 @@ window.deleteMessage = async (id) => {
     }
 };
 
-// ===== RECHERCHE =====
+// ===== RECHERCHE EN TEMPS RÉEL =====
 document.getElementById('searchJoueurs')?.addEventListener('input', (e) => loadJoueurs(e.target.value));
 document.getElementById('searchDons')?.addEventListener('input', (e) => loadDons(e.target.value));
 document.getElementById('searchTemoignages')?.addEventListener('input', (e) => loadTemoignages(e.target.value));
