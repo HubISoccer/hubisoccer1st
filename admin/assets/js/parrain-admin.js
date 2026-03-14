@@ -1,7 +1,6 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-// Renommé pour éviter le conflit
 const supabaseAdmin = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉLÉMENTS DOM =====
@@ -106,7 +105,7 @@ function renderJoueurs(joueurs) {
         return;
     }
     let html = '';
-    joueurs.forEach((item, index) => {
+    joueurs.forEach((item) => {
         html += `
             <div class="list-item" data-id="${item.id}">
                 <div class="info">
@@ -231,10 +230,10 @@ window.openModal = (type, id = null) => {
                 <input type="text" id="region" required>
             </div>
             <div class="form-group">
-                <label>Image (fichier)</label>
-                <input type="file" id="imageFile" accept="image/*">
+                <label>Média (image ou vidéo)</label>
+                <input type="file" id="imageFile" accept="image/*,video/*">
                 <input type="hidden" id="imageUrl">
-                <small>Laissez vide pour ne pas changer</small>
+                <small>Formats : JPG, PNG, MP4, MOV, etc.</small>
             </div>
             <div class="form-group">
                 <label>Description</label>
@@ -261,10 +260,10 @@ window.openModal = (type, id = null) => {
                 <input type="text" id="region" required>
             </div>
             <div class="form-group">
-                <label>Image (fichier)</label>
-                <input type="file" id="imageFile" accept="image/*">
+                <label>Média (image ou vidéo)</label>
+                <input type="file" id="imageFile" accept="image/*,video/*">
                 <input type="hidden" id="imageUrl">
-                <small>Laissez vide pour ne pas changer</small>
+                <small>Formats : JPG, PNG, MP4, MOV, etc.</small>
             </div>
             <div class="form-group">
                 <label>Description</label>
@@ -295,10 +294,10 @@ window.openModal = (type, id = null) => {
                 <textarea id="texte" rows="3" required></textarea>
             </div>
             <div class="form-group">
-                <label>Avatar (fichier)</label>
+                <label>Avatar (image)</label>
                 <input type="file" id="avatarFile" accept="image/*">
                 <input type="hidden" id="avatarUrl">
-                <small>Laissez vide pour ne pas changer</small>
+                <small>Formats : JPG, PNG</small>
             </div>
         `;
     }
@@ -308,7 +307,6 @@ window.openModal = (type, id = null) => {
     modal.classList.add('active');
 
     if (id) {
-        // Charger les données pour édition
         loadItemForEdit(type, id);
     }
 };
@@ -346,8 +344,8 @@ window.closeModal = () => {
     itemForm.reset();
 };
 
-// ===== UPLOAD D'IMAGE =====
-async function uploadFile(file, bucket = 'parrain-images') {
+// ===== UPLOAD DE FICHIER =====
+async function uploadFile(file, bucket = 'parrain-medias') {
     if (!file) return null;
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}.${fileExt}`;
@@ -366,14 +364,13 @@ itemForm.addEventListener('submit', async (e) => {
     let newItem = {};
 
     try {
-        // Upload des images si présentes
+        // Upload des fichiers
         if (type === 'joueur' || type === 'don') {
             const fileInput = document.getElementById('imageFile');
             if (fileInput.files.length > 0) {
                 const url = await uploadFile(fileInput.files[0]);
                 if (url) newItem.image = url;
             } else {
-                // Garder l'ancienne image
                 const oldUrl = document.getElementById('imageUrl').value;
                 if (oldUrl) newItem.image = oldUrl;
             }
@@ -388,7 +385,7 @@ itemForm.addEventListener('submit', async (e) => {
             }
         }
 
-        // Récupérer les champs textuels
+        // Champs textuels
         if (type === 'joueur') {
             newItem.nom = document.getElementById('nom').value;
             newItem.poste = document.getElementById('poste').value;
@@ -410,10 +407,8 @@ itemForm.addEventListener('submit', async (e) => {
 
         let result;
         if (id) {
-            // Mise à jour
             result = await supabaseAdmin.from(table).update(newItem).eq('id', id);
         } else {
-            // Insertion
             result = await supabaseAdmin.from(table).insert([newItem]);
         }
 
@@ -455,7 +450,6 @@ window.viewMessage = async (id) => {
     `;
     document.getElementById('messageModal').classList.add('active');
 
-    // Marquer comme lu si ce n'est pas déjà fait
     if (!msg.is_read) {
         await supabaseAdmin.from('contact_messages').update({ is_read: true }).eq('id', id);
         loadMessages();
@@ -484,17 +478,17 @@ window.deleteMessage = async (id) => {
     }
 };
 
-// ===== RECHERCHE EN TEMPS RÉEL =====
-document.getElementById('searchJoueurs').addEventListener('input', (e) => loadJoueurs(e.target.value));
-document.getElementById('searchDons').addEventListener('input', (e) => loadDons(e.target.value));
-document.getElementById('searchTemoignages').addEventListener('input', (e) => loadTemoignages(e.target.value));
-document.getElementById('searchMessages').addEventListener('input', (e) => loadMessages(e.target.value));
+// ===== RECHERCHE =====
+document.getElementById('searchJoueurs')?.addEventListener('input', (e) => loadJoueurs(e.target.value));
+document.getElementById('searchDons')?.addEventListener('input', (e) => loadDons(e.target.value));
+document.getElementById('searchTemoignages')?.addEventListener('input', (e) => loadTemoignages(e.target.value));
+document.getElementById('searchMessages')?.addEventListener('input', (e) => loadMessages(e.target.value));
 
 // ===== BOUTONS DE RAFRAÎCHISSEMENT =====
-document.getElementById('refreshJoueurs').addEventListener('click', () => loadJoueurs());
-document.getElementById('refreshDons').addEventListener('click', () => loadDons());
-document.getElementById('refreshTemoignages').addEventListener('click', () => loadTemoignages());
-document.getElementById('refreshMessages').addEventListener('click', () => loadMessages());
+document.getElementById('refreshJoueurs')?.addEventListener('click', () => loadJoueurs());
+document.getElementById('refreshDons')?.addEventListener('click', () => loadDons());
+document.getElementById('refreshTemoignages')?.addEventListener('click', () => loadTemoignages());
+document.getElementById('refreshMessages')?.addEventListener('click', () => loadMessages());
 
 // ===== TOAST =====
 function showToast(message, type = 'info') {
@@ -511,8 +505,8 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
-// ===== DÉCONNEXION (pour plus tard) =====
-document.getElementById('logoutAdmin').addEventListener('click', (e) => {
+// ===== DÉCONNEXION (simulée) =====
+document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     e.preventDefault();
     if (confirm('Déconnexion ?')) {
         window.location.href = '../../index.html';
