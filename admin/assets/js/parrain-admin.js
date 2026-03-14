@@ -8,6 +8,7 @@ const joueursList = document.getElementById('joueursList');
 const donsList = document.getElementById('donsList');
 const temoignagesList = document.getElementById('temoignagesList');
 const messagesList = document.getElementById('messagesList');
+const parrainagesList = document.getElementById('parrainagesList');
 const statJoueurs = document.getElementById('statJoueurs');
 const statDons = document.getElementById('statDons');
 const statCollecte = document.getElementById('statCollecte');
@@ -22,6 +23,7 @@ const dynamicFields = document.getElementById('dynamicFields');
 
 // ===== ÉTAT =====
 let currentMessages = [];
+let currentParrainages = [];
 
 // ===== CHARGEMENT DES DONNÉES =====
 async function loadAll() {
@@ -30,6 +32,7 @@ async function loadAll() {
         loadDons(),
         loadTemoignages(),
         loadMessages(),
+        loadParrainages(),
         loadStats()
     ]);
 }
@@ -74,6 +77,22 @@ async function loadMessages(search = '') {
     else {
         currentMessages = data || [];
         renderMessages(currentMessages);
+    }
+}
+
+async function loadParrainages(search = '') {
+    let query = supabaseAdmin.from('contact_messages')
+        .select('*')
+        .eq('type', 'parrainage')
+        .order('created_at', { ascending: false });
+    if (search) {
+        query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,message.ilike.%${search}%`);
+    }
+    const { data, error } = await query;
+    if (error) console.error(error);
+    else {
+        currentParrainages = data || [];
+        renderParrainages(currentParrainages);
     }
 }
 
@@ -205,6 +224,35 @@ function renderMessages(messages) {
         `;
     });
     messagesList.innerHTML = html;
+}
+
+function renderParrainages(parrainages) {
+    if (!parrainages.length) {
+        parrainagesList.innerHTML = '<p class="no-data">Aucune demande de parrainage.</p>';
+        return;
+    }
+    let html = '';
+    parrainages.forEach(item => {
+        const statut = item.statut || 'en_attente';
+        const statutClass = statut === 'valide' ? 'status-approved' : (statut === 'rejete' ? 'status-rejected' : 'status-pending');
+        html += `
+            <div class="list-item" data-id="${item.id}">
+                <div class="info">
+                    <strong>${item.name}</strong> (${item.email})
+                    <div class="details">
+                        <span>${new Date(item.created_at).toLocaleString()}</span>
+                        <span class="${statutClass}">${statut}</span>
+                    </div>
+                    <small>${(item.message || '').substring(0, 80)}...</small>
+                </div>
+                <div class="actions">
+                    <button class="view" onclick="openParrainageModal('${item.id}')"><i class="fas fa-check-circle"></i> Traiter</button>
+                    <button class="delete" onclick="deleteParrainage('${item.id}')"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        `;
+    });
+    parrainagesList.innerHTML = html;
 }
 
 // ===== GESTION DES MODALES =====
@@ -344,6 +392,11 @@ window.closeModal = () => {
     itemForm.reset();
 };
 
+// ===== ÉDITION =====
+window.editItem = (type, id) => {
+    openModal(type, id);
+};
+
 // ===== UPLOAD DE FICHIER AVEC BARRE DE PROGRESSION RÉELLE =====
 async function uploadFile(file, bucket = 'parrain-medias') {
     if (!file) return null;
@@ -352,7 +405,6 @@ async function uploadFile(file, bucket = 'parrain-medias') {
     const originalText = submitBtn.textContent;
     submitBtn.disabled = true;
 
-    // Créer un élément pour afficher le pourcentage (si pas déjà présent)
     let progressSpan = document.getElementById('uploadProgress');
     if (!progressSpan) {
         progressSpan = document.createElement('span');
@@ -369,7 +421,6 @@ async function uploadFile(file, bucket = 'parrain-medias') {
         const formData = new FormData();
         formData.append('file', file);
 
-        // Utiliser XMLHttpRequest pour suivre la progression
         const xhr = new XMLHttpRequest();
         xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`, true);
         xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
@@ -471,7 +522,6 @@ itemForm.addEventListener('submit', async (e) => {
             newItem.texte = document.getElementById('texte').value;
         }
 
-        // Désactiver le bouton pour éviter double soumission (déjà fait dans uploadFile, mais au cas où)
         const submitBtn = itemForm.querySelector('.btn-submit');
         submitBtn.disabled = true;
 
@@ -495,13 +545,11 @@ itemForm.addEventListener('submit', async (e) => {
     } catch (err) {
         console.error('Exception:', err);
         showToast('Erreur : ' + err.message, 'error');
-        // Réactiver le bouton en cas d'erreur
         const submitBtn = itemForm.querySelector('.btn-submit');
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Enregistrer';
         }
-        // Cacher le pourcentage
         const progressSpan = document.getElementById('uploadProgress');
         if (progressSpan) progressSpan.textContent = '';
     }
@@ -532,7 +580,9 @@ window.viewMessage = async (id) => {
         <p><strong>Cible :</strong> ${msg.target_title || msg.target_id || '-'}</p>
         <p><strong>Date :</strong> ${new Date(msg.created_at).toLocaleString()}</p>
         <p><strong>Message :</strong><br>${msg.message}</p>
+        ${msg.reponse ? `<p><strong>Réponse :</strong><br>${msg.reponse}</p>` : ''}
     `;
+    document.getElementById('replyMessage').value = msg.reponse || '';
     document.getElementById('messageModal').classList.add('active');
 
     if (!msg.is_read) {
@@ -546,11 +596,24 @@ window.closeMessageModal = () => {
     currentMessageId = null;
 };
 
-window.markMessageAsRead = async () => {
+window.sendReply = async () => {
     if (!currentMessageId) return;
-    await supabaseAdmin.from('contact_messages').update({ is_read: true }).eq('id', currentMessageId);
-    closeMessageModal();
-    loadMessages();
+    const reply = document.getElementById('replyMessage').value.trim();
+    if (!reply) {
+        showToast('Veuillez écrire une réponse', 'error');
+        return;
+    }
+    const { error } = await supabaseAdmin
+        .from('contact_messages')
+        .update({ reponse: reply })
+        .eq('id', currentMessageId);
+    if (error) {
+        showToast('Erreur : ' + error.message, 'error');
+    } else {
+        showToast('Réponse envoyée', 'success');
+        closeMessageModal();
+        loadMessages();
+    }
 };
 
 window.deleteMessage = async (id) => {
@@ -563,17 +626,118 @@ window.deleteMessage = async (id) => {
     }
 };
 
+// ===== PARRAINAGES =====
+let currentParrainageId = null;
+
+window.openParrainageModal = async (id) => {
+    const msg = currentParrainages.find(m => m.id == id);
+    if (!msg) return;
+    currentParrainageId = id;
+    document.getElementById('parrainageDetail').innerHTML = `
+        <p><strong>De :</strong> ${msg.name} (${msg.email})</p>
+        <p><strong>Message :</strong> ${msg.message}</p>
+        <p><strong>Cible :</strong> ${msg.target_title || msg.target_id}</p>
+    `;
+    document.getElementById('parrainageMontant').value = '';
+    document.getElementById('parrainageModal').classList.add('active');
+};
+
+window.closeParrainageModal = () => {
+    document.getElementById('parrainageModal').classList.remove('active');
+    currentParrainageId = null;
+};
+
+window.validateParrainage = async () => {
+    if (!currentParrainageId) return;
+    const montant = parseInt(document.getElementById('parrainageMontant').value);
+    if (isNaN(montant) || montant <= 0) {
+        showToast('Veuillez entrer un montant valide', 'error');
+        return;
+    }
+    const msg = currentParrainages.find(m => m.id == currentParrainageId);
+    if (!msg) return;
+
+    // Mettre à jour le statut du message
+    const { error: msgError } = await supabaseAdmin
+        .from('contact_messages')
+        .update({ statut: 'valide' })
+        .eq('id', currentParrainageId);
+    if (msgError) {
+        showToast('Erreur mise à jour message: ' + msgError.message, 'error');
+        return;
+    }
+
+    // Trouver le don correspondant (si target_id est l'ID du don)
+    const donId = msg.target_id;
+    if (donId) {
+        // Récupérer le don
+        const { data: don, error: donError } = await supabaseAdmin
+            .from('parrain_dons')
+            .select('collecte')
+            .eq('id', donId)
+            .single();
+        if (!donError && don) {
+            // Calculer nouveau montant collecté
+            const ancien = parseFloat(String(don.collecte).replace(/[^0-9]/g, '')) || 0;
+            const nouveau = ancien + montant;
+            const nouveauTexte = nouveau.toLocaleString() + ' FCFA';
+            await supabaseAdmin
+                .from('parrain_dons')
+                .update({ collecte: nouveauTexte })
+                .eq('id', donId);
+        }
+    }
+
+    // Enregistrer dans la table parrainages (optionnel)
+    await supabaseAdmin
+        .from('parrainages')
+        .insert([{
+            message_id: currentParrainageId,
+            don_id: donId || null,
+            montant: montant,
+            statut: 'valide',
+            traite_le: new Date()
+        }]);
+
+    showToast('Parrainage validé et montant ajouté', 'success');
+    closeParrainageModal();
+    loadAll();
+};
+
+window.rejectParrainage = async () => {
+    if (!currentParrainageId) return;
+    await supabaseAdmin
+        .from('contact_messages')
+        .update({ statut: 'rejete' })
+        .eq('id', currentParrainageId);
+    showToast('Demande rejetée', 'info');
+    closeParrainageModal();
+    loadAll();
+};
+
+window.deleteParrainage = async (id) => {
+    if (!confirm('Supprimer cette demande ?')) return;
+    const { error } = await supabaseAdmin.from('contact_messages').delete().eq('id', id);
+    if (error) showToast('Erreur : ' + error.message, 'error');
+    else {
+        showToast('Demande supprimée', 'success');
+        loadParrainages();
+    }
+};
+
 // ===== RECHERCHE EN TEMPS RÉEL =====
 document.getElementById('searchJoueurs')?.addEventListener('input', (e) => loadJoueurs(e.target.value));
 document.getElementById('searchDons')?.addEventListener('input', (e) => loadDons(e.target.value));
 document.getElementById('searchTemoignages')?.addEventListener('input', (e) => loadTemoignages(e.target.value));
 document.getElementById('searchMessages')?.addEventListener('input', (e) => loadMessages(e.target.value));
+document.getElementById('searchParrainages')?.addEventListener('input', (e) => loadParrainages(e.target.value));
 
 // ===== BOUTONS DE RAFRAÎCHISSEMENT =====
 document.getElementById('refreshJoueurs')?.addEventListener('click', () => loadJoueurs());
 document.getElementById('refreshDons')?.addEventListener('click', () => loadDons());
 document.getElementById('refreshTemoignages')?.addEventListener('click', () => loadTemoignages());
 document.getElementById('refreshMessages')?.addEventListener('click', () => loadMessages());
+document.getElementById('refreshParrainages')?.addEventListener('click', () => loadParrainages());
 
 // ===== TOAST =====
 function showToast(message, type = 'info') {
