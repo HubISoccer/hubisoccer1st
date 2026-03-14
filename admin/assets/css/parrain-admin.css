@@ -406,3 +406,30 @@
         align-self: flex-end;
     }
 }
+
+/* Modale responsive pour mobile */
+@media (max-width: 768px) {
+    .parrain-page .modal-content {
+        width: 95%;
+        padding: 20px 15px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    .parrain-page .modal-content h3 {
+        font-size: 1.4rem;
+        margin-bottom: 15px;
+    }
+    .parrain-page .form-group {
+        margin-bottom: 15px;
+    }
+    .parrain-page .form-group input,
+    .parrain-page .form-group select,
+    .parrain-page .form-group textarea {
+        padding: 10px;
+        font-size: 0.95rem;
+    }
+    .parrain-page .btn-submit {
+        padding: 12px;
+        font-size: 1rem;
+    }
+}
