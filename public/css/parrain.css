@@ -491,3 +491,15 @@
     max-height: 80vh;
     overflow-y: auto;
 }
+
+/* Amélioration du modal pour mobile */
+@media (max-width: 768px) {
+    .parrain-page .modal-content {
+        max-height: 90vh;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    .parrain-page .modal-content .form-group:last-child {
+        margin-bottom: 20px;
+    }
+}
