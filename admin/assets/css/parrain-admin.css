@@ -1,5 +1,5 @@
 /* ===== PAGE ADMIN PARRAIN ===== */
-.parrain-page {
+:root {
     --primary: #551B8C;
     --primary-light: #7e3db0;
     --primary-dark: #3d1266;
@@ -271,7 +271,7 @@
     box-shadow: 0 20px 40px rgba(85,27,140,0.2);
     border: 1px solid var(--gold);
     animation: modalFadeIn 0.3s ease;
-    max-height: 80vh;
+    max-height: 85vh;
     overflow-y: auto;
 }
 @keyframes modalFadeIn {
@@ -390,7 +390,7 @@
     .parrain-page h1 {
         font-size: 1.8rem;
     }
-    .card-header {
+    .parrain-page .card-header {
         flex-direction: column;
         align-items: flex-start;
     }
@@ -398,38 +398,19 @@
         width: 100%;
         justify-content: space-between;
     }
-    .list-item {
+    .parrain-page .list-item {
         flex-direction: column;
         align-items: flex-start;
     }
-    .list-item .actions {
+    .parrain-page .list-item .actions {
         align-self: flex-end;
     }
-}
-
-/* Modale responsive pour mobile */
-@media (max-width: 768px) {
     .parrain-page .modal-content {
         width: 95%;
         padding: 20px 15px;
         max-height: 90vh;
-        overflow-y: auto;
     }
     .parrain-page .modal-content h3 {
         font-size: 1.4rem;
-        margin-bottom: 15px;
-    }
-    .parrain-page .form-group {
-        margin-bottom: 15px;
-    }
-    .parrain-page .form-group input,
-    .parrain-page .form-group select,
-    .parrain-page .form-group textarea {
-        padding: 10px;
-        font-size: 0.95rem;
-    }
-    .parrain-page .btn-submit {
-        padding: 12px;
-        font-size: 1rem;
     }
 }
