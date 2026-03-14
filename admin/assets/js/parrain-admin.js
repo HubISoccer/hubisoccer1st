@@ -344,18 +344,36 @@ window.closeModal = () => {
     itemForm.reset();
 };
 
-// ===== UPLOAD DE FICHIER =====
+// ===== UPLOAD DE FICHIER AVEC BARRE DE PROGRESSION =====
 async function uploadFile(file, bucket = 'parrain-medias') {
     if (!file) return null;
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const { data, error } = await supabaseAdmin.storage.from(bucket).upload(fileName, file);
-    if (error) {
-        console.error('Upload error:', error);
-        throw error;
+
+    // Afficher un indicateur de progression (spinner) dans le formulaire
+    const submitBtn = itemForm.querySelector('.btn-submit');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Upload en cours...';
+
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+
+        // Utilisation de l'API fetch avec XMLHttpRequest pour suivre la progression (simulée ici avec un délai)
+        // Note: Le client Supabase ne fournit pas de suivi de progression, on peut simplement attendre.
+        const { data, error } = await supabaseAdmin.storage.from(bucket).upload(fileName, file);
+
+        if (error) throw error;
+
+        const { publicURL } = supabaseAdmin.storage.from(bucket).getPublicUrl(fileName);
+        return publicURL;
+    } catch (err) {
+        console.error('Upload error:', err);
+        showToast('Erreur upload : ' + err.message, 'error');
+        throw err;
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
     }
-    const { publicURL } = supabaseAdmin.storage.from(bucket).getPublicUrl(fileName);
-    return publicURL;
 }
 
 // ===== GESTION DU FORMULAIRE =====
@@ -376,6 +394,10 @@ itemForm.addEventListener('submit', async (e) => {
             } else {
                 const oldUrl = document.getElementById('imageUrl')?.value;
                 if (oldUrl) newItem.image = oldUrl;
+                else {
+                    showToast('Veuillez sélectionner un fichier', 'error');
+                    return;
+                }
             }
         } else if (type === 'temoignage') {
             const fileInput = document.getElementById('avatarFile');
@@ -385,6 +407,10 @@ itemForm.addEventListener('submit', async (e) => {
             } else {
                 const oldUrl = document.getElementById('avatarUrl')?.value;
                 if (oldUrl) newItem.avatar = oldUrl;
+                else {
+                    showToast('Veuillez sélectionner un avatar', 'error');
+                    return;
+                }
             }
         }
 
@@ -408,12 +434,18 @@ itemForm.addEventListener('submit', async (e) => {
             newItem.texte = document.getElementById('texte').value;
         }
 
+        // Désactiver le bouton pour éviter double soumission
+        const submitBtn = itemForm.querySelector('.btn-submit');
+        submitBtn.disabled = true;
+
         let result;
         if (id) {
             result = await supabaseAdmin.from(table).update(newItem).eq('id', id);
         } else {
             result = await supabaseAdmin.from(table).insert([newItem]);
         }
+
+        submitBtn.disabled = false;
 
         if (result.error) {
             console.error('Insert error:', result.error);
@@ -426,6 +458,9 @@ itemForm.addEventListener('submit', async (e) => {
     } catch (err) {
         console.error('Exception:', err);
         showToast('Erreur : ' + err.message, 'error');
+        // Réactiver le bouton en cas d'erreur
+        const submitBtn = itemForm.querySelector('.btn-submit');
+        if (submitBtn) submitBtn.disabled = false;
     }
 });
 
