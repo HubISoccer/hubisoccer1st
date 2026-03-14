@@ -344,36 +344,71 @@ window.closeModal = () => {
     itemForm.reset();
 };
 
-// ===== UPLOAD DE FICHIER AVEC BARRE DE PROGRESSION =====
+// ===== UPLOAD DE FICHIER AVEC BARRE DE PROGRESSION RÉELLE =====
 async function uploadFile(file, bucket = 'parrain-medias') {
     if (!file) return null;
 
-    // Afficher un indicateur de progression (spinner) dans le formulaire
     const submitBtn = itemForm.querySelector('.btn-submit');
     const originalText = submitBtn.textContent;
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Upload en cours...';
 
-    try {
+    // Créer un élément pour afficher le pourcentage (si pas déjà présent)
+    let progressSpan = document.getElementById('uploadProgress');
+    if (!progressSpan) {
+        progressSpan = document.createElement('span');
+        progressSpan.id = 'uploadProgress';
+        progressSpan.style.marginLeft = '10px';
+        progressSpan.style.fontSize = '0.9rem';
+        progressSpan.style.color = 'var(--gold)';
+        submitBtn.parentNode.insertBefore(progressSpan, submitBtn.nextSibling);
+    }
+
+    return new Promise((resolve, reject) => {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}.${fileExt}`;
+        const formData = new FormData();
+        formData.append('file', file);
 
-        // Utilisation de l'API fetch avec XMLHttpRequest pour suivre la progression (simulée ici avec un délai)
-        // Note: Le client Supabase ne fournit pas de suivi de progression, on peut simplement attendre.
-        const { data, error } = await supabaseAdmin.storage.from(bucket).upload(fileName, file);
+        // Utiliser XMLHttpRequest pour suivre la progression
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`, true);
+        xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+        xhr.setRequestHeader('Authorization', `Bearer ${SUPABASE_ANON_KEY}`);
 
-        if (error) throw error;
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                progressSpan.textContent = `${percent}%`;
+                submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Upload ${percent}%`;
+            }
+        });
 
-        const { publicURL } = supabaseAdmin.storage.from(bucket).getPublicUrl(fileName);
-        return publicURL;
-    } catch (err) {
-        console.error('Upload error:', err);
-        showToast('Erreur upload : ' + err.message, 'error');
-        throw err;
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-    }
+        xhr.addEventListener('load', () => {
+            progressSpan.textContent = '';
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            if (xhr.status === 200) {
+                const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${fileName}`;
+                resolve(publicUrl);
+            } else {
+                let errorMsg = 'Upload échoué';
+                try {
+                    const err = JSON.parse(xhr.responseText);
+                    errorMsg = err.message || errorMsg;
+                } catch (e) {}
+                reject(new Error(errorMsg));
+            }
+        });
+
+        xhr.addEventListener('error', () => {
+            progressSpan.textContent = '';
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            reject(new Error('Erreur réseau'));
+        });
+
+        xhr.send(formData);
+    });
 }
 
 // ===== GESTION DU FORMULAIRE =====
@@ -391,6 +426,7 @@ itemForm.addEventListener('submit', async (e) => {
             if (fileInput && fileInput.files.length > 0) {
                 const url = await uploadFile(fileInput.files[0]);
                 if (url) newItem.image = url;
+                else throw new Error("L'URL de l'image est vide");
             } else {
                 const oldUrl = document.getElementById('imageUrl')?.value;
                 if (oldUrl) newItem.image = oldUrl;
@@ -404,6 +440,7 @@ itemForm.addEventListener('submit', async (e) => {
             if (fileInput && fileInput.files.length > 0) {
                 const url = await uploadFile(fileInput.files[0]);
                 if (url) newItem.avatar = url;
+                else throw new Error("L'URL de l'avatar est vide");
             } else {
                 const oldUrl = document.getElementById('avatarUrl')?.value;
                 if (oldUrl) newItem.avatar = oldUrl;
@@ -434,7 +471,7 @@ itemForm.addEventListener('submit', async (e) => {
             newItem.texte = document.getElementById('texte').value;
         }
 
-        // Désactiver le bouton pour éviter double soumission
+        // Désactiver le bouton pour éviter double soumission (déjà fait dans uploadFile, mais au cas où)
         const submitBtn = itemForm.querySelector('.btn-submit');
         submitBtn.disabled = true;
 
@@ -460,7 +497,13 @@ itemForm.addEventListener('submit', async (e) => {
         showToast('Erreur : ' + err.message, 'error');
         // Réactiver le bouton en cas d'erreur
         const submitBtn = itemForm.querySelector('.btn-submit');
-        if (submitBtn) submitBtn.disabled = false;
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Enregistrer';
+        }
+        // Cacher le pourcentage
+        const progressSpan = document.getElementById('uploadProgress');
+        if (progressSpan) progressSpan.textContent = '';
     }
 });
 
