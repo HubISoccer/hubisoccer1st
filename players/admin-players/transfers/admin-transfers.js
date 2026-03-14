@@ -82,20 +82,34 @@ async function loadPlayers() {
     return data || [];
 }
 
-// ===== CHARGEMENT DES TRANSFERTS =====
+// ===== CHARGEMENT DES TRANSFERTS (sans relation imbriquée) =====
 async function loadTransfers() {
     showLoader(true);
     try {
         const { data, error } = await supabaseTransfersAdmin
             .from('player_transfers')
-            .select(`
-                *,
-                player:player_profiles!player_id (id, nom_complet)
-            `)
+            .select('*')
             .order('transfer_date', { ascending: false });
 
         if (error) throw error;
-        transfersData = data || [];
+
+        // Charger les noms des joueurs séparément
+        const playerIds = [...new Set(data.map(t => t.player_id))];
+        const { data: players, error: playersError } = await supabaseTransfersAdmin
+            .from('player_profiles')
+            .select('id, nom_complet')
+            .in('id', playerIds);
+
+        if (playersError) throw playersError;
+
+        const playersMap = {};
+        (players || []).forEach(p => playersMap[p.id] = p.nom_complet);
+
+        transfersData = (data || []).map(t => ({
+            ...t,
+            player_name: playersMap[t.player_id] || 'Joueur inconnu'
+        }));
+
         renderTransfers();
     } catch (error) {
         console.error('Erreur chargement transferts:', error);
@@ -111,7 +125,7 @@ function renderTransfers() {
     const typeFilter = document.getElementById('transferTypeFilter')?.value || '';
 
     const filtered = transfersData.filter(t => {
-        const playerName = t.player?.nom_complet?.toLowerCase() || '';
+        const playerName = t.player_name?.toLowerCase() || '';
         const matchesSearch = playerName.includes(search) || t.from_club?.toLowerCase().includes(search) || t.to_club?.toLowerCase().includes(search);
         const matchesType = !typeFilter || t.type === typeFilter;
         return matchesSearch && matchesType;
@@ -135,7 +149,7 @@ function renderTransfers() {
         return `
             <div class="item-card">
                 <div class="item-info">
-                    <div class="item-player">${t.player?.nom_complet || 'Joueur inconnu'}</div>
+                    <div class="item-player">${t.player_name}</div>
                     <div class="item-detail">${t.from_club} → ${t.to_club}</div>
                     <div class="item-meta">${new Date(t.transfer_date).toLocaleDateString('fr-FR')} · ${typeLabel} · ${t.fee.toLocaleString()} ${t.currency}</div>
                 </div>
@@ -148,20 +162,33 @@ function renderTransfers() {
     }).join('');
 }
 
-// ===== CHARGEMENT DES OFFRES =====
+// ===== CHARGEMENT DES OFFRES (sans relation imbriquée) =====
 async function loadOffers() {
     showLoader(true);
     try {
         const { data, error } = await supabaseTransfersAdmin
             .from('player_offers')
-            .select(`
-                *,
-                player:player_profiles!player_id (id, nom_complet)
-            `)
+            .select('*')
             .order('offer_date', { ascending: false });
 
         if (error) throw error;
-        offersData = data || [];
+
+        const playerIds = [...new Set(data.map(o => o.player_id))];
+        const { data: players, error: playersError } = await supabaseTransfersAdmin
+            .from('player_profiles')
+            .select('id, nom_complet')
+            .in('id', playerIds);
+
+        if (playersError) throw playersError;
+
+        const playersMap = {};
+        (players || []).forEach(p => playersMap[p.id] = p.nom_complet);
+
+        offersData = (data || []).map(o => ({
+            ...o,
+            player_name: playersMap[o.player_id] || 'Joueur inconnu'
+        }));
+
         renderOffers();
     } catch (error) {
         console.error('Erreur chargement offres:', error);
@@ -177,7 +204,7 @@ function renderOffers() {
     const statusFilter = document.getElementById('offerStatusFilter')?.value || '';
 
     const filtered = offersData.filter(o => {
-        const playerName = o.player?.nom_complet?.toLowerCase() || '';
+        const playerName = o.player_name?.toLowerCase() || '';
         const matchesSearch = playerName.includes(search) || o.from_club?.toLowerCase().includes(search);
         const matchesStatus = !statusFilter || o.status === statusFilter;
         return matchesSearch && matchesStatus;
@@ -201,7 +228,7 @@ function renderOffers() {
         return `
             <div class="item-card">
                 <div class="item-info">
-                    <div class="item-player">${o.player?.nom_complet || 'Joueur inconnu'}</div>
+                    <div class="item-player">${o.player_name}</div>
                     <div class="item-detail">${o.from_club}</div>
                     <div class="item-meta">${new Date(o.offer_date).toLocaleDateString('fr-FR')} · ${o.amount.toLocaleString()} FCFA</div>
                 </div>
