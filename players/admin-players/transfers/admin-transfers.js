@@ -1,4 +1,4 @@
-// ===== CONFIGURATION SUPABASE (nom unique) =====
+// ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabaseTransfersAdmin = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -82,19 +82,18 @@ async function loadPlayers() {
     return data || [];
 }
 
-// ===== CHARGEMENT DES TRANSFERTS (sans relation imbriquée) =====
+// ===== CHARGEMENT DES TRANSFERTS =====
 async function loadTransfers() {
     showLoader(true);
     try {
         const { data, error } = await supabaseTransfersAdmin
             .from('player_transfers')
             .select('*')
-            .order('transfer_date', { ascending: false });
+            .order('date_transfert', { ascending: false });
 
         if (error) throw error;
 
-        // Charger les noms des joueurs séparément
-        const playerIds = [...new Set(data.map(t => t.player_id))];
+        const playerIds = [...new Set(data.map(t => t.user_id))];
         const { data: players, error: playersError } = await supabaseTransfersAdmin
             .from('player_profiles')
             .select('id, nom_complet')
@@ -106,8 +105,15 @@ async function loadTransfers() {
         (players || []).forEach(p => playersMap[p.id] = p.nom_complet);
 
         transfersData = (data || []).map(t => ({
-            ...t,
-            player_name: playersMap[t.player_id] || 'Joueur inconnu'
+            id: t.id,
+            player_id: t.user_id,
+            player_name: playersMap[t.user_id] || 'Joueur inconnu',
+            from_club: t.club_depart,
+            to_club: t.club_arrivee,
+            transfer_date: t.date_transfert,
+            type: t.type_transfert,
+            fee: t.montant,
+            currency: 'FCFA'
         }));
 
         renderTransfers();
@@ -119,7 +125,6 @@ async function loadTransfers() {
     }
 }
 
-// ===== RENDU DES TRANSFERTS =====
 function renderTransfers() {
     const search = document.getElementById('transferSearch')?.value.toLowerCase() || '';
     const typeFilter = document.getElementById('transferTypeFilter')?.value || '';
@@ -151,7 +156,7 @@ function renderTransfers() {
                 <div class="item-info">
                     <div class="item-player">${t.player_name}</div>
                     <div class="item-detail">${t.from_club} → ${t.to_club}</div>
-                    <div class="item-meta">${new Date(t.transfer_date).toLocaleDateString('fr-FR')} · ${typeLabel} · ${t.fee.toLocaleString()} ${t.currency}</div>
+                    <div class="item-meta">${new Date(t.transfer_date).toLocaleDateString('fr-FR')} · ${typeLabel} · ${t.fee.toLocaleString()} FCFA</div>
                 </div>
                 <div class="item-actions">
                     <button class="btn-action edit" onclick="editTransfer(${t.id})"><i class="fas fa-edit"></i> Modifier</button>
@@ -162,18 +167,18 @@ function renderTransfers() {
     }).join('');
 }
 
-// ===== CHARGEMENT DES OFFRES (sans relation imbriquée) =====
+// ===== CHARGEMENT DES OFFRES =====
 async function loadOffers() {
     showLoader(true);
     try {
         const { data, error } = await supabaseTransfersAdmin
             .from('player_offers')
             .select('*')
-            .order('offer_date', { ascending: false });
+            .order('date_offre', { ascending: false });
 
         if (error) throw error;
 
-        const playerIds = [...new Set(data.map(o => o.player_id))];
+        const playerIds = [...new Set(data.map(o => o.user_id))];
         const { data: players, error: playersError } = await supabaseTransfersAdmin
             .from('player_profiles')
             .select('id, nom_complet')
@@ -185,8 +190,13 @@ async function loadOffers() {
         (players || []).forEach(p => playersMap[p.id] = p.nom_complet);
 
         offersData = (data || []).map(o => ({
-            ...o,
-            player_name: playersMap[o.player_id] || 'Joueur inconnu'
+            id: o.id,
+            player_id: o.user_id,
+            player_name: playersMap[o.user_id] || 'Joueur inconnu',
+            from_club: o.club_offrant,
+            offer_date: o.date_offre,
+            amount: o.montant_offre,
+            status: o.statut || 'pending'
         }));
 
         renderOffers();
@@ -198,7 +208,6 @@ async function loadOffers() {
     }
 }
 
-// ===== RENDU DES OFFRES =====
 function renderOffers() {
     const search = document.getElementById('offerSearch')?.value.toLowerCase() || '';
     const statusFilter = document.getElementById('offerStatusFilter')?.value || '';
@@ -222,8 +231,11 @@ function renderOffers() {
         const statusLabel = {
             pending: 'En attente',
             accepted: 'Acceptée',
-            rejected: 'Rejetée'
-        }[o.status] || 'Inconnu';
+            rejected: 'Rejetée',
+            en_attente: 'En attente',
+            acceptée: 'Acceptée',
+            rejetée: 'Rejetée'
+        }[o.status?.toLowerCase()] || 'Inconnu';
 
         return `
             <div class="item-card">
@@ -255,10 +267,12 @@ async function openTransferModal(transfer = null) {
         document.getElementById('transferPlayerId').value = transfer.player_id;
         document.getElementById('transferFromClub').value = transfer.from_club;
         document.getElementById('transferToClub').value = transfer.to_club;
-        document.getElementById('transferDate').value = transfer.transfer_date.split('T')[0];
+        // La date au format YYYY-MM-DD
+        const d = new Date(transfer.transfer_date);
+        document.getElementById('transferDate').value = d.toISOString().split('T')[0];
         document.getElementById('transferType').value = transfer.type;
         document.getElementById('transferFee').value = transfer.fee;
-        document.getElementById('transferCurrency').value = transfer.currency || 'FCFA';
+        document.getElementById('transferCurrency').value = 'FCFA';
     } else {
         document.getElementById('transferId').value = '';
         document.getElementById('transferPlayerId').value = '';
@@ -285,7 +299,6 @@ document.getElementById('transferForm').addEventListener('submit', async (e) => 
     const transfer_date = document.getElementById('transferDate').value;
     const type = document.getElementById('transferType').value;
     const fee = parseInt(document.getElementById('transferFee').value) || 0;
-    const currency = document.getElementById('transferCurrency').value.trim() || 'FCFA';
 
     if (!player_id || !from_club || !to_club || !transfer_date) {
         showToast('Veuillez remplir tous les champs obligatoires.', 'warning');
@@ -294,17 +307,26 @@ document.getElementById('transferForm').addEventListener('submit', async (e) => 
 
     showLoader(true);
     try {
+        const data = {
+            user_id: player_id,
+            club_depart: from_club,
+            club_arrivee: to_club,
+            date_transfert: transfer_date,
+            type_transfert: type,
+            montant: fee
+        };
+
         if (id) {
             const { error } = await supabaseTransfersAdmin
                 .from('player_transfers')
-                .update({ player_id, from_club, to_club, transfer_date, type, fee, currency })
+                .update(data)
                 .eq('id', id);
             if (error) throw error;
             showToast('Transfert mis à jour', 'success');
         } else {
             const { error } = await supabaseTransfersAdmin
                 .from('player_transfers')
-                .insert([{ player_id, from_club, to_club, transfer_date, type, fee, currency }]);
+                .insert([data]);
             if (error) throw error;
             showToast('Transfert ajouté', 'success');
         }
@@ -366,7 +388,8 @@ async function openOfferModal(offer = null) {
         document.getElementById('offerId').value = offer.id;
         document.getElementById('offerPlayerId').value = offer.player_id;
         document.getElementById('offerFromClub').value = offer.from_club;
-        document.getElementById('offerDate').value = offer.offer_date.split('T')[0];
+        const d = new Date(offer.offer_date);
+        document.getElementById('offerDate').value = d.toISOString().split('T')[0];
         document.getElementById('offerAmount').value = offer.amount;
         document.getElementById('offerStatus').value = offer.status;
     } else {
@@ -400,17 +423,25 @@ document.getElementById('offerForm').addEventListener('submit', async (e) => {
 
     showLoader(true);
     try {
+        const data = {
+            user_id: player_id,
+            club_offrant: from_club,
+            date_offre: offer_date,
+            montant_offre: amount,
+            statut: status
+        };
+
         if (id) {
             const { error } = await supabaseTransfersAdmin
                 .from('player_offers')
-                .update({ player_id, from_club, offer_date, amount, status })
+                .update(data)
                 .eq('id', id);
             if (error) throw error;
             showToast('Offre mise à jour', 'success');
         } else {
             const { error } = await supabaseTransfersAdmin
                 .from('player_offers')
-                .insert([{ player_id, from_club, offer_date, amount, status }]);
+                .insert([data]);
             if (error) throw error;
             showToast('Offre ajoutée', 'success');
         }
