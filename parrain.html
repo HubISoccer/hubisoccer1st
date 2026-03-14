@@ -3,45 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <!-- TITRE OPTIMISÉ -->
-    <title>Parrainage HubISoccer - Soutenez les talents du football et contribuez à leur avenir</title>
-
-    <!-- META DESCRIPTION -->
+    <title>Parrainage HubISoccer - Soutenez les talents du football</title>
     <meta name="description" content="Devenez parrain HubISoccer : soutenez financièrement des joueurs, des tournois ou des infrastructures. Aidez les talents à réaliser leur rêve.">
-
-    <!-- ROBOTS : indexation et suivi -->
     <meta name="robots" content="index, follow">
-
-    <!-- URL CANONIQUE -->
     <link rel="canonical" href="https://hubisoccer.github.io/hubisoccer1st/parrain.html">
-
-    <!-- OPEN GRAPH (réseaux sociaux) -->
     <meta property="og:title" content="Parrainage HubISoccer - Soutenez les talents du football">
     <meta property="og:description" content="Devenez parrain HubISoccer : soutenez financièrement des joueurs, des tournois ou des infrastructures. Aidez les talents à réaliser leur rêve.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://hubisoccer.github.io/hubisoccer1st/parrain.html">
-    <!-- Image extraite du header (stade-cotonou.jpg) -->
     <meta property="og:image" content="https://hubisoccer.github.io/hubisoccer1st/public/img/stade-cotonou.jpg">
-    <meta property="og:image:alt" content="Stade de football - Parrainage HubISoccer">
     <meta property="og:site_name" content="HubISoccer">
-
-    <!-- TWITTER CARD -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Parrainage HubISoccer - Soutenez les talents du football">
-    <meta name="twitter:description" content="Devenez parrain HubISoccer : soutenez financièrement des joueurs, des tournois ou des infrastructures.">
-    <meta name="twitter:image" content="https://hubisoccer.github.io/hubisoccer1st/public/img/stade-cotonou.jpg">
-
-    <!-- META KEYWORDS (facultatif) -->
-    <meta name="keywords" content="parrainage, soutien, don, mécénat, talents football, joueurs, tournois, infrastructures, HubISoccer">
-
-    <!-- POLICES ET STYLES (inchangés) -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="public/css/style.css">
     <link rel="stylesheet" href="public/css/parrain.css">
 </head>
-<!-- ... suite du corps inchangée ... -->
 <body>
     <nav>
         <a href="index.html" class="logo-link">
@@ -108,10 +85,10 @@
                 </select>
                 <select id="filterRegion">
                     <option value="all">Toutes les régions</option>
-                    <option value="benin">Bénin</option>
-                    <option value="togo">Togo</option>
-                    <option value="civ">Côte d'Ivoire</option>
-                    <option value="senegal">Sénégal</option>
+                    <option value="Bénin">Bénin</option>
+                    <option value="Togo">Togo</option>
+                    <option value="Côte d'Ivoire">Côte d'Ivoire</option>
+                    <option value="Sénégal">Sénégal</option>
                 </select>
                 <input type="text" id="searchInput" placeholder="Rechercher...">
                 <button class="btn-filter" id="applyFilters"><i class="fas fa-filter"></i> Filtrer</button>
@@ -164,11 +141,15 @@
         </section>
     </main>
 
+    <!-- MODALE DE CONTACT -->
     <div id="contactModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeModal()">&times;</span>
-            <h3>Contact</h3>
+            <h3 id="contactModalTitle">Contact</h3>
             <form id="contactForm">
+                <input type="hidden" id="contactType">
+                <input type="hidden" id="contactTargetId">
+                <input type="hidden" id="contactTargetTitle">
                 <div class="form-group">
                     <label>Votre nom</label>
                     <input type="text" id="contactName" required>
@@ -203,6 +184,7 @@
         </div>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="public/js/main.js"></script>
     <script src="public/js/parrain.js"></script>
 </body>
