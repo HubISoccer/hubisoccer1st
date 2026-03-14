@@ -132,19 +132,19 @@ function updateBonusStatus() {
     const bonusElement = document.getElementById('bonusInscription');
     const withdrawBtn = document.getElementById('withdrawBonusBtn');
     if (bonusElement) {
-        bonusElement.textContent = `${wallet.bonus_inscription} FCFA (${followersCount}/10 abonnés)`;
+        bonusElement.textContent = `${wallet.bonus_inscription} FCFA (${followersCount}/50 abonnés)`;
     }
     if (withdrawBtn) {
-        withdrawBtn.disabled = followersCount < 10 || wallet.bonus_inscription <= 0;
+        withdrawBtn.disabled = followersCount < 50 || wallet.bonus_inscription <= 0;
         withdrawBtn.title = withdrawBtn.disabled 
-            ? `Vous avez besoin de ${10 - followersCount} abonné(s) supplémentaire(s) pour retirer.` 
+            ? `Vous avez besoin de ${50 - followersCount} abonné(s) supplémentaire(s) pour retirer.` 
             : 'Retirer le bonus';
     }
 }
 
 function renderUI() {
     document.getElementById('walletBalance').textContent = `${wallet.balance} FCFA`;
-    document.getElementById('bonusInscription').textContent = `${wallet.bonus_inscription} FCFA (${followersCount}/10 abonnés)`;
+    document.getElementById('bonusInscription').textContent = `${wallet.bonus_inscription} FCFA (${followersCount}/50 abonnés)`;
     document.getElementById('totalEarned').textContent = `${wallet.balance + wallet.bonus_inscription} FCFA`;
 
     let totalSpent = 0;
