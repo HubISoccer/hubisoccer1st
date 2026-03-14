@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Admin - Parrainage | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -63,7 +63,7 @@
                 <h2><i class="fas fa-futbol"></i> Joueurs à soutenir</h2>
                 <div class="section-tools">
                     <input type="text" class="search-input" id="searchJoueurs" placeholder="Rechercher...">
-                    <button class="btn-refresh" id="refreshJoueurs"><i class="fas fa-sync-alt"></i></button>
+                    <button class="btn-refresh" id="refreshJoueurs" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
                     <button class="btn-add" onclick="openModal('joueur')"><i class="fas fa-plus"></i> Ajouter</button>
                 </div>
             </div>
@@ -76,7 +76,7 @@
                 <h2><i class="fas fa-hand-holding-heart"></i> Appels aux dons</h2>
                 <div class="section-tools">
                     <input type="text" class="search-input" id="searchDons" placeholder="Rechercher...">
-                    <button class="btn-refresh" id="refreshDons"><i class="fas fa-sync-alt"></i></button>
+                    <button class="btn-refresh" id="refreshDons" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
                     <button class="btn-add" onclick="openModal('don')"><i class="fas fa-plus"></i> Ajouter</button>
                 </div>
             </div>
@@ -89,7 +89,7 @@
                 <h2><i class="fas fa-quote-right"></i> Témoignages</h2>
                 <div class="section-tools">
                     <input type="text" class="search-input" id="searchTemoignages" placeholder="Rechercher...">
-                    <button class="btn-refresh" id="refreshTemoignages"><i class="fas fa-sync-alt"></i></button>
+                    <button class="btn-refresh" id="refreshTemoignages" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
                     <button class="btn-add" onclick="openModal('temoignage')"><i class="fas fa-plus"></i> Ajouter</button>
                 </div>
             </div>
@@ -102,7 +102,7 @@
                 <h2><i class="fas fa-envelope"></i> Messages de contact</h2>
                 <div class="section-tools">
                     <input type="text" class="search-input" id="searchMessages" placeholder="Rechercher...">
-                    <button class="btn-refresh" id="refreshMessages"><i class="fas fa-sync-alt"></i></button>
+                    <button class="btn-refresh" id="refreshMessages" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
                 </div>
             </div>
             <div id="messagesList" class="admin-list"></div>
@@ -132,6 +132,9 @@
             <button class="btn-submit" onclick="markMessageAsRead()">Marquer comme lu</button>
         </div>
     </div>
+
+    <!-- Toast de notification -->
+    <div id="toast" class="toast"></div>
 
     <footer class="admin-footer">
         <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
