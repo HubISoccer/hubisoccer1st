@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Scouting | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* ===== VARIABLES (identiques aux autres pages admin) ===== */
+        :root {
+            --primary: #551B8C;
+            --primary-dark: #3d1266;
+            --gold: #ffcc00;
+            --bg-light: #F0F8FF;
+            --white: #ffffff;
+            --dark: #1a1a1a;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --shadow: 0 10px 30px rgba(0,0,0,0.05);
+            --shadow-hover: 0 15px 40px rgba(85,27,140,0.1);
+            --transition: all 0.3s ease;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+            color: var(--dark);
+            min-height: 100vh;
+        }
+        /* Navbar admin */
+        .admin-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 5%;
+            background: var(--white);
+            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+        }
+        .logo-nav { height: 40px; }
+        .admin-title {
+            font-weight: 600;
+            color: var(--primary);
+            border-left: 2px solid var(--light-gray);
+            padding-left: 15px;
+        }
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .user-name { font-weight: 500; color: var(--dark); }
+        .logout-link {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 5px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .logout-link:hover { background: var(--primary); color: white; }
+        /* Contenu principal */
+        .admin-main { padding: 40px 5%; min-height: calc(100vh - 70px); }
+        .admin-container { max-width: 1400px; margin: 0 auto; }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        h1 { color: var(--primary-dark); }
+        .btn-refresh {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-refresh:hover { background: var(--primary); color: white; }
+        /* Panneau de sélection */
+        .selection-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .selection-panel select {
+            flex: 2;
+            padding: 10px;
+            border: 1px solid var(--light-gray);
+            border-radius: 5px;
+            font-family: 'Poppins', sans-serif;
+            min-width: 250px;
+        }
+        .selection-panel button {
+            padding: 10px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .selection-panel button:hover { background: var(--primary-dark); }
+        /* Formulaire */
+        .form-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+        .form-section h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .form-section h2 i { color: var(--gold); }
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 3px;
+            color: var(--dark);
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 8px;
+            border: 1px solid var(--light-gray);
+            border-radius: 5px;
+            font-family: 'Poppins', sans-serif;
+        }
+        .form-group textarea { resize: vertical; }
+        .full-width { grid-column: 1 / -1; }
+        .attr-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 10px;
+            background: var(--bg-light);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .attr-item {
+            background: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .attr-item input {
+            width: 60px;
+            text-align: center;
+        }
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .btn-save {
+            padding: 12px 25px;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-save:hover { background: #218838; }
+        .btn-reset {
+            padding: 12px 25px;
+            background: var(--gray);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-reset:hover { background: #5a6268; }
+        /* Toast et loader (identiques) */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .toast {
+            min-width: 250px;
+            background: white;
+            border-radius: 8px;
+            padding: 12px 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateX(400px);
+            animation: slideIn 0.3s forwards;
+            pointer-events: auto;
+            border-left: 4px solid transparent;
+        }
+        .toast.success { border-left-color: var(--success); }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.info { border-left-color: var(--primary); }
+        .toast.warning { border-left-color: var(--warning); }
+        .toast-icon { font-size: 1.2rem; }
+        .toast-content { flex: 1; font-size: 0.9rem; color: var(--dark); }
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--gray);
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        @keyframes slideIn { to { transform: translateX(0); } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateX(400px); } }
+        .global-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(85,27,140,0.2);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* Responsive */
+        @media (max-width: 900px) {
+            .selection-panel { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar admin -->
+    <nav class="admin-nav">
+        <div class="nav-left" onclick="window.location.href='../index.html'">
+            <img src="../../img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
+            <span class="admin-title">Administration - Scouting</span>
+        </div>
+        <div class="nav-right">
+            <span class="user-name" id="userName">Admin</span>
+            <button class="logout-link" id="logoutBtn">Déconnexion</button>
+        </div>
+    </nav>
+
+    <div class="admin-main">
+        <div class="admin-container">
+            <div class="admin-header">
+                <h1><i class="fas fa-chart-pie"></i> Gestion des données scouting</h1>
+                <button class="btn-refresh" id="refreshBtn"><i class="fas fa-sync-alt"></i> Rafraîchir</button>
+            </div>
+
+            <!-- Sélection du joueur -->
+            <div class="selection-panel">
+                <select id="playerSelect">
+                    <option value="">Choisir un joueur...</option>
+                </select>
+                <button id="loadPlayerBtn">Charger les données</button>
+            </div>
+
+            <!-- Formulaire (caché tant qu'aucun joueur n'est sélectionné) -->
+            <form id="scoutingForm" style="display: none;">
+                <!-- Informations personnelles (depuis player_profiles) -->
+                <div class="form-section">
+                    <h2><i class="fas fa-user"></i> Informations personnelles (lecture seule)</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nom complet</label>
+                            <input type="text" id="fullName" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Poste</label>
+                            <input type="text" id="position" readonly>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Âge</label>
+                            <input type="number" id="age" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Taille (cm)</label>
+                            <input type="number" id="taille" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Poids (kg)</label>
+                            <input type="number" id="poids" readonly>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nationalité</label>
+                            <input type="text" id="nationalite" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Pied fort</label>
+                            <input type="text" id="piedFort" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Club</label>
+                            <input type="text" id="club" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistiques globales -->
+                <div class="form-section">
+                    <h2><i class="fas fa-chart-line"></i> Statistiques globales</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Niveau actuel</label>
+                            <input type="number" id="niveauActuel">
+                        </div>
+                        <div class="form-group">
+                            <label>Potentiel</label>
+                            <input type="number" id="potentiel">
+                        </div>
+                        <div class="form-group">
+                            <label>Personnalité</label>
+                            <input type="number" id="personnalite">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Valeur marchande (€)</label>
+                            <input type="number" id="valeurMarche">
+                        </div>
+                        <div class="form-group">
+                            <label>Salaire (€)</label>
+                            <input type="number" id="salaire">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Prêt info</label>
+                            <input type="text" id="pretInfo">
+                        </div>
+                        <div class="form-group">
+                            <label>Expire le</label>
+                            <input type="date" id="expireLe">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Sélections jeunes</label>
+                            <input type="text" id="selectionJeunes">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attributs techniques -->
+                <div class="form-section">
+                    <h2><i class="fas fa-futbol"></i> Attributs techniques</h2>
+                    <div class="attr-grid" id="techGrid">
+                        <!-- Généré par JS -->
+                    </div>
+                </div>
+
+                <!-- Attributs mentaux -->
+                <div class="form-section">
+                    <h2><i class="fas fa-brain"></i> Attributs mentaux</h2>
+                    <div class="attr-grid" id="mentalGrid">
+                        <!-- Généré par JS -->
+                    </div>
+                </div>
+
+                <!-- Attributs physiques -->
+                <div class="form-section">
+                    <h2><i class="fas fa-running"></i> Attributs physiques</h2>
+                    <div class="attr-grid" id="physiqueGrid">
+                        <!-- Généré par JS -->
+                    </div>
+                </div>
+
+                <!-- Vidéos et rapports -->
+                <div class="form-section">
+                    <h2><i class="fas fa-video"></i> Vidéos et rapports</h2>
+                    <div class="form-group full-width">
+                        <label>Highlights URL</label>
+                        <input type="url" id="videoHighlights">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Match complet URL</label>
+                        <input type="url" id="videoMatch">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Rapports recruteurs</label>
+                        <textarea id="rapportsRecruteurs" rows="3"></textarea>
+                    </div>
+                </div>
+
+                <!-- Postes secondaires, forces/faiblesses, dates -->
+                <div class="form-section">
+                    <h2><i class="fas fa-cogs"></i> Informations complémentaires</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Postes secondaires</label>
+                            <input type="text" id="secondaryPositions" placeholder="ex: MD, M(C)">
+                        </div>
+                        <div class="form-group">
+                            <label>Left foot rating</label>
+                            <input type="number" id="leftFootRating" min="0" max="100">
+                        </div>
+                        <div class="form-group">
+                            <label>Right foot rating</label>
+                            <input type="number" id="rightFootRating" min="0" max="100">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label>Points forts</label>
+                            <textarea id="strengths" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label>Points faibles</label>
+                            <textarea id="weaknesses" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Contract expiry</label>
+                            <input type="date" id="contractExpiry">
+                        </div>
+                        <div class="form-group">
+                            <label>Next evaluation</label>
+                            <input type="date" id="nextEvaluation">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-reset" id="resetBtn">Réinitialiser</button>
+                    <button type="submit" class="btn-save">Enregistrer les modifications</button>
+                </div>
+            </form>
+
+            <div id="noSelectionMessage" style="text-align: center; color: var(--gray); padding: 40px; background: white; border-radius: 10px;">
+                Sélectionnez un joueur pour modifier ses données scouting.
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Loader global -->
+    <div id="globalLoader" class="global-loader" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="admin-scouting.js"></script>
+</body>
+</html>
