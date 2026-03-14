@@ -1,7 +1,8 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Renommé pour éviter le conflit
+const supabasePublic = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉLÉMENTS DOM =====
 const joueursGrid = document.getElementById('joueursGrid');
@@ -16,9 +17,9 @@ const applyFiltersBtn = document.getElementById('applyFilters');
 async function loadData() {
     try {
         const [joueursRes, donsRes, temoignagesRes] = await Promise.all([
-            supabase.from('parrain_joueurs').select('*').order('created_at', { ascending: false }),
-            supabase.from('parrain_dons').select('*').order('created_at', { ascending: false }),
-            supabase.from('parrain_temoignages').select('*').order('created_at', { ascending: false })
+            supabasePublic.from('parrain_joueurs').select('*').order('created_at', { ascending: false }),
+            supabasePublic.from('parrain_dons').select('*').order('created_at', { ascending: false }),
+            supabasePublic.from('parrain_temoignages').select('*').order('created_at', { ascending: false })
         ]);
 
         if (joueursRes.error) throw joueursRes.error;
@@ -127,8 +128,8 @@ async function applyFilters() {
     const region = filterRegion.value;
     const search = searchInput.value.trim().toLowerCase();
 
-    let queryJoueurs = supabase.from('parrain_joueurs').select('*');
-    let queryDons = supabase.from('parrain_dons').select('*');
+    let queryJoueurs = supabasePublic.from('parrain_joueurs').select('*');
+    let queryDons = supabasePublic.from('parrain_dons').select('*');
 
     if (region !== 'all') {
         queryJoueurs = queryJoueurs.ilike('region', `%${region}%`);
@@ -177,7 +178,7 @@ document.getElementById('contactForm').addEventListener('submit', async (e) => {
         target_id: document.getElementById('contactTargetId').value,
         target_title: document.getElementById('contactTargetTitle').value
     };
-    const { error } = await supabase.from('contact_messages').insert([message]);
+    const { error } = await supabasePublic.from('contact_messages').insert([message]);
     if (error) {
         alert('Erreur : ' + error.message);
     } else {
