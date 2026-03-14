@@ -133,7 +133,8 @@
     background: #000;
 }
 
-.card-media img {
+.card-media img,
+.card-media video {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -403,6 +404,8 @@
     max-width: 500px;
     position: relative;
     box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    max-height: 80vh;
+    overflow-y: auto;
 }
 
 .close-modal {
@@ -485,21 +488,7 @@
     .acteur-options {
         grid-template-columns: 1fr;
     }
-}
-/* Ajout pour la modale scrollable */
-.modal-content {
-    max-height: 80vh;
-    overflow-y: auto;
-}
-
-/* Amélioration du modal pour mobile */
-@media (max-width: 768px) {
-    .parrain-page .modal-content {
-        max-height: 90vh;
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch;
-    }
-    .parrain-page .modal-content .form-group:last-child {
-        margin-bottom: 20px;
+    .modal-content {
+        padding: 20px;
     }
 }
