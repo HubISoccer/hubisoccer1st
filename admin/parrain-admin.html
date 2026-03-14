@@ -25,35 +25,91 @@
     <div class="admin-container parrain-page">
         <h1>Gestion des parrainages</h1>
 
-        <!-- Section Joueurs à soutenir -->
-        <div class="admin-card">
+        <!-- Section Statistiques -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <i class="fas fa-futbol"></i>
+                <div>
+                    <h3 id="statJoueurs">0</h3>
+                    <p>Joueurs</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-hand-holding-heart"></i>
+                <div>
+                    <h3 id="statDons">0</h3>
+                    <p>Appels aux dons</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-coins"></i>
+                <div>
+                    <h3 id="statCollecte">0 FCFA</h3>
+                    <p>Collecté total</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-envelope"></i>
+                <div>
+                    <h3 id="statMessages">0</h3>
+                    <p>Messages non lus</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Joueurs -->
+        <div class="admin-card" id="section-joueurs">
             <div class="card-header">
                 <h2><i class="fas fa-futbol"></i> Joueurs à soutenir</h2>
-                <button class="btn-add" onclick="openModal('joueur')"><i class="fas fa-plus"></i> Ajouter un joueur</button>
+                <div class="section-tools">
+                    <input type="text" class="search-input" id="searchJoueurs" placeholder="Rechercher...">
+                    <button class="btn-refresh" id="refreshJoueurs"><i class="fas fa-sync-alt"></i></button>
+                    <button class="btn-add" onclick="openModal('joueur')"><i class="fas fa-plus"></i> Ajouter</button>
+                </div>
             </div>
             <div id="joueursList" class="admin-list"></div>
         </div>
 
-        <!-- Section Appels aux dons -->
-        <div class="admin-card">
+        <!-- Section Dons -->
+        <div class="admin-card" id="section-dons">
             <div class="card-header">
                 <h2><i class="fas fa-hand-holding-heart"></i> Appels aux dons</h2>
-                <button class="btn-add" onclick="openModal('don')"><i class="fas fa-plus"></i> Ajouter un appel</button>
+                <div class="section-tools">
+                    <input type="text" class="search-input" id="searchDons" placeholder="Rechercher...">
+                    <button class="btn-refresh" id="refreshDons"><i class="fas fa-sync-alt"></i></button>
+                    <button class="btn-add" onclick="openModal('don')"><i class="fas fa-plus"></i> Ajouter</button>
+                </div>
             </div>
             <div id="donsList" class="admin-list"></div>
         </div>
 
         <!-- Section Témoignages -->
-        <div class="admin-card">
+        <div class="admin-card" id="section-temoignages">
             <div class="card-header">
                 <h2><i class="fas fa-quote-right"></i> Témoignages</h2>
-                <button class="btn-add" onclick="openModal('temoignage')"><i class="fas fa-plus"></i> Ajouter un témoignage</button>
+                <div class="section-tools">
+                    <input type="text" class="search-input" id="searchTemoignages" placeholder="Rechercher...">
+                    <button class="btn-refresh" id="refreshTemoignages"><i class="fas fa-sync-alt"></i></button>
+                    <button class="btn-add" onclick="openModal('temoignage')"><i class="fas fa-plus"></i> Ajouter</button>
+                </div>
             </div>
             <div id="temoignagesList" class="admin-list"></div>
         </div>
+
+        <!-- Section Messages reçus -->
+        <div class="admin-card" id="section-messages">
+            <div class="card-header">
+                <h2><i class="fas fa-envelope"></i> Messages de contact</h2>
+                <div class="section-tools">
+                    <input type="text" class="search-input" id="searchMessages" placeholder="Rechercher...">
+                    <button class="btn-refresh" id="refreshMessages"><i class="fas fa-sync-alt"></i></button>
+                </div>
+            </div>
+            <div id="messagesList" class="admin-list"></div>
+        </div>
     </div>
 
-    <!-- Modale d'ajout/édition -->
+    <!-- MODALE D'AJOUT/ÉDITION -->
     <div id="itemModal" class="admin-modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
@@ -67,10 +123,21 @@
         </div>
     </div>
 
+    <!-- MODALE DE VISUALISATION DE MESSAGE -->
+    <div id="messageModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeMessageModal()">&times;</span>
+            <h3>Détail du message</h3>
+            <div id="messageDetail"></div>
+            <button class="btn-submit" onclick="markMessageAsRead()">Marquer comme lu</button>
+        </div>
+    </div>
+
     <footer class="admin-footer">
         <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../public/js/main.js"></script>
     <script src="assets/js/parrain-admin.js"></script>
 </body>
