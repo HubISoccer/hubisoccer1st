@@ -486,3 +486,8 @@
         grid-template-columns: 1fr;
     }
 }
+/* Ajout pour la modale scrollable */
+.modal-content {
+    max-height: 80vh;
+    overflow-y: auto;
+}
