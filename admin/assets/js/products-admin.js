@@ -1,54 +1,117 @@
-// ===== INITIALISATION SUPABASE =====
-const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+// ===== CONFIGURATION SUPABASE =====
+const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabaseProductemarket = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Éléments DOM
+// ===== ÉLÉMENTS DOM =====
+// Statistiques
+const statProducts = document.getElementById('statProducts');
+const statOrders = document.getElementById('statOrders');
+const statMessages = document.getElementById('statMessages');
+const statCustomers = document.getElementById('statCustomers');
+
+// Produits
 const productsList = document.getElementById('productsList');
-const modal = document.getElementById('productModal');
-const modalTitle = document.getElementById('modalTitle');
-const form = document.getElementById('productForm');
+const searchProducts = document.getElementById('searchProducts');
+const refreshProducts = document.getElementById('refreshProducts');
+const addProductBtn = document.getElementById('addProductBtn');
+
+// Commandes (aperçu)
+const ordersList = document.getElementById('ordersList');
+const searchOrders = document.getElementById('searchOrders');
+const refreshOrders = document.getElementById('refreshOrders');
+
+// Messages (aperçu)
+const messagesList = document.getElementById('messagesList');
+const searchMessages = document.getElementById('searchMessages');
+const refreshMessages = document.getElementById('refreshMessages');
+
+// Modales
+const productModal = document.getElementById('productModal');
+const modalProductTitle = document.getElementById('modalProductTitle');
+const productForm = document.getElementById('productForm');
 const productId = document.getElementById('productId');
 const nameInput = document.getElementById('name');
 const descriptionInput = document.getElementById('description');
 const priceInput = document.getElementById('price');
-const imageInput = document.getElementById('image_url');
-const categorySelect = document.getElementById('category');
 const stockSelect = document.getElementById('stock');
+const categorySelect = document.getElementById('category');
 const featuredSelect = document.getElementById('featured');
+const mediaFile = document.getElementById('mediaFile');
+const imageUrlInput = document.getElementById('imageUrl');
 const paymentUrlInput = document.getElementById('payment_url');
 const returnUrlInput = document.getElementById('return_url');
 
-// Charger les produits
-async function loadProducts() {
-    const { data: products, error } = await supabaseClient
-        .from('products')
-        .select('*')
-        .order('id');
+const orderModal = document.getElementById('orderModal');
+const orderDetail = document.getElementById('orderDetail');
+const validateOrderBtn = document.getElementById('validateOrderBtn');
 
+const messageModal = document.getElementById('messageModal');
+const messageDetail = document.getElementById('messageDetail');
+const replyMessage = document.getElementById('replyMessage');
+const sendReplyBtn = document.getElementById('sendReplyBtn');
+
+// ===== ÉTAT =====
+let currentOrderId = null;
+let currentMessageId = null;
+
+// ===== CHARGEMENT DES DONNÉES =====
+async function loadAll() {
+    await Promise.all([
+        loadProducts(),
+        loadOrders(),
+        loadMessages(),
+        loadStats()
+    ]);
+}
+
+async function loadStats() {
+    const [products, orders, messages, customers] = await Promise.all([
+        supabaseProductemarket.from('products').select('*', { count: 'exact', head: true }),
+        supabaseProductemarket.from('orders').select('*', { count: 'exact', head: true }),
+        supabaseProductemarket.from('messages').select('*', { count: 'exact', head: true }).eq('is_read', false),
+        supabaseProductemarket.from('customers').select('*', { count: 'exact', head: true })
+    ]);
+    statProducts.textContent = products.count || 0;
+    statOrders.textContent = orders.count || 0;
+    statMessages.textContent = messages.count || 0;
+    statCustomers.textContent = customers.count || 0;
+}
+
+// ===== PRODUITS =====
+async function loadProducts(search = '') {
+    let query = supabaseProductemarket.from('products').select('*').order('id', { ascending: false });
+    if (search) {
+        query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+    }
+    const { data, error } = await query;
     if (error) {
         console.error('Erreur chargement produits:', error);
         productsList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
         return;
     }
+    renderProducts(data || []);
+}
 
-    if (!products || products.length === 0) {
+function renderProducts(products) {
+    if (!products.length) {
         productsList.innerHTML = '<p class="no-data">Aucun produit.</p>';
         return;
     }
-
     let html = '';
     products.forEach(p => {
+        const stockText = p.stock ? 'En stock' : 'Épuisé';
+        const stockClass = p.stock ? '' : 'out-of-stock';
         html += `
             <div class="list-item" data-id="${p.id}">
                 <div class="info">
                     <strong>${p.name} ${p.featured ? '<span class="badge">Vedette</span>' : ''}</strong>
                     <div class="details">
-                        <span>${p.category}</span>
-                        <span>${p.stock ? 'En stock' : 'Épuisé'}</span>
-                        <span>Prix: ${p.price} FCFA</span>
+                        <span>${p.category || 'Non catégorisé'}</span>
+                        <span class="${stockClass}">${stockText}</span>
+                        <span>${p.price} FCFA</span>
                     </div>
-                    <small>Paiement: <a href="${p.payment_url}" target="_blank">lien</a> | Retour: ${p.return_url}</small>
+                    <small>${p.description || ''}</small>
                 </div>
                 <div class="actions">
                     <button class="edit" onclick="editProduct(${p.id})"><i class="fas fa-edit"></i></button>
@@ -60,121 +123,405 @@ async function loadProducts() {
     productsList.innerHTML = html;
 }
 
-// Ouvrir modale ajout
-function openAddModal() {
-    modalTitle.textContent = 'Ajouter un produit';
-    productId.value = '';
-    nameInput.value = '';
-    descriptionInput.value = '';
-    priceInput.value = '';
-    imageInput.value = '';
-    categorySelect.value = '';
-    stockSelect.value = '';
-    featuredSelect.value = '';
-    paymentUrlInput.value = '';
-    returnUrlInput.value = 'suivi.html';
-    modal.classList.add('active');
-}
-
-// Éditer un produit
 window.editProduct = async (id) => {
-    const { data: p, error } = await supabaseClient
+    const { data: p, error } = await supabaseProductemarket
         .from('products')
         .select('*')
         .eq('id', id)
         .single();
-
     if (error) {
-        alert('Erreur chargement produit');
+        showToast('Erreur chargement produit', 'error');
         return;
     }
-
-    modalTitle.textContent = 'Modifier un produit';
+    modalProductTitle.textContent = 'Modifier un produit';
     productId.value = p.id;
-    nameInput.value = p.name;
-    descriptionInput.value = p.description;
-    priceInput.value = p.price;
-    imageInput.value = p.image_url;
-    categorySelect.value = p.category;
+    nameInput.value = p.name || '';
+    descriptionInput.value = p.description || '';
+    priceInput.value = p.price || '';
     stockSelect.value = p.stock ? 'true' : 'false';
+    categorySelect.value = p.category || '';
     featuredSelect.value = p.featured ? 'true' : 'false';
+    imageUrlInput.value = p.image_url || '';
     paymentUrlInput.value = p.payment_url || '';
     returnUrlInput.value = p.return_url || 'suivi.html';
-    modal.classList.add('active');
+    productModal.classList.add('active');
 };
 
-// Supprimer un produit
 window.deleteProduct = async (id) => {
-    if (!confirm('Supprimer ce produit ?')) return;
-    const { error } = await supabaseClient
+    if (!confirm('Supprimer définitivement ce produit ?')) return;
+    const { error } = await supabaseProductemarket
         .from('products')
         .delete()
         .eq('id', id);
-
     if (error) {
-        alert('Erreur suppression : ' + error.message);
+        showToast('Erreur suppression: ' + error.message, 'error');
     } else {
+        showToast('Produit supprimé', 'success');
         loadProducts();
+        loadStats();
     }
 };
 
-// Fermer modale
-window.closeModal = () => {
-    modal.classList.remove('active');
-};
+function openAddProductModal() {
+    modalProductTitle.textContent = 'Ajouter un produit';
+    productId.value = '';
+    nameInput.value = '';
+    descriptionInput.value = '';
+    priceInput.value = '';
+    stockSelect.value = '';
+    categorySelect.value = '';
+    featuredSelect.value = '';
+    mediaFile.value = '';
+    imageUrlInput.value = '';
+    paymentUrlInput.value = '';
+    returnUrlInput.value = 'suivi.html';
+    productModal.classList.add('active');
+}
 
-// Soumission formulaire
-form.addEventListener('submit', async (e) => {
+function closeProductModal() {
+    productModal.classList.remove('active');
+    productForm.reset();
+}
+
+window.closeProductModal = closeProductModal;
+
+// Upload de fichier
+async function uploadFile(file, bucket = 'product-medias') {
+    if (!file) return null;
+    const submitBtn = productForm.querySelector('.btn-submit');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Upload...';
+
+    return new Promise((resolve, reject) => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`, true);
+        xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+        xhr.setRequestHeader('Authorization', `Bearer ${SUPABASE_ANON_KEY}`);
+
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Upload ${percent}%`;
+            }
+        });
+
+        xhr.addEventListener('load', () => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            if (xhr.status === 200) {
+                const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${fileName}`;
+                resolve(publicUrl);
+            } else {
+                let errorMsg = 'Upload échoué';
+                try {
+                    const err = JSON.parse(xhr.responseText);
+                    errorMsg = err.message || errorMsg;
+                } catch (e) {}
+                reject(new Error(errorMsg));
+            }
+        });
+
+        xhr.addEventListener('error', () => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            reject(new Error('Erreur réseau'));
+        });
+
+        xhr.send(formData);
+    });
+}
+
+// Soumission formulaire produit
+productForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = productId.value;
-    const name = nameInput.value;
-    const description = descriptionInput.value;
+    const name = nameInput.value.trim();
+    const description = descriptionInput.value.trim();
     const price = parseInt(priceInput.value);
-    const image_url = imageInput.value;
+    const stock = stockSelect.value === 'true';
     const category = categorySelect.value;
-    const stockValue = stockSelect.value === 'true';
-    const featuredValue = featuredSelect.value === 'true';
+    const featured = featuredSelect.value === 'true';
+    let image_url = imageUrlInput.value;
 
-    const productData = {
-        name,
-        description,
-        price,
-        image_url,
-        category,
-        stock: stockValue ? 1 : 0,
-        featured: featuredValue,
-        payment_url: paymentUrlInput.value,
-        return_url: returnUrlInput.value
-    };
+    try {
+        // Upload du fichier si présent
+        if (mediaFile.files.length > 0) {
+            const url = await uploadFile(mediaFile.files[0]);
+            if (url) image_url = url;
+        }
 
-    if (id === '') {
-        const { error } = await supabaseClient
-            .from('products')
-            .insert([productData]);
-        if (error) {
-            alert('Erreur ajout : ' + error.message);
+        const productData = {
+            name,
+            description,
+            price,
+            stock,
+            category,
+            featured,
+            image_url,
+            payment_url: paymentUrlInput.value.trim(),
+            return_url: returnUrlInput.value.trim()
+        };
+
+        let result;
+        if (id) {
+            result = await supabaseProductemarket
+                .from('products')
+                .update(productData)
+                .eq('id', id);
         } else {
-            closeModal();
-            loadProducts();
+            result = await supabaseProductemarket
+                .from('products')
+                .insert([productData]);
         }
-    } else {
-        const { error } = await supabaseClient
-            .from('products')
-            .update(productData)
-            .eq('id', id);
-        if (error) {
-            alert('Erreur modification : ' + error.message);
-        } else {
-            closeModal();
-            loadProducts();
-        }
+
+        if (result.error) throw result.error;
+
+        showToast('Opération réussie', 'success');
+        closeProductModal();
+        loadProducts();
+        loadStats();
+    } catch (err) {
+        showToast('Erreur : ' + err.message, 'error');
     }
 });
 
-// Bouton ajout
-document.getElementById('addProductBtn').addEventListener('click', openAddModal);
+// ===== COMMANDES (aperçu) =====
+async function loadOrders(search = '') {
+    let query = supabaseProductemarket
+        .from('orders')
+        .select('*, customers(first_name, last_name, email)')
+        .order('created_at', { ascending: false })
+        .limit(5);
+    if (search) {
+        // Recherche simple sur les clients
+        // Pour une recherche plus avancée, il faudrait une jointure plus complexe
+    }
+    const { data, error } = await query;
+    if (error) {
+        console.error('Erreur chargement commandes:', error);
+        ordersList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        return;
+    }
+    renderOrders(data || []);
+}
 
-// Déconnexion
+function renderOrders(orders) {
+    if (!orders.length) {
+        ordersList.innerHTML = '<p class="no-data">Aucune commande récente.</p>';
+        return;
+    }
+    let html = '';
+    orders.forEach(o => {
+        const customer = o.customers || {};
+        const fullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Client inconnu';
+        html += `
+            <div class="list-item" data-id="${o.id}">
+                <div class="info">
+                    <strong>Commande #${o.id}</strong> - ${fullName}
+                    <div class="details">
+                        <span>${new Date(o.created_at).toLocaleString()}</span>
+                        <span>Total: ${o.total_amount} FCFA</span>
+                        <span class="status-${o.status}">${o.status}</span>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button class="view" onclick="viewOrder(${o.id})"><i class="fas fa-eye"></i></button>
+                </div>
+            </div>
+        `;
+    });
+    ordersList.innerHTML = html;
+}
+
+window.viewOrder = async (id) => {
+    const { data: order, error } = await supabaseProductemarket
+        .from('orders')
+        .select('*, customers(*), order_items(*, products(*))')
+        .eq('id', id)
+        .single();
+    if (error) {
+        showToast('Erreur chargement commande', 'error');
+        return;
+    }
+    currentOrderId = id;
+    const customer = order.customers || {};
+    const items = order.order_items || [];
+    let itemsHtml = '';
+    items.forEach(item => {
+        itemsHtml += `<p>${item.products?.name} x${item.quantity} = ${item.total_price} FCFA</p>`;
+    });
+    orderDetail.innerHTML = `
+        <p><strong>Client :</strong> ${customer.first_name} ${customer.last_name}</p>
+        <p><strong>Email :</strong> ${customer.email}</p>
+        <p><strong>Téléphone :</strong> ${customer.phone || '-'}</p>
+        <p><strong>Date :</strong> ${new Date(order.created_at).toLocaleString()}</p>
+        <p><strong>Statut :</strong> ${order.status}</p>
+        <p><strong>Total :</strong> ${order.total_amount} FCFA</p>
+        <p><strong>Articles :</strong></p>
+        ${itemsHtml}
+        ${order.invoice_proforma_url ? `<p><a href="${order.invoice_proforma_url}" target="_blank">Facture proforma</a></p>` : ''}
+    `;
+    validateOrderBtn.style.display = order.status === 'en_attente' ? 'inline-block' : 'none';
+    orderModal.classList.add('active');
+};
+
+function closeOrderModal() {
+    orderModal.classList.remove('active');
+    currentOrderId = null;
+}
+
+window.closeOrderModal = closeOrderModal;
+
+validateOrderBtn.addEventListener('click', async () => {
+    if (!currentOrderId) return;
+    const { error } = await supabaseProductemarket
+        .from('orders')
+        .update({ status: 'expédiée' })
+        .eq('id', currentOrderId);
+    if (error) {
+        showToast('Erreur mise à jour', 'error');
+    } else {
+        showToast('Commande marquée comme expédiée', 'success');
+        closeOrderModal();
+        loadOrders();
+        loadStats();
+    }
+});
+
+// ===== MESSAGES (aperçu) =====
+async function loadMessages(search = '') {
+    let query = supabaseProductemarket
+        .from('messages')
+        .select('*, customers(first_name, last_name, email)')
+        .order('created_at', { ascending: false })
+        .limit(5);
+    if (search) {
+        // Idem
+    }
+    const { data, error } = await query;
+    if (error) {
+        console.error('Erreur chargement messages:', error);
+        messagesList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        return;
+    }
+    renderMessages(data || []);
+}
+
+function renderMessages(messages) {
+    if (!messages.length) {
+        messagesList.innerHTML = '<p class="no-data">Aucun message récent.</p>';
+        return;
+    }
+    let html = '';
+    messages.forEach(m => {
+        const customer = m.customers || {};
+        const fullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Client inconnu';
+        html += `
+            <div class="list-item ${!m.is_read ? 'unread' : ''}" data-id="${m.id}">
+                <div class="info">
+                    <strong>${fullName}</strong>
+                    <div class="details">
+                        <span>${new Date(m.created_at).toLocaleString()}</span>
+                        <span>${m.order_id ? 'Commande #' + m.order_id : ''}</span>
+                    </div>
+                    <small>${m.message.substring(0, 80)}...</small>
+                </div>
+                <div class="actions">
+                    <button class="view" onclick="viewMessage(${m.id})"><i class="fas fa-eye"></i></button>
+                </div>
+            </div>
+        `;
+    });
+    messagesList.innerHTML = html;
+}
+
+window.viewMessage = async (id) => {
+    const { data: msg, error } = await supabaseProductemarket
+        .from('messages')
+        .select('*, customers(*)')
+        .eq('id', id)
+        .single();
+    if (error) {
+        showToast('Erreur chargement message', 'error');
+        return;
+    }
+    currentMessageId = id;
+    const customer = msg.customers || {};
+    messageDetail.innerHTML = `
+        <p><strong>De :</strong> ${customer.first_name} ${customer.last_name} (${customer.email})</p>
+        <p><strong>Date :</strong> ${new Date(msg.created_at).toLocaleString()}</p>
+        <p><strong>Commande :</strong> ${msg.order_id ? '#' + msg.order_id : 'Non lié'}</p>
+        <p><strong>Message :</strong><br>${msg.message}</p>
+    `;
+    replyMessage.value = '';
+    messageModal.classList.add('active');
+
+    // Marquer comme lu
+    if (!msg.is_read) {
+        await supabaseProductemarket
+            .from('messages')
+            .update({ is_read: true })
+            .eq('id', id);
+        loadMessages();
+        loadStats();
+    }
+};
+
+function closeMessageModal() {
+    messageModal.classList.remove('active');
+    currentMessageId = null;
+}
+
+window.closeMessageModal = closeMessageModal;
+
+sendReplyBtn.addEventListener('click', async () => {
+    if (!currentMessageId) return;
+    const reply = replyMessage.value.trim();
+    if (!reply) {
+        showToast('Veuillez écrire une réponse', 'error');
+        return;
+    }
+    // Ici on pourrait envoyer la réponse par email ou l'enregistrer dans une table
+    // Pour l'instant, on simule
+    showToast('Réponse envoyée (simulation)', 'success');
+    closeMessageModal();
+});
+
+// ===== RECHERCHE EN TEMPS RÉEL =====
+searchProducts?.addEventListener('input', (e) => loadProducts(e.target.value));
+searchOrders?.addEventListener('input', (e) => loadOrders(e.target.value));
+searchMessages?.addEventListener('input', (e) => loadMessages(e.target.value));
+
+// ===== BOUTONS DE RAFRAÎCHISSEMENT =====
+refreshProducts?.addEventListener('click', () => loadProducts());
+refreshOrders?.addEventListener('click', () => loadOrders());
+refreshMessages?.addEventListener('click', () => loadMessages());
+
+// ===== AJOUT PRODUIT =====
+addProductBtn.addEventListener('click', openAddProductModal);
+
+// ===== TOAST =====
+function showToast(message, type = 'info') {
+    let toast = document.getElementById('toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.className = `toast show ${type}`;
+    setTimeout(() => {
+        toast.className = 'toast';
+    }, 3000);
+}
+
+// ===== DÉCONNEXION =====
 document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     e.preventDefault();
     if (confirm('Déconnexion ?')) {
@@ -182,5 +529,5 @@ document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
     }
 });
 
-// Chargement initial
-loadProducts();
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', loadAll);
