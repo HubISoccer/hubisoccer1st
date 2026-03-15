@@ -68,9 +68,9 @@ async function loadAll() {
 async function loadStats() {
     const [products, orders, messages, customers] = await Promise.all([
         supabaseProductemarket.from('products').select('*', { count: 'exact', head: true }),
-        supabaseProductemarket.from('orders').select('*', { count: 'exact', head: true }),
-        supabaseProductemarket.from('messages').select('*', { count: 'exact', head: true }).eq('is_read', false),
-        supabaseProductemarket.from('customers').select('*', { count: 'exact', head: true })
+        supabaseProductemarket.from('emarket_orders').select('*', { count: 'exact', head: true }),
+        supabaseProductemarket.from('emarket_messages').select('*', { count: 'exact', head: true }).eq('is_read', false),
+        supabaseProductemarket.from('emarket_customers').select('*', { count: 'exact', head: true })
     ]);
     statProducts.textContent = products.count || 0;
     statOrders.textContent = orders.count || 0;
@@ -294,13 +294,13 @@ productForm.addEventListener('submit', async (e) => {
 // ===== COMMANDES (aperçu) =====
 async function loadOrders(search = '') {
     let query = supabaseProductemarket
-        .from('orders')
-        .select('*, customers(first_name, last_name, email)')
+        .from('emarket_orders')
+        .select('*, emarket_customers(first_name, last_name, email)')
         .order('created_at', { ascending: false })
         .limit(5);
     if (search) {
-        // Recherche simple sur les clients
-        // Pour une recherche plus avancée, il faudrait une jointure plus complexe
+        // Recherche simple (à améliorer si nécessaire)
+        query = query.ilike('id', `%${search}%`);
     }
     const { data, error } = await query;
     if (error) {
@@ -318,7 +318,7 @@ function renderOrders(orders) {
     }
     let html = '';
     orders.forEach(o => {
-        const customer = o.customers || {};
+        const customer = o.emarket_customers || {};
         const fullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Client inconnu';
         html += `
             <div class="list-item" data-id="${o.id}">
@@ -326,7 +326,7 @@ function renderOrders(orders) {
                     <strong>Commande #${o.id}</strong> - ${fullName}
                     <div class="details">
                         <span>${new Date(o.created_at).toLocaleString()}</span>
-                        <span>Total: ${o.total_amount} FCFA</span>
+                        <span>Total TTC: ${o.total_ttc} FCFA</span>
                         <span class="status-${o.status}">${o.status}</span>
                     </div>
                 </div>
@@ -341,8 +341,8 @@ function renderOrders(orders) {
 
 window.viewOrder = async (id) => {
     const { data: order, error } = await supabaseProductemarket
-        .from('orders')
-        .select('*, customers(*), order_items(*, products(*))')
+        .from('emarket_orders')
+        .select('*, emarket_customers(*), emarket_order_items(*, products(*))')
         .eq('id', id)
         .single();
     if (error) {
@@ -350,8 +350,8 @@ window.viewOrder = async (id) => {
         return;
     }
     currentOrderId = id;
-    const customer = order.customers || {};
-    const items = order.order_items || [];
+    const customer = order.emarket_customers || {};
+    const items = order.emarket_order_items || [];
     let itemsHtml = '';
     items.forEach(item => {
         itemsHtml += `<p>${item.products?.name} x${item.quantity} = ${item.total_price} FCFA</p>`;
@@ -362,10 +362,14 @@ window.viewOrder = async (id) => {
         <p><strong>Téléphone :</strong> ${customer.phone || '-'}</p>
         <p><strong>Date :</strong> ${new Date(order.created_at).toLocaleString()}</p>
         <p><strong>Statut :</strong> ${order.status}</p>
-        <p><strong>Total :</strong> ${order.total_amount} FCFA</p>
+        <p><strong>Total HT :</strong> ${order.total_ht} FCFA</p>
+        <p><strong>TVA (18%) :</strong> ${order.tva} FCFA</p>
+        <p><strong>Total TTC :</strong> ${order.total_ttc} FCFA</p>
         <p><strong>Articles :</strong></p>
         ${itemsHtml}
         ${order.invoice_proforma_url ? `<p><a href="${order.invoice_proforma_url}" target="_blank">Facture proforma</a></p>` : ''}
+        ${order.invoice_definitive_url ? `<p><a href="${order.invoice_definitive_url}" target="_blank">Facture définitive</a></p>` : ''}
+        ${order.tracking_info ? `<p>Suivi : ${order.tracking_info}</p>` : ''}
     `;
     validateOrderBtn.style.display = order.status === 'en_attente' ? 'inline-block' : 'none';
     orderModal.classList.add('active');
@@ -381,7 +385,7 @@ window.closeOrderModal = closeOrderModal;
 validateOrderBtn.addEventListener('click', async () => {
     if (!currentOrderId) return;
     const { error } = await supabaseProductemarket
-        .from('orders')
+        .from('emarket_orders')
         .update({ status: 'expédiée' })
         .eq('id', currentOrderId);
     if (error) {
@@ -397,12 +401,12 @@ validateOrderBtn.addEventListener('click', async () => {
 // ===== MESSAGES (aperçu) =====
 async function loadMessages(search = '') {
     let query = supabaseProductemarket
-        .from('messages')
-        .select('*, customers(first_name, last_name, email)')
+        .from('emarket_messages')
+        .select('*, emarket_customers(first_name, last_name, email)')
         .order('created_at', { ascending: false })
         .limit(5);
     if (search) {
-        // Idem
+        query = query.ilike('message', `%${search}%`);
     }
     const { data, error } = await query;
     if (error) {
@@ -420,7 +424,7 @@ function renderMessages(messages) {
     }
     let html = '';
     messages.forEach(m => {
-        const customer = m.customers || {};
+        const customer = m.emarket_customers || {};
         const fullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Client inconnu';
         html += `
             <div class="list-item ${!m.is_read ? 'unread' : ''}" data-id="${m.id}">
@@ -443,8 +447,8 @@ function renderMessages(messages) {
 
 window.viewMessage = async (id) => {
     const { data: msg, error } = await supabaseProductemarket
-        .from('messages')
-        .select('*, customers(*)')
+        .from('emarket_messages')
+        .select('*, emarket_customers(*)')
         .eq('id', id)
         .single();
     if (error) {
@@ -452,12 +456,13 @@ window.viewMessage = async (id) => {
         return;
     }
     currentMessageId = id;
-    const customer = msg.customers || {};
+    const customer = msg.emarket_customers || {};
     messageDetail.innerHTML = `
         <p><strong>De :</strong> ${customer.first_name} ${customer.last_name} (${customer.email})</p>
         <p><strong>Date :</strong> ${new Date(msg.created_at).toLocaleString()}</p>
         <p><strong>Commande :</strong> ${msg.order_id ? '#' + msg.order_id : 'Non lié'}</p>
         <p><strong>Message :</strong><br>${msg.message}</p>
+        ${msg.admin_reply ? `<p><strong>Réponse admin :</strong> ${msg.admin_reply}</p>` : ''}
     `;
     replyMessage.value = '';
     messageModal.classList.add('active');
@@ -465,7 +470,7 @@ window.viewMessage = async (id) => {
     // Marquer comme lu
     if (!msg.is_read) {
         await supabaseProductemarket
-            .from('messages')
+            .from('emarket_messages')
             .update({ is_read: true })
             .eq('id', id);
         loadMessages();
@@ -480,6 +485,7 @@ function closeMessageModal() {
 
 window.closeMessageModal = closeMessageModal;
 
+// Envoyer une réponse au message
 sendReplyBtn.addEventListener('click', async () => {
     if (!currentMessageId) return;
     const reply = replyMessage.value.trim();
@@ -487,10 +493,18 @@ sendReplyBtn.addEventListener('click', async () => {
         showToast('Veuillez écrire une réponse', 'error');
         return;
     }
-    // Ici on pourrait envoyer la réponse par email ou l'enregistrer dans une table
-    // Pour l'instant, on simule
-    showToast('Réponse envoyée (simulation)', 'success');
-    closeMessageModal();
+    const { error } = await supabaseProductemarket
+        .from('emarket_messages')
+        .update({ admin_reply: reply })
+        .eq('id', currentMessageId);
+    if (error) {
+        showToast('Erreur envoi réponse : ' + error.message, 'error');
+    } else {
+        showToast('Réponse envoyée', 'success');
+        closeMessageModal();
+        loadMessages(); // Recharger pour voir la réponse
+        loadStats(); // Mettre à jour le compteur (si besoin)
+    }
 });
 
 // ===== RECHERCHE EN TEMPS RÉEL =====
