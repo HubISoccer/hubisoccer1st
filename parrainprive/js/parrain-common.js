@@ -18,39 +18,18 @@ const notifBadge = document.getElementById('notifBadge');
 const langSelect = document.getElementById('langSelect');
 const languageLink = document.getElementById('languageLink');
 
-// ===== ÉTAT GLOBAL =====
-let currentParrain = null; // { id, first_name, last_name, email, phone, avatar_url, ... }
+// ===== ÉTAT GLOBAL (utilisateur factice pour les tests) =====
+let currentParrain = {
+    id: 1, // Remplacez par un ID existant dans vos tables
+    first_name: 'Jean',
+    last_name: 'Dupont',
+    email: 'jean.dupont@example.com',
+    phone: '0123456789',
+    avatar_url: null,
+    date_adhesion: '2024-01-01T00:00:00Z'
+};
 
-// ===== GESTION DE LA SESSION =====
-async function checkParrainSession() {
-    try {
-        const { data: { session }, error } = await supabaseParrainPrive.auth.getSession();
-        if (error || !session) {
-            window.location.href = 'auth/login.html';
-            return null;
-        }
-        // Récupérer le profil dans la table parrain_profiles
-        const { data: profile, error: profileError } = await supabaseParrainPrive
-            .from('parrain_profiles')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
-
-        if (profileError || !profile) {
-            // Si pas de profil, rediriger vers complétion de profil
-            window.location.href = 'auth/complete-profile.html';
-            return null;
-        }
-        currentParrain = profile;
-        updateUserUI();
-        return profile;
-    } catch (err) {
-        console.error('Erreur check session:', err);
-        window.location.href = 'auth/login.html';
-        return null;
-    }
-}
-
+// Mettre à jour l'interface avec les infos factices
 function updateUserUI() {
     if (currentParrain) {
         userNameSpan.textContent = `${currentParrain.first_name} ${currentParrain.last_name}`;
@@ -59,6 +38,7 @@ function updateUserUI() {
         }
     }
 }
+updateUserUI();
 
 // ===== GESTION DU MENU UTILISATEUR =====
 function initUserMenu() {
@@ -95,53 +75,27 @@ function initSidebar() {
     }
 }
 
-// ===== DÉCONNEXION =====
-async function handleLogout(e) {
+// ===== DÉCONNEXION (simulée) =====
+function handleLogout(e) {
     e.preventDefault();
-    if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
-        await supabaseParrainPrive.auth.signOut();
-        window.location.href = '../index.html';
-    }
+    alert('Déconnexion simulée (aucune action réelle)');
 }
 
-// ===== GESTION DES NOTIFICATIONS =====
+// ===== GESTION DES NOTIFICATIONS (simulée) =====
 async function loadNotifications() {
     if (!currentParrain) return;
-    // Charger le nombre de notifications non lues (par exemple dans parrain_messages)
-    const { count, error } = await supabaseParrainPrive
-        .from('parrain_messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('receiver_id', currentParrain.id)
-        .eq('receiver_type', 'parrain')
-        .eq('is_read', false);
-    if (!error && notifBadge) {
-        notifBadge.textContent = count || 0;
-    }
+    // Exemple : compteur fictif
+    if (notifBadge) notifBadge.textContent = '3';
 }
 
 // ===== GESTION DES LANGUES =====
 const translations = {
-    fr: {
-        // À compléter si nécessaire
-    },
-    en: {
-        // À compléter
-    },
-    // ... pour les autres langues
+    fr: {},
+    en: {}
 };
-
 let currentLang = 'fr';
 
-function applyTranslations(lang) {
-    const t = translations[lang];
-    if (!t) return;
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (t[key]) {
-            el.textContent = t[key];
-        }
-    });
-}
+function applyTranslations(lang) { /* ... */ }
 
 function loadLanguage(lang) {
     if (translations[lang]) {
@@ -168,40 +122,14 @@ function initLanguage() {
     }
 }
 
-// ===== UPLOAD D'AVATAR =====
+// ===== UPLOAD D'AVATAR (simulé) =====
 document.addEventListener('change', async (e) => {
     if (e.target.id !== 'fileInput' || !currentParrain) return;
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const fileExt = file.name.split('.').pop();
-    const fileName = `avatar_${currentParrain.id}_${Date.now()}.${fileExt}`;
-    const { error: uploadError } = await supabaseParrainPrive.storage
-        .from('parrain-avatars')
-        .upload(fileName, file);
-    if (uploadError) {
-        alert('Erreur upload : ' + uploadError.message);
-        return;
-    }
-    const { publicURL } = supabaseParrainPrive.storage
-        .from('parrain-avatars')
-        .getPublicUrl(fileName);
-    const { error: updateError } = await supabaseParrainPrive
-        .from('parrain_profiles')
-        .update({ avatar_url: publicURL })
-        .eq('id', currentParrain.id);
-    if (!updateError) {
-        currentParrain.avatar_url = publicURL;
-        userAvatar.src = publicURL;
-        document.getElementById('profileDisplay').src = publicURL;
-    } else {
-        alert('Erreur mise à jour profil : ' + updateError.message);
-    }
+    alert('Upload simulé – pas de modification réelle');
 });
 
-// ===== INITIALISATION COMMUNE =====
+// ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    await checkParrainSession();
     initUserMenu();
     initSidebar();
     initLanguage();
@@ -211,7 +139,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (logoutLinkSidebar) logoutLinkSidebar.addEventListener('click', handleLogout);
 });
 
-// Exposer certaines fonctions globalement si besoin
+// Fonctions globales
 window.copyID = function() {
     const idSpan = document.getElementById('parrainID');
     if (idSpan) {
