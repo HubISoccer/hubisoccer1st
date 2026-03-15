@@ -464,23 +464,6 @@
     font-weight: 600;
 }
 
-/* Bouton lien */
-.btn-link {
-    background: none;
-    border: 2px solid var(--primary);
-    color: var(--primary);
-    padding: 8px 16px;
-    border-radius: 30px;
-    text-decoration: none;
-    font-weight: 600;
-    transition: all 0.3s;
-    display: inline-block;
-}
-.btn-link:hover {
-    background: var(--primary);
-    color: white;
-}
-
 /* Toast */
 .toast {
     position: fixed;
@@ -542,5 +525,11 @@
     }
     .modal-content {
         padding: 20px;
+    }
+    /* Rendre la modale scrollable sur mobile */
+    .products-page .modal-content {
+        max-height: 90vh;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
 }
