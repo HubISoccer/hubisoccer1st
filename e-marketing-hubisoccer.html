@@ -67,7 +67,7 @@
         <div class="product-grid" id="allProducts"></div>
     </section>
 
-    <!-- Panier flottant (ouvre le panier) -->
+    <!-- Panier flottant -->
     <div class="cart-float" id="cartFloat">
         <i class="fas fa-shopping-cart"></i>
         <span class="cart-count" id="cartCount">0</span>
@@ -190,7 +190,7 @@
         </div>
     </div>
 
-    <!-- MODALE ESPACE CLIENT (suivi des commandes et messages) -->
+    <!-- MODALE ESPACE CLIENT -->
     <div id="accountModal" class="modal">
         <div class="modal-content account-modal-content" style="max-width: 800px;">
             <span class="close-modal" onclick="emarketCloseAccountModal()">&times;</span>
@@ -201,18 +201,15 @@
                 <button class="tab-btn" data-tab="profile">Mon profil</button>
             </div>
             <div id="accountTabContent">
-                <!-- Les commandes -->
                 <div id="tabOrders" class="tab-content active">
                     <h3>Mes commandes</h3>
                     <div id="ordersList"></div>
                 </div>
-                <!-- Les messages -->
                 <div id="tabMessages" class="tab-content">
                     <h3>Mes messages</h3>
                     <div id="messagesList"></div>
                     <button class="btn-add" id="newMessageBtn">Nouveau message</button>
                 </div>
-                <!-- Profil -->
                 <div id="tabProfile" class="tab-content">
                     <h3>Mon profil</h3>
                     <form id="profileForm">
@@ -256,7 +253,7 @@
         </div>
     </div>
 
-    <!-- MODALE DÉTAIL COMMANDE (pour suivre) -->
+    <!-- MODALE DÉTAIL COMMANDE -->
     <div id="orderDetailModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="emarketCloseOrderDetailModal()">&times;</span>
@@ -285,7 +282,7 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="public/js/lib/bcrypt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="public/js/main.js"></script>
     <script src="public/js/emarket.js"></script>
