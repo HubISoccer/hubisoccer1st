@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Produits | HubISoccer</title>
+    <title>Admin - Produits & Commandes | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="assets/css/admin.css">
@@ -13,32 +13,97 @@
     <nav class="admin-nav">
         <div class="admin-nav-left">
             <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="admin-logo">
-            <span class="admin-title">Administration</span>
+            <span class="admin-title">Administration E-Market</span>
         </div>
         <div class="admin-nav-right">
             <a href="administration.html">Tableau de bord</a>
             <a href="products-admin.html" class="active">Produits</a>
+            <a href="orders-admin.html">Commandes</a>
+            <a href="messages-admin.html">Messages</a>
             <a href="#" id="logoutAdmin">Déconnexion</a>
         </div>
     </nav>
 
     <div class="admin-container products-page">
-        <h1>Gestion des produits (e-market)</h1>
+        <h1>Gestion de l'e-market</h1>
 
-        <div class="admin-card">
+        <!-- Statistiques rapides -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <i class="fas fa-box"></i>
+                <div>
+                    <h3 id="statProducts">0</h3>
+                    <p>Produits</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-shopping-cart"></i>
+                <div>
+                    <h3 id="statOrders">0</h3>
+                    <p>Commandes</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-envelope"></i>
+                <div>
+                    <h3 id="statMessages">0</h3>
+                    <p>Messages non lus</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-users"></i>
+                <div>
+                    <h3 id="statCustomers">0</h3>
+                    <p>Clients</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Produits -->
+        <div class="admin-card" id="section-products">
             <div class="card-header">
-                <h2><i class="fas fa-box"></i> Liste des produits</h2>
-                <button class="btn-add" id="addProductBtn"><i class="fas fa-plus"></i> Ajouter un produit</button>
+                <h2><i class="fas fa-box"></i> Produits</h2>
+                <div class="section-tools">
+                    <input type="text" class="search-input" id="searchProducts" placeholder="Rechercher un produit...">
+                    <button class="btn-refresh" id="refreshProducts" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
+                    <button class="btn-add" id="addProductBtn"><i class="fas fa-plus"></i> Ajouter un produit</button>
+                </div>
             </div>
             <div id="productsList" class="admin-list"></div>
         </div>
+
+        <!-- Section Commandes (aperçu) -->
+        <div class="admin-card" id="section-orders">
+            <div class="card-header">
+                <h2><i class="fas fa-shopping-cart"></i> Dernières commandes</h2>
+                <div class="section-tools">
+                    <input type="text" class="search-input" id="searchOrders" placeholder="Rechercher...">
+                    <button class="btn-refresh" id="refreshOrders" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
+                    <a href="orders-admin.html" class="btn-link">Voir tout</a>
+                </div>
+            </div>
+            <div id="ordersList" class="admin-list"></div>
+        </div>
+
+        <!-- Section Messages (aperçu) -->
+        <div class="admin-card" id="section-messages">
+            <div class="card-header">
+                <h2><i class="fas fa-envelope"></i> Derniers messages</h2>
+                <div class="section-tools">
+                    <input type="text" class="search-input" id="searchMessages" placeholder="Rechercher...">
+                    <button class="btn-refresh" id="refreshMessages" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
+                    <a href="messages-admin.html" class="btn-link">Voir tout</a>
+                </div>
+            </div>
+            <div id="messagesList" class="admin-list"></div>
+        </div>
     </div>
 
-    <!-- Modale d'ajout/édition -->
+    <!-- MODALE PRODUIT (ajout/édition) -->
     <div id="productModal" class="admin-modal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h3 id="modalTitle">Ajouter un produit</h3>
+            <span class="close" onclick="closeProductModal()">&times;</span>
+            <h3 id="modalProductTitle">Ajouter un produit</h3>
             <form id="productForm">
                 <input type="hidden" id="productId">
                 <div class="form-group">
@@ -49,56 +114,93 @@
                     <label>Description</label>
                     <textarea id="description" rows="3" required></textarea>
                 </div>
-                <div class="form-group">
-                    <label>Prix (FCFA)</label>
-                    <input type="number" id="price" required>
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label>Prix (FCFA)</label>
+                        <input type="number" id="price" required>
+                    </div>
+                    <div class="form-group half">
+                        <label>Stock</label>
+                        <select id="stock" required>
+                            <option value="">Indiquez le stock</option>
+                            <option value="true">En stock</option>
+                            <option value="false">Épuisé</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label>Catégorie</label>
+                        <select id="category" required>
+                            <option value="">Choisissez</option>
+                            <option value="pack">Pack</option>
+                            <option value="kit">Kit</option>
+                            <option value="sac">Sac</option>
+                            <option value="maillot">Maillot</option>
+                            <option value="nutrition">Nutrition</option>
+                            <option value="goodie">Goodie</option>
+                        </select>
+                    </div>
+                    <div class="form-group half">
+                        <label>Mis en avant ?</label>
+                        <select id="featured" required>
+                            <option value="">Choisissez</option>
+                            <option value="true">Oui</option>
+                            <option value="false">Non</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>Image (chemin)</label>
-                    <input type="text" id="image_url" placeholder="ex: public/img/ebook-cover.png" required>
+                    <label>Média (image ou vidéo)</label>
+                    <input type="file" id="mediaFile" accept="image/*,video/*">
+                    <input type="hidden" id="imageUrl">
+                    <small>Formats : JPG, PNG, MP4, MOV, etc. Laissez vide pour ne pas changer.</small>
                 </div>
                 <div class="form-group">
-                    <label>Catégorie</label>
-                    <select id="category" required>
-                        <option value="">Choisissez une catégorie</option>
-                        <option value="pack">Pack</option>
-                        <option value="kit">Kit</option>
-                        <option value="sac">Sac</option>
-                        <option value="maillot">Maillot</option>
-                        <option value="nutrition">Nutrition</option>
-                        <option value="goodie">Goodie</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Stock</label>
-                    <select id="stock" required>
-                        <option value="">Indiquez le stock</option>
-                        <option value="true">En stock</option>
-                        <option value="false">Épuisé</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Mis en avant ?</label>
-                    <select id="featured" required>
-                        <option value="">Choisissez</option>
-                        <option value="true">Oui</option>
-                        <option value="false">Non</option>
-                    </select>
-                </div>
-                <!-- Nouveaux champs pour les liens de paiement -->
-                <div class="form-group">
-                    <label>Lien de paiement Fedapay</label>
+                    <label>Lien de paiement FedaPay</label>
                     <input type="url" id="payment_url" placeholder="https://me.fedapay.com/..." required>
                 </div>
                 <div class="form-group">
                     <label>Lien de retour après paiement</label>
                     <input type="url" id="return_url" placeholder="https://.../suivi.html" value="suivi.html">
-                    <small>Par défaut : suivi.html (chemin relatif)</small>
                 </div>
                 <button type="submit" class="btn-submit">Enregistrer</button>
             </form>
         </div>
     </div>
+
+    <!-- MODALE DE COMMANDE (détail) -->
+    <div id="orderModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeOrderModal()">&times;</span>
+            <h3>Détail de la commande</h3>
+            <div id="orderDetail"></div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeOrderModal()">Fermer</button>
+                <button class="btn-validate" id="validateOrderBtn">Marquer comme expédiée</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE MESSAGE -->
+    <div id="messageModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeMessageModal()">&times;</span>
+            <h3>Message</h3>
+            <div id="messageDetail"></div>
+            <div class="form-group">
+                <label>Réponse</label>
+                <textarea id="replyMessage" rows="4"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeMessageModal()">Fermer</button>
+                <button class="btn-submit" id="sendReplyBtn">Envoyer la réponse</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
 
     <footer class="admin-footer">
         <p>&copy; 2026 HubISoccer - Tous droits réservés.</p>
