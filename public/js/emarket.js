@@ -697,7 +697,8 @@ async function emarketSendCustomerMessage(e) {
         emarketOpenAuthModal();
         return;
     }
-    const orderId = messageOrderId ? messageOrderId.value : null;
+    // Correction : s'assurer que orderId est un nombre ou null
+    const orderId = messageOrderId && messageOrderId.value ? parseInt(messageOrderId.value) : null;
     const message = newMessageText ? newMessageText.value.trim() : '';
     if (!message) return;
 
