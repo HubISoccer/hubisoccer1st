@@ -533,3 +533,17 @@
         -webkit-overflow-scrolling: touch;
     }
 }
+
+.btn-delete {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.btn-delete:hover {
+    background: #c82333;
+}
