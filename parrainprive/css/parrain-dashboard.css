@@ -1,0 +1,367 @@
+/* ===== DASHBOARD PARRAIN SPECIFIC STYLES ===== */
+
+/* Profil card (gauche) */
+.glass-card {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 30px 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    transition: var(--transition);
+}
+
+.glass-card:hover {
+    box-shadow: var(--shadow-hover);
+}
+
+.profile-card {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.avatar-upload {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 20px;
+    cursor: pointer;
+}
+
+.avatar-upload img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--gold);
+}
+
+.edit-badge {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background: var(--primary);
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    border: 2px solid white;
+    transition: var(--transition);
+}
+
+.avatar-upload:hover .edit-badge {
+    background: var(--primary-light);
+    transform: scale(1.1);
+}
+
+#dashboardName {
+    color: var(--primary);
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+
+.role-badge {
+    background: var(--gold);
+    color: black;
+    padding: 5px 15px;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: inline-block;
+    margin-bottom: 15px;
+}
+
+.id-copy-box {
+    background: var(--bg-light);
+    padding: 8px 15px;
+    border-radius: 30px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    margin-bottom: 20px;
+    border: 1px dashed var(--primary);
+    transition: var(--transition);
+}
+
+.id-copy-box:hover {
+    background: rgba(85,27,140,0.1);
+    border-style: solid;
+}
+
+.icon-copy {
+    font-size: 1rem;
+    color: var(--primary);
+}
+
+.stats-mini-btn {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.mini-btn {
+    background: var(--bg-light);
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--dark);
+    border: 1px solid var(--light-gray);
+    text-align: left;
+    width: 100%;
+}
+
+.mini-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.mini-btn:hover .icon {
+    color: var(--gold);
+}
+
+.mini-btn .icon {
+    font-size: 1.2rem;
+    color: var(--primary);
+    transition: var(--transition);
+}
+
+.btn-download-cv {
+    display: block;
+    background: var(--primary);
+    color: white;
+    text-decoration: none;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: var(--transition);
+    border: 1px solid var(--primary);
+}
+
+.btn-download-cv:hover {
+    background: var(--primary-light);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(85,27,140,0.3);
+}
+
+/* Panneau principal */
+.main-panel {
+    flex: 1;
+}
+
+/* En-tête */
+.player-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.player-header-left h1 {
+    color: var(--primary);
+    font-size: 2rem;
+    margin-bottom: 5px;
+}
+
+.player-header-left p {
+    color: var(--gray);
+    font-size: 1.1rem;
+}
+
+.player-header-right {
+    background: var(--white);
+    padding: 15px 20px;
+    border-radius: 15px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+}
+
+.player-basic-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.player-basic-info span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    color: var(--dark);
+}
+
+.player-basic-info i {
+    color: var(--gold);
+    width: 20px;
+}
+
+/* Statistiques globales */
+.global-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card-global {
+    background: var(--white);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    transition: var(--transition);
+}
+
+.stat-card-global:hover {
+    box-shadow: var(--shadow-hover);
+}
+
+.stat-label {
+    color: var(--gray);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    color: var(--primary);
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+/* Graphique */
+.chart-section {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    margin-bottom: 30px;
+}
+
+.chart-section h3 {
+    color: var(--primary);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.chart-section h3 i {
+    color: var(--gold);
+}
+
+/* Listes récentes */
+.recent-donations,
+.recent-players,
+.recent-messages {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    margin-bottom: 30px;
+}
+
+.recent-donations h3,
+.recent-players h3,
+.recent-messages h3 {
+    color: var(--primary);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.recent-donations h3 i,
+.recent-players h3 i,
+.recent-messages h3 i {
+    color: var(--gold);
+}
+
+.donations-list,
+.players-list,
+.messages-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.donation-item,
+.player-item,
+.message-item {
+    background: var(--bg-light);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    border: 1px solid var(--light-gray);
+    transition: var(--transition);
+}
+
+.donation-item:hover,
+.player-item:hover,
+.message-item:hover {
+    border-color: var(--primary);
+    transform: translateX(5px);
+}
+
+.donation-item .date,
+.player-item .date,
+.message-item .date {
+    font-size: 0.8rem;
+    color: var(--gray);
+}
+
+.donation-item .montant {
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.player-item .player-name {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.message-item .message-preview {
+    font-size: 0.9rem;
+    color: var(--gray);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Responsive */
+@media (max-width: 1008px) {
+    .dashboard-container {
+        flex-direction: column;
+    }
+    .profile-card {
+        width: 100%;
+    }
+    .global-stats {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .global-stats {
+        grid-template-columns: 1fr;
+    }
+    .player-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
