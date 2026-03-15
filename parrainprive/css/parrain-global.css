@@ -184,7 +184,7 @@ body {
     cursor: pointer;
 }
 
-/* Sidebar */
+/* Sidebar (verticale) */
 .sidebar {
     position: fixed;
     left: 0;
@@ -230,8 +230,11 @@ body {
     color: var(--primary);
 }
 
+/* Navigation de la sidebar - verticale */
 .sidebar-nav {
     padding: 20px 0;
+    display: flex;
+    flex-direction: column; /* Affichage vertical */
 }
 
 .sidebar-nav a {
@@ -370,4 +373,4 @@ body {
         flex-direction: column;
         align-items: center;
     }
-  }
+}
