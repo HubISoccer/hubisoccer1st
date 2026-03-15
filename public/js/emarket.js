@@ -237,7 +237,6 @@ function emarketWaitForBcrypt() {
             return;
         }
 
-        // Vérifier périodiquement si bcrypt est disponible
         const interval = setInterval(() => {
             if (typeof bcrypt !== 'undefined') {
                 clearInterval(interval);
@@ -247,14 +246,12 @@ function emarketWaitForBcrypt() {
             }
         }, 100);
 
-        // Timeout de sécurité après 5 secondes
         const timeout = setTimeout(() => {
             clearInterval(interval);
             console.warn('⚠️ bcrypt non disponible après 5s, on continue quand même');
             resolve();
         }, 5000);
 
-        // Écouter l'événement load du script
         const script = document.querySelector('script[src*="bcrypt"]');
         if (script) {
             script.addEventListener('load', () => {
@@ -267,7 +264,7 @@ function emarketWaitForBcrypt() {
                 console.error('❌ Erreur chargement script bcrypt');
                 clearInterval(interval);
                 clearTimeout(timeout);
-                resolve(); // On continue quand même
+                resolve();
             });
         } else {
             console.warn('⚠️ Aucun script bcrypt trouvé');
@@ -693,7 +690,7 @@ async function emarketHandleCheckout(e) {
     emarketCloseCartModal();
 }
 
-// ===== MESSAGES =====
+// ===== MESSAGES (VERSION CORRIGÉE AVEC FETCH) =====
 async function emarketSendCustomerMessage(e) {
     e.preventDefault();
     if (!currentCustomer) {
@@ -704,22 +701,38 @@ async function emarketSendCustomerMessage(e) {
     const message = newMessageText ? newMessageText.value.trim() : '';
     if (!message) return;
 
-    const { error } = await supabaseMarket
-        .from('emarket_messages')
-        .insert([{
-            customer_id: currentCustomer.id,
-            order_id: orderId,
-            message: message,
-            is_read: false
-        }]);
-    if (error) {
-        emarketShowToast('Erreur envoi message: ' + error.message, 'error');
-    } else {
+    const payload = {
+        customer_id: currentCustomer.id,
+        order_id: orderId,
+        message: message,
+        is_read: false
+    };
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/emarket_messages`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Erreur ${response.status}: ${errorText}`);
+        }
+
         emarketShowToast('Message envoyé', 'success');
         emarketCloseSendMessageModal();
         if (accountModal && accountModal.classList.contains('active')) {
-            emarketLoadCustomerMessages();
+            await emarketLoadCustomerMessages(); // Recharger la liste des messages
         }
+    } catch (err) {
+        console.error('Erreur envoi message:', err);
+        emarketShowToast('Erreur envoi message: ' + err.message, 'error');
     }
 }
 
@@ -803,10 +816,8 @@ async function emarketInit() {
     }
     emarketUpdateCustomerUI();
 
-    // Charger les produits
     await emarketLoadProducts();
 
-    // Attacher les événements
     if (cartFloat) cartFloat.addEventListener('click', emarketOpenCartModal);
 
     document.addEventListener('click', (e) => {
@@ -871,7 +882,6 @@ async function emarketInit() {
     if (registerForm) {
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            console.log('📝 Formulaire d\'inscription soumis');
             const firstName = regFirstName ? regFirstName.value : '';
             const lastName = regLastName ? regLastName.value : '';
             const email = regEmail ? regEmail.value : '';
@@ -954,10 +964,8 @@ async function emarketInit() {
     console.log('✅ Initialisation terminée');
 }
 
-// Démarrer l'initialisation après le chargement du DOM
 document.addEventListener('DOMContentLoaded', emarketInit);
 
-// Rendre les fonctions globales pour les attributs onclick
 window.emarketCloseCartModal = emarketCloseCartModal;
 window.emarketCloseAuthModal = emarketCloseAuthModal;
 window.emarketCloseCheckoutModal = emarketCloseCheckoutModal;
