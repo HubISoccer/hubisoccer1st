@@ -132,7 +132,7 @@
     <script>
         const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseParrainPrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -149,15 +149,21 @@
             }
 
             try {
-                // 1. Créer l'utilisateur dans Supabase Auth
-                const { data: authData, error: authError } = await supabase.auth.signUp({
+                const { data: authData, error: authError } = await supabaseParrainPrive.auth.signUp({
                     email,
-                    password
+                    password,
+                    options: {
+                        data: {
+                            first_name: firstName,
+                            last_name: lastName,
+                            phone: phone
+                        }
+                    }
                 });
                 if (authError) throw authError;
 
-                // 2. Créer le profil dans parrain_profiles
-                const { error: profileError } = await supabase
+                // Créer le profil dans la table parrain_profiles
+                const { error: profileError } = await supabaseParrainPrive
                     .from('parrain_profiles')
                     .insert([{
                         user_id: authData.user.id,
@@ -171,7 +177,7 @@
                     }]);
                 if (profileError) throw profileError;
 
-                alert('Inscription réussie ! Vous pouvez maintenant vous connecter.');
+                alert('Inscription réussie ! Veuillez vérifier votre email pour confirmer votre compte (si nécessaire).');
                 window.location.href = 'login.html';
             } catch (err) {
                 alert('Erreur inscription : ' + err.message);
