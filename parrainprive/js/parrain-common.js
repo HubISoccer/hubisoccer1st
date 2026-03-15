@@ -37,7 +37,7 @@ async function checkParrainSession() {
             .maybeSingle();
 
         if (profileError || !profile) {
-            // Si pas de profil, rediriger vers complétion de profil
+            // Si pas de profil, rediriger vers complétion de profil (à créer)
             window.location.href = 'auth/complete-profile.html';
             return null;
         }
@@ -121,13 +121,8 @@ async function loadNotifications() {
 
 // ===== GESTION DES LANGUES =====
 const translations = {
-    fr: {
-        // À compléter si nécessaire
-    },
-    en: {
-        // À compléter
-    },
-    // ... pour les autres langues
+    fr: {},
+    en: {}
 };
 
 let currentLang = 'fr';
@@ -211,7 +206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (logoutLinkSidebar) logoutLinkSidebar.addEventListener('click', handleLogout);
 });
 
-// Exposer certaines fonctions globalement si besoin
+// Exposer certaines fonctions globalement
 window.copyID = function() {
     const idSpan = document.getElementById('parrainID');
     if (idSpan) {
