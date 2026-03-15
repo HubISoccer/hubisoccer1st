@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseMarket = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // ===== ÉLÉMENTS DOM =====
 const featuredContainer = document.getElementById('featuredPacks');
@@ -110,7 +110,7 @@ function removeCartItem(productId) {
 
 // ===== CHARGEMENT DES PRODUITS =====
 async function loadProducts() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseMarket
         .from('products')
         .select('*')
         .order('id');
@@ -169,7 +169,7 @@ function renderProductCard(product) {
 async function registerCustomer(firstName, lastName, email, phone, password) {
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(password, salt);
-    const { data, error } = await supabase
+    const { data, error } = await supabaseMarket
         .from('customers')
         .insert([{ first_name: firstName, last_name: lastName, email, phone, password: hash }])
         .select()
@@ -187,7 +187,7 @@ async function registerCustomer(firstName, lastName, email, phone, password) {
 }
 
 async function loginCustomer(email, password) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseMarket
         .from('customers')
         .select('*')
         .eq('email', email)
@@ -209,7 +209,6 @@ async function loginCustomer(email, password) {
     return data;
 }
 
-// Fonction de déconnexion renommée pour éviter le conflit
 function handleLogoutCustomer() {
     currentCustomer = null;
     localStorage.removeItem('emarket_customer');
@@ -310,7 +309,7 @@ async function createOrder() {
         const p = products.find(p => p.id === item.id);
         return sum + (p ? p.price * item.quantity : 0);
     }, 0);
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await supabaseMarket
         .from('orders')
         .insert([{ customer_id: currentCustomer.id, total_amount: total, status: 'en_attente' }])
         .select()
@@ -329,7 +328,7 @@ async function createOrder() {
             total_price: p.price * item.quantity
         };
     });
-    const { error: itemsError } = await supabase.from('order_items').insert(items);
+    const { error: itemsError } = await supabaseMarket.from('order_items').insert(items);
     if (itemsError) {
         showToast('Erreur enregistrement articles', 'error');
         return null;
@@ -364,12 +363,12 @@ async function generateProformaInvoice(order, customer) {
     };
     const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
     const fileName = `invoices/proforma_${order.id}.pdf`;
-    const { error } = await supabase.storage.from('invoices').upload(fileName, pdfBlob, { upsert: true });
+    const { error } = await supabaseMarket.storage.from('invoices').upload(fileName, pdfBlob, { upsert: true });
     if (error) {
         console.error('Erreur upload facture proforma', error);
         return null;
     }
-    const { publicURL } = supabase.storage.from('invoices').getPublicUrl(fileName);
+    const { publicURL } = supabaseMarket.storage.from('invoices').getPublicUrl(fileName);
     return publicURL;
 }
 
@@ -383,7 +382,7 @@ async function handleCheckout(e) {
     if (!order) return;
     const proformaUrl = await generateProformaInvoice(order, currentCustomer);
     if (proformaUrl) {
-        await supabase.from('orders').update({ invoice_proforma_url: proformaUrl }).eq('id', order.id);
+        await supabaseMarket.from('orders').update({ invoice_proforma_url: proformaUrl }).eq('id', order.id);
     }
     const firstProduct = products.find(p => p.id === cart[0]?.id);
     const paymentUrl = firstProduct?.payment_url || 'https://fedapay.com';
@@ -404,7 +403,7 @@ async function sendCustomerMessage(e) {
     const orderId = messageOrderId.value || null;
     const message = customerMessage.value.trim();
     if (!message) return;
-    const { error } = await supabase.from('messages').insert([{
+    const { error } = await supabaseMarket.from('messages').insert([{
         sender_type: 'customer',
         sender_id: currentCustomer.id,
         receiver_id: null,
@@ -527,6 +526,7 @@ async function init() {
 
 init();
 
+// Rendre les fonctions globales pour les attributs onclick
 window.closeCartModal = closeCartModal;
 window.closeAuthModal = closeAuthModal;
 window.closeCheckoutModal = closeCheckoutModal;
