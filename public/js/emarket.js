@@ -19,7 +19,7 @@ const loginForm = document.getElementById('loginForm');
 const registerForm = document.getElementById('registerForm');
 const authModalTitle = document.getElementById('authModalTitle');
 const customerGreeting = document.getElementById('customerGreeting');
-const logoutCustomerLink = document.getElementById('logoutCustomer');  // ← renommé
+const logoutCustomerLink = document.getElementById('logoutCustomer');
 const loginBtn = document.getElementById('loginBtn');
 const signupBtn = document.getElementById('signupBtn');
 
@@ -37,9 +37,9 @@ const customerMessage = document.getElementById('customerMessage');
 const customerMessageForm = document.getElementById('customerMessageForm');
 
 // ===== ÉTAT GLOBAL =====
-let currentCustomer = null; // { id, first_name, last_name, email, phone }
+let currentCustomer = null;
 let cart = JSON.parse(localStorage.getItem('emarket_cart')) || [];
-let products = []; // tous les produits chargés
+let products = [];
 
 // ===== FONCTIONS DE PANIER =====
 function updateCartCount() {
@@ -85,11 +85,8 @@ function addToCart(productId) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
     const existing = cart.find(item => item.id === productId);
-    if (existing) {
-        existing.quantity++;
-    } else {
-        cart.push({ id: productId, quantity: 1 });
-    }
+    if (existing) existing.quantity++;
+    else cart.push({ id: productId, quantity: 1 });
     updateCartCount();
     renderCartModal();
     showToast('Produit ajouté au panier', 'success');
@@ -99,11 +96,8 @@ function updateCartItem(productId, delta) {
     const index = cart.findIndex(item => item.id === productId);
     if (index === -1) return;
     const newQty = cart[index].quantity + delta;
-    if (newQty <= 0) {
-        cart.splice(index, 1);
-    } else {
-        cart[index].quantity = newQty;
-    }
+    if (newQty <= 0) cart.splice(index, 1);
+    else cart[index].quantity = newQty;
     updateCartCount();
     renderCartModal();
 }
@@ -138,7 +132,6 @@ function renderProducts() {
     }
     const featured = products.filter(p => p.featured);
     const others = products.filter(p => !p.featured);
-
     featuredContainer.innerHTML = featured.map(p => renderProductCard(p)).join('');
     allProductsContainer.innerHTML = others.map(p => renderProductCard(p)).join('');
 }
@@ -174,27 +167,17 @@ function renderProductCard(product) {
 
 // ===== AUTHENTIFICATION CLIENT =====
 async function registerCustomer(firstName, lastName, email, phone, password) {
-    // Hasher le mot de passe avec bcrypt
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(password, salt);
-
     const { data, error } = await supabase
         .from('customers')
-        .insert([{
-            first_name: firstName,
-            last_name: lastName,
-            email: email,
-            phone: phone,
-            password: hash
-        }])
+        .insert([{ first_name: firstName, last_name: lastName, email, phone, password: hash }])
         .select()
         .single();
-
     if (error) {
         showToast('Erreur inscription : ' + error.message, 'error');
         return null;
     }
-    // Connecter automatiquement
     currentCustomer = data;
     localStorage.setItem('emarket_customer', JSON.stringify(data));
     updateCustomerUI();
@@ -209,7 +192,6 @@ async function loginCustomer(email, password) {
         .select('*')
         .eq('email', email)
         .single();
-
     if (error || !data) {
         showToast('Email ou mot de passe incorrect', 'error');
         return null;
@@ -227,7 +209,8 @@ async function loginCustomer(email, password) {
     return data;
 }
 
-function logoutCustomer() {
+// Fonction de déconnexion renommée pour éviter le conflit
+function handleLogoutCustomer() {
     currentCustomer = null;
     localStorage.removeItem('emarket_customer');
     updateCustomerUI();
@@ -290,12 +273,9 @@ function openCheckoutModal() {
         showToast('Votre panier est vide', 'error');
         return;
     }
-    // Pré-remplir les infos
     checkoutFullName.value = `${currentCustomer.first_name} ${currentCustomer.last_name}`;
     checkoutEmail.value = currentCustomer.email;
     checkoutPhone.value = currentCustomer.phone || '';
-
-    // Récapitulatif du panier
     let summaryHtml = '';
     let total = 0;
     cart.forEach(item => {
@@ -307,7 +287,6 @@ function openCheckoutModal() {
     });
     checkoutSummary.innerHTML = summaryHtml;
     checkoutTotalSpan.textContent = total;
-
     checkoutModal.classList.add('active');
 }
 
@@ -331,24 +310,15 @@ async function createOrder() {
         const p = products.find(p => p.id === item.id);
         return sum + (p ? p.price * item.quantity : 0);
     }, 0);
-
-    // 1. Créer la commande
     const { data: order, error: orderError } = await supabase
         .from('orders')
-        .insert([{
-            customer_id: currentCustomer.id,
-            total_amount: total,
-            status: 'en_attente'
-        }])
+        .insert([{ customer_id: currentCustomer.id, total_amount: total, status: 'en_attente' }])
         .select()
         .single();
-
     if (orderError) {
         showToast('Erreur création commande', 'error');
         return null;
     }
-
-    // 2. Créer les lignes de commande
     const items = cart.map(item => {
         const p = products.find(p => p.id === item.id);
         return {
@@ -359,20 +329,15 @@ async function createOrder() {
             total_price: p.price * item.quantity
         };
     });
-    const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(items);
+    const { error: itemsError } = await supabase.from('order_items').insert(items);
     if (itemsError) {
         showToast('Erreur enregistrement articles', 'error');
         return null;
     }
-
     return order;
 }
 
-// Générer une facture PDF (proforma) et l'uploader
 async function generateProformaInvoice(order, customer) {
-    // Utiliser html2pdf pour générer le PDF
     const element = document.createElement('div');
     element.innerHTML = `
         <h1>Facture Proforma</h1>
@@ -380,7 +345,7 @@ async function generateProformaInvoice(order, customer) {
         <p>Client : ${customer.first_name} ${customer.last_name}</p>
         <p>Email : ${customer.email}</p>
         <p>Téléphone : ${customer.phone}</p>
-        <table>
+        <table border="1" cellpadding="5" style="border-collapse: collapse; width:100%;">
             <tr><th>Produit</th><th>Qté</th><th>Prix unitaire</th><th>Total</th></tr>
             ${cart.map(item => {
                 const p = products.find(p => p.id === item.id);
@@ -398,11 +363,8 @@ async function generateProformaInvoice(order, customer) {
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
     const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
-    // Upload vers Supabase Storage
     const fileName = `invoices/proforma_${order.id}.pdf`;
-    const { data, error } = await supabase.storage
-        .from('invoices')
-        .upload(fileName, pdfBlob, { upsert: true });
+    const { error } = await supabase.storage.from('invoices').upload(fileName, pdfBlob, { upsert: true });
     if (error) {
         console.error('Erreur upload facture proforma', error);
         return null;
@@ -417,31 +379,15 @@ async function handleCheckout(e) {
         openAuthModal();
         return;
     }
-
-    // Créer la commande
     const order = await createOrder();
     if (!order) return;
-
-    // Générer la facture proforma
     const proformaUrl = await generateProformaInvoice(order, currentCustomer);
-
-    // Mettre à jour la commande avec l'URL de la facture
     if (proformaUrl) {
-        await supabase
-            .from('orders')
-            .update({ invoice_proforma_url: proformaUrl })
-            .eq('id', order.id);
+        await supabase.from('orders').update({ invoice_proforma_url: proformaUrl }).eq('id', order.id);
     }
-
-    // Rediriger vers le paiement FedaPay
-    // (On utilise le payment_url du premier produit ? Ou un générique)
-    // Ici, on suppose que l'URL de paiement est stockée dans le premier produit.
-    // Idéalement, on aurait une URL de paiement globale.
-    const firstProduct = products.find(p => p.id === cart[0].id);
+    const firstProduct = products.find(p => p.id === cart[0]?.id);
     const paymentUrl = firstProduct?.payment_url || 'https://fedapay.com';
     window.location.href = paymentUrl;
-
-    // Vider le panier
     cart = [];
     updateCartCount();
     closeCheckoutModal();
@@ -458,21 +404,16 @@ async function sendCustomerMessage(e) {
     const orderId = messageOrderId.value || null;
     const message = customerMessage.value.trim();
     if (!message) return;
-
-    const { error } = await supabase
-        .from('messages')
-        .insert([{
-            sender_type: 'customer',
-            sender_id: currentCustomer.id,
-            receiver_id: null, // admin
-            order_id: orderId,
-            message: message,
-            is_read: false
-        }]);
-
-    if (error) {
-        showToast('Erreur envoi message: ' + error.message, 'error');
-    } else {
+    const { error } = await supabase.from('messages').insert([{
+        sender_type: 'customer',
+        sender_id: currentCustomer.id,
+        receiver_id: null,
+        order_id: orderId,
+        message,
+        is_read: false
+    }]);
+    if (error) showToast('Erreur envoi message: ' + error.message, 'error');
+    else {
         showToast('Message envoyé', 'success');
         closeMessageModal();
     }
@@ -495,18 +436,13 @@ function showToast(message, type = 'info') {
 
 // ===== INITIALISATION =====
 async function init() {
-    // Charger le client depuis le localStorage
     const saved = localStorage.getItem('emarket_customer');
     if (saved) {
-        try {
-            currentCustomer = JSON.parse(saved);
-        } catch (e) {}
+        try { currentCustomer = JSON.parse(saved); } catch (e) {}
     }
     updateCustomerUI();
-
     await loadProducts();
 
-    // Événements
     cartFloat.addEventListener('click', openCartModal);
 
     document.addEventListener('click', (e) => {
@@ -517,7 +453,6 @@ async function init() {
         }
         const detailsBtn = e.target.closest('.btn-details');
         if (detailsBtn) {
-            // À implémenter : modal détails produit
             alert('Détails produit (à venir)');
             return;
         }
@@ -538,7 +473,6 @@ async function init() {
         }
     });
 
-    // Gestionnaires de modales
     document.querySelectorAll('.close-modal').forEach(btn => {
         btn.addEventListener('click', () => {
             closeCartModal();
@@ -557,7 +491,6 @@ async function init() {
         }
     });
 
-    // Formulaires auth
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('loginEmail').value;
@@ -582,23 +515,18 @@ async function init() {
 
     logoutCustomerLink.addEventListener('click', (e) => {
         e.preventDefault();
-        logoutCustomer();
+        handleLogoutCustomer();
     });
 
-    // Checkout
     checkoutBtn.addEventListener('click', openCheckoutModal);
     checkoutForm.addEventListener('submit', handleCheckout);
-
-    // Messages
     customerMessageForm.addEventListener('submit', sendCustomerMessage);
 
     updateCartCount();
 }
 
-// Démarrer
 init();
 
-// Rendre les fonctions globales pour les attributs onclick (si besoin)
 window.closeCartModal = closeCartModal;
 window.closeAuthModal = closeAuthModal;
 window.closeCheckoutModal = closeCheckoutModal;
