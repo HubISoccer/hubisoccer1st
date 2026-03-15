@@ -1,277 +1,213 @@
-// ===== ÉLÉMENTS SPÉCIFIQUES AU DASHBOARD =====
-const dashboardName = document.getElementById('dashboardName');
-const parrainFullName = document.getElementById('parrainFullName');
-const parrainEmail = document.getElementById('parrainEmail');
-const parrainPhone = document.getElementById('parrainPhone');
-const memberSince = document.getElementById('memberSince');
-const parrainID = document.getElementById('parrainID');
-const profileDisplay = document.getElementById('profileDisplay');
-const profileCompletion = document.getElementById('profileCompletion');
-const totalDons = document.getElementById('totalDons');
-const nbJoueursSoutenus = document.getElementById('nbJoueursSoutenus');
-const totalDonsValue = document.getElementById('totalDonsValue');
-const joueursSoutenusValue = document.getElementById('joueursSoutenusValue');
-const lastDonDate = document.getElementById('lastDonDate');
-const licenseStatus = document.getElementById('licenseStatus');
-const recentDonationsList = document.getElementById('recentDonationsList');
-const recentPlayersList = document.getElementById('recentPlayersList');
-const recentMessagesList = document.getElementById('recentMessagesList');
-const donationsChart = document.getElementById('donationsChart');
+// ===== CONFIGURATION SUPABASE =====
+const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabaseParrain = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===== CHARGEMENT DES DONNÉES DU PARRAIN =====
-async function loadParrainData() {
+// ===== ÉLÉMENTS DOM COMMUNS =====
+const userMenu = document.getElementById('userMenu');
+const userDropdown = document.getElementById('userDropdown');
+const menuToggle = document.getElementById('menuToggle');
+const sidebar = document.getElementById('sidebar');
+const closeSidebar = document.getElementById('closeSidebar');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+const logoutLink = document.getElementById('logoutLink');
+const logoutLinkSidebar = document.getElementById('logoutLinkSidebar');
+const userNameSpan = document.getElementById('userName');
+const userAvatar = document.getElementById('userAvatar');
+const notifBadge = document.getElementById('notifBadge');
+const langSelect = document.getElementById('langSelect');
+const languageLink = document.getElementById('languageLink');
+
+// ===== ÉTAT GLOBAL =====
+let currentParrain = null; // { id, first_name, last_name, email, phone, avatar_url, ... }
+
+// ===== GESTION DE LA SESSION =====
+async function checkParrainSession() {
+    try {
+        const { data: { session }, error } = await supabaseParrain.auth.getSession();
+        if (error || !session) {
+            window.location.href = 'auth/login.html';
+            return null;
+        }
+        // Récupérer le profil dans la table parrain_profiles
+        const { data: profile, error: profileError } = await supabaseParrain
+            .from('parrain_profiles')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+
+        if (profileError || !profile) {
+            // Si pas de profil, rediriger vers complétion de profil
+            window.location.href = 'auth/complete-profile.html';
+            return null;
+        }
+        currentParrain = profile;
+        updateUserUI();
+        return profile;
+    } catch (err) {
+        console.error('Erreur check session:', err);
+        window.location.href = 'auth/login.html';
+        return null;
+    }
+}
+
+function updateUserUI() {
+    if (currentParrain) {
+        userNameSpan.textContent = `${currentParrain.first_name} ${currentParrain.last_name}`;
+        if (currentParrain.avatar_url) {
+            userAvatar.src = currentParrain.avatar_url;
+        }
+    }
+}
+
+// ===== GESTION DU MENU UTILISATEUR =====
+function initUserMenu() {
+    if (userMenu) {
+        userMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown.classList.toggle('show');
+        });
+        document.addEventListener('click', () => {
+            userDropdown.classList.remove('show');
+        });
+    }
+}
+
+// ===== GESTION DE LA SIDEBAR =====
+function initSidebar() {
+    if (menuToggle) {
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.add('active');
+            sidebarOverlay.classList.add('active');
+        });
+    }
+    if (closeSidebar) {
+        closeSidebar.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+        });
+    }
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+        });
+    }
+}
+
+// ===== DÉCONNEXION =====
+async function handleLogout(e) {
+    e.preventDefault();
+    if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+        await supabaseParrain.auth.signOut();
+        window.location.href = '../index.html';
+    }
+}
+
+// ===== GESTION DES NOTIFICATIONS =====
+async function loadNotifications() {
     if (!currentParrain) return;
-
-    // Mettre à jour les infos de base
-    const fullName = `${currentParrain.first_name} ${currentParrain.last_name}`;
-    if (dashboardName) dashboardName.textContent = fullName;
-    if (parrainFullName) parrainFullName.textContent = fullName;
-    if (parrainEmail) parrainEmail.textContent = currentParrain.email;
-    if (parrainPhone) parrainPhone.textContent = currentParrain.phone || 'Non renseigné';
-    if (memberSince) {
-        const date = new Date(currentParrain.date_adhesion);
-        memberSince.textContent = date.toLocaleDateString();
-    }
-    if (parrainID) parrainID.textContent = `ID: ${currentParrain.id}`;
-    if (profileDisplay && currentParrain.avatar_url) {
-        profileDisplay.src = currentParrain.avatar_url;
-    }
-
-    // Charger les transactions
-    await loadTransactions();
-    // Charger les soutiens
-    await loadSoutiens();
-    // Charger les messages récents
-    await loadRecentMessages();
-    // Charger le statut de licence
-    await loadLicenseStatus();
-    // Calculer le pourcentage de complétion du profil
-    calculateProfileCompletion();
-}
-
-// ===== TRANSACTIONS =====
-async function loadTransactions() {
-    const { data, error } = await supabaseParrain
-        .from('parrain_transactions')
-        .select('*')
-        .eq('parrain_id', currentParrain.id)
-        .order('date_transaction', { ascending: false });
-
-    if (error) {
-        console.error('Erreur chargement transactions:', error);
-        return;
-    }
-
-    // Calculer le total des dons
-    const total = data.reduce((sum, t) => sum + t.montant, 0);
-    if (totalDons) totalDons.textContent = total.toLocaleString();
-    if (totalDonsValue) totalDonsValue.textContent = total.toLocaleString() + ' FCFA';
-
-    // Dernier don
-    if (data.length > 0) {
-        const last = data[0];
-        const lastDate = new Date(last.date_transaction).toLocaleDateString();
-        if (lastDonDate) lastDonDate.textContent = lastDate;
-    } else {
-        if (lastDonDate) lastDonDate.textContent = 'Aucun';
-    }
-
-    // Afficher les 5 derniers dons
-    if (recentDonationsList) {
-        const recent = data.slice(0, 5);
-        if (recent.length === 0) {
-            recentDonationsList.innerHTML = '<p>Aucun don pour le moment.</p>';
-        } else {
-            let html = '';
-            recent.forEach(t => {
-                html += `
-                    <div class="donation-item">
-                        <div class="date">${new Date(t.date_transaction).toLocaleDateString()}</div>
-                        <div class="montant">${t.montant.toLocaleString()} FCFA</div>
-                        <div>${t.type}</div>
-                    </div>
-                `;
-            });
-            recentDonationsList.innerHTML = html;
-        }
-    }
-
-    // Préparer les données pour le graphique (par mois)
-    prepareChartData(data);
-}
-
-// ===== SOUTIENS (joueurs soutenus) =====
-async function loadSoutiens() {
-    const { data, error } = await supabaseParrain
-        .from('parrain_soutiens')
-        .select('*, player_profiles(first_name, last_name)')
-        .eq('parrain_id', currentParrain.id)
-        .order('date_debut', { ascending: false });
-
-    if (error) {
-        console.error('Erreur chargement soutiens:', error);
-        return;
-    }
-
-    const count = data.length;
-    if (nbJoueursSoutenus) nbJoueursSoutenus.textContent = count;
-    if (joueursSoutenusValue) joueursSoutenusValue.textContent = count;
-
-    // Afficher les 5 derniers joueurs soutenus
-    if (recentPlayersList) {
-        const recent = data.slice(0, 5);
-        if (recent.length === 0) {
-            recentPlayersList.innerHTML = '<p>Aucun joueur soutenu pour le moment.</p>';
-        } else {
-            let html = '';
-            recent.forEach(s => {
-                const player = s.player_profiles;
-                html += `
-                    <div class="player-item">
-                        <div class="player-name">${player?.first_name} ${player?.last_name}</div>
-                        <div class="date">Depuis ${new Date(s.date_debut).toLocaleDateString()}</div>
-                        <div>Montant total: ${s.montant_total.toLocaleString()} FCFA</div>
-                    </div>
-                `;
-            });
-            recentPlayersList.innerHTML = html;
-        }
-    }
-}
-
-// ===== MESSAGES RÉCENTS =====
-async function loadRecentMessages() {
-    const { data, error } = await supabaseParrain
+    // Charger le nombre de notifications non lues (par exemple dans parrain_messages)
+    const { count, error } = await supabaseParrain
         .from('parrain_messages')
-        .select('*')
+        .select('*', { count: 'exact', head: true })
         .eq('receiver_id', currentParrain.id)
         .eq('receiver_type', 'parrain')
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-    if (error) {
-        console.error('Erreur chargement messages:', error);
-        return;
-    }
-
-    if (recentMessagesList) {
-        if (data.length === 0) {
-            recentMessagesList.innerHTML = '<p>Aucun message récent.</p>';
-        } else {
-            let html = '';
-            data.forEach(m => {
-                html += `
-                    <div class="message-item">
-                        <div class="date">${new Date(m.created_at).toLocaleString()}</div>
-                        <div class="message-preview">${m.content.substring(0, 50)}...</div>
-                    </div>
-                `;
-            });
-            recentMessagesList.innerHTML = html;
-        }
+        .eq('is_read', false);
+    if (!error && notifBadge) {
+        notifBadge.textContent = count || 0;
     }
 }
 
-// ===== STATUT DE LICENCE =====
-async function loadLicenseStatus() {
-    const { data, error } = await supabaseParrain
-        .from('parrain_license_requests')
-        .select('status')
-        .eq('parrain_id', currentParrain.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+// ===== GESTION DES LANGUES =====
+const translations = {
+    fr: { /* ... à compléter ... */ },
+    en: { /* ... */ },
+    // ... pour les 24 langues, à définir si nécessaire
+};
 
-    if (error) {
-        console.error('Erreur chargement licence:', error);
-        return;
+let currentLang = 'fr';
+
+function applyTranslations(lang) {
+    // Implémenter la traduction des éléments data-i18n
+}
+
+function loadLanguage(lang) {
+    if (translations[lang]) {
+        currentLang = lang;
+        applyTranslations(lang);
+        localStorage.setItem('hubiLang', lang);
+    } else {
+        loadLanguage('fr');
     }
+}
 
-    let statusText = 'Non demandée';
-    if (data) {
-        switch (data.status) {
-            case 'approved': statusText = 'Validée'; break;
-            case 'rejected': statusText = 'Rejetée'; break;
-            case 'president_pending': statusText = 'Validation président en cours'; break;
-            case 'admin_pending': statusText = 'En attente admin'; break;
-            default: statusText = 'En cours';
-        }
+function initLanguage() {
+    const savedLang = localStorage.getItem('hubiLang') || 'fr';
+    loadLanguage(savedLang);
+    if (langSelect) {
+        langSelect.value = savedLang;
+        langSelect.addEventListener('change', (e) => loadLanguage(e.target.value));
     }
-    if (licenseStatus) licenseStatus.textContent = statusText;
+    if (languageLink) {
+        languageLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            alert('Changement de langue disponible dans le sélecteur');
+        });
+    }
 }
 
-// ===== POURCENTAGE DE COMPLÉTION DU PROFIL =====
-function calculateProfileCompletion() {
-    let total = 0;
-    let filled = 0;
-
-    // Liste des champs obligatoires
-    const fields = [
-        currentParrain.first_name,
-        currentParrain.last_name,
-        currentParrain.email,
-        currentParrain.phone,
-        currentParrain.avatar_url
-    ];
-
-    fields.forEach(f => { if (f && f !== '') filled++; });
-    total = fields.length;
-
-    const percent = Math.round((filled / total) * 100);
-    if (profileCompletion) profileCompletion.textContent = percent;
-}
-
-// ===== GRAPHIQUE D'ÉVOLUTION DES DONS =====
-function prepareChartData(transactions) {
-    if (!donationsChart) return;
-
-    // Regrouper par mois
-    const months = {};
-    transactions.forEach(t => {
-        const date = new Date(t.date_transaction);
-        const monthKey = `${date.getFullYear()}-${date.getMonth()+1}`;
-        months[monthKey] = (months[monthKey] || 0) + t.montant;
-    });
-
-    // Trier par date
-    const sortedMonths = Object.keys(months).sort();
-    const labels = sortedMonths.map(m => {
-        const [year, month] = m.split('-');
-        return `${month}/${year}`;
-    });
-    const data = sortedMonths.map(m => months[m]);
-
-    new Chart(donationsChart, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Montant des dons (FCFA)',
-                data: data,
-                borderColor: '#551B8C',
-                backgroundColor: 'rgba(85,27,140,0.1)',
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            }
-        }
-    });
-}
-
-// ===== INITIALISATION =====
+// ===== INITIALISATION COMMUNE =====
 document.addEventListener('DOMContentLoaded', async () => {
-    // Attendre que currentParrain soit défini par parrain-common.js
-    // On utilise un délai ou on écoute un événement personnalisé
-    // Pour simplifier, on utilise un intervalle
-    const interval = setInterval(() => {
-        if (typeof currentParrain !== 'undefined' && currentParrain !== null) {
-            clearInterval(interval);
-            loadParrainData();
-        }
-    }, 100);
+    await checkParrainSession();
+    initUserMenu();
+    initSidebar();
+    initLanguage();
+    loadNotifications();
+
+    if (logoutLink) logoutLink.addEventListener('click', handleLogout);
+    if (logoutLinkSidebar) logoutLinkSidebar.addEventListener('click', handleLogout);
+});
+
+// Exposer certaines fonctions globalement si besoin
+window.copyID = function() {
+    const idSpan = document.getElementById('parrainID');
+    if (idSpan) {
+        const idText = idSpan.textContent.replace('ID: ', '');
+        navigator.clipboard.writeText(idText);
+        alert('ID copié !');
+    }
+};
+
+window.triggerUpload = function() {
+    document.getElementById('fileInput').click();
+};
+
+// Gestion de l'upload d'avatar (à implémenter)
+document.getElementById('fileInput')?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file || !currentParrain) return;
+    // Upload vers un bucket 'parrain-avatars' (à créer)
+    const fileExt = file.name.split('.').pop();
+    const fileName = `avatar_${currentParrain.id}_${Date.now()}.${fileExt}`;
+    const { error } = await supabaseParrain.storage
+        .from('parrain-avatars')
+        .upload(fileName, file);
+    if (error) {
+        alert('Erreur upload: ' + error.message);
+        return;
+    }
+    const { publicURL } = supabaseParrain.storage
+        .from('parrain-avatars')
+        .getPublicUrl(fileName);
+    // Mettre à jour le profil
+    const { error: updateError } = await supabaseParrain
+        .from('parrain_profiles')
+        .update({ avatar_url: publicURL })
+        .eq('id', currentParrain.id);
+    if (!updateError) {
+        currentParrain.avatar_url = publicURL;
+        userAvatar.src = publicURL;
+        document.getElementById('profileDisplay').src = publicURL;
+    }
 });
