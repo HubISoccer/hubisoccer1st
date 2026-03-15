@@ -39,7 +39,7 @@ async function loadParrainData() {
     if (parrainPhone) parrainPhone.textContent = currentParrain.phone || 'Non renseigné';
     if (memberSince) {
         const date = new Date(currentParrain.date_adhesion);
-        memberSince.textContent = date.toLocaleDateString();
+        memberSince.textContent = date.toLocaleDateString('fr-FR');
     }
     if (parrainID) parrainID.textContent = `ID: ${currentParrain.id}`;
     if (profileDisplay && currentParrain.avatar_url) {
@@ -73,13 +73,13 @@ async function loadTransactions() {
 
     // Calculer le total des dons
     const total = data.reduce((sum, t) => sum + t.montant, 0);
-    if (totalDons) totalDons.textContent = total.toLocaleString();
-    if (totalDonsValue) totalDonsValue.textContent = total.toLocaleString() + ' FCFA';
+    if (totalDons) totalDons.textContent = total.toLocaleString('fr-FR');
+    if (totalDonsValue) totalDonsValue.textContent = total.toLocaleString('fr-FR') + ' FCFA';
 
     // Dernier don
     if (data.length > 0) {
         const last = data[0];
-        const lastDate = new Date(last.date_transaction).toLocaleDateString();
+        const lastDate = new Date(last.date_transaction).toLocaleDateString('fr-FR');
         if (lastDonDate) lastDonDate.textContent = lastDate;
     } else {
         if (lastDonDate) lastDonDate.textContent = 'Aucun';
@@ -95,8 +95,8 @@ async function loadTransactions() {
             recent.forEach(t => {
                 html += `
                     <div class="donation-item">
-                        <div class="date">${new Date(t.date_transaction).toLocaleDateString()}</div>
-                        <div class="montant">${t.montant.toLocaleString()} FCFA</div>
+                        <div class="date">${new Date(t.date_transaction).toLocaleDateString('fr-FR')}</div>
+                        <div class="montant">${t.montant.toLocaleString('fr-FR')} FCFA</div>
                         <div>${t.type || 'don'}</div>
                     </div>
                 `;
@@ -137,9 +137,9 @@ async function loadSoutiens() {
                 const player = s.player_profiles;
                 html += `
                     <div class="player-item">
-                        <div class="player-name">${player?.first_name} ${player?.last_name}</div>
-                        <div class="date">Depuis ${new Date(s.date_debut).toLocaleDateString()}</div>
-                        <div>Montant total: ${s.montant_total.toLocaleString()} FCFA</div>
+                        <div class="player-name">${player?.first_name || ''} ${player?.last_name || ''}</div>
+                        <div class="date">Depuis ${new Date(s.date_debut).toLocaleDateString('fr-FR')}</div>
+                        <div>Montant total: ${s.montant_total.toLocaleString('fr-FR')} FCFA</div>
                     </div>
                 `;
             });
@@ -171,7 +171,7 @@ async function loadRecentMessages() {
             data.forEach(m => {
                 html += `
                     <div class="message-item">
-                        <div class="date">${new Date(m.created_at).toLocaleString()}</div>
+                        <div class="date">${new Date(m.created_at).toLocaleString('fr-FR')}</div>
                         <div class="message-preview">${m.content.substring(0, 50)}...</div>
                     </div>
                 `;
