@@ -227,41 +227,78 @@ function emarketRenderProductCard(product) {
     `;
 }
 
-// ===== FONCTION D'ATTENTE POUR BCRYPT =====
+// ===== FONCTION D'ATTENTE ROBUSTE POUR BCRYPT =====
 function emarketWaitForBcrypt() {
     return new Promise((resolve) => {
+        console.log('⏳ Attente de bcrypt...');
         if (typeof bcrypt !== 'undefined') {
+            console.log('✅ bcrypt déjà disponible');
             resolve();
-        } else {
-            const script = document.querySelector('script[src*="bcrypt"]');
-            if (script) {
-                script.addEventListener('load', resolve);
-                script.addEventListener('error', () => {
-                    console.error('Erreur chargement bcrypt');
-                    resolve(); // On résout quand même pour éviter le blocage
-                });
-            } else {
-                resolve(); // Pas de script
+            return;
+        }
+
+        // Vérifier périodiquement si bcrypt est disponible
+        const interval = setInterval(() => {
+            if (typeof bcrypt !== 'undefined') {
+                clearInterval(interval);
+                clearTimeout(timeout);
+                console.log('✅ bcrypt disponible après interval');
+                resolve();
             }
+        }, 100);
+
+        // Timeout de sécurité après 5 secondes
+        const timeout = setTimeout(() => {
+            clearInterval(interval);
+            console.warn('⚠️ bcrypt non disponible après 5s, on continue quand même');
+            resolve();
+        }, 5000);
+
+        // Écouter l'événement load du script
+        const script = document.querySelector('script[src*="bcrypt"]');
+        if (script) {
+            script.addEventListener('load', () => {
+                clearInterval(interval);
+                clearTimeout(timeout);
+                console.log('✅ bcrypt chargé via load event');
+                resolve();
+            });
+            script.addEventListener('error', () => {
+                console.error('❌ Erreur chargement script bcrypt');
+                clearInterval(interval);
+                clearTimeout(timeout);
+                resolve(); // On continue quand même
+            });
+        } else {
+            console.warn('⚠️ Aucun script bcrypt trouvé');
+            clearInterval(interval);
+            clearTimeout(timeout);
+            resolve();
         }
     });
 }
 
 // ===== AUTHENTIFICATION CLIENT =====
 async function emarketRegisterCustomer(firstName, lastName, email, phone, password) {
+    console.log('📝 Tentative d\'inscription...');
     await emarketWaitForBcrypt();
     if (typeof bcrypt === 'undefined') {
+        console.error('❌ bcrypt toujours indéfini après attente');
         emarketShowToast('Erreur de chargement de la sécurité, veuillez réessayer.', 'error');
         return;
     }
+    console.log('🔐 bcrypt disponible, hachage du mot de passe...');
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(password, salt);
+    console.log('✅ Mot de passe haché');
+
     const { data, error } = await supabaseMarket
         .from('emarket_customers')
         .insert([{ first_name: firstName, last_name: lastName, email, phone, password: hash }])
         .select()
         .single();
     if (error) {
+        console.error('❌ Erreur Supabase inscription:', error);
         emarketShowToast('Erreur inscription : ' + error.message, 'error');
         return null;
     }
@@ -274,8 +311,10 @@ async function emarketRegisterCustomer(firstName, lastName, email, phone, passwo
 }
 
 async function emarketLoginCustomer(email, password) {
+    console.log('🔑 Tentative de connexion...');
     await emarketWaitForBcrypt();
     if (typeof bcrypt === 'undefined') {
+        console.error('❌ bcrypt toujours indéfini après attente');
         emarketShowToast('Erreur de chargement de la sécurité, veuillez réessayer.', 'error');
         return;
     }
@@ -832,6 +871,7 @@ async function emarketInit() {
     if (registerForm) {
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            console.log('📝 Formulaire d\'inscription soumis');
             const firstName = regFirstName ? regFirstName.value : '';
             const lastName = regLastName ? regLastName.value : '';
             const email = regEmail ? regEmail.value : '';
