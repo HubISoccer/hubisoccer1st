@@ -16,13 +16,13 @@ const searchProducts = document.getElementById('searchProducts');
 const refreshProducts = document.getElementById('refreshProducts');
 const addProductBtn = document.getElementById('addProductBtn');
 
-// Commandes (aperçu)
-const ordersList = document.getElementById('ordersList');
+// Commandes
+const ordersListFull = document.getElementById('ordersListFull');
 const searchOrders = document.getElementById('searchOrders');
 const refreshOrders = document.getElementById('refreshOrders');
 
-// Messages (aperçu)
-const messagesList = document.getElementById('messagesList');
+// Messages
+const messagesListFull = document.getElementById('messagesListFull');
 const searchMessages = document.getElementById('searchMessages');
 const refreshMessages = document.getElementById('refreshMessages');
 
@@ -143,7 +143,7 @@ window.editProduct = async (id) => {
     featuredSelect.value = p.featured ? 'true' : 'false';
     imageUrlInput.value = p.image_url || '';
     paymentUrlInput.value = p.payment_url || '';
-    returnUrlInput.value = p.return_url || 'suivi.html';
+    returnUrlInput.value = p.return_url || '';
     productModal.classList.add('active');
 };
 
@@ -174,7 +174,7 @@ function openAddProductModal() {
     mediaFile.value = '';
     imageUrlInput.value = '';
     paymentUrlInput.value = '';
-    returnUrlInput.value = 'suivi.html';
+    returnUrlInput.value = '';
     productModal.classList.add('active');
 }
 
@@ -185,13 +185,23 @@ function closeProductModal() {
 
 window.closeProductModal = closeProductModal;
 
-// Upload de fichier
+// Upload de fichier avec progression (pourcentage)
 async function uploadFile(file, bucket = 'product-medias') {
     if (!file) return null;
     const submitBtn = productForm.querySelector('.btn-submit');
     const originalText = submitBtn.textContent;
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Upload...';
+
+    let progressSpan = document.getElementById('uploadProgress');
+    if (!progressSpan) {
+        progressSpan = document.createElement('span');
+        progressSpan.id = 'uploadProgress';
+        progressSpan.style.marginLeft = '10px';
+        progressSpan.style.fontSize = '0.9rem';
+        progressSpan.style.color = 'var(--gold)';
+        submitBtn.parentNode.insertBefore(progressSpan, submitBtn.nextSibling);
+    }
 
     return new Promise((resolve, reject) => {
         const fileExt = file.name.split('.').pop();
@@ -207,13 +217,15 @@ async function uploadFile(file, bucket = 'product-medias') {
         xhr.upload.addEventListener('progress', (e) => {
             if (e.lengthComputable) {
                 const percent = Math.round((e.loaded / e.total) * 100);
+                progressSpan.textContent = `${percent}%`;
                 submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Upload ${percent}%`;
             }
         });
 
         xhr.addEventListener('load', () => {
+            progressSpan.textContent = '';
+            submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
-            submitBtn.textContent = originalText;
             if (xhr.status === 200) {
                 const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${fileName}`;
                 resolve(publicUrl);
@@ -228,8 +240,9 @@ async function uploadFile(file, bucket = 'product-medias') {
         });
 
         xhr.addEventListener('error', () => {
+            progressSpan.textContent = '';
+            submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
-            submitBtn.textContent = originalText;
             reject(new Error('Erreur réseau'));
         });
 
@@ -244,13 +257,12 @@ productForm.addEventListener('submit', async (e) => {
     const name = nameInput.value.trim();
     const description = descriptionInput.value.trim();
     const price = parseInt(priceInput.value);
-    const stock = stockSelect.value === 'true';
+    const stock = stockSelect.value === 'true' ? 1 : 0;
     const category = categorySelect.value;
     const featured = featuredSelect.value === 'true';
     let image_url = imageUrlInput.value;
 
     try {
-        // Upload du fichier si présent
         if (mediaFile.files.length > 0) {
             const url = await uploadFile(mediaFile.files[0]);
             if (url) image_url = url;
@@ -287,25 +299,24 @@ productForm.addEventListener('submit', async (e) => {
         loadProducts();
         loadStats();
     } catch (err) {
+        console.error('Erreur:', err);
         showToast('Erreur : ' + err.message, 'error');
     }
 });
 
-// ===== COMMANDES (aperçu) =====
+// ===== COMMANDES =====
 async function loadOrders(search = '') {
     let query = supabaseProductemarket
         .from('emarket_orders')
         .select('*, emarket_customers(first_name, last_name, email)')
-        .order('created_at', { ascending: false })
-        .limit(5);
+        .order('created_at', { ascending: false });
     if (search) {
-        // Recherche simple (à améliorer si nécessaire)
         query = query.ilike('id', `%${search}%`);
     }
     const { data, error } = await query;
     if (error) {
         console.error('Erreur chargement commandes:', error);
-        ordersList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        ordersListFull.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
         return;
     }
     renderOrders(data || []);
@@ -313,7 +324,7 @@ async function loadOrders(search = '') {
 
 function renderOrders(orders) {
     if (!orders.length) {
-        ordersList.innerHTML = '<p class="no-data">Aucune commande récente.</p>';
+        ordersListFull.innerHTML = '<p class="no-data">Aucune commande.</p>';
         return;
     }
     let html = '';
@@ -336,7 +347,7 @@ function renderOrders(orders) {
             </div>
         `;
     });
-    ordersList.innerHTML = html;
+    ordersListFull.innerHTML = html;
 }
 
 window.viewOrder = async (id) => {
@@ -398,20 +409,19 @@ validateOrderBtn.addEventListener('click', async () => {
     }
 });
 
-// ===== MESSAGES (aperçu) =====
+// ===== MESSAGES =====
 async function loadMessages(search = '') {
     let query = supabaseProductemarket
         .from('emarket_messages')
         .select('*, emarket_customers(first_name, last_name, email)')
-        .order('created_at', { ascending: false })
-        .limit(5);
+        .order('created_at', { ascending: false });
     if (search) {
         query = query.ilike('message', `%${search}%`);
     }
     const { data, error } = await query;
     if (error) {
         console.error('Erreur chargement messages:', error);
-        messagesList.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
+        messagesListFull.innerHTML = '<p class="no-data">Erreur de chargement.</p>';
         return;
     }
     renderMessages(data || []);
@@ -419,7 +429,7 @@ async function loadMessages(search = '') {
 
 function renderMessages(messages) {
     if (!messages.length) {
-        messagesList.innerHTML = '<p class="no-data">Aucun message récent.</p>';
+        messagesListFull.innerHTML = '<p class="no-data">Aucun message.</p>';
         return;
     }
     let html = '';
@@ -442,7 +452,7 @@ function renderMessages(messages) {
             </div>
         `;
     });
-    messagesList.innerHTML = html;
+    messagesListFull.innerHTML = html;
 }
 
 window.viewMessage = async (id) => {
@@ -467,7 +477,6 @@ window.viewMessage = async (id) => {
     replyMessage.value = '';
     messageModal.classList.add('active');
 
-    // Marquer comme lu
     if (!msg.is_read) {
         await supabaseProductemarket
             .from('emarket_messages')
@@ -485,7 +494,6 @@ function closeMessageModal() {
 
 window.closeMessageModal = closeMessageModal;
 
-// Envoyer une réponse au message
 sendReplyBtn.addEventListener('click', async () => {
     if (!currentMessageId) return;
     const reply = replyMessage.value.trim();
@@ -502,17 +510,17 @@ sendReplyBtn.addEventListener('click', async () => {
     } else {
         showToast('Réponse envoyée', 'success');
         closeMessageModal();
-        loadMessages(); // Recharger pour voir la réponse
-        loadStats(); // Mettre à jour le compteur (si besoin)
+        loadMessages();
+        loadStats();
     }
 });
 
-// ===== RECHERCHE EN TEMPS RÉEL =====
+// ===== RECHERCHE =====
 searchProducts?.addEventListener('input', (e) => loadProducts(e.target.value));
 searchOrders?.addEventListener('input', (e) => loadOrders(e.target.value));
 searchMessages?.addEventListener('input', (e) => loadMessages(e.target.value));
 
-// ===== BOUTONS DE RAFRAÎCHISSEMENT =====
+// ===== RAFRAÎCHISSEMENT =====
 refreshProducts?.addEventListener('click', () => loadProducts());
 refreshOrders?.addEventListener('click', () => loadOrders());
 refreshMessages?.addEventListener('click', () => loadMessages());
