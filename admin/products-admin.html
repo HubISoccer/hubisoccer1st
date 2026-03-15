@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Produits & Commandes | HubISoccer</title>
+    <title>Admin - E-Market | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="assets/css/admin.css">
@@ -17,9 +17,7 @@
         </div>
         <div class="admin-nav-right">
             <a href="administration.html">Tableau de bord</a>
-            <a href="products-admin.html" class="active">Produits</a>
-            <a href="orders-admin.html">Commandes</a>
-            <a href="messages-admin.html">Messages</a>
+            <a href="products-admin.html" class="active">E-Market</a>
             <a href="#" id="logoutAdmin">Déconnexion</a>
         </div>
     </nav>
@@ -72,30 +70,28 @@
             <div id="productsList" class="admin-list"></div>
         </div>
 
-        <!-- Section Commandes (aperçu) -->
+        <!-- Section Commandes (complète) -->
         <div class="admin-card" id="section-orders">
             <div class="card-header">
-                <h2><i class="fas fa-shopping-cart"></i> Dernières commandes</h2>
+                <h2><i class="fas fa-shopping-cart"></i> Commandes</h2>
                 <div class="section-tools">
-                    <input type="text" class="search-input" id="searchOrders" placeholder="Rechercher...">
+                    <input type="text" class="search-input" id="searchOrders" placeholder="Rechercher une commande...">
                     <button class="btn-refresh" id="refreshOrders" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
-                    <a href="orders-admin.html" class="btn-link">Voir tout</a>
                 </div>
             </div>
-            <div id="ordersList" class="admin-list"></div>
+            <div id="ordersListFull" class="admin-list"></div>
         </div>
 
-        <!-- Section Messages (aperçu) -->
+        <!-- Section Messages (complète) -->
         <div class="admin-card" id="section-messages">
             <div class="card-header">
-                <h2><i class="fas fa-envelope"></i> Derniers messages</h2>
+                <h2><i class="fas fa-envelope"></i> Messages clients</h2>
                 <div class="section-tools">
-                    <input type="text" class="search-input" id="searchMessages" placeholder="Rechercher...">
+                    <input type="text" class="search-input" id="searchMessages" placeholder="Rechercher un message...">
                     <button class="btn-refresh" id="refreshMessages" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
-                    <a href="messages-admin.html" class="btn-link">Voir tout</a>
                 </div>
             </div>
-            <div id="messagesList" class="admin-list"></div>
+            <div id="messagesListFull" class="admin-list"></div>
         </div>
     </div>
 
@@ -162,7 +158,7 @@
                 </div>
                 <div class="form-group">
                     <label>Lien de retour après paiement</label>
-                    <input type="url" id="return_url" placeholder="https://.../suivi.html" value="suivi.html">
+                    <input type="url" id="return_url" placeholder="https://.../confirmation-commande.html" value="">
                 </div>
                 <button type="submit" class="btn-submit">Enregistrer</button>
             </form>
@@ -186,7 +182,7 @@
     <div id="messageModal" class="admin-modal">
         <div class="modal-content">
             <span class="close" onclick="closeMessageModal()">&times;</span>
-            <h3>Message</h3>
+            <h3>Message client</h3>
             <div id="messageDetail"></div>
             <div class="form-group">
                 <label>Réponse</label>
