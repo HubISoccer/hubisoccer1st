@@ -28,7 +28,6 @@
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
-                <!-- autres langues -->
             </select>
             <button class="menu-toggle" id="menuToggle">
                 <span></span><span></span><span></span>
@@ -42,10 +41,11 @@
                 <a href="tournoi.html">Tournois</a>
                 <a href="hub-community.html">Community</a>
                 <a href="e-marketing-hubisoccer.html" class="active">Market</a>
-                <a href="public/auth/login.html" class="btn-auth" id="loginBtn">Connexion</a>
-                <a href="public/auth/signup.html" class="btn-auth gold" id="signupBtn">Inscription</a>
                 <span id="customerGreeting" style="display: none;"></span>
-                <a href="#" id="logoutCustomer" style="display: none;">Déconnexion</a>
+                <a href="#" id="logoutCustomerLink" style="display: none;">Déconnexion</a>
+                <a href="#" id="myAccountLink" style="display: none;">Mon compte</a>
+                <a href="#" id="loginBtn" class="btn-auth">Connexion</a>
+                <a href="#" id="signupBtn" class="btn-auth gold">Inscription</a>
             </div>
         </div>
     </nav>
@@ -73,41 +73,44 @@
         <span class="cart-count" id="cartCount">0</span>
     </div>
 
-    <!-- MODALE PANIER / COMMANDE -->
+    <!-- MODALE PANIER -->
     <div id="cartModal" class="modal">
         <div class="modal-content cart-modal-content">
-            <span class="close-modal" onclick="closeCartModal()">&times;</span>
+            <span class="close-modal" onclick="emarketCloseCartModal()">&times;</span>
             <h2>Votre panier</h2>
             <div id="cartItems"></div>
             <div class="cart-total">
-                <strong>Total TTC :</strong> <span id="cartTotal">0</span> FCFA
+                <strong>Total HT :</strong> <span id="cartTotalHT">0</span> FCFA<br>
+                <strong>TVA (18%) :</strong> <span id="cartTVA">0</span> FCFA<br>
+                <strong>Total TTC :</strong> <span id="cartTotalTTC">0</span> FCFA
             </div>
             <div class="cart-actions">
-                <button class="btn-continue" onclick="closeCartModal()">Continuer les achats</button>
+                <button class="btn-continue" onclick="emarketCloseCartModal()">Continuer les achats</button>
                 <button class="btn-checkout" id="checkoutBtn">Passer la commande</button>
             </div>
         </div>
     </div>
 
-    <!-- MODALE CONNEXION / INSCRIPTION RAPIDE (si non connecté) -->
+    <!-- MODALE CONNEXION / INSCRIPTION / MOT DE PASSE OUBLIÉ -->
     <div id="authModal" class="modal">
         <div class="modal-content auth-modal-content">
-            <span class="close-modal" onclick="closeAuthModal()">&times;</span>
-            <h2 id="authModalTitle">Connexion / Inscription</h2>
+            <span class="close-modal" onclick="emarketCloseAuthModal()">&times;</span>
+            <h2 id="authModalTitle">Connexion</h2>
             <div id="authForms">
                 <!-- Formulaire connexion -->
                 <form id="loginForm" style="display: block;">
-                    <h3>Déjà client</h3>
                     <div class="form-group">
                         <label>Email</label>
                         <input type="email" id="loginEmail" required>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group password-field">
                         <label>Mot de passe</label>
                         <input type="password" id="loginPassword" required>
+                        <i class="fas fa-eye toggle-password" onclick="emarketTogglePassword('loginPassword')"></i>
                     </div>
                     <button type="submit" class="btn-submit">Se connecter</button>
-                    <p><a href="#" onclick="showRegisterForm()">Pas encore de compte ? Inscrivez-vous</a></p>
+                    <p><a href="#" onclick="emarketShowForgotPassword()">Mot de passe oublié ?</a></p>
+                    <p><a href="#" onclick="emarketShowRegisterForm()">Pas encore de compte ? Inscrivez-vous</a></p>
                 </form>
                 <!-- Formulaire inscription -->
                 <form id="registerForm" style="display: none;">
@@ -130,28 +133,40 @@
                         <label>Téléphone</label>
                         <input type="tel" id="regPhone" required>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group password-field">
                         <label>Mot de passe</label>
                         <input type="password" id="regPassword" required>
+                        <i class="fas fa-eye toggle-password" onclick="emarketTogglePassword('regPassword')"></i>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group password-field">
                         <label>Confirmer le mot de passe</label>
                         <input type="password" id="regPasswordConfirm" required>
+                        <i class="fas fa-eye toggle-password" onclick="emarketTogglePassword('regPasswordConfirm')"></i>
                     </div>
                     <button type="submit" class="btn-submit">S'inscrire</button>
-                    <p><a href="#" onclick="showLoginForm()">Déjà inscrit ? Connectez-vous</a></p>
+                    <p><a href="#" onclick="emarketShowLoginForm()">Déjà inscrit ? Connectez-vous</a></p>
+                </form>
+                <!-- Formulaire mot de passe oublié -->
+                <form id="forgotForm" style="display: none;">
+                    <h3>Réinitialisation du mot de passe</h3>
+                    <p>Entrez votre email, nous vous enverrons un lien pour réinitialiser votre mot de passe.</p>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="forgotEmail" required>
+                    </div>
+                    <button type="submit" class="btn-submit">Envoyer</button>
+                    <p><a href="#" onclick="emarketShowLoginForm()">Retour à la connexion</a></p>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- MODALE FINALISATION COMMANDE (après connexion) -->
+    <!-- MODALE FINALISATION COMMANDE -->
     <div id="checkoutModal" class="modal">
         <div class="modal-content checkout-modal-content">
-            <span class="close-modal" onclick="closeCheckoutModal()">&times;</span>
+            <span class="close-modal" onclick="emarketCloseCheckoutModal()">&times;</span>
             <h2>Finaliser la commande</h2>
             <form id="checkoutForm">
-                <!-- Les infos client pré-remplies (éditables) -->
                 <div class="form-group">
                     <label>Nom complet</label>
                     <input type="text" id="checkoutFullName" readonly>
@@ -164,29 +179,90 @@
                     <label>Téléphone</label>
                     <input type="tel" id="checkoutPhone" readonly>
                 </div>
-                <!-- Récapitulatif du panier -->
                 <div id="checkoutSummary"></div>
                 <div class="total-checkout">
-                    <strong>Total à payer :</strong> <span id="checkoutTotal">0</span> FCFA
+                    <strong>Total HT :</strong> <span id="checkoutTotalHT">0</span> FCFA<br>
+                    <strong>TVA (18%) :</strong> <span id="checkoutTVA">0</span> FCFA<br>
+                    <strong>Total TTC :</strong> <span id="checkoutTotalTTC">0</span> FCFA
                 </div>
                 <button type="submit" class="btn-pay">Payer avec FedaPay</button>
             </form>
         </div>
     </div>
 
-    <!-- MODALE MESSAGES / SUIVI -->
-    <div id="messageModal" class="modal">
-        <div class="modal-content message-modal-content">
-            <span class="close-modal" onclick="closeMessageModal()">&times;</span>
-            <h2>Envoyer un message au vendeur</h2>
-            <form id="customerMessageForm">
+    <!-- MODALE ESPACE CLIENT (suivi des commandes et messages) -->
+    <div id="accountModal" class="modal">
+        <div class="modal-content account-modal-content" style="max-width: 800px;">
+            <span class="close-modal" onclick="emarketCloseAccountModal()">&times;</span>
+            <h2>Mon compte</h2>
+            <div class="account-tabs">
+                <button class="tab-btn active" data-tab="orders">Mes commandes</button>
+                <button class="tab-btn" data-tab="messages">Mes messages</button>
+                <button class="tab-btn" data-tab="profile">Mon profil</button>
+            </div>
+            <div id="accountTabContent">
+                <!-- Les commandes -->
+                <div id="tabOrders" class="tab-content active">
+                    <h3>Mes commandes</h3>
+                    <div id="ordersList"></div>
+                </div>
+                <!-- Les messages -->
+                <div id="tabMessages" class="tab-content">
+                    <h3>Mes messages</h3>
+                    <div id="messagesList"></div>
+                    <button class="btn-add" id="newMessageBtn">Nouveau message</button>
+                </div>
+                <!-- Profil -->
+                <div id="tabProfile" class="tab-content">
+                    <h3>Mon profil</h3>
+                    <form id="profileForm">
+                        <div class="form-group">
+                            <label>Prénom</label>
+                            <input type="text" id="profileFirstName" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Nom</label>
+                            <input type="text" id="profileLastName" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="profileEmail" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Téléphone</label>
+                            <input type="tel" id="profilePhone" readonly>
+                        </div>
+                        <button type="button" id="editProfileBtn">Modifier</button>
+                        <button type="submit" id="saveProfileBtn" style="display:none;">Enregistrer</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE POUR ENVOYER UN MESSAGE -->
+    <div id="sendMessageModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="emarketCloseSendMessageModal()">&times;</span>
+            <h2>Envoyer un message</h2>
+            <form id="sendMessageForm">
                 <input type="hidden" id="messageOrderId">
                 <div class="form-group">
                     <label>Votre message</label>
-                    <textarea id="customerMessage" rows="4" required></textarea>
+                    <textarea id="newMessageText" rows="4" required></textarea>
                 </div>
                 <button type="submit" class="btn-submit">Envoyer</button>
             </form>
+        </div>
+    </div>
+
+    <!-- MODALE DÉTAIL COMMANDE (pour suivre) -->
+    <div id="orderDetailModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="emarketCloseOrderDetailModal()">&times;</span>
+            <h2>Détail de la commande</h2>
+            <div id="orderDetailContent"></div>
+            <button class="btn-secondary" onclick="emarketCloseOrderDetailModal()">Fermer</button>
         </div>
     </div>
 
