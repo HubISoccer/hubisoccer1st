@@ -76,9 +76,9 @@ const sendMessageForm = document.getElementById('sendMessageForm');
 const orderDetailContent = document.getElementById('orderDetailContent');
 
 // ===== ÉTAT GLOBAL =====
-let currentCustomer = null; // { id, first_name, last_name, email, phone }
+let currentCustomer = null;
 let cart = JSON.parse(localStorage.getItem('emarket_cart')) || [];
-let products = []; // tous les produits chargés
+let products = [];
 
 // ===== FONCTIONS DE PANIER =====
 function emarketUpdateCartCount() {
@@ -212,6 +212,10 @@ function emarketRenderProductCard(product) {
 
 // ===== AUTHENTIFICATION CLIENT =====
 async function emarketRegisterCustomer(firstName, lastName, email, phone, password) {
+    if (typeof bcrypt === 'undefined') {
+        emarketShowToast('Erreur de chargement de la sécurité, veuillez réessayer.', 'error');
+        return;
+    }
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(password, salt);
     const { data, error } = await supabaseMarket
@@ -232,6 +236,10 @@ async function emarketRegisterCustomer(firstName, lastName, email, phone, passwo
 }
 
 async function emarketLoginCustomer(email, password) {
+    if (typeof bcrypt === 'undefined') {
+        emarketShowToast('Erreur de chargement de la sécurité, veuillez réessayer.', 'error');
+        return;
+    }
     const { data, error } = await supabaseMarket
         .from('emarket_customers')
         .select('*')
@@ -361,7 +369,6 @@ function emarketOpenAccountModal() {
     }
     emarketLoadCustomerOrders();
     emarketLoadCustomerMessages();
-    // Remplir le profil
     profileFirstName.value = currentCustomer.first_name || '';
     profileLastName.value = currentCustomer.last_name || '';
     profileEmail.value = currentCustomer.email || '';
@@ -592,10 +599,8 @@ async function emarketHandleCheckout(e) {
 
     const firstProduct = products.find(p => p.id === cart[0]?.id);
     const paymentUrl = firstProduct?.payment_url || 'https://fedapay.com';
-    // Rediriger vers la page de paiement avec l'ID de commande
     window.location.href = `${paymentUrl}?orderId=${order.id}`;
 
-    // Vider le panier
     cart = [];
     emarketUpdateCartCount();
     emarketCloseCheckoutModal();
@@ -637,7 +642,9 @@ function emarketSwitchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab' + tabId).classList.add('active');
-    event.target.classList.add('active');
+    // L'élément actif est passé via event, mais ici on utilise tabId, donc on doit aussi activer le bouton correspondant
+    const activeBtn = Array.from(tabBtns).find(btn => btn.dataset.tab === tabId.toLowerCase());
+    if (activeBtn) activeBtn.classList.add('active');
 }
 
 // ===== AFFICHER/MASQUER MOT DE PASSE =====
@@ -684,7 +691,7 @@ function emarketEnableProfileEdit() {
 
 function emarketSaveProfile(e) {
     e.preventDefault();
-    // I on pourrait mettre à jour en base, mais pour l'instant on simule
+    // Ici on pourrait mettre à jour en base, mais pour l'instant on simule
     currentCustomer.first_name = profileFirstName.value;
     currentCustomer.last_name = profileLastName.value;
     currentCustomer.email = profileEmail.value;
@@ -700,135 +707,157 @@ function emarketSaveProfile(e) {
     emarketUpdateCustomerUI();
 }
 
-// ===== INITIALISATION =====
-async function emarketInit() {
-    const saved = localStorage.getItem('emarket_customer');
-    if (saved) {
-        try { currentCustomer = JSON.parse(saved); } catch (e) {}
+// ===== ATTENTE DU CHARGEMENT DE BCRYPT =====
+function waitForBcrypt(callback) {
+    if (typeof bcrypt !== 'undefined') {
+        callback();
+    } else {
+        const script = document.querySelector('script[src*="bcrypt"]');
+        if (script) {
+            script.addEventListener('load', callback);
+            script.addEventListener('error', () => {
+                console.error('Erreur chargement bcrypt');
+                emarketShowToast('Erreur de chargement de la sécurité', 'error');
+                callback(); // On continue quand même, mais les fonctions planteront
+            });
+        } else {
+            console.error('Script bcrypt introuvable');
+            callback();
+        }
     }
-    emarketUpdateCustomerUI();
-    await emarketLoadProducts();
+}
 
-    // Événements
-    cartFloat.addEventListener('click', emarketOpenCartModal);
+// ===== INITIALISATION =====
+function emarketInit() {
+    waitForBcrypt(async () => {
+        const saved = localStorage.getItem('emarket_customer');
+        if (saved) {
+            try { currentCustomer = JSON.parse(saved); } catch (e) {}
+        }
+        emarketUpdateCustomerUI();
+        await emarketLoadProducts();
 
-    document.addEventListener('click', (e) => {
-        const addBtn = e.target.closest('.btn-add-cart');
-        if (addBtn && !addBtn.disabled) {
-            emarketAddToCart(parseInt(addBtn.dataset.id));
-            return;
-        }
-        const detailsBtn = e.target.closest('.btn-details');
-        if (detailsBtn) {
-            alert('Détails produit (à venir)');
-            return;
-        }
-        const minusBtn = e.target.closest('.cart-qty-minus');
-        if (minusBtn) {
-            emarketUpdateCartItem(parseInt(minusBtn.dataset.id), -1);
-            return;
-        }
-        const plusBtn = e.target.closest('.cart-qty-plus');
-        if (plusBtn) {
-            emarketUpdateCartItem(parseInt(plusBtn.dataset.id), 1);
-            return;
-        }
-        const removeBtn = e.target.closest('.cart-remove');
-        if (removeBtn) {
-            emarketRemoveCartItem(parseInt(removeBtn.dataset.id));
-            return;
-        }
-    });
+        // Événements
+        cartFloat.addEventListener('click', emarketOpenCartModal);
 
-    document.querySelectorAll('.close-modal').forEach(btn => {
-        btn.addEventListener('click', () => {
-            emarketCloseCartModal();
-            emarketCloseAuthModal();
-            emarketCloseCheckoutModal();
-            emarketCloseAccountModal();
-            emarketCloseSendMessageModal();
-            emarketCloseOrderDetailModal();
+        document.addEventListener('click', (e) => {
+            const addBtn = e.target.closest('.btn-add-cart');
+            if (addBtn && !addBtn.disabled) {
+                emarketAddToCart(parseInt(addBtn.dataset.id));
+                return;
+            }
+            const detailsBtn = e.target.closest('.btn-details');
+            if (detailsBtn) {
+                alert('Détails produit (à venir)');
+                return;
+            }
+            const minusBtn = e.target.closest('.cart-qty-minus');
+            if (minusBtn) {
+                emarketUpdateCartItem(parseInt(minusBtn.dataset.id), -1);
+                return;
+            }
+            const plusBtn = e.target.closest('.cart-qty-plus');
+            if (plusBtn) {
+                emarketUpdateCartItem(parseInt(plusBtn.dataset.id), 1);
+                return;
+            }
+            const removeBtn = e.target.closest('.cart-remove');
+            if (removeBtn) {
+                emarketRemoveCartItem(parseInt(removeBtn.dataset.id));
+                return;
+            }
         });
-    });
 
-    window.addEventListener('click', (e) => {
-        if (e.target.classList.contains('modal')) {
-            emarketCloseCartModal();
-            emarketCloseAuthModal();
-            emarketCloseCheckoutModal();
-            emarketCloseAccountModal();
-            emarketCloseSendMessageModal();
-            emarketCloseOrderDetailModal();
-        }
-    });
-
-    // Auth
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = loginEmail.value;
-        const password = loginPassword.value;
-        await emarketLoginCustomer(email, password);
-    });
-
-    registerForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const firstName = regFirstName.value;
-        const lastName = regLastName.value;
-        const email = regEmail.value;
-        const phone = regPhone.value;
-        const password = regPassword.value;
-        const confirm = regPasswordConfirm.value;
-        if (password !== confirm) {
-            emarketShowToast('Les mots de passe ne correspondent pas', 'error');
-            return;
-        }
-        await emarketRegisterCustomer(firstName, lastName, email, phone, password);
-    });
-
-    forgotForm.addEventListener('submit', emarketHandleForgotPassword);
-
-    logoutCustomerLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        emarketHandleLogoutCustomer();
-    });
-
-    myAccountLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        emarketOpenAccountModal();
-    });
-
-    loginBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        emarketOpenAuthModal();
-    });
-
-    signupBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        emarketShowRegisterForm();
-        emarketOpenAuthModal();
-    });
-
-    // Checkout
-    checkoutBtn.addEventListener('click', emarketOpenCheckoutModal);
-    checkoutForm.addEventListener('submit', emarketHandleCheckout);
-
-    // Messages
-    sendMessageForm.addEventListener('submit', emarketSendCustomerMessage);
-    newMessageBtn.addEventListener('click', () => emarketOpenSendMessageModal());
-
-    // Onglets compte
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const tab = e.target.dataset.tab;
-            emarketSwitchTab(tab.charAt(0).toUpperCase() + tab.slice(1));
+        document.querySelectorAll('.close-modal').forEach(btn => {
+            btn.addEventListener('click', () => {
+                emarketCloseCartModal();
+                emarketCloseAuthModal();
+                emarketCloseCheckoutModal();
+                emarketCloseAccountModal();
+                emarketCloseSendMessageModal();
+                emarketCloseOrderDetailModal();
+            });
         });
+
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                emarketCloseCartModal();
+                emarketCloseAuthModal();
+                emarketCloseCheckoutModal();
+                emarketCloseAccountModal();
+                emarketCloseSendMessageModal();
+                emarketCloseOrderDetailModal();
+            }
+        });
+
+        // Auth
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = loginEmail.value;
+            const password = loginPassword.value;
+            await emarketLoginCustomer(email, password);
+        });
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const firstName = regFirstName.value;
+            const lastName = regLastName.value;
+            const email = regEmail.value;
+            const phone = regPhone.value;
+            const password = regPassword.value;
+            const confirm = regPasswordConfirm.value;
+            if (password !== confirm) {
+                emarketShowToast('Les mots de passe ne correspondent pas', 'error');
+                return;
+            }
+            await emarketRegisterCustomer(firstName, lastName, email, phone, password);
+        });
+
+        forgotForm.addEventListener('submit', emarketHandleForgotPassword);
+
+        logoutCustomerLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            emarketHandleLogoutCustomer();
+        });
+
+        myAccountLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            emarketOpenAccountModal();
+        });
+
+        loginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            emarketOpenAuthModal();
+        });
+
+        signupBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            emarketShowRegisterForm();
+            emarketOpenAuthModal();
+        });
+
+        // Checkout
+        checkoutBtn.addEventListener('click', emarketOpenCheckoutModal);
+        checkoutForm.addEventListener('submit', emarketHandleCheckout);
+
+        // Messages
+        sendMessageForm.addEventListener('submit', emarketSendCustomerMessage);
+        newMessageBtn.addEventListener('click', () => emarketOpenSendMessageModal());
+
+        // Onglets compte
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tab = e.target.dataset.tab;
+                emarketSwitchTab(tab.charAt(0).toUpperCase() + tab.slice(1));
+            });
+        });
+
+        // Profil
+        editProfileBtn.addEventListener('click', emarketEnableProfileEdit);
+        profileForm.addEventListener('submit', emarketSaveProfile);
+
+        emarketUpdateCartCount();
     });
-
-    // Profil
-    editProfileBtn.addEventListener('click', emarketEnableProfileEdit);
-    profileForm.addEventListener('submit', emarketSaveProfile);
-
-    emarketUpdateCartCount();
 }
 
 // Démarrer
