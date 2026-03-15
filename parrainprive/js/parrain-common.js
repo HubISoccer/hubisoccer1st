@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseParrain = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseParrainPrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉLÉMENTS DOM COMMUNS =====
 const userMenu = document.getElementById('userMenu');
@@ -24,13 +24,13 @@ let currentParrain = null; // { id, first_name, last_name, email, phone, avatar_
 // ===== GESTION DE LA SESSION =====
 async function checkParrainSession() {
     try {
-        const { data: { session }, error } = await supabaseParrain.auth.getSession();
+        const { data: { session }, error } = await supabaseParrainPrive.auth.getSession();
         if (error || !session) {
             window.location.href = 'auth/login.html';
             return null;
         }
         // Récupérer le profil dans la table parrain_profiles
-        const { data: profile, error: profileError } = await supabaseParrain
+        const { data: profile, error: profileError } = await supabaseParrainPrive
             .from('parrain_profiles')
             .select('*')
             .eq('user_id', session.user.id)
@@ -99,7 +99,7 @@ function initSidebar() {
 async function handleLogout(e) {
     e.preventDefault();
     if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
-        await supabaseParrain.auth.signOut();
+        await supabaseParrainPrive.auth.signOut();
         window.location.href = '../index.html';
     }
 }
@@ -108,7 +108,7 @@ async function handleLogout(e) {
 async function loadNotifications() {
     if (!currentParrain) return;
     // Charger le nombre de notifications non lues (par exemple dans parrain_messages)
-    const { count, error } = await supabaseParrain
+    const { count, error } = await supabaseParrainPrive
         .from('parrain_messages')
         .select('*', { count: 'exact', head: true })
         .eq('receiver_id', currentParrain.id)
@@ -121,15 +121,26 @@ async function loadNotifications() {
 
 // ===== GESTION DES LANGUES =====
 const translations = {
-    fr: { /* ... à compléter ... */ },
-    en: { /* ... */ },
-    // ... pour les 24 langues, à définir si nécessaire
+    fr: {
+        // À compléter si nécessaire
+    },
+    en: {
+        // À compléter
+    },
+    // ... pour les autres langues
 };
 
 let currentLang = 'fr';
 
 function applyTranslations(lang) {
-    // Implémenter la traduction des éléments data-i18n
+    const t = translations[lang];
+    if (!t) return;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key]) {
+            el.textContent = t[key];
+        }
+    });
 }
 
 function loadLanguage(lang) {
@@ -157,6 +168,37 @@ function initLanguage() {
     }
 }
 
+// ===== UPLOAD D'AVATAR =====
+document.addEventListener('change', async (e) => {
+    if (e.target.id !== 'fileInput' || !currentParrain) return;
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `avatar_${currentParrain.id}_${Date.now()}.${fileExt}`;
+    const { error: uploadError } = await supabaseParrainPrive.storage
+        .from('parrain-avatars')
+        .upload(fileName, file);
+    if (uploadError) {
+        alert('Erreur upload : ' + uploadError.message);
+        return;
+    }
+    const { publicURL } = supabaseParrainPrive.storage
+        .from('parrain-avatars')
+        .getPublicUrl(fileName);
+    const { error: updateError } = await supabaseParrainPrive
+        .from('parrain_profiles')
+        .update({ avatar_url: publicURL })
+        .eq('id', currentParrain.id);
+    if (!updateError) {
+        currentParrain.avatar_url = publicURL;
+        userAvatar.src = publicURL;
+        document.getElementById('profileDisplay').src = publicURL;
+    } else {
+        alert('Erreur mise à jour profil : ' + updateError.message);
+    }
+});
+
 // ===== INITIALISATION COMMUNE =====
 document.addEventListener('DOMContentLoaded', async () => {
     await checkParrainSession();
@@ -182,32 +224,3 @@ window.copyID = function() {
 window.triggerUpload = function() {
     document.getElementById('fileInput').click();
 };
-
-// Gestion de l'upload d'avatar (à implémenter)
-document.getElementById('fileInput')?.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file || !currentParrain) return;
-    // Upload vers un bucket 'parrain-avatars' (à créer)
-    const fileExt = file.name.split('.').pop();
-    const fileName = `avatar_${currentParrain.id}_${Date.now()}.${fileExt}`;
-    const { error } = await supabaseParrain.storage
-        .from('parrain-avatars')
-        .upload(fileName, file);
-    if (error) {
-        alert('Erreur upload: ' + error.message);
-        return;
-    }
-    const { publicURL } = supabaseParrain.storage
-        .from('parrain-avatars')
-        .getPublicUrl(fileName);
-    // Mettre à jour le profil
-    const { error: updateError } = await supabaseParrain
-        .from('parrain_profiles')
-        .update({ avatar_url: publicURL })
-        .eq('id', currentParrain.id);
-    if (!updateError) {
-        currentParrain.avatar_url = publicURL;
-        userAvatar.src = publicURL;
-        document.getElementById('profileDisplay').src = publicURL;
-    }
-});
