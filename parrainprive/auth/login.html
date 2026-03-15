@@ -117,7 +117,7 @@
     <script>
         const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseParrainPrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -125,22 +125,19 @@
             const password = document.getElementById('password').value;
 
             try {
-                // 1. Authentifier avec Supabase Auth
-                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                const { data: authData, error: authError } = await supabaseParrainPrive.auth.signInWithPassword({
                     email,
                     password
                 });
                 if (authError) throw authError;
 
-                // 2. Récupérer le profil parrain
-                const { data: profile, error: profileError } = await supabase
+                const { data: profile, error: profileError } = await supabaseParrainPrive
                     .from('parrain_profiles')
                     .select('*')
                     .eq('user_id', authData.user.id)
                     .single();
                 if (profileError) throw new Error('Profil parrain introuvable');
 
-                // 3. Rediriger vers le dashboard
                 window.location.href = '../dashboard.html';
             } catch (err) {
                 alert('Erreur de connexion : ' + err.message);
