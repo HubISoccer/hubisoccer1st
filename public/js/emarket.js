@@ -19,7 +19,7 @@ const loginForm = document.getElementById('loginForm');
 const registerForm = document.getElementById('registerForm');
 const authModalTitle = document.getElementById('authModalTitle');
 const customerGreeting = document.getElementById('customerGreeting');
-const logoutCustomer = document.getElementById('logoutCustomer');
+const logoutCustomerLink = document.getElementById('logoutCustomer');  // ← renommé
 const loginBtn = document.getElementById('loginBtn');
 const signupBtn = document.getElementById('signupBtn');
 
@@ -238,12 +238,12 @@ function updateCustomerUI() {
     if (currentCustomer) {
         customerGreeting.textContent = `Bonjour ${currentCustomer.first_name}`;
         customerGreeting.style.display = 'inline';
-        logoutCustomer.style.display = 'inline';
+        logoutCustomerLink.style.display = 'inline';
         loginBtn.style.display = 'none';
         signupBtn.style.display = 'none';
     } else {
         customerGreeting.style.display = 'none';
-        logoutCustomer.style.display = 'none';
+        logoutCustomerLink.style.display = 'none';
         loginBtn.style.display = 'inline';
         signupBtn.style.display = 'inline';
     }
@@ -580,7 +580,7 @@ async function init() {
         await registerCustomer(firstName, lastName, email, phone, password);
     });
 
-    logoutCustomer.addEventListener('click', (e) => {
+    logoutCustomerLink.addEventListener('click', (e) => {
         e.preventDefault();
         logoutCustomer();
     });
