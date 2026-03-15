@@ -227,8 +227,29 @@ function emarketRenderProductCard(product) {
     `;
 }
 
+// ===== FONCTION D'ATTENTE POUR BCRYPT =====
+function emarketWaitForBcrypt() {
+    return new Promise((resolve) => {
+        if (typeof bcrypt !== 'undefined') {
+            resolve();
+        } else {
+            const script = document.querySelector('script[src*="bcrypt"]');
+            if (script) {
+                script.addEventListener('load', resolve);
+                script.addEventListener('error', () => {
+                    console.error('Erreur chargement bcrypt');
+                    resolve(); // On résout quand même pour éviter le blocage
+                });
+            } else {
+                resolve(); // Pas de script
+            }
+        }
+    });
+}
+
 // ===== AUTHENTIFICATION CLIENT =====
 async function emarketRegisterCustomer(firstName, lastName, email, phone, password) {
+    await emarketWaitForBcrypt();
     if (typeof bcrypt === 'undefined') {
         emarketShowToast('Erreur de chargement de la sécurité, veuillez réessayer.', 'error');
         return;
@@ -253,6 +274,7 @@ async function emarketRegisterCustomer(firstName, lastName, email, phone, passwo
 }
 
 async function emarketLoginCustomer(email, password) {
+    await emarketWaitForBcrypt();
     if (typeof bcrypt === 'undefined') {
         emarketShowToast('Erreur de chargement de la sécurité, veuillez réessayer.', 'error');
         return;
