@@ -18,6 +18,15 @@ const recentPlayersList = document.getElementById('recentPlayersList');
 const recentMessagesList = document.getElementById('recentMessagesList');
 const donationsChart = document.getElementById('donationsChart');
 
+// ===== ATTENTE DE CHARGEMENT DE currentParrain =====
+function waitForParrain(callback) {
+    if (typeof currentParrain !== 'undefined' && currentParrain !== null) {
+        callback();
+    } else {
+        setTimeout(() => waitForParrain(callback), 100);
+    }
+}
+
 // ===== CHARGEMENT DES DONNÉES DU PARRAIN =====
 async function loadParrainData() {
     if (!currentParrain) return;
@@ -51,7 +60,7 @@ async function loadParrainData() {
 
 // ===== TRANSACTIONS =====
 async function loadTransactions() {
-    const { data, error } = await supabaseParrain
+    const { data, error } = await supabaseParrainPrive
         .from('parrain_transactions')
         .select('*')
         .eq('parrain_id', currentParrain.id)
@@ -88,7 +97,7 @@ async function loadTransactions() {
                     <div class="donation-item">
                         <div class="date">${new Date(t.date_transaction).toLocaleDateString()}</div>
                         <div class="montant">${t.montant.toLocaleString()} FCFA</div>
-                        <div>${t.type}</div>
+                        <div>${t.type || 'don'}</div>
                     </div>
                 `;
             });
@@ -96,13 +105,13 @@ async function loadTransactions() {
         }
     }
 
-    // Préparer les données pour le graphique (par mois)
+    // Préparer les données pour le graphique
     prepareChartData(data);
 }
 
 // ===== SOUTIENS (joueurs soutenus) =====
 async function loadSoutiens() {
-    const { data, error } = await supabaseParrain
+    const { data, error } = await supabaseParrainPrive
         .from('parrain_soutiens')
         .select('*, player_profiles(first_name, last_name)')
         .eq('parrain_id', currentParrain.id)
@@ -141,7 +150,7 @@ async function loadSoutiens() {
 
 // ===== MESSAGES RÉCENTS =====
 async function loadRecentMessages() {
-    const { data, error } = await supabaseParrain
+    const { data, error } = await supabaseParrainPrive
         .from('parrain_messages')
         .select('*')
         .eq('receiver_id', currentParrain.id)
@@ -174,7 +183,7 @@ async function loadRecentMessages() {
 
 // ===== STATUT DE LICENCE =====
 async function loadLicenseStatus() {
-    const { data, error } = await supabaseParrain
+    const { data, error } = await supabaseParrainPrive
         .from('parrain_license_requests')
         .select('status')
         .eq('parrain_id', currentParrain.id)
@@ -205,7 +214,6 @@ function calculateProfileCompletion() {
     let total = 0;
     let filled = 0;
 
-    // Liste des champs obligatoires
     const fields = [
         currentParrain.first_name,
         currentParrain.last_name,
@@ -229,7 +237,7 @@ function prepareChartData(transactions) {
     const months = {};
     transactions.forEach(t => {
         const date = new Date(t.date_transaction);
-        const monthKey = `${date.getFullYear()}-${date.getMonth()+1}`;
+        const monthKey = `${date.getFullYear()}-${date.getMonth() + 1}`;
         months[monthKey] = (months[monthKey] || 0) + t.montant;
     });
 
@@ -264,14 +272,6 @@ function prepareChartData(transactions) {
 }
 
 // ===== INITIALISATION =====
-document.addEventListener('DOMContentLoaded', async () => {
-    // Attendre que currentParrain soit défini par parrain-common.js
-    // On utilise un délai ou on écoute un événement personnalisé
-    // Pour simplifier, on utilise un intervalle
-    const interval = setInterval(() => {
-        if (typeof currentParrain !== 'undefined' && currentParrain !== null) {
-            clearInterval(interval);
-            loadParrainData();
-        }
-    }, 100);
+waitForParrain(() => {
+    loadParrainData();
 });
