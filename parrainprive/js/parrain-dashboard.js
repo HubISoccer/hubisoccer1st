@@ -145,10 +145,11 @@ async function loadTransactions() {
     prepareChart(data);
 }
 
+// ===== FONCTION CORRIGÉE POUR LES SOUTIENS =====
 async function loadSoutiens() {
     const { data, error } = await supabaseParrainPrive
         .from('parrain_soutiens')
-        .select('*, player_profiles(first_name, last_name)')
+        .select('*, player_profiles(full_name)') // ← Correction : utilisation de full_name
         .eq('parrain_id', currentParrain.id)
         .order('date_debut', { ascending: false });
 
@@ -169,7 +170,7 @@ async function loadSoutiens() {
             const player = s.player_profiles || {};
             return `
                 <div class="recent-item">
-                    <div class="main">${player.first_name || ''} ${player.last_name || ''}</div>
+                    <div class="main">${player.full_name || 'Joueur inconnu'}</div>
                     <div class="date">Depuis ${new Date(s.date_debut).toLocaleDateString('fr-FR')}</div>
                     <div class="sub">Montant total: ${s.montant_total.toLocaleString('fr-FR')} FCFA</div>
                 </div>
