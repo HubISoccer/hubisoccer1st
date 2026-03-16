@@ -79,7 +79,7 @@
     <!-- Overlay pour mobile -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- SIDEBAR GAUCHE (menu) -->
+    <!-- SIDEBAR GAUCHE (menu principal) -->
     <div class="sidebar left-sidebar" id="leftSidebar">
         <div class="sidebar-header">
             <h3>Menu Parrain</h3>
@@ -130,7 +130,7 @@
                     <p>Nouveaux abonnés : <strong id="insightNewFollowers">+0</strong></p>
                 </div>
             </div>
-            <!-- Gestionnaire de profil (simplifié) -->
+            <!-- Gestionnaire de profil -->
             <div class="community-section">
                 <h4><i class="fas fa-cog"></i> Gestionnaire</h4>
                 <button class="btn-edit-profile" onclick="openEditProfileModal()"><i class="fas fa-pen"></i> Modifier mes infos</button>
@@ -215,11 +215,11 @@
         </div>
     </div>
 
-    <!-- MODALE D'ÉDITION DU PROFIL (simplifiée) -->
+    <!-- MODALE D'ÉDITION DU PROFIL -->
     <div id="editProfileModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Modifier mon profil</h2>
+                <h2>Modifier mes informations</h2>
                 <span class="close-modal" onclick="closeEditProfileModal()">&times;</span>
             </div>
             <div class="modal-body">
@@ -232,7 +232,6 @@
                         <label>Email professionnel</label>
                         <input type="email" id="editEmail" placeholder="contact@exemple.com">
                     </div>
-                    <!-- Les champs bio, pays, adresse ont été retirés car non présents en base -->
                     <button type="submit" class="btn-save-profile">Enregistrer</button>
                 </form>
             </div>
@@ -266,7 +265,7 @@
                     </div>
                     <h3 id="profileName">Nom de l'utilisateur</h3>
                     <p id="profileHubId">@hub_id</p>
-                    <p id="profileBio" class="profile-bio">Bio de l'utilisateur...</p>
+                    <p id="profileBio" class="profile-bio"></p>
                     <button class="btn-send-message" onclick="sendMessageToUser()"><i class="fas fa-envelope"></i> Envoyer un message</button>
                 </div>
             </div>
@@ -316,6 +315,7 @@
         </div>
     </footer>
 
+    <!-- SCRIPT PRINCIPAL -->
     <script src="js/parrain-feed.js"></script>
 </body>
 </html>
