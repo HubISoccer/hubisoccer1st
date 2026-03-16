@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseParrainPrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉLÉMENTS DOM =====
 // Navbar & sidebar
@@ -16,7 +16,6 @@ const logoutLinkSidebar = document.getElementById('logoutLinkSidebar');
 const userNameSpan = document.getElementById('userName');
 const userAvatar = document.getElementById('userAvatar');
 const notifBadge = document.getElementById('notifBadge');
-const langSelect = document.getElementById('langSelect');
 
 // Profil
 const profileDisplay = document.getElementById('profileDisplay');
@@ -51,12 +50,12 @@ let currentParrain = null;
 // ===== GESTION DE LA SESSION =====
 async function checkSession() {
     try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabaseParrainPrive.auth.getSession();
         if (error || !session) {
             window.location.href = 'auth/login.html';
             return null;
         }
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile, error: profileError } = await supabaseParrainPrive
             .from('parrain_profiles')
             .select('*')
             .eq('user_id', session.user.id)
@@ -68,7 +67,6 @@ async function checkSession() {
         currentParrain = profile;
         updateUserUI();
         loadParrainData();
-        loadNotifications();
         return profile;
     } catch (err) {
         console.error(err);
@@ -89,24 +87,9 @@ function updateUserUI() {
         parrainEmail.textContent = currentParrain.email;
         parrainPhone.textContent = currentParrain.phone || 'Non renseigné';
         if (currentParrain.date_adhesion) {
-            const date = new Date(currentParrain.date_adhesion);
-            memberSince.textContent = date.toLocaleDateString('fr-FR');
+            memberSince.textContent = new Date(currentParrain.date_adhesion).toLocaleDateString('fr-FR');
         }
         parrainID.textContent = `ID: ${currentParrain.id}`;
-    }
-}
-
-// ===== NOTIFICATIONS =====
-async function loadNotifications() {
-    if (!currentParrain) return;
-    const { count, error } = await supabase
-        .from('parrain_messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('receiver_id', currentParrain.id)
-        .eq('receiver_type', 'parrain')
-        .eq('is_read', false);
-    if (!error && notifBadge) {
-        notifBadge.textContent = count || 0;
     }
 }
 
@@ -123,7 +106,7 @@ async function loadParrainData() {
 }
 
 async function loadTransactions() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseParrainPrive
         .from('parrain_transactions')
         .select('*')
         .eq('parrain_id', currentParrain.id)
@@ -145,6 +128,7 @@ async function loadTransactions() {
         lastDonDate.textContent = 'Aucun';
     }
 
+    // Afficher les 5 derniers
     const recent = data.slice(0, 5);
     if (recent.length === 0) {
         recentDonationsList.innerHTML = '<p class="no-data">Aucun don pour le moment.</p>';
@@ -162,7 +146,7 @@ async function loadTransactions() {
 }
 
 async function loadSoutiens() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseParrainPrive
         .from('parrain_soutiens')
         .select('*, player_profiles(first_name, last_name)')
         .eq('parrain_id', currentParrain.id)
@@ -195,7 +179,7 @@ async function loadSoutiens() {
 }
 
 async function loadRecentMessages() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseParrainPrive
         .from('parrain_messages')
         .select('*')
         .eq('receiver_id', currentParrain.id)
@@ -221,7 +205,7 @@ async function loadRecentMessages() {
 }
 
 async function loadLicenseStatus() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseParrainPrive
         .from('parrain_license_requests')
         .select('status')
         .eq('parrain_id', currentParrain.id)
@@ -312,7 +296,7 @@ fileInput.addEventListener('change', async (e) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `avatar_${currentParrain.id}_${Date.now()}.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabaseParrainPrive.storage
         .from('parrain-avatars')
         .upload(fileName, file);
 
@@ -321,11 +305,11 @@ fileInput.addEventListener('change', async (e) => {
         return;
     }
 
-    const { publicURL } = supabase.storage
+    const { publicURL } = supabaseParrainPrive.storage
         .from('parrain-avatars')
         .getPublicUrl(fileName);
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseParrainPrive
         .from('parrain_profiles')
         .update({ avatar_url: publicURL })
         .eq('id', currentParrain.id);
@@ -374,7 +358,7 @@ if (sidebarOverlay) {
 const logout = async (e) => {
     e.preventDefault();
     if (confirm('Déconnexion ?')) {
-        await supabase.auth.signOut();
+        await supabaseParrainPrive.auth.signOut();
         window.location.href = 'auth/login.html';
     }
 };
@@ -387,13 +371,6 @@ window.copyID = () => {
     navigator.clipboard.writeText(id);
     alert('ID copié !');
 };
-
-// Langue (simplifié)
-if (langSelect) {
-    langSelect.addEventListener('change', (e) => {
-        alert('Changement de langue : ' + e.target.value);
-    });
-}
 
 // ===== INITIALISATION =====
 checkSession();
