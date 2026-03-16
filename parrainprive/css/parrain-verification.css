@@ -37,7 +37,7 @@ body {
     overflow-x: hidden;
 }
 
-/* ===== NAVBAR (espace parrain) ===== */
+/* ===== NAVBAR ===== */
 .dashboard-nav {
     display: flex;
     justify-content: space-between;
@@ -190,7 +190,7 @@ body {
     color: var(--primary);
 }
 
-/* ===== SIDEBAR GAUCHE ===== */
+/* ===== SIDEBAR ===== */
 .sidebar {
     position: fixed;
     top: 0;
