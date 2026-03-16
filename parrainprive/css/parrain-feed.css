@@ -834,6 +834,25 @@ body {
 .btn-edit-bio:hover, .btn-edit-contact:hover {
     background: #d0d4d9;
 }
+/* Bouton d'édition de profil (fusionné) */
+.btn-edit-profile {
+    width: 100%;
+    padding: 10px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 10px;
+    transition: var(--transition);
+}
+.btn-edit-profile:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(85,27,140,0.2);
+}
+
 #communitySearch {
     width: 100%;
     padding: 8px;
@@ -864,6 +883,38 @@ body {
 .filter-btn.active {
     background: var(--primary);
     color: white;
+}
+
+/* ===== BOUTON RETOUR AU FIL ===== */
+.back-to-feed {
+    text-align: center;
+    margin-top: 20px;
+}
+.back-to-feed button {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.back-to-feed button:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(85,27,140,0.2);
+}
+
+/* ===== MESSAGE AUCUNE DONNÉE ===== */
+.no-data {
+    text-align: center;
+    color: var(--gray);
+    padding: 40px 20px;
+    font-size: 1rem;
 }
 
 /* ===== FOOTER ===== */
