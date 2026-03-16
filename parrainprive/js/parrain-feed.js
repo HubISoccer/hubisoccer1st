@@ -121,8 +121,6 @@ async function loadPosts() {
         if (postsError) throw postsError;
 
         const authorIds = postsData.map(p => p.author_id).filter(Boolean);
-        // On suppose que les auteurs peuvent être des parrains ou des joueurs ? Pour simplifier, on joint parrain_profiles et player_profiles selon le type.
-        // Mais ici on va supposer que seuls les parrains peuvent poster. Donc on joint parrain_profiles.
         const { data: profilesData, error: profilesError } = await supabaseParrainPrive
             .from('parrain_profiles')
             .select('id, first_name, last_name, avatar_url')
@@ -177,6 +175,7 @@ async function loadPosts() {
         console.error('Erreur chargement posts:', error);
         showToast('Erreur lors du chargement des posts', 'error');
     } finally {
+        const feedLoader = document.getElementById('feedLoader');
         if (feedLoader) feedLoader.style.display = 'none';
     }
 }
@@ -300,7 +299,7 @@ async function renderComment(comment) {
     let repliesHtml = '';
     if (replies && replies.length > 0) {
         for (const reply of replies) {
-            repliesHtml += await renderComment(reply); // récursif pour les sous-réponses (si on veut plusieurs niveaux)
+            repliesHtml += await renderComment(reply); // récursif pour les sous-réponses
         }
     }
 
@@ -311,7 +310,7 @@ async function renderComment(comment) {
                 <span class="comment-author" onclick="openUserProfile(${comment.author?.id})">${authorName}</span>
                 <span class="comment-text">${comment.content}</span>
                 <small>${timeAgo}</small>
-                <button class="reply-btn" onclick="openReplyModal(${comment.id}, '${authorName}')"><i class="fas fa-reply"></i> Répondre</button>
+                <button class="reply-btn" onclick="openReplyModal(${comment.id}, '${authorName}', ${comment.post_id})"><i class="fas fa-reply"></i> Répondre</button>
             </div>
         </div>
         ${repliesHtml ? `<div class="comment-reply">${repliesHtml}</div>` : ''}
@@ -607,7 +606,6 @@ function closeUserProfileModal() {
 
 function sendMessageToUser() {
     if (selectedUserId) {
-        // Rediriger vers la page messages avec l'ID du destinataire
         window.location.href = `messages.html?to=${selectedUserId}`;
     } else {
         showToast('Aucun utilisateur sélectionné', 'warning');
@@ -626,13 +624,11 @@ async function createPost(content, file) {
         const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
         const bucket = 'parrain-posts';
 
-        // Utiliser XMLHttpRequest pour la progression
         const xhr = new XMLHttpRequest();
         xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`, true);
         xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
         xhr.setRequestHeader('Authorization', `Bearer ${SUPABASE_ANON_KEY}`);
 
-        // Afficher la progression
         const publishBtn = document.getElementById('publishBtn');
         const originalText = publishBtn.innerHTML;
         publishBtn.disabled = true;
@@ -728,11 +724,13 @@ function cancelMedia() {
 }
 
 // ===== RÉPONSE AUX COMMENTAIRES =====
-function openReplyModal(commentId, authorName) {
+function openReplyModal(commentId, authorName, postId) {
     replyParentId = commentId;
     document.getElementById('originalComment').innerHTML = `Répondre à ${authorName}`;
     document.getElementById('replyContent').value = '';
     document.getElementById('replyModal').style.display = 'block';
+    // On stocke le postId dans un attribut data pour l'utiliser dans sendReply
+    document.getElementById('replyModal').dataset.postId = postId;
 }
 
 function closeReplyModal() {
@@ -743,38 +741,20 @@ function closeReplyModal() {
 async function sendReply() {
     const content = document.getElementById('replyContent').value.trim();
     if (!content) return;
+    const postId = document.getElementById('replyModal').dataset.postId;
     const button = document.querySelector('.btn-send-reply');
     button.disabled = true;
     const originalText = button.innerHTML;
     button.innerHTML = '<span class="button-spinner"></span>';
     try {
-        // Il faut aussi le postId. On le récupère du commentaire parent via le DOM ou un état. Pour simplifier, on suppose que replyParentId est un commentaire et on a besoin du postId.
-        // On va devoir stocker le postId dans la modale. Pour l'instant, on le passe via un attribut data.
-        // Solution simple : on ajoute un champ caché dans la modale. Pour l'instant, on va le récupérer via le commentaire parent.
-        // Mais ici on ne l'a pas. On va modifier openReplyModal pour accepter aussi postId.
-        // Réimplémentons openReplyModal avec postId.
-        // Nous allons changer plus tard.
-        // Pour l'instant, on utilise une variable globale.
-        // On suppose que le postId est stocké dans le dataset du commentaire.
-        // On va plutôt passer le postId lors de l'ouverture.
-        // On va modifier l'appel dans renderComment pour inclure postId.
-        // Mais pour ne pas tout refaire, on va simplement récupérer le postId à partir du commentaire via une requête.
-        // Cependant, ce serait inefficace. On va plutôt modifier renderComment pour que le bouton appelle une fonction avec commentId et postId.
-        // Je vais corriger cela plus tard. Pour l'instant, on fait une version simple.
-        // Pour que le code fonctionne, on suppose que le postId est stocké dans la modale via un attribut data.
-        // Je vais ajouter un champ caché dans le HTML pour le postId.
-        // Je ne vais pas tout réécrire ici, mais je vous fournis un code fonctionnel avec les modifications nécessaires.
-        // Pour gagner du temps, je vais simplifier : on va récupérer le postId à partir du commentaire via une requête.
-        const { data: comment } = await supabaseParrainPrive.from('parrain_comments').select('post_id').eq('id', replyParentId).single();
-        if (!comment) throw new Error('Commentaire introuvable');
         await supabaseParrainPrive.from('parrain_comments').insert({
             author_id: currentProfile.id,
-            post_id: comment.post_id,
+            post_id: postId,
             parent_id: replyParentId,
             content: content
         });
         closeReplyModal();
-        loadComments(comment.post_id);
+        loadComments(postId);
         loadPosts();
         showToast('Réponse envoyée', 'success');
     } catch (error) {
@@ -831,6 +811,17 @@ document.getElementById('sidebarOverlay').addEventListener('click', () => {
     document.getElementById('sidebarOverlay').classList.remove('active');
 });
 
+// Boutons pour ouvrir les sidebars
+document.getElementById('menuToggle').addEventListener('click', () => {
+    document.getElementById('leftSidebar').classList.add('active');
+    document.getElementById('sidebarOverlay').classList.add('active');
+});
+
+document.getElementById('rightSidebarToggle').addEventListener('click', () => {
+    document.getElementById('rightSidebar').classList.add('active');
+    document.getElementById('sidebarOverlay').classList.add('active');
+});
+
 // ===== RENDU DE LA SIDEBAR DROITE =====
 async function loadFollowers() {
     const { data: followersData } = await supabaseParrainPrive
@@ -871,7 +862,6 @@ function initSearchAndFilters() {
     document.getElementById('communitySearch').addEventListener('input', (e) => {
         searchTerm = e.target.value.toLowerCase();
         // À implémenter : filtrage des membres dans la sidebar
-        // Pour l'instant on ne fait rien
     });
 
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -879,8 +869,7 @@ function initSearchAndFilters() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentFilter = btn.dataset.filter;
-            // À implémenter : filtrage des posts par type d'auteur (si on a plusieurs types)
-            // Pour l'instant on recharge tous les posts
+            // À implémenter : filtrage des posts par type d'auteur
             loadPosts();
         });
     });
