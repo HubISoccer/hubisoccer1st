@@ -195,6 +195,7 @@ async function uploadDocument(docId) {
             const { publicURL } = supabaseParrainPrive.storage
                 .from('parrain-documents')
                 .getPublicUrl(filePath);
+            if (!publicURL) throw new Error('URL publique non générée');
 
             const doc = documentsList.find(d => d.id === docId);
             if (doc.request_id) {
@@ -219,6 +220,7 @@ async function uploadDocument(docId) {
             showToast('Document téléversé avec succès ! En attente de validation.', 'success');
             await loadDocuments();
         } catch (err) {
+            console.error(err);
             showToast('Erreur : ' + err.message, 'error');
         } finally {
             showLoader(false);
@@ -324,6 +326,7 @@ async function submitLicense(e) {
             profession: document.getElementById('profession').value || null,
         };
 
+        // Upload de la signature
         const signatureBlob = await (await fetch(signatureDataURL)).blob();
         const signatureFileName = `${currentUser.id}_signature_${Date.now()}.png`;
         const signaturePath = `signatures/${signatureFileName}`;
@@ -336,7 +339,9 @@ async function submitLicense(e) {
         const { publicURL: signatureUrl } = supabaseParrainPrive.storage
             .from('parrain-documents')
             .getPublicUrl(signaturePath);
+        if (!signatureUrl) throw new Error('URL de signature non générée');
 
+        // Insertion dans parrain_license_requests avec signature_url
         const { data, error } = await supabaseParrainPrive
             .from('parrain_license_requests')
             .insert([{
@@ -354,12 +359,14 @@ async function submitLicense(e) {
         showToast('Demande soumise avec succès ! Elle sera traitée sous 0 à 100h.', 'success');
         licenseRequest = data;
         
+        // Nettoyer
         signatureDataURL = null;
         document.getElementById('signatureImage').style.display = 'none';
         document.querySelector('.signature-placeholder').style.display = 'block';
         document.getElementById('licenseForm').reset();
         checkLicenseStatus();
     } catch (err) {
+        console.error(err);
         showToast('Erreur lors de la soumission : ' + err.message, 'error');
     } finally {
         showLoader(false);
