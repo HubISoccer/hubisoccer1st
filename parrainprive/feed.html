@@ -6,15 +6,15 @@
     <title>Ma Communauté | HubISoccer - Parrain</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles globaux -->
+    <!-- Styles globaux du site -->
     <link rel="stylesheet" href="../public/css/style.css">
-    <!-- Styles spécifiques -->
+    <!-- Styles spécifiques à la page (sera créé ensuite) -->
     <link rel="stylesheet" href="css/parrain-feed.css">
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- Navbar -->
+    <!-- NAVBAR (fixe en haut) -->
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
@@ -25,37 +25,39 @@
             <button class="sidebar-toggle" id="rightSidebarToggle" title="Communauté">
                 <i class="fas fa-users"></i>
             </button>
-            <!-- Sélecteur de langue compact -->
+            <!-- Sélecteur de langue (24 langues) -->
             <select class="lang-picker" id="langSelect">
-                <option value="fr">🇫🇷 Fr</option>
-                <option value="en">🇺🇸 En</option>
-                <option value="yo">🇳🇬 Yo</option>
-                <option value="fon">🇧🇯 Fn</option>
-                <option value="mina">🇹🇬 Mi</option>
-                <option value="lin">🇨🇬 Li</option>
-                <option value="wol">🇸🇳 Wo</option>
-                <option value="diou">🇨🇮 Di</option>
-                <option value="ha">🇳🇬 Ha</option>
-                <option value="sw">🇰🇪 Sw</option>
-                <option value="es">🇪🇸 Es</option>
-                <option value="pt">🇵🇹 Pt</option>
-                <option value="de">🇩🇪 De</option>
-                <option value="it">🇮🇹 It</option>
-                <option value="ar">🇸🇦 Ar</option>
-                <option value="zh">🇨🇳 Zh</option>
-                <option value="ru">🇷🇺 Ru</option>
-                <option value="ja">🇯🇵 Ja</option>
-                <option value="tr">🇹🇷 Tr</option>
-                <option value="ko">🇰🇷 Ko</option>
-                <option value="hi">🇮🇳 Hi</option>
-                <option value="nl">🇳🇱 Nl</option>
-                <option value="pl">🇵🇱 Pl</option>
-                <option value="vi">🇻🇳 Vi</option>
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+                <option value="lin">🇨🇬 Lingala</option>
+                <option value="wol">🇸🇳 Wolof</option>
+                <option value="diou">🇨🇮 Dioula</option>
+                <option value="ha">🇳🇬 Hausa</option>
+                <option value="sw">🇰🇪 Kiswahili</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="pt">🇵🇹 Português</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="ar">🇸🇦 العربية</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="ja">🇯🇵 日本語</option>
+                <option value="tr">🇹🇷 Türkçe</option>
+                <option value="ko">🇰🇷 한국어</option>
+                <option value="hi">🇮🇳 हिन्दी</option>
+                <option value="nl">🇳🇱 Nederlands</option>
+                <option value="pl">🇵🇱 Polski</option>
+                <option value="vi">🇻🇳 Tiếng Việt</option>
             </select>
+            <!-- Notifications -->
             <div class="notif-icon" id="notifIcon">
                 <i class="fas fa-bell"></i>
                 <span class="notif-badge" id="notifBadge">0</span>
             </div>
+            <!-- Menu utilisateur (avatar + dropdown) -->
             <div class="user-menu" id="userMenu">
                 <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
                 <span class="user-name" id="userName">Chargement...</span>
@@ -67,16 +69,17 @@
                     <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                 </div>
             </div>
+            <!-- Bouton menu mobile (ouvre la sidebar gauche) -->
             <button class="menu-toggle" id="menuToggle" title="Menu">
                 <i class="fas fa-bars"></i>
             </button>
         </div>
     </nav>
 
-    <!-- Overlay pour mobile -->
+    <!-- Overlay pour mobile (quand une sidebar est ouverte) -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Sidebar gauche (menu parrain) -->
+    <!-- SIDEBAR GAUCHE (menu principal du parrain) -->
     <div class="sidebar left-sidebar" id="leftSidebar">
         <div class="sidebar-header">
             <h3>Menu Parrain</h3>
@@ -97,7 +100,7 @@
         </nav>
     </div>
 
-    <!-- Sidebar droite (communauté) -->
+    <!-- SIDEBAR DROITE (communauté : abonnés, abonnements, insights, recherche) -->
     <div class="sidebar right-sidebar" id="rightSidebar">
         <div class="sidebar-header">
             <h3>Communauté</h3>
@@ -125,13 +128,13 @@
                     <p>Nouveaux abonnés : <strong id="insightNewFollowers">+0</strong></p>
                 </div>
             </div>
-            <!-- Gestionnaires de profil -->
+            <!-- Gestionnaire de profil -->
             <div class="community-section">
                 <h4><i class="fas fa-cog"></i> Gestionnaire</h4>
                 <button class="btn-edit-bio" onclick="openEditProfileModal()"><i class="fas fa-pen"></i> Modifier la bio</button>
                 <button class="btn-edit-contact" onclick="openEditProfileModal()"><i class="fas fa-address-card"></i> Modifier contact</button>
             </div>
-            <!-- Recherche / Filtres -->
+            <!-- Recherche et filtres -->
             <div class="community-section">
                 <h4><i class="fas fa-search"></i> Recherche</h4>
                 <input type="text" id="communitySearch" placeholder="Rechercher un membre...">
@@ -146,13 +149,13 @@
         </div>
     </div>
 
-    <!-- Contenu principal -->
+    <!-- CONTENU PRINCIPAL -->
     <main class="dashboard-main">
         <div class="feed-container">
             <h1>Ma Communauté</h1>
             <p>Partagez et interagissez avec les joueurs, parrains et acteurs du football.</p>
 
-            <!-- Zone de publication -->
+            <!-- ZONE DE PUBLICATION -->
             <div class="publish-box" id="publishBox">
                 <div class="publish-top">
                     <img src="img/user-default.jpg" alt="Avatar" id="publishAvatar">
@@ -166,21 +169,21 @@
                     <button class="action-btn" id="schedulePostBtn"><i class="fas fa-clock"></i> Prog.</button>
                     <button class="action-btn publish-main" id="publishBtn"><i class="fas fa-paper-plane"></i> Publier</button>
                 </div>
-                <!-- Bouton d'annulation du média (caché par défaut) -->
+                <!-- Zone d'annulation du média (cachée par défaut) -->
                 <div class="media-cancel" id="mediaCancel" style="display: none;">
                     <span>Fichier sélectionné : <span id="mediaFileName"></span></span>
                     <button class="btn-cancel-media" onclick="cancelMedia()"><i class="fas fa-times"></i> Annuler</button>
                 </div>
             </div>
 
-            <!-- Indicateur de nouveaux posts -->
+            <!-- INDICATEUR DE NOUVEAUX POSTS (apparaît en temps réel) -->
             <div id="newPostsIndicator" class="new-posts-indicator" style="display: none;">
                 <span>⬆️</span> <span id="newPostsCount">0</span> nouveau(x) post(s)
             </div>
 
-            <!-- Fil d'actualité -->
+            <!-- FIL D'ACTUALITÉ (les posts seront injectés ici) -->
             <div id="postsFeed" class="posts-feed">
-                <!-- Loader de chargement -->
+                <!-- Loader de chargement des posts -->
                 <div id="feedLoader" class="feed-loader" style="display: none;">
                     <div class="spinner"></div>
                 </div>
@@ -188,7 +191,7 @@
         </div>
     </main>
 
-    <!-- MODALE D'APERÇU (pour la publication) -->
+    <!-- MODALE D'APERÇU (avant publication) -->
     <div id="previewModal" class="preview-modal">
         <div class="preview-content">
             <div class="preview-header">
@@ -296,15 +299,15 @@
         </div>
     </div>
 
-    <!-- Toast container -->
+    <!-- CONTENEUR POUR LES TOASTS (notifications) -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- Loader global -->
+    <!-- LOADER GLOBAL (affiche un spinner pendant les chargements) -->
     <div id="globalLoader" class="global-loader" style="display: none;">
         <div class="spinner"></div>
     </div>
 
-    <!-- Footer -->
+    <!-- FOOTER -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
@@ -324,6 +327,7 @@
         </div>
     </footer>
 
+    <!-- SCRIPT PRINCIPAL (sera fourni à l'étape suivante) -->
     <script src="js/parrain-feed.js"></script>
 </body>
 </html>
