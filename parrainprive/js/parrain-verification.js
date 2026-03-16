@@ -90,7 +90,6 @@ async function loadParrainProfile() {
 // ===== CHARGEMENT DES DOCUMENTS =====
 async function loadDocuments() {
     try {
-        // Liste des documents requis pour un parrain
         const requiredDocs = [
             { id: 'id_card', name: 'Pièce d\'identité (CNI/Passeport)', type: 'identity' },
             { id: 'photo', name: 'Photo d\'identité', type: 'photo' },
@@ -199,14 +198,12 @@ async function uploadDocument(docId) {
 
             const doc = documentsList.find(d => d.id === docId);
             if (doc.request_id) {
-                // Mise à jour d'une demande existante
                 const { error: updateError } = await supabaseParrainPrive
                     .from('parrain_documents')
                     .update({ url: publicURL, file_name: file.name, statut: 'pending' })
                     .eq('id', doc.request_id);
                 if (updateError) throw updateError;
             } else {
-                // Nouvelle insertion
                 const { error: insertError } = await supabaseParrainPrive
                     .from('parrain_documents')
                     .insert([{
@@ -314,7 +311,6 @@ async function submitLicense(e) {
 
     showLoader(true);
     try {
-        // Récupérer les données du formulaire
         const formData = {
             nom: document.getElementById('nom').value,
             prenom: document.getElementById('prenom').value,
@@ -328,7 +324,6 @@ async function submitLicense(e) {
             profession: document.getElementById('profession').value || null,
         };
 
-        // Upload de la signature
         const signatureBlob = await (await fetch(signatureDataURL)).blob();
         const signatureFileName = `${currentUser.id}_signature_${Date.now()}.png`;
         const signaturePath = `signatures/${signatureFileName}`;
@@ -342,7 +337,6 @@ async function submitLicense(e) {
             .from('parrain-documents')
             .getPublicUrl(signaturePath);
 
-        // Insertion dans parrain_license_requests avec un champ JSONB pour les données
         const { data, error } = await supabaseParrainPrive
             .from('parrain_license_requests')
             .insert([{
@@ -360,11 +354,9 @@ async function submitLicense(e) {
         showToast('Demande soumise avec succès ! Elle sera traitée sous 0 à 100h.', 'success');
         licenseRequest = data;
         
-        // Nettoyer
         signatureDataURL = null;
         document.getElementById('signatureImage').style.display = 'none';
         document.querySelector('.signature-placeholder').style.display = 'block';
-        
         document.getElementById('licenseForm').reset();
         checkLicenseStatus();
     } catch (err) {
@@ -516,27 +508,24 @@ function initUserMenu() {
 
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
-    const sidebar = document.getElementById('sidebar');
-    const closeBtn = document.getElementById('closeSidebar');
+    const sidebar = document.getElementById('leftSidebar');
+    const closeBtn = document.getElementById('closeLeftSidebar');
     const overlay = document.getElementById('sidebarOverlay');
 
-    if (!menuBtn || !sidebar || !closeBtn || !overlay) {
-        console.warn('Éléments de la sidebar manquants');
-        return;
-    }
+    if (!menuBtn || !sidebar || !closeBtn || !overlay) return;
 
-    function openSidebar() {
+    menuBtn.addEventListener('click', () => {
         sidebar.classList.add('active');
         overlay.classList.add('active');
-    }
-    function closeSidebarFunc() {
+    });
+    closeBtn.addEventListener('click', () => {
         sidebar.classList.remove('active');
         overlay.classList.remove('active');
-    }
-
-    menuBtn.addEventListener('click', openSidebar);
-    closeBtn.addEventListener('click', closeSidebarFunc);
-    overlay.addEventListener('click', closeSidebarFunc);
+    });
+    overlay.addEventListener('click', () => {
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
+    });
 }
 
 function initLogout() {
@@ -570,8 +559,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const form = document.getElementById('licenseForm');
         if (form) {
             form.addEventListener('submit', submitLicense);
-        } else {
-            console.error('Formulaire #licenseForm introuvable');
         }
 
         const inputs = document.querySelectorAll('#licenseForm input, #licenseForm select');
