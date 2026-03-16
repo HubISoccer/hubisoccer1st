@@ -37,7 +37,7 @@ body {
     overflow-x: hidden;
 }
 
-/* ===== NAVBAR (espace parrain) ===== */
+/* ===== NAVBAR ===== */
 .dashboard-nav {
     display: flex;
     justify-content: space-between;
@@ -190,7 +190,7 @@ body {
     color: var(--primary);
 }
 
-/* ===== SIDEBAR GAUCHE ===== */
+/* ===== SIDEBAR ===== */
 .sidebar {
     position: fixed;
     top: 0;
@@ -330,18 +330,16 @@ body {
     margin: 5px 0;
 }
 
-/* ===== CONTENU PRINCIPAL DE LA PAGE CV ===== */
+/* ===== CONTENU PRINCIPAL CV ===== */
 .cv-main {
     min-height: calc(100vh - 70px);
     padding: 40px 5%;
     background: #f4f7fb;
 }
-
 .cv-container {
     max-width: 1200px;
     margin: 0 auto;
 }
-
 .page-title {
     font-size: 2rem;
     font-weight: 700;
@@ -361,7 +359,7 @@ body {
     font-weight: 300;
 }
 
-/* ===== STATUT DE VALIDATION ===== */
+/* ===== STATUT ===== */
 .validation-status {
     background: white;
     border-radius: 10px;
@@ -392,7 +390,6 @@ body {
     box-shadow: var(--shadow);
     margin-bottom: 40px;
 }
-
 .cv-section {
     margin-bottom: 40px;
     padding-bottom: 30px;
@@ -400,7 +397,6 @@ body {
 }
 .cv-section:last-child {
     border-bottom: none;
-    padding-bottom: 0;
 }
 .cv-section h2 {
     font-size: 1.4rem;
@@ -413,7 +409,6 @@ body {
 .cv-section h2 i {
     color: var(--gold);
 }
-
 .form-row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -436,7 +431,7 @@ body {
     padding: 12px;
     border: 2px solid var(--light-gray);
     border-radius: 10px;
-    font-family: 'Poppins', sans-serif;
+    font-family: var(--font-main);
     transition: var(--transition);
 }
 .form-group input:focus,
@@ -449,7 +444,7 @@ body {
     grid-column: 1 / -1;
 }
 
-/* Sections à entrées dynamiques */
+/* Éléments dynamiques */
 .experience-item,
 .formation-item,
 .langue-item {
@@ -482,7 +477,6 @@ body {
 .langue-item .btn-remove:hover {
     background: #c82333;
 }
-
 .btn-add {
     background: transparent;
     border: 2px dashed var(--primary);
@@ -604,7 +598,7 @@ body {
     box-shadow: none;
 }
 
-/* ===== APERÇU DU CV (DEUX COLONNES) ===== */
+/* ===== APERÇU CV ===== */
 .cv-preview {
     background: white;
     border-radius: 20px;
@@ -622,7 +616,7 @@ body {
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 0 10px rgba(0,0,0,0.05);
-    font-family: 'Poppins', sans-serif;
+    font-family: var(--font-main);
     line-height: 1.6;
     max-width: 1000px;
     margin: 0 auto;
@@ -686,7 +680,7 @@ body {
     border: 3px solid var(--gold);
 }
 
-/* Coordonnées dans la colonne droite */
+/* Coordonnées */
 .cv-contact-item {
     display: flex;
     align-items: center;
@@ -700,7 +694,7 @@ body {
     text-align: center;
 }
 
-/* Informations sportives */
+/* Infos sportives */
 .cv-sport-info {
     display: flex;
     flex-wrap: wrap;
@@ -718,7 +712,7 @@ body {
     margin-right: 5px;
 }
 
-/* Éléments de formation/expérience */
+/* Éléments formation/expérience */
 .cv-item {
     margin-bottom: 20px;
 }
@@ -756,7 +750,7 @@ body {
     color: rgba(255,255,255,0.9);
 }
 
-/* Compétences (liste) */
+/* Compétences liste */
 .cv-skills-list {
     list-style: none;
     padding-left: 0;
@@ -807,7 +801,7 @@ body {
     margin-bottom: 15px;
 }
 
-/* Pied de page (signature) */
+/* Pied de page */
 .cv-footer {
     grid-column: 1 / -1;
     display: flex;
@@ -826,7 +820,7 @@ body {
     object-fit: contain;
 }
 
-/* ===== MODALE DE SIGNATURE ===== */
+/* ===== MODALE SIGNATURE ===== */
 .signature-modal {
     display: none;
     position: fixed;
@@ -838,7 +832,6 @@ body {
     overflow: auto;
     background-color: rgba(0,0,0,0.5);
 }
-
 .signature-modal-content {
     background-color: white;
     margin: 5% auto;
@@ -849,12 +842,10 @@ body {
     box-shadow: var(--shadow);
     animation: modalopen 0.3s ease;
 }
-
 @keyframes modalopen {
     from { opacity: 0; transform: translateY(-50px); }
     to { opacity: 1; transform: translateY(0); }
 }
-
 .signature-modal-header {
     display: flex;
     justify-content: space-between;
@@ -873,7 +864,6 @@ body {
 .close-modal:hover {
     color: var(--dark);
 }
-
 .signature-modal-body {
     text-align: center;
 }
@@ -885,7 +875,6 @@ body {
     height: auto;
     touch-action: none;
 }
-
 .signature-modal-actions {
     display: flex;
     justify-content: center;
@@ -930,6 +919,84 @@ body {
     font-size: 0.9rem;
     color: var(--gray);
     margin-top: 10px;
+}
+
+/* ===== TOASTS ===== */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+.toast {
+    min-width: 250px;
+    background: white;
+    border-radius: 8px;
+    padding: 12px 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transform: translateX(400px);
+    animation: slideIn 0.3s forwards;
+    pointer-events: auto;
+    border-left: 4px solid transparent;
+}
+.toast.success { border-left-color: var(--success); }
+.toast.error { border-left-color: var(--danger); }
+.toast.info { border-left-color: var(--primary); }
+.toast.warning { border-left-color: var(--warning); }
+.toast-icon { font-size: 1.2rem; }
+.toast.success .toast-icon { color: var(--success); }
+.toast.error .toast-icon { color: var(--danger); }
+.toast.info .toast-icon { color: var(--primary); }
+.toast.warning .toast-icon { color: var(--warning); }
+.toast-content { flex: 1; font-size: 0.9rem; color: var(--dark); }
+.toast-close {
+    background: none;
+    border: none;
+    color: var(--gray);
+    cursor: pointer;
+    font-size: 1rem;
+}
+@keyframes slideIn { to { transform: translateX(0); } }
+@keyframes fadeOut { to { opacity: 0; transform: translateX(400px); } }
+
+/* ===== LOADER ===== */
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(85,27,140,0.2);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.global-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+.button-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 5px;
 }
 
 /* ===== RESPONSIVE ===== */
