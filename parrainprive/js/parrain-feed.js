@@ -1184,46 +1184,7 @@ function showNewPostsIndicator() {
 }
 
 function hideNewPostsIndicator() {
-    document.getElementById('newPostsIndicator').id', currentProfile.id);
-
-        if (error) throw error;
-
-        currentProfile = { ...currentProfile, ...updates };
-        showToast('Profil mis à jour avec succès', 'success');
-        closeEditProfileModal();
-    } catch (error) {
-        console.error('Erreur mise à jour profil:', error);
-        showToast('Erreur lors de la mise à jour', 'error');
-    } finally {
-        saveBtn.disabled = false;
-        saveBtn.textContent = originalText;
-    }
-}
-
-// ===== INDICATEUR DE NOUVEAUX POSTS =====
-function showNewPostsIndicator() {
-    const indicator = document.getElementById('newPostsIndicator');
-    if (indicator) {
-        document.getElementById('newPostsCount').textContent = newPostsCount;
-        indicator.style.display = 'block';
-    }
-}
-
-function hideNewPostsIndicator() {
     document.getElementById('newPostsIndicator').style.display = 'none';
-    newPostsCount = 0;
-}
-
-// ===== INITIALISATION =====
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation de parrain-feed.js');
-
-    const user = await checkSession();
-    if (!user) return;
-
-    showLoader(true);
-
-   style.display = 'none';
     newPostsCount = 0;
 }
 
@@ -1263,45 +1224,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('mediaFileName').textContent = file.name;
         });
 
-        document.getElementById('previewPostBtn try {
-        await loadProfile();
-        await loadUserMetadata();
-        await loadPosts();
-        await loadFollowers();
-
-        // Gestion de la publication
-        document.getElementById('attachMediaBtn').addEventListener('click', () => {
-            document.getElementById('mediaInput').click();
-        });
-
-        document.getElementById('mediaInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const preview = document.getElementById('publishMediaPreview');
-            const url = URL.createObjectURL(file);
-            if (file.type.startsWith('image/')) {
-                preview.innerHTML = `<img src="${url}" alt="Aperçu">`;
-            } else {
-                preview.innerHTML = `<video src="${url}" controls></video>`;
-            }
-            previewMedia = url;
-            previewMediaType = file.type;
-            document.getElementById('mediaCancel').style.display = 'flex';
-            document.getElementById('mediaFileName').textContent = file.name;
-        });
-
         document.getElementById('previewPostBtn').addEventListener('click', openPreview);
-
-        document.getElementById('schedulePostBtn').addEventListener('click', () => {
-            showToast('Fonctionnalité de programmation bientôt disponible', 'info');
-        });
-
-        document.getElementById('publishBtn').addEventListener('click', async () => {
-            const content = document.getElementById('postContent').value.trim();
-            const file = document.getElementById('mediaInput').files[0];
-            if (!content && !file) {
-                showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
-').addEventListener('click', openPreview);
 
         document.getElementById('schedulePostBtn').addEventListener('click', () => {
             showToast('Fonctionnalité de programmation bientôt disponible', 'info');
@@ -1320,47 +1243,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('mediaCancel').addEventListener('click', cancelMedia);
 
         // Lien vers les posts masqués
-        document.getElementById('showHiddenPosts').addEventListener('click', (e)                return;
-            }
-            await withButtonSpinner(document.getElementById('publishBtn'), () => createPost(content, file));
-        });
-
-        document.getElementById('mediaCancel').addEventListener('click', cancelMedia);
-
-        // Lien vers les posts masqués
         document.getElementById('showHiddenPosts').addEventListener('click', (e) => {
             e.preventDefault();
             loadHiddenPosts();
         });
 
         // Retour au fil
-        const backBtn = document.querySelector('#backTo => {
-            e.preventDefault();
-            loadHiddenPosts();
-        });
-
-        // Retour au fil
-        const backBtn = document.querySelector('#FeedBtn button');
-        if (backBtn) {
-            backBtn.addEventListener('click', loadPosts);
-        }
-
-       backToFeedBtn button');
+        const backBtn = document.querySelector('#backToFeedBtn button');
         if (backBtn) {
             backBtn.addEventListener('click', loadPosts);
         }
 
         // Édition de profil
-        document.getElementById(' // Édition de profil
-        document.getElementById('editProfileForm').addEventListener('submit', saveeditProfileForm').addEventListener('submit', saveProfileChanges);
-
-        initSearchAndFilters();
-        initUserMenu();
-        initLogout();
-
-        // Realtime pour les nouvelles publications
-        supabaseParrainPrive
-ProfileChanges);
+        document.getElementById('editProfileForm').addEventListener('submit', saveProfileChanges);
 
         initSearchAndFilters();
         initUserMenu();
@@ -1369,24 +1264,11 @@ ProfileChanges);
         // Realtime pour les nouvelles publications
         supabaseParrainPrive
             .channel('parrain_posts_changes')
-            .on('postgres_changes', { event: 'INSERT', schema: '            .channel('parrain_posts_changes')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'parrain_posts' }, payload => {
                 newPostsCount++;
                 showNewPostsIndicator();
             })
-            .public', table: 'parrain_posts' }, payload => {
-                newPostsCount++;
-                showNewPostsIndicator();
-            })
             .subscribe();
-
-        // Clic sur l'indicateur pour recharger
-        const indicator = document.getElementById('newPostsIndicator');
-        if (indicator) {
-            indicator.addEventListener('click', async () => {
-                hideNewPostsIndicator();
-                await loadPosts();
-           subscribe();
 
         // Clic sur l'indicateur pour recharger
         const indicator = document.getElementById('newPostsIndicator');
@@ -1402,28 +1284,10 @@ ProfileChanges);
             showToast('Changement de langue bientôt disponible', 'info');
         });
 
-        console.log('✅ Initialisation });
-        }
-
-        document.getElementById('languageLink')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            showToast('Changement de langue bientôt disponible', 'info');
-        });
-
         console.log('✅ Initialisation terminée');
     } catch (error) {
         console.error('Erreur lors de l\'initialisation:', error);
-        showToast('Erreur lors du char terminée');
-    } catch (error) {
-        console.error('Erreur lors de l\'initialisation:', error);
         showToast('Erreur lors du chargement de la page', 'error');
-    } finally {
-        showLoader(false);
-    }
-});
-
-// Rendre les fonctions globales pour les appels onclick
-window.togglePostMenu = togglePostMenugement de la page', 'error');
     } finally {
         showLoader(false);
     }
@@ -1435,28 +1299,12 @@ window.likePost = likePost;
 window.addComment = addComment;
 window.sharePost = sharePost;
 window.focusComment = focusComment;
-window.showLikes = show;
-window.likePost = likePost;
-window.addComment = addComment;
-window.sharePost = sharePost;
-window.focusComment = focusComment;
 window.showLikes = showLikes;
 window.scrollToComments = scrollToComments;
 window.editPost = editPost;
 window.deletePost = deletePost;
-window.toggleSavePost = toggleSavePostLikes;
-window.scrollToComments = scrollToComments;
-window.editPost = editPost;
-window.deletePost = deletePost;
 window.toggleSavePost = toggleSavePost;
-window;
 window.hidePost = hidePost;
-window.reportPost = reportPost;
-window.toggleFollow = toggleFollow;
-window.openEditProfileModal = openEditProfileModal;
-window.closeEditProfileModal = closeEditProfileModal;
-window.saveProfileChanges = saveProfileChanges;
-window.open.hidePost = hidePost;
 window.reportPost = reportPost;
 window.toggleFollow = toggleFollow;
 window.openEditProfileModal = openEditProfileModal;
@@ -1466,15 +1314,7 @@ window.openUserProfile = openUserProfile;
 window.closeUserProfileModal = closeUserProfileModal;
 window.sendMessageToUser = sendMessageToUser;
 window.closeLikesModal = () => document.getElementById('likesModal').style.display = 'none';
-window.openPreview = openPreviewUserProfile = openUserProfile;
-window.closeUserProfileModal = closeUserProfileModal;
-window.sendMessageToUser = sendMessageToUser;
-window.closeLikesModal = () => document.getElementById('likesModal').style.display = 'none';
 window.openPreview = openPreview;
-window.closePreview = closePreview;
-window.publishFromPreview = publishFromPreview;
-window.cancelMedia = cancelMedia;
-window.openReplyModal = open;
 window.closePreview = closePreview;
 window.publishFromPreview = publishFromPreview;
 window.cancelMedia = cancelMedia;
