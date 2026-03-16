@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vérification & Licence Parrain | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Styles globaux -->
+    <link rel="stylesheet" href="../public/css/style.css">
+    <!-- Styles spécifiques -->
+    <link rel="stylesheet" href="css/parrain-verification.css">
+    <!-- Signature Pad -->
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Espace Parrain</span>
+        </div>
+        <div class="nav-right">
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="dashboard.html">Mon profil</a>
+                    <a href="support.html">Paramètres</a>
+                    <a href="#" id="languageLink">Langue (Français)</a>
+                    <a href="#" id="logoutLink">Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Menu Parrain</h3>
+            <button class="close-sidebar" id="closeSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+            <a href="feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
+            <a href="verification.html" class="active"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
+            <a href="edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV</a>
+            <a href="certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
+            <a href="tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournois</a>
+            <a href="revenue.html"><i class="fas fa-coins"></i> Mes Dons</a>
+            <hr>
+            <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
+            <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Contenu principal -->
+    <main class="verification-main">
+        <div class="verification-container">
+            <h1 class="page-title"><i class="fas fa-shield-alt"></i> Hub de vérification & licence parrain</h1>
+
+            <!-- Section Documents requis -->
+            <section class="documents-section">
+                <h2><i class="fas fa-file-alt"></i> Documents requis</h2>
+                <p class="section-subtitle">Téléversez les documents demandés par l'administration. Le statut change après vérification.</p>
+                <div class="documents-grid" id="documentsGrid"></div>
+            </section>
+
+            <!-- Section Demande de licence parrain -->
+            <section class="license-section">
+                <h2><i class="fas fa-id-card"></i> Demande de licence parrain</h2>
+                <p class="section-subtitle">Remplissez ces informations pour obtenir votre carte de parrain officielle.</p>
+
+                <div class="license-layout">
+                    <!-- Formulaire -->
+                    <div class="license-form">
+                        <form id="licenseForm">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nom *</label>
+                                    <input type="text" id="nom" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Prénom *</label>
+                                    <input type="text" id="prenom" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Date de naissance *</label>
+                                    <input type="date" id="dateNaissance" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Lieu de naissance *</label>
+                                    <input type="text" id="lieuNaissance" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Adresse actuelle *</label>
+                                    <input type="text" id="adresse" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nationalité *</label>
+                                    <input type="text" id="nationalite" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Pays de résidence *</label>
+                                    <input type="text" id="pays" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Téléphone *</label>
+                                    <input type="tel" id="telephone" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Email *</label>
+                                    <input type="email" id="email" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Profession</label>
+                                    <input type="text" id="profession">
+                                </div>
+                            </div>
+
+                            <!-- Signature -->
+                            <div class="signature-group">
+                                <label>Signature *</label>
+                                <div class="signature-preview" id="signaturePreview" onclick="openSignatureModal()">
+                                    <div class="signature-placeholder">
+                                        <i class="fas fa-pen"></i>
+                                        <span>Cliquez pour signer</span>
+                                    </div>
+                                    <img id="signatureImage" style="display: none; max-width: 100%; max-height: 100px;" />
+                                </div>
+                                <p class="field-info">Cliquez sur la zone pour ouvrir le module de signature.</p>
+                            </div>
+
+                            <button type="submit" class="btn-submit-license" id="submitLicense">Soumettre ma demande</button>
+                        </form>
+                    </div>
+
+                    <!-- Aperçu de la carte -->
+                    <div class="license-preview">
+                        <h3>Aperçu de votre carte</h3>
+                        <div class="card-preview" id="cardPreview">
+                            <!-- La carte sera générée dynamiquement -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section Statut de la demande -->
+            <section class="status-section" id="statusSection" style="display: none;">
+                <h2><i class="fas fa-clock"></i> Statut de votre demande</h2>
+                <div class="status-card" id="statusCard"></div>
+            </section>
+        </div>
+    </main>
+
+    <!-- MODALE DE SIGNATURE -->
+    <div id="signatureModal" class="signature-modal">
+        <div class="signature-modal-content">
+            <div class="signature-modal-header">
+                <h3>Signez dans le cadre</h3>
+                <span class="close-modal" onclick="closeSignatureModal()">&times;</span>
+            </div>
+            <div class="signature-modal-body">
+                <canvas id="signatureCanvasModal" width="800" height="300" style="touch-action: none; width: 100%; height: auto; border: 1px solid #ccc;"></canvas>
+                <div class="signature-modal-actions">
+                    <button type="button" class="btn-clear" id="clearSignatureModal">Effacer</button>
+                    <button type="button" class="btn-lock" id="lockSignatureModal">Verrouiller</button>
+                    <button type="button" class="btn-save" id="saveSignatureModal">Valider la signature</button>
+                </div>
+                <p class="signature-status" id="signatureStatus"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container (pour les notifications) -->
+    <div id="toastContainer" class="toast-container"></div>
+    <!-- Loader global -->
+    <div id="globalLoader" class="global-loader" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/parrain-verification.js"></script>
+</body>
+</html>
