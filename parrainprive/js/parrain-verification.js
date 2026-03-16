@@ -90,7 +90,7 @@ async function loadParrainProfile() {
 // ===== CHARGEMENT DES DOCUMENTS =====
 async function loadDocuments() {
     try {
-        // Liste des documents requis pour un parrain (à adapter selon vos besoins)
+        // Liste des documents requis pour un parrain
         const requiredDocs = [
             { id: 'id_card', name: 'Pièce d\'identité (CNI/Passeport)', type: 'identity' },
             { id: 'photo', name: 'Photo d\'identité', type: 'photo' },
