@@ -192,16 +192,18 @@ async function uploadDocument(docId) {
                 return;
             }
 
-            const { publicURL } = supabaseParrainPrive.storage
+            // Récupération correcte de l'URL publique
+            const { data: urlData } = supabaseParrainPrive.storage
                 .from('parrain-documents')
                 .getPublicUrl(filePath);
-            if (!publicURL) throw new Error('URL publique non générée');
+            const publicUrl = urlData.publicUrl;  // Note: c'est data.publicUrl
+            if (!publicUrl) throw new Error('URL publique non générée');
 
             const doc = documentsList.find(d => d.id === docId);
             if (doc.request_id) {
                 const { error: updateError } = await supabaseParrainPrive
                     .from('parrain_documents')
-                    .update({ url: publicURL, file_name: file.name, statut: 'pending' })
+                    .update({ url: publicUrl, file_name: file.name, statut: 'pending' })
                     .eq('id', doc.request_id);
                 if (updateError) throw updateError;
             } else {
@@ -210,7 +212,7 @@ async function uploadDocument(docId) {
                     .insert([{
                         parrain_id: currentParrain.id,
                         type_document: docId,
-                        url: publicURL,
+                        url: publicUrl,
                         file_name: file.name,
                         statut: 'pending'
                     }]);
@@ -326,7 +328,6 @@ async function submitLicense(e) {
             profession: document.getElementById('profession').value || null,
         };
 
-        // Upload de la signature
         const signatureBlob = await (await fetch(signatureDataURL)).blob();
         const signatureFileName = `${currentUser.id}_signature_${Date.now()}.png`;
         const signaturePath = `signatures/${signatureFileName}`;
@@ -336,12 +337,12 @@ async function submitLicense(e) {
             .upload(signaturePath, signatureBlob);
         if (uploadError) throw uploadError;
 
-        const { publicURL: signatureUrl } = supabaseParrainPrive.storage
+        const { data: urlData } = supabaseParrainPrive.storage
             .from('parrain-documents')
             .getPublicUrl(signaturePath);
+        const signatureUrl = urlData.publicUrl;
         if (!signatureUrl) throw new Error('URL de signature non générée');
 
-        // Insertion dans parrain_license_requests avec signature_url
         const { data, error } = await supabaseParrainPrive
             .from('parrain_license_requests')
             .insert([{
@@ -359,7 +360,6 @@ async function submitLicense(e) {
         showToast('Demande soumise avec succès ! Elle sera traitée sous 0 à 100h.', 'success');
         licenseRequest = data;
         
-        // Nettoyer
         signatureDataURL = null;
         document.getElementById('signatureImage').style.display = 'none';
         document.querySelector('.signature-placeholder').style.display = 'block';
