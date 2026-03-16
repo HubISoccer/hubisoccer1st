@@ -79,8 +79,12 @@ function updateUserUI() {
         const fullName = `${currentParrain.first_name} ${currentParrain.last_name}`;
         userNameSpan.textContent = fullName;
         if (currentParrain.avatar_url) {
-            userAvatar.src = currentParrain.avatar_url;
-            profileDisplay.src = currentParrain.avatar_url;
+            // Ajout d'un timestamp pour éviter le cache
+            const avatarUrlWithTimestamp = `${currentParrain.avatar_url}?t=${new Date().getTime()}`;
+            userAvatar.src = avatarUrlWithTimestamp;
+            profileDisplay.src = avatarUrlWithTimestamp;
+        } else {
+            // Si pas d'avatar, on laisse l'image par défaut (déjà dans src)
         }
         dashboardName.textContent = fullName;
         parrainFullName.textContent = fullName;
@@ -128,7 +132,6 @@ async function loadTransactions() {
         lastDonDate.textContent = 'Aucun';
     }
 
-    // Afficher les 5 derniers
     const recent = data.slice(0, 5);
     if (recent.length === 0) {
         recentDonationsList.innerHTML = '<p class="no-data">Aucun don pour le moment.</p>';
@@ -145,11 +148,10 @@ async function loadTransactions() {
     prepareChart(data);
 }
 
-// ===== FONCTION CORRIGÉE POUR LES SOUTIENS =====
 async function loadSoutiens() {
     const { data, error } = await supabaseParrainPrive
         .from('parrain_soutiens')
-        .select('*, player_profiles(full_name)') // ← Correction : utilisation de full_name
+        .select('*, player_profiles(full_name)')
         .eq('parrain_id', currentParrain.id)
         .order('date_debut', { ascending: false });
 
@@ -248,7 +250,6 @@ function calculateProfileCompletion() {
 function prepareChart(transactions) {
     if (!donationsChart) return;
 
-    // Grouper par mois
     const months = {};
     transactions.forEach(t => {
         const date = new Date(t.date_transaction);
@@ -289,7 +290,7 @@ function prepareChart(transactions) {
     });
 }
 
-// ===== UPLOAD AVATAR =====
+// ===== UPLOAD AVATAR AVEC CORRECTIONS =====
 fileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file || !currentParrain) return;
@@ -297,36 +298,55 @@ fileInput.addEventListener('change', async (e) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `avatar_${currentParrain.id}_${Date.now()}.${fileExt}`;
 
+    console.log('Uploading file:', fileName);
+
     const { error: uploadError } = await supabaseParrainPrive.storage
         .from('parrain-avatars')
         .upload(fileName, file);
 
     if (uploadError) {
         alert('Erreur upload: ' + uploadError.message);
+        console.error(uploadError);
         return;
     }
 
-    const { publicURL } = supabaseParrainPrive.storage
+    // Récupérer l'URL publique
+    const { publicURL, error: urlError } = supabaseParrainPrive.storage
         .from('parrain-avatars')
         .getPublicUrl(fileName);
 
+    if (urlError || !publicURL) {
+        alert('Erreur lors de la récupération de l\'URL publique');
+        console.error(urlError);
+        return;
+    }
+
+    console.log('Public URL:', publicURL);
+
+    // Mettre à jour la base de données
     const { error: updateError } = await supabaseParrainPrive
         .from('parrain_profiles')
         .update({ avatar_url: publicURL })
         .eq('id', currentParrain.id);
 
-    if (!updateError) {
-        currentParrain.avatar_url = publicURL;
-        userAvatar.src = publicURL;
-        profileDisplay.src = publicURL;
-        alert('Avatar mis à jour !');
-    } else {
+    if (updateError) {
         alert('Erreur mise à jour: ' + updateError.message);
+        console.error(updateError);
+        return;
     }
+
+    // Mettre à jour l'état local et l'affichage
+    currentParrain.avatar_url = publicURL;
+    // Ajouter un timestamp pour éviter le cache
+    const avatarWithTimestamp = `${publicURL}?t=${new Date().getTime()}`;
+    userAvatar.src = avatarWithTimestamp;
+    profileDisplay.src = avatarWithTimestamp;
+
+    alert('Avatar mis à jour !');
+    console.log('Avatar updated successfully');
 });
 
 // ===== INTERACTIONS UI =====
-// Menu utilisateur
 if (userMenu) {
     userMenu.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -335,7 +355,6 @@ if (userMenu) {
     document.addEventListener('click', () => userDropdown.classList.remove('show'));
 }
 
-// Sidebar
 if (menuToggle) {
     menuToggle.addEventListener('click', () => {
         sidebar.classList.add('active');
@@ -355,7 +374,6 @@ if (sidebarOverlay) {
     });
 }
 
-// Déconnexion
 const logout = async (e) => {
     e.preventDefault();
     if (confirm('Déconnexion ?')) {
@@ -366,7 +384,6 @@ const logout = async (e) => {
 if (logoutLink) logoutLink.addEventListener('click', logout);
 if (logoutLinkSidebar) logoutLinkSidebar.addEventListener('click', logout);
 
-// Copie ID
 window.copyID = () => {
     const id = parrainID.textContent.replace('ID: ', '');
     navigator.clipboard.writeText(id);
