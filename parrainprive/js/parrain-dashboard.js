@@ -16,6 +16,7 @@ const logoutLinkSidebar = document.getElementById('logoutLinkSidebar');
 const userNameSpan = document.getElementById('userName');
 const userAvatar = document.getElementById('userAvatar');
 const notifBadge = document.getElementById('notifBadge');
+const langSelect = document.getElementById('langSelect');
 
 // Profil
 const profileDisplay = document.getElementById('profileDisplay');
@@ -67,6 +68,7 @@ async function checkSession() {
         currentParrain = profile;
         updateUserUI();
         loadParrainData();
+        loadNotifications();
         return profile;
     } catch (err) {
         console.error(err);
@@ -87,9 +89,24 @@ function updateUserUI() {
         parrainEmail.textContent = currentParrain.email;
         parrainPhone.textContent = currentParrain.phone || 'Non renseigné';
         if (currentParrain.date_adhesion) {
-            memberSince.textContent = new Date(currentParrain.date_adhesion).toLocaleDateString('fr-FR');
+            const date = new Date(currentParrain.date_adhesion);
+            memberSince.textContent = date.toLocaleDateString('fr-FR');
         }
         parrainID.textContent = `ID: ${currentParrain.id}`;
+    }
+}
+
+// ===== NOTIFICATIONS =====
+async function loadNotifications() {
+    if (!currentParrain) return;
+    const { count, error } = await supabase
+        .from('parrain_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('receiver_id', currentParrain.id)
+        .eq('receiver_type', 'parrain')
+        .eq('is_read', false);
+    if (!error && notifBadge) {
+        notifBadge.textContent = count || 0;
     }
 }
 
@@ -128,7 +145,6 @@ async function loadTransactions() {
         lastDonDate.textContent = 'Aucun';
     }
 
-    // Afficher les 5 derniers
     const recent = data.slice(0, 5);
     if (recent.length === 0) {
         recentDonationsList.innerHTML = '<p class="no-data">Aucun don pour le moment.</p>';
@@ -371,6 +387,13 @@ window.copyID = () => {
     navigator.clipboard.writeText(id);
     alert('ID copié !');
 };
+
+// Langue (simplifié)
+if (langSelect) {
+    langSelect.addEventListener('change', (e) => {
+        alert('Changement de langue : ' + e.target.value);
+    });
+}
 
 // ===== INITIALISATION =====
 checkSession();
