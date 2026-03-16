@@ -86,7 +86,7 @@ async function loadProfile() {
         return null;
     }
     currentProfile = data;
-    document.getElementById('userName').textContent = currentProfile.first_name + ' ' + currentProfile.last_name;
+    document.getElementById('userName').textContent = `${currentProfile.first_name} ${currentProfile.last_name}`;
     document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
     document.getElementById('publishAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
     return currentProfile;
@@ -187,7 +187,7 @@ function renderPosts() {
     let html = '';
     posts.forEach(post => {
         const timeAgo = timeSince(new Date(post.created_at));
-        const isLiked = false; // On pourrait le vérifier mais on laisse pour l'instant
+        const isLiked = false; // On pourrait le vérifier, mais pour l'instant on laisse
         const likedClass = isLiked ? 'liked' : '';
         let mediaHtml = '';
         if (post.media_url) {
@@ -299,7 +299,7 @@ async function renderComment(comment) {
     let repliesHtml = '';
     if (replies && replies.length > 0) {
         for (const reply of replies) {
-            repliesHtml += await renderComment(reply); // récursif pour les sous-réponses
+            repliesHtml += await renderComment(reply);
         }
     }
 
@@ -399,11 +399,9 @@ async function sharePost(postId) {
     const button = event.target.closest('button');
     button.disabled = true;
     try {
-        // Générer un lien de partage (ex: URL du post)
         const shareUrl = `${window.location.origin}/post.html?id=${postId}`; // à adapter
         await navigator.clipboard.writeText(shareUrl);
         showToast('Lien copié ! Partagez-le à vos amis.', 'success');
-        // Optionnel : enregistrer le partage dans la table parrain_shares
         await supabaseParrainPrive.from('parrain_shares').insert({ parrain_id: currentProfile.id, post_id: postId });
         loadPosts();
     } catch (error) {
@@ -688,7 +686,7 @@ function openPreview() {
         return;
     }
     document.getElementById('previewModal').classList.add('active');
-    document.getElementById('previewAuthorName').textContent = currentProfile.first_name + ' ' + currentProfile.last_name;
+    document.getElementById('previewAuthorName').textContent = `${currentProfile.first_name} ${currentProfile.last_name}`;
     document.getElementById('previewAuthorAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
     document.getElementById('previewText').textContent = content || '(aucun texte)';
     const previewMediaDiv = document.getElementById('previewMedia');
@@ -729,7 +727,6 @@ function openReplyModal(commentId, authorName, postId) {
     document.getElementById('originalComment').innerHTML = `Répondre à ${authorName}`;
     document.getElementById('replyContent').value = '';
     document.getElementById('replyModal').style.display = 'block';
-    // On stocke le postId dans un attribut data pour l'utiliser dans sendReply
     document.getElementById('replyModal').dataset.postId = postId;
 }
 
@@ -833,7 +830,7 @@ async function loadFollowers() {
     followersList.innerHTML = followers.map(f => `
         <li onclick="openUserProfile(${f.follower_id})">
             <img src="${f.author?.avatar_url || 'img/user-default.jpg'}">
-            <span>${f.author ? f.author.first_name + ' ' + f.author.last_name : 'Anonyme'}</span>
+            <span>${f.author ? `${f.author.first_name} ${f.author.last_name}` : 'Anonyme'}</span>
             <small>@${f.follower_id}</small>
         </li>
     `).join('');
@@ -847,7 +844,7 @@ async function loadFollowers() {
     followingList.innerHTML = following.map(f => `
         <li onclick="openUserProfile(${f.followed_id})">
             <img src="${f.author?.avatar_url || 'img/user-default.jpg'}">
-            <span>${f.author ? f.author.first_name + ' ' + f.author.last_name : 'Anonyme'}</span>
+            <span>${f.author ? `${f.author.first_name} ${f.author.last_name}` : 'Anonyme'}</span>
             <small>@${f.followed_id}</small>
         </li>
     `).join('');
@@ -857,7 +854,7 @@ async function loadFollowers() {
     document.getElementById('insightNewFollowers').textContent = `+${Math.floor(Math.random() * 10)}`;
 }
 
-// ===== RECHERCHE ET FILTRES =====
+// ===== RECHERCHE ET FILTRES (simplifiés) =====
 function initSearchAndFilters() {
     document.getElementById('communitySearch').addEventListener('input', (e) => {
         searchTerm = e.target.value.toLowerCase();
@@ -869,7 +866,7 @@ function initSearchAndFilters() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentFilter = btn.dataset.filter;
-            // À implémenter : filtrage des posts par type d'auteur
+            // Pour l'instant, on recharge tous les posts
             loadPosts();
         });
     });
