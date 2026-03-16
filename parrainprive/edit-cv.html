@@ -71,7 +71,7 @@
         </div>
     </nav>
 
-    <!-- Sidebar gauche (identique à celle de l'espace parrain) -->
+    <!-- Sidebar gauche -->
     <div class="sidebar left-sidebar" id="leftSidebar">
         <div class="sidebar-header">
             <h3>Menu Parrain</h3>
@@ -93,7 +93,7 @@
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Contenu principal (exactement le même que celui du joueur, sans aucune modification) -->
+    <!-- Contenu principal (formulaire CV inchangé) -->
     <main class="cv-main">
         <div class="cv-container">
             <h1 class="page-title"><i class="fas fa-file-alt"></i> Mon Curriculum Vitæ Professionnel</h1>
@@ -143,7 +143,7 @@
                 <section class="cv-section">
                     <h2><i class="fas fa-user-tag"></i> Profil professionnel</h2>
                     <div class="form-group full-width">
-                        <textarea id="profil" rows="3" placeholder="Résumez qui vous êtes et ce que vous apportez (ex: 'Footballeur passionné, doté d'une excellente vision de jeu, en reconversion vers le coaching...')"></textarea>
+                        <textarea id="profil" rows="3" placeholder="Résumez qui vous êtes et ce que vous apportez"></textarea>
                     </div>
                 </section>
 
@@ -235,7 +235,7 @@
                 <section class="cv-section">
                     <h2><i class="fas fa-heart"></i> Centres d'intérêt</h2>
                     <div class="form-group full-width">
-                        <textarea id="interets" rows="3" placeholder="Ex: Course à pied, bénévolat, lecture, records personnels..."></textarea>
+                        <textarea id="interets" rows="3" placeholder="Ex: Course à pied, bénévolat, lecture..."></textarea>
                     </div>
                 </section>
 
@@ -243,7 +243,7 @@
                 <section class="cv-section">
                     <h2><i class="fas fa-pencil-alt"></i> Biographie</h2>
                     <div class="form-group full-width">
-                        <textarea id="bio" rows="4" placeholder="Racontez votre parcours, vos motivations, vos objectifs..."></textarea>
+                        <textarea id="bio" rows="4" placeholder="Racontez votre parcours, vos motivations..."></textarea>
                     </div>
                 </section>
 
@@ -284,7 +284,7 @@
         </div>
     </main>
 
-    <!-- MODALE DE SIGNATURE (identique) -->
+    <!-- MODALE DE SIGNATURE -->
     <div id="signatureModal" class="signature-modal">
         <div class="signature-modal-content">
             <div class="signature-modal-header">
@@ -301,6 +301,13 @@
                 <p class="signature-status" id="signatureStatus"></p>
             </div>
         </div>
+    </div>
+
+    <!-- Conteneur pour les toasts -->
+    <div id="toastContainer" class="toast-container"></div>
+    <!-- Loader global -->
+    <div id="globalLoader" class="global-loader" style="display: none;">
+        <div class="spinner"></div>
     </div>
 
     <!-- Footer espace parrain -->
