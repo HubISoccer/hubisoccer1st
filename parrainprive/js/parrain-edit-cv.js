@@ -11,11 +11,10 @@ let cvValidationStatus = 'pending';
 let signatureDataURL = null;       // Données base64 pour l'affichage dans la modale
 let signatureUploadedUrl = null;   // URL après upload (stockée en base)
 
-// ===== TOAST (réutilisé) =====
+// ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
     const container = document.getElementById('toastContainer');
     if (!container) {
-        // Créer le conteneur s'il n'existe pas (par sécurité)
         const newContainer = document.createElement('div');
         newContainer.id = 'toastContainer';
         newContainer.className = 'toast-container';
@@ -45,7 +44,6 @@ function showToast(message, type = 'info', duration = 3000) {
 function showLoader(show = true) {
     const loader = document.getElementById('globalLoader');
     if (!loader) {
-        // Créer un loader global si inexistant
         const newLoader = document.createElement('div');
         newLoader.id = 'globalLoader';
         newLoader.className = 'global-loader';
@@ -122,7 +120,6 @@ async function loadCV() {
             signatureUploadedUrl = data.signature_url || null;
             populateForm(cvData);
             if (signatureUploadedUrl) {
-                // Précharger l'image de signature pour l'afficher
                 const img = document.getElementById('signatureImage');
                 img.src = signatureUploadedUrl;
                 img.style.display = 'block';
@@ -151,7 +148,7 @@ function updateValidationStatus() {
     }
 }
 
-// ===== REMPLIR LE FORMULAIRE AVEC LES DONNÉES EXISTANTES =====
+// ===== REMPLIR LE FORMULAIRE =====
 function populateForm(data) {
     if (!data) return;
     document.getElementById('nom').value = data.nom || '';
@@ -279,7 +276,7 @@ function addLangueItem(data = {}) {
     container.appendChild(item);
 }
 
-// ===== COLLECTE DES DONNÉES DU FORMULAIRE =====
+// ===== COLLECTE DES DONNÉES =====
 function collectFormData() {
     const data = {};
 
@@ -361,18 +358,15 @@ async function saveCV() {
 
     showLoader(true);
     try {
-        // Gérer la signature : si signatureDataURL est une URL (déjà uploadée) ou une base64
+        // Gérer la signature
         let signatureUrl = signatureUploadedUrl;
         if (signatureDataURL && signatureDataURL.startsWith('data:image')) {
-            // Nouvelle signature en base64, il faut l'uploader
             const blob = await (await fetch(signatureDataURL)).blob();
             signatureUrl = await uploadSignature(blob);
         } else if (signatureDataURL && signatureDataURL.startsWith('http')) {
-            // C'est déjà une URL, on garde
             signatureUrl = signatureDataURL;
         }
 
-        // Vérifier s'il existe déjà un CV
         const { data: existing, error: selectError } = await supabaseParrainPrive
             .from('parrain_cv')
             .select('id')
@@ -419,20 +413,18 @@ async function saveCV() {
     }
 }
 
-// ===== GÉNÉRATION DE L'APERÇU (DEUX COLONNES) =====
+// ===== GÉNÉRATION DE L'APERÇU =====
 function generatePreview() {
     const data = collectFormData();
     const previewDiv = document.getElementById('previewContent');
     const fullName = `${data.prenom} ${data.nom}`.trim() || 'Nom Prénom';
     const avatarUrl = currentParrain?.avatar_url || 'img/user-default.jpg';
 
-    // Compétences (fusion)
     const skillsTech = data.skillsTech ? data.skillsTech.split(',').map(s => s.trim()).filter(s => s) : [];
     const skillsSoft = data.skillsSoft ? data.skillsSoft.split(',').map(s => s.trim()).filter(s => s) : [];
     const allSkills = [...skillsTech, ...skillsSoft];
 
-    // Formations HTML
-    const formationsHtml = data.formations.map(f => `
+    const formationsHtml = (data.formations || []).map(f => `
         <div class="cv-item">
             <div class="cv-item-date">${f.date || ''}</div>
             <div class="cv-item-title">${f.diplome || ''}</div>
@@ -440,8 +432,7 @@ function generatePreview() {
         </div>
     `).join('');
 
-    // Expériences HTML
-    const experiencesHtml = data.experiences.map(e => `
+    const experiencesHtml = (data.experiences || []).map(e => `
         <div class="cv-item">
             <div class="cv-item-date">${e.debut || ''} – ${e.fin || ''}</div>
             <div class="cv-item-title">${e.poste || ''}</div>
@@ -450,18 +441,15 @@ function generatePreview() {
         </div>
     `).join('');
 
-    // Langues HTML
-    const languesHtml = data.langues.map(l => `
+    const languesHtml = (data.langues || []).map(l => `
         <div class="cv-lang-item">
             <span class="cv-lang-name">${l.nom || ''}</span>
             <span class="cv-lang-level">${l.niveau || ''}</span>
         </div>
     `).join('');
 
-    // Compétences liste
     const skillsListHtml = allSkills.map(skill => `<li>${skill}</li>`).join('');
 
-    // Coordonnées
     const contactHtml = `
         ${data.telephone ? `<div class="cv-contact-item"><i class="fas fa-phone"></i> ${data.telephone}</div>` : ''}
         ${data.email ? `<div class="cv-contact-item"><i class="fas fa-envelope"></i> ${data.email}</div>` : ''}
@@ -469,7 +457,6 @@ function generatePreview() {
         ${data.social ? `<div class="cv-contact-item"><i class="fas fa-link"></i> ${data.social}</div>` : ''}
     `;
 
-    // Informations sportives
     const sportInfoHtml = `
         <div class="cv-sport-info">
             ${data.taille ? `<span><i class="fas fa-ruler"></i> ${data.taille} cm</span>` : ''}
@@ -485,7 +472,6 @@ function generatePreview() {
         </div>
     `;
 
-    // Assemblage final
     const html = `
         <div class="cv-two-columns">
             <!-- Colonne gauche (violet) -->
@@ -541,7 +527,6 @@ function generatePreview() {
                 </div>
             </div>
         </div>
-        <!-- Pied de page (signature) -->
         <div class="cv-footer">
             <div class="signature-info">
                 Fait le ${data.dateSignature || '...'} à ${data.lieuSignature || '...'}
