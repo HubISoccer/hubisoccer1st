@@ -79,12 +79,9 @@ function updateUserUI() {
         const fullName = `${currentParrain.first_name} ${currentParrain.last_name}`;
         userNameSpan.textContent = fullName;
         if (currentParrain.avatar_url) {
-            // Ajout d'un timestamp pour éviter le cache
             const avatarUrlWithTimestamp = `${currentParrain.avatar_url}?t=${new Date().getTime()}`;
             userAvatar.src = avatarUrlWithTimestamp;
             profileDisplay.src = avatarUrlWithTimestamp;
-        } else {
-            // Si pas d'avatar, on laisse l'image par défaut (déjà dans src)
         }
         dashboardName.textContent = fullName;
         parrainFullName.textContent = fullName;
@@ -290,7 +287,7 @@ function prepareChart(transactions) {
     });
 }
 
-// ===== UPLOAD AVATAR AVEC CORRECTIONS =====
+// ===== UPLOAD AVATAR CORRIGÉ =====
 fileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file || !currentParrain) return;
@@ -310,20 +307,20 @@ fileInput.addEventListener('change', async (e) => {
         return;
     }
 
-    // Récupérer l'URL publique
-    const { publicURL, error: urlError } = supabaseParrainPrive.storage
+    // Récupération correcte de l'URL publique
+    const { data } = supabaseParrainPrive.storage
         .from('parrain-avatars')
         .getPublicUrl(fileName);
 
-    if (urlError || !publicURL) {
+    if (!data || !data.publicUrl) {
         alert('Erreur lors de la récupération de l\'URL publique');
-        console.error(urlError);
+        console.error('data:', data);
         return;
     }
 
+    const publicURL = data.publicUrl;
     console.log('Public URL:', publicURL);
 
-    // Mettre à jour la base de données
     const { error: updateError } = await supabaseParrainPrive
         .from('parrain_profiles')
         .update({ avatar_url: publicURL })
@@ -335,9 +332,7 @@ fileInput.addEventListener('change', async (e) => {
         return;
     }
 
-    // Mettre à jour l'état local et l'affichage
     currentParrain.avatar_url = publicURL;
-    // Ajouter un timestamp pour éviter le cache
     const avatarWithTimestamp = `${publicURL}?t=${new Date().getTime()}`;
     userAvatar.src = avatarWithTimestamp;
     profileDisplay.src = avatarWithTimestamp;
