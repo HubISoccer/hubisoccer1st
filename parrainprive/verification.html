@@ -6,23 +6,48 @@
     <title>Vérification & Licence Parrain | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles globaux du site (menu, footer) -->
-    <link rel="stylesheet" href="../public/css/style.css">
-    <!-- Styles spécifiques à la page -->
-    <link rel="stylesheet" href="css/parrain-verification.css">
     <!-- Signature Pad -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Styles spécifiques (sera fourni séparément) -->
+    <link rel="stylesheet" href="css/parrain-verification.css">
 </head>
 <body>
-    <!-- Navbar -->
+    <!-- NAVBAR -->
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="dashboard-title">Espace Parrain</span>
         </div>
         <div class="nav-right">
+            <!-- Sélecteur de langue 24 langues -->
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+                <option value="lin">🇨🇬 Lingala</option>
+                <option value="wol">🇸🇳 Wolof</option>
+                <option value="diou">🇨🇮 Dioula</option>
+                <option value="ha">🇳🇬 Hausa</option>
+                <option value="sw">🇰🇪 Kiswahili</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="pt">🇵🇹 Português</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="ar">🇸🇦 العربية</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="ja">🇯🇵 日本語</option>
+                <option value="tr">🇹🇷 Türkçe</option>
+                <option value="ko">🇰🇷 한국어</option>
+                <option value="hi">🇮🇳 हिन्दी</option>
+                <option value="nl">🇳🇱 Nederlands</option>
+                <option value="pl">🇵🇱 Polski</option>
+                <option value="vi">🇻🇳 Tiếng Việt</option>
+            </select>
             <div class="notif-icon" id="notifIcon">
                 <i class="fas fa-bell"></i>
                 <span class="notif-badge" id="notifBadge">0</span>
@@ -32,23 +57,24 @@
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
-                    <a href="dashboard.html">Mon profil</a>
-                    <a href="support.html">Paramètres</a>
+                    <a href="dashboard.html"><i class="fas fa-user"></i> Mon profil</a>
+                    <a href="support.html"><i class="fas fa-cog"></i> Paramètres</a>
                     <a href="#" id="languageLink">Langue (Français)</a>
-                    <a href="#" id="logoutLink">Déconnexion</a>
+                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                 </div>
             </div>
-            <button class="menu-toggle" id="menuToggle">
-                <i class="fas fa-bars"></i>
-            </button>
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
         </div>
     </nav>
 
-    <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
+    <!-- Overlay pour mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- SIDEBAR GAUCHE -->
+    <div class="sidebar left-sidebar" id="leftSidebar">
         <div class="sidebar-header">
             <h3>Menu Parrain</h3>
-            <button class="close-sidebar" id="closeSidebar"><i class="fas fa-times"></i></button>
+            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
         </div>
         <nav class="sidebar-nav">
             <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
@@ -64,9 +90,8 @@
             <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
         </nav>
     </div>
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Contenu principal -->
+    <!-- CONTENU PRINCIPAL -->
     <main class="verification-main">
         <div class="verification-container">
             <h1 class="page-title"><i class="fas fa-shield-alt"></i> Hub de vérification & licence parrain</h1>
@@ -159,7 +184,7 @@
                     <div class="license-preview">
                         <h3>Aperçu de votre carte</h3>
                         <div class="card-preview" id="cardPreview">
-                            <!-- La carte sera générée dynamiquement -->
+                            <!-- Généré dynamiquement -->
                         </div>
                     </div>
                 </div>
@@ -192,14 +217,14 @@
         </div>
     </div>
 
-    <!-- Toast container (pour les notifications) -->
+    <!-- Toast container -->
     <div id="toastContainer" class="toast-container"></div>
     <!-- Loader global -->
     <div id="globalLoader" class="global-loader" style="display: none;">
         <div class="spinner"></div>
     </div>
 
-    <!-- Footer -->
+    <!-- FOOTER -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
