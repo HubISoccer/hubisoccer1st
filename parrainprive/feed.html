@@ -21,6 +21,10 @@
             <span class="dashboard-title">Espace Parrain</span>
         </div>
         <div class="nav-right">
+            <!-- Bouton pour ouvrir la sidebar droite (communauté) -->
+            <button class="sidebar-toggle" id="rightSidebarToggle" title="Communauté">
+                <i class="fas fa-users"></i>
+            </button>
             <!-- Sélecteur de langue compact -->
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Fr</option>
@@ -63,7 +67,9 @@
                     <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                 </div>
             </div>
-            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+            <button class="menu-toggle" id="menuToggle" title="Menu">
+                <i class="fas fa-bars"></i>
+            </button>
         </div>
     </nav>
 
@@ -175,7 +181,7 @@
             <!-- Fil d'actualité -->
             <div id="postsFeed" class="posts-feed">
                 <!-- Loader de chargement -->
-                <div class="feed-loader" id="feedLoader" style="display: none;">
+                <div id="feedLoader" class="feed-loader" style="display: none;">
                     <div class="spinner"></div>
                 </div>
             </div>
