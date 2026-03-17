@@ -3,22 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Ma Communauté | HubISoccer</title>
+    <title>Ma Communauté | HubISoccer - Joueur</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles spécifiques -->
-    <link rel="stylesheet" href="css/feed.css">
+    <!-- Styles globaux du site -->
+    <link rel="stylesheet" href="../public/css/style.css">
+    <!-- Styles spécifiques à la page (réutiliser le même fichier que le parrain) -->
+    <link rel="stylesheet" href="css/parrain-feed.css">
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- Navbar -->
+    <!-- NAVBAR -->
     <nav class="dashboard-nav">
         <div class="nav-left">
-            <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="dashboard-title">Espace Joueur</span>
         </div>
         <div class="nav-right">
+            <button class="sidebar-toggle" id="rightSidebarToggle" title="Communauté">
+                <i class="fas fa-users"></i>
+            </button>
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+                <option value="lin">🇨🇬 Lingala</option>
+                <option value="wol">🇸🇳 Wolof</option>
+                <option value="diou">🇨🇮 Dioula</option>
+                <option value="ha">🇳🇬 Hausa</option>
+                <option value="sw">🇰🇪 Kiswahili</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="pt">🇵🇹 Português</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="ar">🇸🇦 العربية</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="ja">🇯🇵 日本語</option>
+                <option value="tr">🇹🇷 Türkçe</option>
+                <option value="ko">🇰🇷 한국어</option>
+                <option value="hi">🇮🇳 हिन्दी</option>
+                <option value="nl">🇳🇱 Nederlands</option>
+                <option value="pl">🇵🇱 Polski</option>
+                <option value="vi">🇻🇳 Tiếng Việt</option>
+            </select>
             <div class="notif-icon" id="notifIcon">
                 <i class="fas fa-bell"></i>
                 <span class="notif-badge" id="notifBadge">0</span>
@@ -28,13 +59,13 @@
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
-                    <a href="edit-cv.html">Mon profil</a>
-                    <a href="support.html">Paramètres</a>
+                    <a href="dashboard.html"><i class="fas fa-user"></i> Mon profil</a>
+                    <a href="support.html"><i class="fas fa-cog"></i> Paramètres</a>
                     <a href="#" id="languageLink">Langue (Français)</a>
-                    <a href="#" id="logoutLink">Déconnexion</a>
+                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                 </div>
             </div>
-            <button class="menu-toggle" id="menuToggle">
+            <button class="menu-toggle" id="menuToggle" title="Menu">
                 <i class="fas fa-bars"></i>
             </button>
         </div>
@@ -43,7 +74,7 @@
     <!-- Overlay pour mobile -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Sidebar gauche (menu joueur) -->
+    <!-- SIDEBAR GAUCHE (menu principal) - spécifique joueur -->
     <div class="sidebar left-sidebar" id="leftSidebar">
         <div class="sidebar-header">
             <h3>Menu Joueur</h3>
@@ -62,30 +93,28 @@
             <a href="revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
             <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
             <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="#" id="showHiddenPosts"><i class="fas fa-eye-slash"></i> Posts masqués</a>
             <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
         </nav>
     </div>
 
-    <!-- Sidebar droite (communauté) -->
+    <!-- SIDEBAR DROITE (communauté) - identique au parrain -->
     <div class="sidebar right-sidebar" id="rightSidebar">
         <div class="sidebar-header">
             <h3>Communauté</h3>
             <button class="close-sidebar" id="closeRightSidebar"><i class="fas fa-times"></i></button>
         </div>
         <div class="sidebar-content">
-            <!-- Abonnés / Fans -->
             <div class="community-section">
                 <h4><i class="fas fa-users"></i> Abonnés</h4>
                 <ul class="followers-list" id="followersList"></ul>
                 <a href="#" class="view-all">Voir tous</a>
             </div>
-            <!-- Abonnements -->
             <div class="community-section">
                 <h4><i class="fas fa-user-friends"></i> Abonnements</h4>
                 <ul class="following-list" id="followingList"></ul>
                 <a href="#" class="view-all">Voir tous</a>
             </div>
-            <!-- Analyses (Insights) -->
             <div class="community-section">
                 <h4><i class="fas fa-chart-line"></i> Insights</h4>
                 <div class="insights" id="insights">
@@ -94,34 +123,51 @@
                     <p>Nouveaux abonnés : <strong id="insightNewFollowers">+0</strong></p>
                 </div>
             </div>
-            <!-- Gestionnaires de profil -->
+            <div class="community-section">
+                <h4><i class="fas fa-user-plus"></i> Suggestions</h4>
+                <ul class="suggestions-list" id="suggestionsList"></ul>
+                <a href="#" class="view-all">Voir plus</a>
+            </div>
+            <div class="community-section">
+                <h4><i class="fas fa-fire"></i> Tendances</h4>
+                <ul class="trends-list" id="trendsList"></ul>
+                <a href="#" class="view-all">Voir plus</a>
+            </div>
             <div class="community-section">
                 <h4><i class="fas fa-cog"></i> Gestionnaire</h4>
-                <button class="btn-edit-bio" onclick="editBio()"><i class="fas fa-pen"></i> Modifier la bio</button>
-                <button class="btn-edit-contact" onclick="editContact()"><i class="fas fa-address-card"></i> Modifier contact</button>
+                <button class="btn-edit-profile" onclick="openEditProfileModal()"><i class="fas fa-pen"></i> Modifier mon profil</button>
             </div>
-            <!-- Recherche / Filtres -->
             <div class="community-section">
                 <h4><i class="fas fa-search"></i> Recherche</h4>
                 <input type="text" id="communitySearch" placeholder="Rechercher un membre...">
                 <div class="filter-buttons">
                     <button class="filter-btn" data-filter="all">Tous</button>
-                    <button class="filter-btn" data-filter="joueur">Joueurs</button>
-                    <button class="filter-btn" data-filter="parrain">Parrains</button>
-                    <button class="filter-btn" data-filter="agent">Agents</button>
-                    <button class="filter-btn" data-filter="academie">Académies</button>
+                    <button class="filter-btn" data-filter="following">Abonnements</button>
+                    <button class="filter-btn" data-filter="saved">Épinglés</button>
+                </div>
+            </div>
+            <div class="community-section">
+                <h4><i class="fas fa-filter"></i> Filtres par rôle</h4>
+                <div class="filter-buttons role-filters">
+                    <button class="filter-btn" data-role="all">Tous</button>
+                    <button class="filter-btn" data-role="joueur">Joueurs</button>
+                    <button class="filter-btn" data-role="parrain">Parrains</button>
+                    <button class="filter-btn" data-role="agent">Agents</button>
+                    <button class="filter-btn" data-role="coach">Coachs</button>
+                    <button class="filter-btn" data-role="academie">Académies</button>
+                    <button class="filter-btn" data-role="staff">Staff médical</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Contenu principal -->
+    <!-- CONTENU PRINCIPAL -->
     <main class="dashboard-main">
         <div class="feed-container">
             <h1>Ma Communauté</h1>
             <p>Partagez et interagissez avec tous les acteurs du football.</p>
 
-            <!-- Zone de publication -->
+            <!-- ZONE DE PUBLICATION -->
             <div class="publish-box" id="publishBox">
                 <div class="publish-top">
                     <img src="img/user-default.jpg" alt="Avatar" id="publishAvatar">
@@ -135,27 +181,32 @@
                     <button class="action-btn" id="schedulePostBtn"><i class="fas fa-clock"></i> Prog.</button>
                     <button class="action-btn publish-main" id="publishBtn"><i class="fas fa-paper-plane"></i> Publier</button>
                 </div>
+                <div class="media-cancel" id="mediaCancel" style="display: none;">
+                    <span>Fichier sélectionné : <span id="mediaFileName"></span></span>
+                    <button class="btn-cancel-media" onclick="cancelMedia()"><i class="fas fa-times"></i> Annuler</button>
+                </div>
             </div>
 
-            <!-- Indicateur de nouveaux posts -->
+            <!-- INDICATEUR DE NOUVEAUX POSTS -->
             <div id="newPostsIndicator" class="new-posts-indicator" style="display: none;">
                 <span>⬆️</span> <span id="newPostsCount">0</span> nouveau(x) post(s)
             </div>
 
-            <!-- Fil d'actualité -->
-            <div id="postsFeed" class="posts-feed"></div>
+            <!-- FIL D'ACTUALITÉ -->
+            <div id="postsFeed" class="posts-feed">
+                <div id="feedLoader" class="feed-loader" style="display: none;">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <!-- BOUTON POUR REVENIR AU FIL NORMAL -->
+            <div id="backToFeedBtn" class="back-to-feed" style="display: none;">
+                <button onclick="loadPosts()"><i class="fas fa-arrow-left"></i> Retour au fil d'actualité</button>
+            </div>
         </div>
     </main>
 
-    <!-- Toast container -->
-    <div id="toastContainer" class="toast-container"></div>
-
-    <!-- Loader global -->
-    <div id="globalLoader" class="global-loader" style="display: none;">
-        <div class="spinner"></div>
-    </div>
-
-    <!-- MODALE D'APERÇU (pour la publication) -->
+    <!-- MODALE D'APERÇU -->
     <div id="previewModal" class="preview-modal">
         <div class="preview-content">
             <div class="preview-header">
@@ -177,7 +228,7 @@
         </div>
     </div>
 
-    <!-- MODALE D'ÉDITION DU PROFIL -->
+    <!-- MODALE D'ÉDITION DU PROFIL (identique au parrain) -->
     <div id="editProfileModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -241,14 +292,37 @@
                     </div>
                     <h3 id="profileName">Nom de l'utilisateur</h3>
                     <p id="profileHubId">@hub_id</p>
-                    <p id="profileBio" class="profile-bio">Bio de l'utilisateur...</p>
+                    <p id="profileBio" class="profile-bio"></p>
                     <button class="btn-send-message" onclick="sendMessageToUser()"><i class="fas fa-envelope"></i> Envoyer un message</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
+    <!-- MODALE DE RÉPONSE À UN COMMENTAIRE -->
+    <div id="replyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Répondre au commentaire</h2>
+                <span class="close-modal" onclick="closeReplyModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="original-comment" id="originalComment"></div>
+                <textarea id="replyContent" rows="3" placeholder="Votre réponse..."></textarea>
+                <button class="btn-send-reply" onclick="sendReply()">Envoyer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENEUR POUR LES TOASTS -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- LOADER GLOBAL -->
+    <div id="globalLoader" class="global-loader" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- FOOTER -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
@@ -268,6 +342,7 @@
         </div>
     </footer>
 
+    <!-- SCRIPT PRINCIPAL (le JS que je t'ai donné pour le joueur) -->
     <script src="js/feed.js"></script>
 </body>
 </html>
