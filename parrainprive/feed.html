@@ -14,18 +14,16 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- NAVBAR -->
+    <!-- NAVBAR (inchangée) -->
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="dashboard-title">Espace Parrain</span>
         </div>
         <div class="nav-right">
-            <!-- Bouton pour ouvrir la sidebar droite -->
             <button class="sidebar-toggle" id="rightSidebarToggle" title="Communauté">
                 <i class="fas fa-users"></i>
             </button>
-            <!-- Sélecteur de langue (24 langues) -->
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
@@ -52,12 +50,10 @@
                 <option value="pl">🇵🇱 Polski</option>
                 <option value="vi">🇻🇳 Tiếng Việt</option>
             </select>
-            <!-- Notifications -->
             <div class="notif-icon" id="notifIcon">
                 <i class="fas fa-bell"></i>
                 <span class="notif-badge" id="notifBadge">0</span>
             </div>
-            <!-- Menu utilisateur -->
             <div class="user-menu" id="userMenu">
                 <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
                 <span class="user-name" id="userName">Chargement...</span>
@@ -69,7 +65,6 @@
                     <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                 </div>
             </div>
-            <!-- Bouton menu mobile -->
             <button class="menu-toggle" id="menuToggle" title="Menu">
                 <i class="fas fa-bars"></i>
             </button>
@@ -79,7 +74,7 @@
     <!-- Overlay pour mobile -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- SIDEBAR GAUCHE (menu principal) -->
+    <!-- SIDEBAR GAUCHE (menu principal) inchangée -->
     <div class="sidebar left-sidebar" id="leftSidebar">
         <div class="sidebar-header">
             <h3>Menu Parrain</h3>
@@ -93,7 +88,6 @@
             <a href="certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
             <a href="tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournois</a>
             <a href="revenue.html"><i class="fas fa-coins"></i> Mes Dons</a>
-            <!-- Lien vers les posts masqués -->
             <a href="#" id="showHiddenPosts"><i class="fas fa-eye-slash"></i> Posts masqués</a>
             <hr>
             <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
@@ -102,7 +96,7 @@
         </nav>
     </div>
 
-    <!-- SIDEBAR DROITE (communauté) -->
+    <!-- SIDEBAR DROITE (communauté) enrichie -->
     <div class="sidebar right-sidebar" id="rightSidebar">
         <div class="sidebar-header">
             <h3>Communauté</h3>
@@ -130,10 +124,22 @@
                     <p>Nouveaux abonnés : <strong id="insightNewFollowers">+0</strong></p>
                 </div>
             </div>
-            <!-- Gestionnaire de profil -->
+            <!-- Suggestions (nouveau) -->
+            <div class="community-section">
+                <h4><i class="fas fa-user-plus"></i> Suggestions</h4>
+                <ul class="suggestions-list" id="suggestionsList"></ul>
+                <a href="#" class="view-all">Voir plus</a>
+            </div>
+            <!-- Tendances (nouveau) -->
+            <div class="community-section">
+                <h4><i class="fas fa-fire"></i> Tendances</h4>
+                <ul class="trends-list" id="trendsList"></ul>
+                <a href="#" class="view-all">Voir plus</a>
+            </div>
+            <!-- Gestionnaire de profil amélioré (bouton unique) -->
             <div class="community-section">
                 <h4><i class="fas fa-cog"></i> Gestionnaire</h4>
-                <button class="btn-edit-profile" onclick="openEditProfileModal()"><i class="fas fa-pen"></i> Modifier mes infos</button>
+                <button class="btn-edit-profile" onclick="openEditProfileModal()"><i class="fas fa-pen"></i> Modifier mon profil</button>
             </div>
             <!-- Recherche et filtres -->
             <div class="community-section">
@@ -145,16 +151,29 @@
                     <button class="filter-btn" data-filter="saved">Épinglés</button>
                 </div>
             </div>
+            <!-- Filtres par rôle (nouveau) -->
+            <div class="community-section">
+                <h4><i class="fas fa-filter"></i> Filtres par rôle</h4>
+                <div class="filter-buttons role-filters">
+                    <button class="filter-btn" data-role="all">Tous</button>
+                    <button class="filter-btn" data-role="joueur">Joueurs</button>
+                    <button class="filter-btn" data-role="parrain">Parrains</button>
+                    <button class="filter-btn" data-role="agent">Agents</button>
+                    <button class="filter-btn" data-role="coach">Coachs</button>
+                    <button class="filter-btn" data-role="academie">Académies</button>
+                    <button class="filter-btn" data-role="staff">Staff médical</button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- CONTENU PRINCIPAL -->
+    <!-- CONTENU PRINCIPAL (inchangé) -->
     <main class="dashboard-main">
         <div class="feed-container">
             <h1>Ma Communauté</h1>
             <p>Partagez et interagissez avec les parrains et acteurs du football.</p>
 
-            <!-- ZONE DE PUBLICATION -->
+            <!-- ZONE DE PUBLICATION (inchangée) -->
             <div class="publish-box" id="publishBox">
                 <div class="publish-top">
                     <img src="img/user-default.jpg" alt="Avatar" id="publishAvatar">
@@ -186,14 +205,14 @@
                 </div>
             </div>
 
-            <!-- BOUTON POUR REVENIR AU FIL NORMAL (quand on est dans les masqués) -->
+            <!-- BOUTON POUR REVENIR AU FIL NORMAL -->
             <div id="backToFeedBtn" class="back-to-feed" style="display: none;">
                 <button onclick="loadPosts()"><i class="fas fa-arrow-left"></i> Retour au fil d'actualité</button>
             </div>
         </div>
     </main>
 
-    <!-- MODALE D'APERÇU -->
+    <!-- MODALE D'APERÇU (inchangée) -->
     <div id="previewModal" class="preview-modal">
         <div class="preview-content">
             <div class="preview-header">
@@ -215,15 +234,19 @@
         </div>
     </div>
 
-    <!-- MODALE D'ÉDITION DU PROFIL -->
+    <!-- MODALE D'ÉDITION DU PROFIL améliorée -->
     <div id="editProfileModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Modifier mes informations</h2>
+                <h2>Modifier mon profil</h2>
                 <span class="close-modal" onclick="closeEditProfileModal()">&times;</span>
             </div>
             <div class="modal-body">
                 <form id="editProfileForm">
+                    <div class="form-group">
+                        <label>Bio</label>
+                        <textarea id="editBio" rows="4" placeholder="Parlez de vous..."></textarea>
+                    </div>
                     <div class="form-group">
                         <label>Téléphone (WhatsApp)</label>
                         <input type="tel" id="editPhone" placeholder="+229 ...">
@@ -232,13 +255,23 @@
                         <label>Email professionnel</label>
                         <input type="email" id="editEmail" placeholder="contact@exemple.com">
                     </div>
+                    <div class="form-group">
+                        <label>Pays de résidence</label>
+                        <select id="editCountry">
+                            <option value="">Sélectionner votre pays</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Adresse complète</label>
+                        <textarea id="editAddress" rows="2" placeholder="Numéro, rue, quartier, ville..."></textarea>
+                    </div>
                     <button type="submit" class="btn-save-profile">Enregistrer</button>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- MODALE DE LISTE DES LIKES -->
+    <!-- MODALE DE LISTE DES LIKES (inchangée) -->
     <div id="likesModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -251,7 +284,7 @@
         </div>
     </div>
 
-    <!-- MODALE DE PROFIL UTILISATEUR -->
+    <!-- MODALE DE PROFIL UTILISATEUR (inchangée) -->
     <div id="userProfileModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -272,7 +305,7 @@
         </div>
     </div>
 
-    <!-- MODALE DE RÉPONSE À UN COMMENTAIRE -->
+    <!-- MODALE DE RÉPONSE À UN COMMENTAIRE (inchangée) -->
     <div id="replyModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -295,7 +328,7 @@
         <div class="spinner"></div>
     </div>
 
-    <!-- FOOTER -->
+    <!-- FOOTER (inchangé) -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
@@ -315,7 +348,6 @@
         </div>
     </footer>
 
-    <!-- SCRIPT PRINCIPAL -->
     <script src="js/parrain-feed.js"></script>
 </body>
 </html>
