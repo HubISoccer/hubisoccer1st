@@ -345,7 +345,7 @@
     transform: scale(1.2);
 }
 
-/* ===== TOASTS (optionnel) ===== */
+/* ===== TOASTS ===== */
 .toast-container {
     position: fixed;
     top: 20px;
