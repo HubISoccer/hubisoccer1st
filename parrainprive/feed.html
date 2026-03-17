@@ -14,7 +14,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- NAVBAR (inchangée) -->
+    <!-- NAVBAR -->
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
@@ -50,16 +50,19 @@
                 <option value="pl">🇵🇱 Polski</option>
                 <option value="vi">🇻🇳 Tiếng Việt</option>
             </select>
+            <!-- Notifications -->
             <div class="notif-icon" id="notifIcon">
                 <i class="fas fa-bell"></i>
                 <span class="notif-badge" id="notifBadge">0</span>
             </div>
+            <!-- Menu utilisateur -->
             <div class="user-menu" id="userMenu">
                 <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
                     <a href="dashboard.html"><i class="fas fa-user"></i> Mon profil</a>
+                    <a href="#" id="historyBtn"><i class="fas fa-history"></i> Mon historique</a>
                     <a href="support.html"><i class="fas fa-cog"></i> Paramètres</a>
                     <a href="#" id="languageLink">Langue (Français)</a>
                     <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
@@ -74,7 +77,7 @@
     <!-- Overlay pour mobile -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- SIDEBAR GAUCHE (menu principal) inchangée -->
+    <!-- SIDEBAR GAUCHE (menu principal) -->
     <div class="sidebar left-sidebar" id="leftSidebar">
         <div class="sidebar-header">
             <h3>Menu Parrain</h3>
@@ -96,7 +99,7 @@
         </nav>
     </div>
 
-    <!-- SIDEBAR DROITE (communauté) enrichie -->
+    <!-- SIDEBAR DROITE (communauté) enrichie avec filtres avancés et collections -->
     <div class="sidebar right-sidebar" id="rightSidebar">
         <div class="sidebar-header">
             <h3>Communauté</h3>
@@ -124,24 +127,62 @@
                     <p>Nouveaux abonnés : <strong id="insightNewFollowers">+0</strong></p>
                 </div>
             </div>
-            <!-- Suggestions (nouveau) -->
+            <!-- Suggestions -->
             <div class="community-section">
                 <h4><i class="fas fa-user-plus"></i> Suggestions</h4>
                 <ul class="suggestions-list" id="suggestionsList"></ul>
                 <a href="#" class="view-all">Voir plus</a>
             </div>
-            <!-- Tendances (nouveau) -->
+            <!-- Tendances -->
             <div class="community-section">
                 <h4><i class="fas fa-fire"></i> Tendances</h4>
                 <ul class="trends-list" id="trendsList"></ul>
                 <a href="#" class="view-all">Voir plus</a>
             </div>
-            <!-- Gestionnaire de profil amélioré (bouton unique) -->
+            <!-- Collections (nouveau) -->
+            <div class="community-section">
+                <h4><i class="fas fa-folder"></i> Mes collections</h4>
+                <ul class="collections-list" id="collectionsList"></ul>
+                <button class="btn-create-collection" onclick="createCollection()"><i class="fas fa-plus"></i> Créer une collection</button>
+            </div>
+            <!-- Filtres avancés (nouveau) -->
+            <div class="community-section">
+                <h4><i class="fas fa-sliders-h"></i> Filtres avancés</h4>
+                <div class="filter-group">
+                    <label>Date</label>
+                    <select id="dateFilter">
+                        <option value="all">Toutes</option>
+                        <option value="today">Aujourd'hui</option>
+                        <option value="week">Cette semaine</option>
+                        <option value="month">Ce mois</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Popularité</label>
+                    <select id="popularityFilter">
+                        <option value="all">Tous</option>
+                        <option value="most_liked">Les + aimés</option>
+                        <option value="most_commented">Les + commentés</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Type de contenu</label>
+                    <select id="contentTypeFilter">
+                        <option value="all">Tous</option>
+                        <option value="text">Texte</option>
+                        <option value="image">Image</option>
+                        <option value="video">Vidéo</option>
+                    </select>
+                </div>
+            </div>
+            <!-- Gestionnaire de profil -->
             <div class="community-section">
                 <h4><i class="fas fa-cog"></i> Gestionnaire</h4>
                 <button class="btn-edit-profile" onclick="openEditProfileModal()"><i class="fas fa-pen"></i> Modifier mon profil</button>
+                <button class="btn-privacy" onclick="openPrivacyModal()"><i class="fas fa-lock"></i> Confidentialité</button>
+                <button class="btn-invite" onclick="openInviteModal()"><i class="fas fa-user-plus"></i> Inviter des amis</button>
             </div>
-            <!-- Recherche et filtres -->
+            <!-- Recherche -->
             <div class="community-section">
                 <h4><i class="fas fa-search"></i> Recherche</h4>
                 <input type="text" id="communitySearch" placeholder="Rechercher un membre...">
@@ -151,7 +192,7 @@
                     <button class="filter-btn" data-filter="saved">Épinglés</button>
                 </div>
             </div>
-            <!-- Filtres par rôle (nouveau) -->
+            <!-- Filtres par rôle -->
             <div class="community-section">
                 <h4><i class="fas fa-filter"></i> Filtres par rôle</h4>
                 <div class="filter-buttons role-filters">
@@ -167,13 +208,13 @@
         </div>
     </div>
 
-    <!-- CONTENU PRINCIPAL (inchangé) -->
+    <!-- CONTENU PRINCIPAL -->
     <main class="dashboard-main">
         <div class="feed-container">
             <h1>Ma Communauté</h1>
             <p>Partagez et interagissez avec les parrains et acteurs du football.</p>
 
-            <!-- ZONE DE PUBLICATION (inchangée) -->
+            <!-- ZONE DE PUBLICATION enrichie avec boutons supplémentaires -->
             <div class="publish-box" id="publishBox">
                 <div class="publish-top">
                     <img src="img/user-default.jpg" alt="Avatar" id="publishAvatar">
@@ -183,6 +224,8 @@
                 <div class="publish-actions">
                     <input type="file" id="mediaInput" accept="image/*,video/*" style="display: none;">
                     <button class="action-btn" id="attachMediaBtn"><i class="fas fa-image"></i> Photo/Vidéo</button>
+                    <button class="action-btn" id="pollBtn"><i class="fas fa-chart-pie"></i> Sondage</button>
+                    <button class="action-btn" id="eventBtn"><i class="fas fa-calendar-alt"></i> Événement</button>
                     <button class="action-btn" id="previewPostBtn"><i class="fas fa-eye"></i> Aperçu</button>
                     <button class="action-btn" id="schedulePostBtn"><i class="fas fa-clock"></i> Prog.</button>
                     <button class="action-btn publish-main" id="publishBtn"><i class="fas fa-paper-plane"></i> Publier</button>
@@ -212,7 +255,7 @@
         </div>
     </main>
 
-    <!-- MODALE D'APERÇU (inchangée) -->
+    <!-- MODALE D'APERÇU -->
     <div id="previewModal" class="preview-modal">
         <div class="preview-content">
             <div class="preview-header">
@@ -234,7 +277,7 @@
         </div>
     </div>
 
-    <!-- MODALE D'ÉDITION DU PROFIL améliorée -->
+    <!-- MODALE D'ÉDITION DU PROFIL -->
     <div id="editProfileModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -271,7 +314,7 @@
         </div>
     </div>
 
-    <!-- MODALE DE LISTE DES LIKES (inchangée) -->
+    <!-- MODALE DE LISTE DES LIKES -->
     <div id="likesModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -284,7 +327,7 @@
         </div>
     </div>
 
-    <!-- MODALE DE PROFIL UTILISATEUR (inchangée) -->
+    <!-- MODALE DE PROFIL UTILISATEUR (avec badges) -->
     <div id="userProfileModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -298,6 +341,7 @@
                     </div>
                     <h3 id="profileName">Nom de l'utilisateur</h3>
                     <p id="profileHubId">@hub_id</p>
+                    <div id="profileBadges" class="profile-badges"></div>
                     <p id="profileBio" class="profile-bio"></p>
                     <button class="btn-send-message" onclick="sendMessageToUser()"><i class="fas fa-envelope"></i> Envoyer un message</button>
                 </div>
@@ -305,7 +349,7 @@
         </div>
     </div>
 
-    <!-- MODALE DE RÉPONSE À UN COMMENTAIRE (inchangée) -->
+    <!-- MODALE DE RÉPONSE À UN COMMENTAIRE -->
     <div id="replyModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -320,6 +364,107 @@
         </div>
     </div>
 
+    <!-- MODALE DE NOTIFICATIONS (nouvelle) -->
+    <div id="notificationsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Notifications</h2>
+                <span class="close-modal" onclick="closeNotificationsModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <button class="btn-mark-all-read" onclick="markAllNotificationsAsRead()">Tout marquer comme lu</button>
+                <ul id="notificationsList" class="notifications-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE COLLECTIONS (nouvelle) -->
+    <div id="collectionsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Ajouter à une collection</h2>
+                <span class="close-modal" onclick="closeCollectionsModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <ul id="collectionsModalList" class="collections-modal-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE SONDAGE (nouvelle) -->
+    <div id="pollModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Créer un sondage</h2>
+                <span class="close-modal" onclick="closePollModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Question</label>
+                    <input type="text" id="pollQuestion" placeholder="Votre question...">
+                </div>
+                <div class="form-group">
+                    <label>Options (une par ligne)</label>
+                    <textarea id="pollOptions" rows="4" placeholder="Option 1\nOption 2\nOption 3"></textarea>
+                </div>
+                <button class="btn-create-poll" onclick="createPoll()">Publier le sondage</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE PARTAGE EXTERNE (nouvelle) -->
+    <div id="shareModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Partager sur</h2>
+                <span class="close-modal" onclick="closeShareModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="share-options">
+                    <button onclick="shareOn('facebook')" class="share-btn facebook"><i class="fab fa-facebook-f"></i> Facebook</button>
+                    <button onclick="shareOn('twitter')" class="share-btn twitter"><i class="fab fa-twitter"></i> Twitter</button>
+                    <button onclick="shareOn('whatsapp')" class="share-btn whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                    <button onclick="shareOn('email')" class="share-btn email"><i class="fas fa-envelope"></i> Email</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE CONFIDENTIALITÉ (nouvelle) -->
+    <div id="privacyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confidentialité du profil</h2>
+                <span class="close-modal" onclick="closePrivacyModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="radio-group">
+                    <label><input type="radio" name="privacy" value="public"> Public (tout le monde peut voir vos posts)</label>
+                    <label><input type="radio" name="privacy" value="followers"> Abonnés uniquement</label>
+                    <label><input type="radio" name="privacy" value="private"> Privé (personne ne voit vos posts)</label>
+                </div>
+                <button class="btn-save-privacy" onclick="savePrivacy()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE D'INVITATION (nouvelle) -->
+    <div id="inviteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Inviter des amis</h2>
+                <span class="close-modal" onclick="closeInviteModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Email de l'ami</label>
+                    <input type="email" id="inviteEmail" placeholder="ami@exemple.com">
+                </div>
+                <button class="btn-send-invite" onclick="sendInvite()">Envoyer l'invitation</button>
+            </div>
+        </div>
+    </div>
+
     <!-- CONTENEUR POUR LES TOASTS -->
     <div id="toastContainer" class="toast-container"></div>
 
@@ -328,7 +473,7 @@
         <div class="spinner"></div>
     </div>
 
-    <!-- FOOTER (inchangé) -->
+    <!-- FOOTER -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
