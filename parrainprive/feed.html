@@ -137,13 +137,13 @@
                 <ul class="trends-list" id="trendsList"></ul>
                 <a href="#" class="view-all">Voir plus</a>
             </div>
-            <!-- Collections (nouveau) -->
+            <!-- Collections -->
             <div class="community-section">
                 <h4><i class="fas fa-folder"></i> Mes collections</h4>
                 <ul class="collections-list" id="collectionsList"></ul>
                 <button id="createCollectionBtn" class="btn-create-collection" onclick="createCollection()"><i class="fas fa-plus"></i> Créer une collection</button>
             </div>
-            <!-- Filtres avancés (nouveau) -->
+            <!-- Filtres avancés -->
             <div class="community-section">
                 <h4><i class="fas fa-sliders-h"></i> Filtres avancés</h4>
                 <div class="filter-group">
@@ -177,8 +177,8 @@
             <div class="community-section">
                 <h4><i class="fas fa-cog"></i> Gestionnaire</h4>
                 <button class="btn-edit-profile" onclick="openEditProfileModal()"><i class="fas fa-pen"></i> Modifier mon profil</button>
-                <button class="btn-privacy" onclick="openPrivacyModal()"><i class="fas fa-lock"></i> Confidentialité</button>
-                <button class="btn-invite" onclick="openInviteModal()"><i class="fas fa-user-plus"></i> Inviter des amis</button>
+                <button id="privacyBtn" class="btn-privacy" onclick="openPrivacyModal()"><i class="fas fa-lock"></i> Confidentialité</button>
+                <button id="inviteBtn" class="btn-invite" onclick="openInviteModal()"><i class="fas fa-user-plus"></i> Inviter des amis</button>
             </div>
             <!-- Recherche -->
             <div class="community-section">
@@ -212,7 +212,7 @@
             <h1>Ma Communauté</h1>
             <p>Partagez et interagissez avec les parrains et acteurs du football.</p>
 
-            <!-- ZONE DE PUBLICATION enrichie avec boutons supplémentaires -->
+            <!-- ZONE DE PUBLICATION -->
             <div class="publish-box" id="publishBox">
                 <div class="publish-top">
                     <img src="img/user-default.jpg" alt="Avatar" id="publishAvatar">
@@ -325,7 +325,7 @@
         </div>
     </div>
 
-    <!-- MODALE DE PROFIL UTILISATEUR (avec badges) -->
+    <!-- MODALE DE PROFIL UTILISATEUR -->
     <div id="userProfileModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -362,7 +362,7 @@
         </div>
     </div>
 
-    <!-- MODALE DE NOTIFICATIONS (nouvelle) -->
+    <!-- MODALE DE NOTIFICATIONS -->
     <div id="notificationsModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -376,7 +376,7 @@
         </div>
     </div>
 
-    <!-- MODALE DE COLLECTIONS (nouvelle) -->
+    <!-- MODALE DE COLLECTIONS -->
     <div id="collectionsModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -389,7 +389,7 @@
         </div>
     </div>
 
-    <!-- MODALE DE SONDAGE (nouvelle) -->
+    <!-- MODALE DE SONDAGE -->
     <div id="pollModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -405,12 +405,12 @@
                     <label>Options (une par ligne)</label>
                     <textarea id="pollOptions" rows="4" placeholder="Option 1\nOption 2\nOption 3"></textarea>
                 </div>
-                <button class="btn-create-poll" onclick="createPoll()">Publier le sondage</button>
+                <button id="submitPoll" class="btn-create-poll" onclick="createPoll()">Publier le sondage</button>
             </div>
         </div>
     </div>
 
-    <!-- MODALE DE PARTAGE EXTERNE (nouvelle) -->
+    <!-- MODALE DE PARTAGE EXTERNE -->
     <div id="shareModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -428,7 +428,7 @@
         </div>
     </div>
 
-    <!-- MODALE DE CONFIDENTIALITÉ (nouvelle) -->
+    <!-- MODALE DE CONFIDENTIALITÉ -->
     <div id="privacyModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -441,12 +441,12 @@
                     <label><input type="radio" name="privacy" value="followers"> Abonnés uniquement</label>
                     <label><input type="radio" name="privacy" value="private"> Privé (personne ne voit vos posts)</label>
                 </div>
-                <button class="btn-save-privacy" onclick="savePrivacy()">Enregistrer</button>
+                <button id="savePrivacy" class="btn-save-privacy" onclick="savePrivacy()">Enregistrer</button>
             </div>
         </div>
     </div>
 
-    <!-- MODALE D'INVITATION (nouvelle) -->
+    <!-- MODALE D'INVITATION -->
     <div id="inviteModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -458,7 +458,7 @@
                     <label>Email de l'ami</label>
                     <input type="email" id="inviteEmail" placeholder="ami@exemple.com">
                 </div>
-                <button class="btn-send-invite" onclick="sendInvite()">Envoyer l'invitation</button>
+                <button id="sendInvite" class="btn-send-invite" onclick="sendInvite()">Envoyer l'invitation</button>
             </div>
         </div>
     </div>
