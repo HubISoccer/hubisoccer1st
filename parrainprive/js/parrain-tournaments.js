@@ -101,7 +101,6 @@ async function loadTournaments() {
 
 // ===== CHARGEMENT DES DÉTAILS D'UN TOURNOI (joueurs) =====
 async function loadTournamentDetails(tournamentId) {
-    // Récupérer les entrées de tournament_players pour ce tournoi
     const { data: playersData, error } = await supabaseParrainPrive
         .from('tournament_players')
         .select('*')
@@ -112,7 +111,6 @@ async function loadTournamentDetails(tournamentId) {
         return;
     }
 
-    // Pour chaque joueur, récupérer les infos depuis player_profiles
     const players = [];
     for (const p of playersData || []) {
         const { data: playerProfile } = await supabaseParrainPrive
@@ -178,7 +176,7 @@ function renderLiveTournament() {
     if (!currentTournament) return;
 
     const container = document.getElementById('liveTournament');
-    const streamUrl = currentTournament.stream_url || 'https://www.youtube.com/embed/dQw4w9WgXcQ'; // URL par défaut
+    const streamUrl = currentTournament.stream_url || 'https://www.youtube.com/embed/dQw4w9WgXcQ';
 
     container.innerHTML = `
         <div class="tournament-video">
@@ -204,9 +202,30 @@ function renderLiveTournament() {
     renderChatMessages();
 }
 
+// ===== RECHERCHE DU NOM DE L'AUTEUR DANS LES TABLES DE PROFILS =====
+async function getAuthorInfo(userId) {
+    // Chercher d'abord dans parrain_profiles
+    const { data: parrain } = await supabaseParrainPrive
+        .from('parrain_profiles')
+        .select('first_name, last_name')
+        .eq('id', userId)
+        .maybeSingle();
+    if (parrain) return parrain;
+
+    // Puis dans player_profiles
+    const { data: player } = await supabaseParrainPrive
+        .from('player_profiles')
+        .select('first_name, last_name')
+        .eq('id', userId)
+        .maybeSingle();
+    if (player) return player;
+
+    // Ajouter d'autres tables si nécessaire (agent, coach, etc.)
+    return { first_name: 'Utilisateur', last_name: 'inconnu' };
+}
+
 // ===== CHARGEMENT DES MESSAGES DU CHAT =====
 async function loadMessages(tournamentId) {
-    // Récupérer les messages du tournoi
     const { data, error } = await supabaseParrainPrive
         .from('tournament_messages')
         .select('*')
@@ -218,19 +237,13 @@ async function loadMessages(tournamentId) {
         return;
     }
 
-    // Pour chaque message, récupérer les infos de l'auteur (parrain)
     messages = [];
     for (const m of data || []) {
-        const { data: authorData } = await supabaseParrainPrive
-            .from('parrain_profiles')
-            .select('first_name, last_name')
-            .eq('id', m.user_id)
-            .single();
-
+        const authorInfo = await getAuthorInfo(m.user_id);
         messages.push({
             id: m.id,
             userId: m.user_id,
-            author: authorData ? `${authorData.first_name} ${authorData.last_name}` : 'Inconnu',
+            author: `${authorInfo.first_name} ${authorInfo.last_name}`.trim() || 'Inconnu',
             text: m.message,
             time: new Date(m.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
         });
@@ -279,7 +292,6 @@ async function sendMessage() {
     }
 
     input.value = '';
-    // Le message apparaîtra via Realtime
 }
 
 // ===== SOUSCRIPTION AUX NOUVEAUX MESSAGES =====
@@ -294,21 +306,14 @@ function subscribeToMessages(tournamentId) {
             table: 'tournament_messages',
             filter: `tournament_id=eq.${tournamentId}`
         }, async (payload) => {
-            // Récupérer les infos de l'utilisateur (parrain) pour le nouveau message
-            const { data: userData } = await supabaseParrainPrive
-                .from('parrain_profiles')
-                .select('first_name, last_name')
-                .eq('id', payload.new.user_id)
-                .single();
-
+            const authorInfo = await getAuthorInfo(payload.new.user_id);
             const newMsg = {
                 id: payload.new.id,
                 userId: payload.new.user_id,
-                author: userData ? `${userData.first_name} ${userData.last_name}` : 'Inconnu',
+                author: `${authorInfo.first_name} ${authorInfo.last_name}`.trim() || 'Inconnu',
                 text: payload.new.message,
                 time: new Date(payload.new.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
             };
-
             messages.push(newMsg);
             renderChatMessages();
         })
@@ -368,19 +373,14 @@ function renderPlayersList() {
 // ===== AJOUT/SUPPRESSION D'UNE ÉTOILE =====
 async function toggleStar(playerTournamentId) {
     if (starredPlayers.has(playerTournamentId)) {
-        // Supprimer l'étoile
         const { error } = await supabaseParrainPrive
             .from('player_stars')
             .delete()
             .eq('user_id', currentParrain.id)
             .eq('tournament_id', currentTournament.id)
             .eq('player_id', playerTournamentId);
-
-        if (!error) {
-            starredPlayers.delete(playerTournamentId);
-        }
+        if (!error) starredPlayers.delete(playerTournamentId);
     } else {
-        // Ajouter une étoile
         const { error } = await supabaseParrainPrive
             .from('player_stars')
             .insert([{
@@ -388,10 +388,7 @@ async function toggleStar(playerTournamentId) {
                 tournament_id: currentTournament.id,
                 player_id: playerTournamentId
             }]);
-
-        if (!error) {
-            starredPlayers.add(playerTournamentId);
-        }
+        if (!error) starredPlayers.add(playerTournamentId);
     }
     renderPlayersList();
 }
@@ -429,7 +426,7 @@ function initSidebar() {
     overlay?.addEventListener('click', closeSidebarFunc);
 }
 
-// ===== GESTION DES SWIPES (mobile) =====
+// ===== GESTION DES SWIPES =====
 let touchStartX = 0;
 let touchEndX = 0;
 const swipeThreshold = 50;
@@ -488,7 +485,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('openTournamentModal').addEventListener('click', openTournamentModal);
 
-    // Rendre les fonctions globales pour les attributs onclick
     window.closeTournamentModal = closeTournamentModal;
     window.closePlayersModal = closePlayersModal;
     window.openPlayersModal = openPlayersModal;
