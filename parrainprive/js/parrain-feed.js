@@ -853,7 +853,7 @@ async function createPost(content, file) {
         formData.append('file', file);
         const fileExt = file.name.split('.').pop();
         const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
-        const bucket = 'posts'; // à adapter si nécessaire
+        const bucket = 'parrain-posts';
 
         const xhr = new XMLHttpRequest();
         xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`, true);
