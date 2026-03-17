@@ -12,7 +12,7 @@ let messages = [];
 let starredPlayers = new Set(); // IDs des joueurs (player_tournament_id)
 let messagesSubscription = null;
 
-// ===== TOAST (optionnel) =====
+// ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
     const container = document.getElementById('toastContainer');
     if (!container) return;
@@ -101,14 +101,10 @@ async function loadTournaments() {
 
 // ===== CHARGEMENT DES DÉTAILS D'UN TOURNOI (joueurs) =====
 async function loadTournamentDetails(tournamentId) {
-    const { data, error } = await supabaseParrainPrive
+    // Récupérer les entrées de tournament_players pour ce tournoi
+    const { data: playersData, error } = await supabaseParrainPrive
         .from('tournament_players')
-        .select(`
-            id,
-            position,
-            jersey_number,
-            player:player_profiles(id, first_name, last_name, avatar_url, hub_id)
-        `)
+        .select('*')
         .eq('tournament_id', tournamentId);
 
     if (error) {
@@ -116,15 +112,24 @@ async function loadTournamentDetails(tournamentId) {
         return;
     }
 
-    // Construction des objets joueurs avec nom complet
-    const players = (data || []).map(p => ({
-        id: p.id,
-        playerId: p.player.id,
-        name: p.player ? `${p.player.first_name} ${p.player.last_name}` : 'Joueur inconnu',
-        avatar: p.player?.avatar_url,
-        position: p.position,
-        jersey_number: p.jersey_number
-    }));
+    // Pour chaque joueur, récupérer les infos depuis player_profiles
+    const players = [];
+    for (const p of playersData || []) {
+        const { data: playerProfile } = await supabaseParrainPrive
+            .from('player_profiles')
+            .select('id, first_name, last_name, avatar_url')
+            .eq('id', p.player_id)
+            .single();
+
+        players.push({
+            id: p.id,
+            playerId: p.player_id,
+            name: playerProfile ? `${playerProfile.first_name} ${playerProfile.last_name}` : 'Joueur inconnu',
+            avatar: playerProfile?.avatar_url,
+            position: p.position,
+            jersey_number: p.jersey_number
+        });
+    }
 
     currentTournament = {
         ...currentTournament,
@@ -137,7 +142,7 @@ async function loadStarredPlayers(tournamentId) {
     const { data, error } = await supabaseParrainPrive
         .from('player_stars')
         .select('player_id')
-        .eq('user_id', currentParrain.id)  // user_id = id du parrain
+        .eq('user_id', currentParrain.id)
         .eq('tournament_id', tournamentId);
 
     if (error) {
@@ -201,14 +206,10 @@ function renderLiveTournament() {
 
 // ===== CHARGEMENT DES MESSAGES DU CHAT =====
 async function loadMessages(tournamentId) {
+    // Récupérer les messages du tournoi
     const { data, error } = await supabaseParrainPrive
         .from('tournament_messages')
-        .select(`
-            id,
-            message,
-            created_at,
-            user:parrain_profiles!user_id(id, first_name, last_name, avatar_url)
-        `)
+        .select('*')
         .eq('tournament_id', tournamentId)
         .order('created_at', { ascending: true });
 
@@ -217,13 +218,23 @@ async function loadMessages(tournamentId) {
         return;
     }
 
-    messages = data.map(m => ({
-        id: m.id,
-        userId: m.user.id,
-        author: m.user ? `${m.user.first_name} ${m.user.last_name}` : 'Inconnu',
-        text: m.message,
-        time: new Date(m.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-    }));
+    // Pour chaque message, récupérer les infos de l'auteur (parrain)
+    messages = [];
+    for (const m of data || []) {
+        const { data: authorData } = await supabaseParrainPrive
+            .from('parrain_profiles')
+            .select('first_name, last_name')
+            .eq('id', m.user_id)
+            .single();
+
+        messages.push({
+            id: m.id,
+            userId: m.user_id,
+            author: authorData ? `${authorData.first_name} ${authorData.last_name}` : 'Inconnu',
+            text: m.message,
+            time: new Date(m.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        });
+    }
 
     renderChatMessages();
 }
