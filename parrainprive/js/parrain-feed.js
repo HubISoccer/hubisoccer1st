@@ -5,13 +5,13 @@ const supabaseParrainPrive = window.supabase.createClient(SUPABASE_URL, SUPABASE
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
-let currentProfile = null;
+let currentProfile = null;   // issu de la table profiles
 let posts = [];
 let followers = [];
 let following = [];
-let savedPosts = new Set();
-let hiddenPosts = new Set();
-let likedPosts = new Set();
+let savedPosts = new Set();   // IDs des posts épinglés
+let hiddenPosts = new Set();  // IDs des posts masqués
+let likedPosts = new Set();   // IDs des posts aimés
 let currentFilter = 'all';
 let searchTerm = '';
 let newPostsCount = 0;
@@ -75,12 +75,12 @@ async function checkSession() {
     return currentUser;
 }
 
-// ===== CHARGEMENT DU PROFIL =====
+// ===== CHARGEMENT DU PROFIL DEPUIS LA TABLE UNIFIÉE profiles =====
 async function loadProfile() {
     const { data, error } = await supabaseParrainPrive
-        .from('parrain_profiles')
+        .from('profiles')
         .select('*')
-        .eq('user_id', currentUser.id)
+        .eq('id', currentUser.id)   // id est UUID, correspond à auth.users.id
         .single();
 
     if (error) {
@@ -88,34 +88,37 @@ async function loadProfile() {
         return null;
     }
     currentProfile = data;
-    document.getElementById('userName').textContent = `${currentProfile.first_name} ${currentProfile.last_name}`;
-    document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
-    document.getElementById('publishAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
+    document.getElementById('userName').textContent = data.full_name || 'Parrain';
+    document.getElementById('userAvatar').src = data.avatar_url || 'img/user-default.jpg';
+    document.getElementById('publishAvatar').src = data.avatar_url || 'img/user-default.jpg';
     return currentProfile;
 }
 
-// ===== CHARGEMENT DES ÉPINGLES, MASQUÉS ET LIKES =====
+// ===== CHARGEMENT DES DONNÉES UTILISATEUR (likes, saved, hidden) =====
 async function loadUserMetadata() {
-    const { data: savedData } = await supabaseParrainPrive
-        .from('parrain_saved')
+    // Likes
+    const { data: likesData } = await supabaseParrainPrive
+        .from('unified_likes')
         .select('post_id')
-        .eq('parrain_id', currentProfile.id);
+        .eq('user_id', currentProfile.id);
+    likedPosts = new Set(likesData?.map(l => l.post_id) || []);
+
+    // Saved (épinglés)
+    const { data: savedData } = await supabaseParrainPrive
+        .from('unified_saved')
+        .select('post_id')
+        .eq('user_id', currentProfile.id);
     savedPosts = new Set(savedData?.map(s => s.post_id) || []);
 
+    // Hidden (masqués)
     const { data: hiddenData } = await supabaseParrainPrive
-        .from('parrain_hidden')
+        .from('unified_hidden')
         .select('post_id')
-        .eq('parrain_id', currentProfile.id);
+        .eq('user_id', currentProfile.id);
     hiddenPosts = new Set(hiddenData?.map(h => h.post_id) || []);
-
-    const { data: likesData } = await supabaseParrainPrive
-        .from('parrain_likes')
-        .select('post_id')
-        .eq('parrain_id', currentProfile.id);
-    likedPosts = new Set(likesData?.map(l => l.post_id) || []);
 }
 
-// ===== CHARGEMENT DES POSTS =====
+// ===== CHARGEMENT DES POSTS (version unifiée) =====
 async function loadPosts() {
     showingHidden = false;
     document.getElementById('backToFeedBtn').style.display = 'none';
@@ -123,17 +126,19 @@ async function loadPosts() {
         const feedLoader = document.getElementById('feedLoader');
         if (feedLoader) feedLoader.style.display = 'flex';
 
+        // Charger tous les posts depuis unified_posts
         const { data: postsData, error: postsError } = await supabaseParrainPrive
-            .from('parrain_posts')
+            .from('unified_posts')
             .select('*')
             .order('created_at', { ascending: false });
 
         if (postsError) throw postsError;
 
-        const authorIds = postsData.map(p => p.author_id).filter(Boolean);
+        // Récupérer les auteurs (profiles)
+        const authorIds = postsData.map(p => p.user_id).filter(Boolean);
         const { data: profilesData, error: profilesError } = await supabaseParrainPrive
-            .from('parrain_profiles')
-            .select('id, first_name, last_name, avatar_url')
+            .from('profiles')
+            .select('id, full_name, avatar_url, username, role')
             .in('id', authorIds);
 
         if (profilesError) throw profilesError;
@@ -141,41 +146,45 @@ async function loadPosts() {
         const profilesMap = {};
         (profilesData || []).forEach(p => profilesMap[p.id] = p);
 
+        // Pour chaque post, compter les likes, commentaires, partages
         const postsWithCounts = [];
         for (const post of postsData) {
             const { count: likesCount } = await supabaseParrainPrive
-                .from('parrain_likes')
+                .from('unified_likes')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
             const { count: commentsCount } = await supabaseParrainPrive
-                .from('parrain_comments')
+                .from('unified_comments')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
             const { count: sharesCount } = await supabaseParrainPrive
-                .from('parrain_shares')
+                .from('unified_shares')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
 
             postsWithCounts.push({
                 ...post,
-                author: profilesMap[post.author_id] || null,
+                author: profilesMap[post.user_id] || null,
                 likes: [{ count: likesCount || 0 }],
                 comments: [{ count: commentsCount || 0 }],
                 shares: [{ count: sharesCount || 0 }]
             });
         }
 
+        // Filtrer les posts masqués
         const visiblePosts = postsWithCounts.filter(post => !hiddenPosts.has(post.id));
 
+        // Récupérer les abonnements (follows) de l'utilisateur courant
         const { data: followingData } = await supabaseParrainPrive
-            .from('parrain_follows')
-            .select('followed_id')
+            .from('unified_follows')
+            .select('following_id')
             .eq('follower_id', currentProfile.id);
-        const followingIds = followingData?.map(f => f.followed_id) || [];
+        const followingIds = followingData?.map(f => f.following_id) || [];
 
+        // Enrichir les posts avec les infos utilisateur
         posts = visiblePosts.map(post => ({
             ...post,
-            isFollowed: followingIds.includes(post.author_id),
+            isFollowed: followingIds.includes(post.user_id),
             isSaved: savedPosts.has(post.id),
             isLiked: likedPosts.has(post.id)
         }));
@@ -206,17 +215,17 @@ async function loadHiddenPosts() {
         }
 
         const { data: postsData, error: postsError } = await supabaseParrainPrive
-            .from('parrain_posts')
+            .from('unified_posts')
             .select('*')
             .in('id', hiddenIds)
             .order('created_at', { ascending: false });
 
         if (postsError) throw postsError;
 
-        const authorIds = postsData.map(p => p.author_id).filter(Boolean);
+        const authorIds = postsData.map(p => p.user_id).filter(Boolean);
         const { data: profilesData, error: profilesError } = await supabaseParrainPrive
-            .from('parrain_profiles')
-            .select('id, first_name, last_name, avatar_url')
+            .from('profiles')
+            .select('id, full_name, avatar_url, username, role')
             .in('id', authorIds);
 
         if (profilesError) throw profilesError;
@@ -227,21 +236,21 @@ async function loadHiddenPosts() {
         const postsWithCounts = [];
         for (const post of postsData) {
             const { count: likesCount } = await supabaseParrainPrive
-                .from('parrain_likes')
+                .from('unified_likes')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
             const { count: commentsCount } = await supabaseParrainPrive
-                .from('parrain_comments')
+                .from('unified_comments')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
             const { count: sharesCount } = await supabaseParrainPrive
-                .from('parrain_shares')
+                .from('unified_shares')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
 
             postsWithCounts.push({
                 ...post,
-                author: profilesMap[post.author_id] || null,
+                author: profilesMap[post.user_id] || null,
                 likes: [{ count: likesCount || 0 }],
                 comments: [{ count: commentsCount || 0 }],
                 shares: [{ count: sharesCount || 0 }]
@@ -287,7 +296,8 @@ function renderHiddenPosts(hiddenPostsList) {
             }
         }
 
-        const authorName = post.author ? `${post.author.first_name} ${post.author.last_name}` : 'Anonyme';
+        const authorName = post.author?.full_name || 'Anonyme';
+        const roleBadge = post.author?.role ? `<span class="role-badge">${post.author.role}</span>` : '';
         const pinIcon = post.isSaved ? 'fas fa-star' : 'far fa-star';
         const pinText = post.isSaved ? 'Épinglé' : 'Épingler';
 
@@ -296,8 +306,8 @@ function renderHiddenPosts(hiddenPostsList) {
                 <div class="post-header">
                     <img src="${post.author?.avatar_url || 'img/user-default.jpg'}" alt="${authorName}">
                     <div class="post-author">
-                        <h4>${authorName} <span class="role-badge">Parrain</span></h4>
-                        <small>@${post.author?.id || 'inconnu'} · ${timeAgo}</small>
+                        <h4>${authorName} ${roleBadge}</h4>
+                        <small>@${post.author?.username || 'inconnu'} · ${timeAgo}</small>
                     </div>
                     <div class="post-menu">
                         <button class="post-menu-btn" onclick="togglePostMenu(this)"><i class="fas fa-ellipsis-v"></i></button>
@@ -327,23 +337,6 @@ function renderHiddenPosts(hiddenPostsList) {
     feed.innerHTML = html;
 }
 
-// ===== RÉAFFICHER UN POST =====
-async function unhidePost(postId) {
-    if (!confirm('Voulez-vous réafficher ce post dans votre fil ?')) return;
-    try {
-        await supabaseParrainPrive
-            .from('parrain_hidden')
-            .delete()
-            .eq('parrain_id', currentProfile.id)
-            .eq('post_id', postId);
-        hiddenPosts.delete(postId);
-        showToast('Post réaffiché', 'success');
-        loadHiddenPosts();
-    } catch (error) {
-        showToast('Erreur', 'error');
-    }
-}
-
 // ===== RENDU DES POSTS (avec filtres) =====
 function renderPosts() {
     const feed = document.getElementById('postsFeed');
@@ -352,8 +345,8 @@ function renderPosts() {
     let filteredPosts = posts;
 
     if (currentFilter === 'following') {
-        const followingIds = following.map(f => f.followed_id);
-        filteredPosts = filteredPosts.filter(p => followingIds.includes(p.author_id));
+        const followingIds = following.map(f => f.following_id);
+        filteredPosts = filteredPosts.filter(p => followingIds.includes(p.user_id));
     } else if (currentFilter === 'saved') {
         filteredPosts = filteredPosts.filter(p => savedPosts.has(p.id));
     }
@@ -361,8 +354,8 @@ function renderPosts() {
     if (searchTerm) {
         filteredPosts = filteredPosts.filter(p => 
             p.content?.toLowerCase().includes(searchTerm) ||
-            p.author?.first_name?.toLowerCase().includes(searchTerm) ||
-            p.author?.last_name?.toLowerCase().includes(searchTerm)
+            p.author?.full_name?.toLowerCase().includes(searchTerm) ||
+            p.author?.username?.toLowerCase().includes(searchTerm)
         );
     }
 
@@ -384,9 +377,10 @@ function renderPosts() {
             }
         }
 
-        const authorName = post.author ? `${post.author.first_name} ${post.author.last_name}` : 'Anonyme';
-        const followButton = post.author_id !== currentProfile?.id 
-            ? `<button class="follow-btn ${post.isFollowed ? 'following' : ''}" data-user-id="${post.author_id}" onclick="toggleFollow(this)">${post.isFollowed ? 'Abonné' : 'Suivre'}</button>`
+        const authorName = post.author?.full_name || 'Anonyme';
+        const roleBadge = post.author?.role ? `<span class="role-badge">${post.author.role}</span>` : '';
+        const followButton = post.user_id !== currentProfile?.id 
+            ? `<button class="follow-btn ${post.isFollowed ? 'following' : ''}" data-user-id="${post.user_id}" onclick="toggleFollow(this)">${post.isFollowed ? 'Abonné' : 'Suivre'}</button>`
             : '';
 
         const pinIcon = post.isSaved ? 'fas fa-star' : 'far fa-star';
@@ -397,15 +391,15 @@ function renderPosts() {
                 <div class="post-header">
                     <img src="${post.author?.avatar_url || 'img/user-default.jpg'}" alt="${authorName}">
                     <div class="post-author">
-                        <h4>${authorName} <span class="role-badge">Parrain</span></h4>
-                        <small>@${post.author?.id || 'inconnu'} · ${timeAgo}</small>
+                        <h4>${authorName} ${roleBadge}</h4>
+                        <small>@${post.author?.username || 'inconnu'} · ${timeAgo}</small>
                         ${followButton}
                     </div>
                     <div class="post-menu">
                         <button class="post-menu-btn" onclick="togglePostMenu(this)"><i class="fas fa-ellipsis-v"></i></button>
                         <div class="post-menu-dropdown">
-                            ${post.author_id === currentProfile?.id ? `<button onclick="editPost(${post.id})"><i class="fas fa-edit"></i> Modifier</button>` : ''}
-                            ${post.author_id === currentProfile?.id ? `<button onclick="deletePost(${post.id})" class="delete"><i class="fas fa-trash-alt"></i> Supprimer</button>` : ''}
+                            ${post.user_id === currentProfile?.id ? `<button onclick="editPost(${post.id})"><i class="fas fa-edit"></i> Modifier</button>` : ''}
+                            ${post.user_id === currentProfile?.id ? `<button onclick="deletePost(${post.id})" class="delete"><i class="fas fa-trash-alt"></i> Supprimer</button>` : ''}
                             <button onclick="toggleSavePost(${post.id})"><i class="${pinIcon}"></i> ${pinText}</button>
                             <button onclick="hidePost(${post.id})"><i class="fas fa-eye-slash"></i> Masquer</button>
                             <button onclick="reportPost(${post.id})"><i class="fas fa-flag"></i> Signaler</button>
@@ -432,13 +426,13 @@ function renderPosts() {
     filteredPosts.forEach(post => loadComments(post.id));
 }
 
-// ===== CHARGEMENT DES COMMENTAIRES =====
+// ===== CHARGEMENT DES COMMENTAIRES (unifiés) =====
 async function loadComments(postId) {
     const { data, error } = await supabaseParrainPrive
-        .from('parrain_comments')
+        .from('unified_comments')
         .select(`
             *,
-            author:parrain_profiles!author_id (id, first_name, last_name, avatar_url)
+            author:profiles!user_id (id, full_name, avatar_url, username)
         `)
         .eq('post_id', postId)
         .is('parent_id', null)
@@ -468,13 +462,13 @@ async function loadComments(postId) {
 }
 
 async function renderComment(comment) {
-    const authorName = comment.author ? `${comment.author.first_name} ${comment.author.last_name}` : 'Anonyme';
+    const authorName = comment.author?.full_name || 'Anonyme';
     const timeAgo = timeSince(new Date(comment.created_at));
     const { data: replies, error } = await supabaseParrainPrive
-        .from('parrain_comments')
+        .from('unified_comments')
         .select(`
             *,
-            author:parrain_profiles!author_id (id, first_name, last_name, avatar_url)
+            author:profiles!user_id (id, full_name, avatar_url, username)
         `)
         .eq('parent_id', comment.id)
         .order('created_at', { ascending: true });
@@ -488,9 +482,9 @@ async function renderComment(comment) {
 
     return `
         <div class="comment" data-comment-id="${comment.id}">
-            <img src="${comment.author?.avatar_url || 'img/user-default.jpg'}" onclick="openUserProfile(${comment.author?.id})">
+            <img src="${comment.author?.avatar_url || 'img/user-default.jpg'}" onclick="openUserProfile('${comment.author?.id}')">
             <div class="comment-content">
-                <span class="comment-author" onclick="openUserProfile(${comment.author?.id})">${authorName}</span>
+                <span class="comment-author" onclick="openUserProfile('${comment.author?.id}')">${authorName}</span>
                 <span class="comment-text">${comment.content}</span>
                 <small>${timeAgo}</small>
                 <button class="reply-btn" onclick="openReplyModal(${comment.id}, '${authorName.replace(/'/g, "\\'")}', ${comment.post_id})"><i class="fas fa-reply"></i> Répondre</button>
@@ -533,10 +527,16 @@ async function likePost(postId) {
     button.disabled = true;
     try {
         if (likedPosts.has(postId)) {
-            await supabaseParrainPrive.from('parrain_likes').delete().eq('parrain_id', currentProfile.id).eq('post_id', postId);
+            await supabaseParrainPrive
+                .from('unified_likes')
+                .delete()
+                .eq('user_id', currentProfile.id)
+                .eq('post_id', postId);
             likedPosts.delete(postId);
         } else {
-            await supabaseParrainPrive.from('parrain_likes').insert({ parrain_id: currentProfile.id, post_id: postId });
+            await supabaseParrainPrive
+                .from('unified_likes')
+                .insert({ user_id: currentProfile.id, post_id: postId });
             likedPosts.add(postId);
         }
         if (showingHidden) {
@@ -560,11 +560,13 @@ async function addComment(postId) {
     const originalText = button.innerHTML;
     button.innerHTML = '<span class="button-spinner"></span>';
     try {
-        await supabaseParrainPrive.from('parrain_comments').insert({
-            author_id: currentProfile.id,
-            post_id: postId,
-            content: content
-        });
+        await supabaseParrainPrive
+            .from('unified_comments')
+            .insert({
+                user_id: currentProfile.id,
+                post_id: postId,
+                content: content
+            });
         input.value = '';
         loadComments(postId);
         if (showingHidden) {
@@ -588,7 +590,9 @@ async function sharePost(postId) {
         const shareUrl = `${window.location.origin}/post.html?id=${postId}`;
         await navigator.clipboard.writeText(shareUrl);
         showToast('Lien copié ! Partagez-le à vos amis.', 'success');
-        await supabaseParrainPrive.from('parrain_shares').insert({ parrain_id: currentProfile.id, post_id: postId });
+        await supabaseParrainPrive
+            .from('unified_shares')
+            .insert({ user_id: currentProfile.id, post_id: postId });
         if (showingHidden) {
             loadHiddenPosts();
         } else {
@@ -611,8 +615,8 @@ function scrollToComments(postId) {
 
 async function showLikes(postId) {
     const { data, error } = await supabaseParrainPrive
-        .from('parrain_likes')
-        .select('parrain_id, author:parrain_profiles!parrain_id (id, first_name, last_name, avatar_url)')
+        .from('unified_likes')
+        .select('user_id, author:profiles!user_id (id, full_name, avatar_url, username)')
         .eq('post_id', postId);
 
     if (error) {
@@ -623,12 +627,12 @@ async function showLikes(postId) {
     const modal = document.getElementById('likesModal');
     const list = document.getElementById('likesList');
     list.innerHTML = data.map(like => {
-        const name = like.author ? `${like.author.first_name} ${like.author.last_name}` : 'Anonyme';
+        const name = like.author?.full_name || 'Anonyme';
         return `
-        <li onclick="openUserProfile(${like.author?.id})">
+        <li onclick="openUserProfile('${like.author?.id}')">
             <img src="${like.author?.avatar_url || 'img/user-default.jpg'}" alt="${name}">
             <span>${name}</span>
-            <small>@${like.author?.id}</small>
+            <small>@${like.author?.username || ''}</small>
         </li>
     `}).join('');
     modal.style.display = 'block';
@@ -641,7 +645,10 @@ async function editPost(postId) {
     const button = event.target.closest('button');
     button.disabled = true;
     try {
-        await supabaseParrainPrive.from('parrain_posts').update({ content: newContent }).eq('id', postId);
+        await supabaseParrainPrive
+            .from('unified_posts')
+            .update({ content: newContent })
+            .eq('id', postId);
         if (showingHidden) {
             loadHiddenPosts();
         } else {
@@ -660,7 +667,10 @@ async function deletePost(postId) {
     const button = event.target.closest('button');
     button.disabled = true;
     try {
-        await supabaseParrainPrive.from('parrain_posts').delete().eq('id', postId);
+        await supabaseParrainPrive
+            .from('unified_posts')
+            .delete()
+            .eq('id', postId);
         if (showingHidden) {
             loadHiddenPosts();
         } else {
@@ -682,16 +692,16 @@ async function toggleSavePost(postId) {
     try {
         if (savedPosts.has(postId)) {
             await supabaseParrainPrive
-                .from('parrain_saved')
+                .from('unified_saved')
                 .delete()
-                .eq('parrain_id', currentProfile.id)
+                .eq('user_id', currentProfile.id)
                 .eq('post_id', postId);
             savedPosts.delete(postId);
             showToast('Post retiré des favoris', 'info');
         } else {
             await supabaseParrainPrive
-                .from('parrain_saved')
-                .insert({ parrain_id: currentProfile.id, post_id: postId });
+                .from('unified_saved')
+                .insert({ user_id: currentProfile.id, post_id: postId });
             savedPosts.add(postId);
             showToast('Post épinglé', 'success');
         }
@@ -716,8 +726,8 @@ async function hidePost(postId) {
     button.disabled = true;
     try {
         await supabaseParrainPrive
-            .from('parrain_hidden')
-            .insert({ parrain_id: currentProfile.id, post_id: postId });
+            .from('unified_hidden')
+            .insert({ user_id: currentProfile.id, post_id: postId });
         hiddenPosts.add(postId);
         if (showingHidden) {
             loadHiddenPosts();
@@ -733,6 +743,22 @@ async function hidePost(postId) {
     }
 }
 
+async function unhidePost(postId) {
+    if (!confirm('Voulez-vous réafficher ce post dans votre fil ?')) return;
+    try {
+        await supabaseParrainPrive
+            .from('unified_hidden')
+            .delete()
+            .eq('user_id', currentProfile.id)
+            .eq('post_id', postId);
+        hiddenPosts.delete(postId);
+        showToast('Post réaffiché', 'success');
+        loadHiddenPosts();
+    } catch (error) {
+        showToast('Erreur', 'error');
+    }
+}
+
 async function reportPost(postId) {
     const reason = prompt('Pourquoi signalez-vous ce post ? (optionnel)');
     if (reason === null) return;
@@ -742,8 +768,8 @@ async function reportPost(postId) {
     button.disabled = true;
     try {
         await supabaseParrainPrive
-            .from('parrain_reports')
-            .insert({ reporter_id: currentProfile.id, post_id: postId, reason: reason || null });
+            .from('unified_reports')
+            .insert({ user_id: currentProfile.id, post_id: postId, reason: reason || null });
         showToast('Merci, votre signalement a été enregistré.', 'success');
     } catch (error) {
         showToast('Erreur', 'error');
@@ -754,7 +780,7 @@ async function reportPost(postId) {
 }
 
 async function toggleFollow(button) {
-    const followedId = parseInt(button.dataset.userId);
+    const followedId = button.dataset.userId; // c'est un UUID
     const isFollowing = button.classList.contains('following');
     const originalText = button.textContent;
     button.innerHTML = '<span class="button-spinner"></span>';
@@ -763,14 +789,14 @@ async function toggleFollow(button) {
     try {
         if (isFollowing) {
             await supabaseParrainPrive
-                .from('parrain_follows')
+                .from('unified_follows')
                 .delete()
                 .eq('follower_id', currentProfile.id)
-                .eq('followed_id', followedId);
+                .eq('following_id', followedId);
         } else {
             await supabaseParrainPrive
-                .from('parrain_follows')
-                .insert({ follower_id: currentProfile.id, followed_id: followedId });
+                .from('unified_follows')
+                .insert({ follower_id: currentProfile.id, following_id: followedId });
         }
         await loadFollowers();
         if (!showingHidden) {
@@ -789,8 +815,8 @@ async function toggleFollow(button) {
 async function openUserProfile(userId) {
     selectedUserId = userId;
     const { data, error } = await supabaseParrainPrive
-        .from('parrain_profiles')
-        .select('first_name, last_name, avatar_url')
+        .from('profiles')
+        .select('full_name, avatar_url, username, bio')
         .eq('id', userId)
         .single();
 
@@ -799,10 +825,10 @@ async function openUserProfile(userId) {
         return;
     }
 
-    document.getElementById('profileName').textContent = `${data.first_name} ${data.last_name}`;
-    document.getElementById('profileHubId').textContent = `@${userId}`;
+    document.getElementById('profileName').textContent = data.full_name || 'Anonyme';
+    document.getElementById('profileHubId').textContent = `@${data.username || ''}`;
     document.getElementById('profileAvatar').src = data.avatar_url || 'img/user-default.jpg';
-    document.getElementById('profileBio').textContent = '';
+    document.getElementById('profileBio').textContent = data.bio || '';
     document.getElementById('userProfileModal').style.display = 'block';
 }
 
@@ -827,7 +853,7 @@ async function createPost(content, file) {
         formData.append('file', file);
         const fileExt = file.name.split('.').pop();
         const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
-        const bucket = 'parrain-posts';
+        const bucket = 'posts'; // à adapter si nécessaire
 
         const xhr = new XMLHttpRequest();
         xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`, true);
@@ -866,12 +892,14 @@ async function createPost(content, file) {
         publishBtn.disabled = false;
     }
 
-    const { error } = await supabaseParrainPrive.from('parrain_posts').insert({
-        author_id: currentProfile.id,
-        content: content,
-        media_url: mediaUrl,
-        media_type: mediaType
-    });
+    const { error } = await supabaseParrainPrive
+        .from('unified_posts')
+        .insert({
+            user_id: currentProfile.id,
+            content: content,
+            media_url: mediaUrl,
+            media_type: mediaType
+        });
     if (error) {
         showToast('Erreur publication : ' + error.message, 'error');
     } else {
@@ -897,7 +925,7 @@ function openPreview() {
         return;
     }
     document.getElementById('previewModal').classList.add('active');
-    document.getElementById('previewAuthorName').textContent = `${currentProfile.first_name} ${currentProfile.last_name}`;
+    document.getElementById('previewAuthorName').textContent = currentProfile.full_name || 'Parrain';
     document.getElementById('previewAuthorAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
     document.getElementById('previewText').textContent = content || '(aucun texte)';
     const previewMediaDiv = document.getElementById('previewMedia');
@@ -955,12 +983,14 @@ async function sendReply() {
     const originalText = button.innerHTML;
     button.innerHTML = '<span class="button-spinner"></span>';
     try {
-        await supabaseParrainPrive.from('parrain_comments').insert({
-            author_id: currentProfile.id,
-            post_id: postId,
-            parent_id: replyParentId,
-            content: content
-        });
+        await supabaseParrainPrive
+            .from('unified_comments')
+            .insert({
+                user_id: currentProfile.id,
+                post_id: postId,
+                parent_id: replyParentId,
+                content: content
+            });
         closeReplyModal();
         loadComments(postId);
         if (showingHidden) {
@@ -1036,37 +1066,80 @@ document.getElementById('rightSidebarToggle').addEventListener('click', () => {
 
 // ===== RENDU DE LA SIDEBAR DROITE =====
 async function loadFollowers() {
+    // Abonnés (ceux qui suivent currentProfile)
     const { data: followersData } = await supabaseParrainPrive
-        .from('parrain_follows')
-        .select('follower_id, author:parrain_profiles!follower_id (id, first_name, last_name, avatar_url)')
-        .eq('followed_id', currentProfile.id);
+        .from('unified_follows')
+        .select('follower_id, follower:profiles!follower_id (id, full_name, avatar_url, username)')
+        .eq('following_id', currentProfile.id);
     followers = followersData || [];
     const followersList = document.getElementById('followersList');
     followersList.innerHTML = followers.map(f => `
-        <li onclick="openUserProfile(${f.follower_id})">
-            <img src="${f.author?.avatar_url || 'img/user-default.jpg'}">
-            <span>${f.author ? `${f.author.first_name} ${f.author.last_name}` : 'Anonyme'}</span>
-            <small>@${f.follower_id}</small>
+        <li onclick="openUserProfile('${f.follower_id}')">
+            <img src="${f.follower?.avatar_url || 'img/user-default.jpg'}">
+            <span>${f.follower?.full_name || 'Anonyme'}</span>
+            <small>@${f.follower?.username || ''}</small>
         </li>
     `).join('');
 
+    // Abonnements (ceux que currentProfile suit)
     const { data: followingData } = await supabaseParrainPrive
-        .from('parrain_follows')
-        .select('followed_id, author:parrain_profiles!followed_id (id, first_name, last_name, avatar_url)')
+        .from('unified_follows')
+        .select('following_id, followed:profiles!following_id (id, full_name, avatar_url, username)')
         .eq('follower_id', currentProfile.id);
     following = followingData || [];
     const followingList = document.getElementById('followingList');
     followingList.innerHTML = following.map(f => `
-        <li onclick="openUserProfile(${f.followed_id})">
-            <img src="${f.author?.avatar_url || 'img/user-default.jpg'}">
-            <span>${f.author ? `${f.author.first_name} ${f.author.last_name}` : 'Anonyme'}</span>
-            <small>@${f.followed_id}</small>
+        <li onclick="openUserProfile('${f.following_id}')">
+            <img src="${f.followed?.avatar_url || 'img/user-default.jpg'}">
+            <span>${f.followed?.full_name || 'Anonyme'}</span>
+            <small>@${f.followed?.username || ''}</small>
         </li>
     `).join('');
 
+    // Insights (exemples, à améliorer)
     document.getElementById('insightReach').textContent = (followers.length * 10).toLocaleString();
     document.getElementById('insightEngagement').textContent = '12%';
     document.getElementById('insightNewFollowers').textContent = `+${Math.floor(Math.random() * 10)}`;
+
+    // Suggestions (exemple : 5 profils aléatoires non suivis)
+    const { data: suggestionsData } = await supabaseParrainPrive
+        .from('profiles')
+        .select('id, full_name, avatar_url, username')
+        .neq('id', currentProfile.id)
+        .limit(5);
+    const suggestionsList = document.getElementById('suggestionsList');
+    if (suggestionsList) {
+        suggestionsList.innerHTML = (suggestionsData || []).map(s => `
+            <li onclick="openUserProfile('${s.id}')">
+                <img src="${s.avatar_url || 'img/user-default.jpg'}">
+                <span>${s.full_name || 'Anonyme'}</span>
+                <small>@${s.username || ''}</small>
+            </li>
+        `).join('');
+    }
+
+    // Tendances (exemple : posts populaires)
+    const { data: trendsData } = await supabaseParrainPrive
+        .from('unified_posts')
+        .select('id, content, user_id')
+        .order('created_at', { ascending: false })
+        .limit(3);
+    const trendsList = document.getElementById('trendsList');
+    if (trendsList) {
+        trendsList.innerHTML = (trendsData || []).map(t => `
+            <li onclick="scrollToPost(${t.id})">
+                <i class="fas fa-fire" style="color: var(--primary);"></i>
+                <span>${t.content?.substring(0, 30)}...</span>
+            </li>
+        `).join('');
+    }
+}
+
+function scrollToPost(postId) {
+    const postElement = document.querySelector(`.post-card[data-post-id="${postId}"]`);
+    if (postElement) {
+        postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 // ===== RECHERCHE ET FILTRES =====
@@ -1088,6 +1161,22 @@ function initSearchAndFilters() {
             currentFilter = btn.dataset.filter;
             if (!showingHidden) {
                 renderPosts();
+            }
+        });
+    });
+
+    // Filtres par rôle (à implémenter si besoin)
+    document.querySelectorAll('.role-filters .filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            // On pourrait filtrer les posts par rôle de l'auteur
+            // Pour l'instant simple toggle
+            document.querySelectorAll('.role-filters .filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const role = btn.dataset.role;
+            if (role === 'all') {
+                // réinitialiser
+            } else {
+                // filtrer
             }
         });
     });
@@ -1124,8 +1213,30 @@ function openEditProfileModal() {
     const modal = document.getElementById('editProfileModal');
     if (!modal) return;
 
-    document.getElementById('editPhone').value = currentProfile.phone || '';
-    document.getElementById('editEmail').value = currentProfile.email || '';
+    document.getElementById('editBio').value = currentProfile.bio || '';
+    document.getElementById('editPhone').value = currentProfile.contact_info?.phone || '';
+    document.getElementById('editEmail').value = currentProfile.contact_info?.email || '';
+    document.getElementById('editCountry').value = currentProfile.contact_info?.country || '';
+    document.getElementById('editAddress').value = currentProfile.contact_info?.address || '';
+
+    const countrySelect = document.getElementById('editCountry');
+    if (countrySelect.options.length <= 1) {
+        const countries = [
+            "Bénin", "Burkina Faso", "Burundi", "Cameroun", "Cap-Vert", "République centrafricaine", "Comores", "Congo",
+            "République démocratique du Congo", "Côte d'Ivoire", "Djibouti", "Égypte", "Érythrée", "Eswatini", "Éthiopie",
+            "Gabon", "Gambie", "Ghana", "Guinée", "Guinée-Bissau", "Guinée équatoriale", "Kenya", "Lesotho", "Liberia",
+            "Libye", "Madagascar", "Malawi", "Mali", "Maroc", "Maurice", "Mauritanie", "Mozambique", "Namibie", "Niger",
+            "Nigeria", "Ouganda", "Rwanda", "Sahara occidental", "Sao Tomé-et-Principe", "Sénégal", "Seychelles",
+            "Sierra Leone", "Somalie", "Soudan", "Soudan du Sud", "Tanzanie", "Tchad", "Togo", "Tunisie", "Zambie",
+            "Zimbabwe"
+        ].sort();
+        countries.forEach(country => {
+            const option = document.createElement('option');
+            option.value = country;
+            option.textContent = country;
+            countrySelect.appendChild(option);
+        });
+    }
 
     modal.style.display = 'block';
 }
@@ -1137,12 +1248,22 @@ function closeEditProfileModal() {
 async function saveProfileChanges(e) {
     e.preventDefault();
 
+    const bio = document.getElementById('editBio').value.trim();
     const phone = document.getElementById('editPhone').value.trim();
     const email = document.getElementById('editEmail').value.trim();
+    const country = document.getElementById('editCountry').value;
+    const address = document.getElementById('editAddress').value.trim();
 
     const updates = {};
-    if (phone !== currentProfile.phone) updates.phone = phone;
-    if (email !== currentProfile.email) updates.email = email;
+    if (bio !== currentProfile.bio) updates.bio = bio;
+
+    // Gestion du champ contact_info (JSON)
+    const contactInfo = { ...(currentProfile.contact_info || {}) };
+    if (phone !== contactInfo.phone) contactInfo.phone = phone;
+    if (email !== contactInfo.email) contactInfo.email = email;
+    if (country !== contactInfo.country) contactInfo.country = country;
+    if (address !== contactInfo.address) contactInfo.address = address;
+    updates.contact_info = contactInfo;
 
     if (Object.keys(updates).length === 0) {
         closeEditProfileModal();
@@ -1156,7 +1277,7 @@ async function saveProfileChanges(e) {
 
     try {
         const { error } = await supabaseParrainPrive
-            .from('parrain_profiles')
+            .from('profiles')
             .update(updates)
             .eq('id', currentProfile.id);
 
@@ -1190,7 +1311,7 @@ function hideNewPostsIndicator() {
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation de parrain-feed.js');
+    console.log('🚀 Initialisation de parrain-feed.js (unifié)');
 
     const user = await checkSession();
     if (!user) return;
@@ -1263,8 +1384,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Realtime pour les nouvelles publications
         supabaseParrainPrive
-            .channel('parrain_posts_changes')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'parrain_posts' }, payload => {
+            .channel('unified_posts_changes')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'unified_posts' }, payload => {
                 newPostsCount++;
                 showNewPostsIndicator();
             })
