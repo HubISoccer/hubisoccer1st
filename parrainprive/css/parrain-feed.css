@@ -81,7 +81,6 @@ body {
     position: relative;
 }
 
-/* Boutons de menu (hamburger et communauté) */
 .sidebar-toggle {
     background: none;
     border: none;
@@ -211,7 +210,7 @@ body {
     color: var(--primary);
 }
 
-/* ===== SIDEBARS (gauche et droite) ===== */
+/* ===== SIDEBARS ===== */
 .sidebar {
     position: fixed;
     top: 0;
@@ -817,24 +816,6 @@ body {
     font-size: 0.9rem;
     margin-bottom: 5px;
 }
-.btn-edit-bio, .btn-edit-contact {
-    width: 100%;
-    padding: 8px;
-    margin-bottom: 5px;
-    background: var(--light-gray);
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    transition: var(--transition);
-}
-.btn-edit-bio:hover, .btn-edit-contact:hover {
-    background: #d0d4d9;
-}
-/* Bouton d'édition de profil (fusionné) */
 .btn-edit-profile {
     width: 100%;
     padding: 10px;
@@ -883,6 +864,40 @@ body {
 .filter-btn.active {
     background: var(--primary);
     color: white;
+}
+
+/* ===== NOUVEAUX STYLES POUR SUGGESTIONS ET TENDANCES ===== */
+.suggestions-list, .trends-list {
+    list-style: none;
+    margin-bottom: 5px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+.suggestions-list li, .trends-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--light-gray);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.suggestions-list li:hover, .trends-list li:hover {
+    background: rgba(85,27,140,0.05);
+}
+.suggestions-list li img, .trends-list li img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.suggestions-list li span, .trends-list li span {
+    flex: 1;
+    font-size: 0.9rem;
+}
+.suggestions-list li small, .trends-list li small {
+    color: var(--gray);
+    font-size: 0.7rem;
 }
 
 /* ===== BOUTON RETOUR AU FIL ===== */
@@ -1219,14 +1234,14 @@ body {
     transition: background 0.2s;
 }
 .likes-list li:hover { background: rgba(85,27,140,0.05); }
-.likes-list img {
+.likes-list li img {
     width: 40px;
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
 }
-.likes-list span { flex: 1; font-weight: 500; }
-.likes-list small { color: var(--gray); font-size: 0.7rem; }
+.likes-list li span { flex: 1; font-weight: 500; }
+.likes-list li small { color: var(--gray); font-size: 0.7rem; }
 
 /* ===== MODALE PROFIL UTILISATEUR ===== */
 .user-profile { text-align: center; padding: 10px; }
