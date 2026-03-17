@@ -1165,7 +1165,7 @@ async function createPost(content, file, postType = 'text', pollData = null) {
     if (file) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
-        const bucket = 'player-posts'; // Adapté pour joueur
+        const bucket = 'parrain-posts'; // Adapté pour joueur
         const { error: uploadError } = await supabasePlayerPrive.storage
             .from(bucket)
             .upload(fileName, file, {
