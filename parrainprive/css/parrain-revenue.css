@@ -725,6 +725,46 @@ body {
     to { transform: rotate(360deg); }
 }
 
+/* ===== FOOTER ===== */
+.dashboard-footer {
+    background: #050505;
+    color: white;
+    padding: 40px 5%;
+    margin-top: 50px;
+}
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+}
+.compliance-badges {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+.badge {
+    background: rgba(255,255,255,0.1);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    color: var(--gold);
+}
+.contact-info {
+    margin-bottom: 15px;
+}
+.contact-info a {
+    color: var(--gold);
+    text-decoration: none;
+    margin: 0 15px;
+}
+.legal p {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    margin: 5px 0;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
     .wallet-overview {
