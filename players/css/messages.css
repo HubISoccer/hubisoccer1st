@@ -1123,3 +1123,40 @@ body {
         height: 30px;
     }
 }
+/* ===== SIMPLE EMOJI PICKER ===== */
+.simple-emoji-picker {
+    position: absolute;
+    z-index: 10000;
+    background: white;
+    border: 1px solid var(--light-gray);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    width: 300px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+.emoji-item {
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 5px;
+    transition: background 0.2s;
+}
+.emoji-item:hover {
+    background: rgba(85,27,140,0.1);
+}
+
+/* ===== RECORDING TIMER ===== */
+.recording-timer {
+    background: var(--danger);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-left: 5px;
+}
