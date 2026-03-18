@@ -146,11 +146,11 @@ async function loadTransactions() {
 
 // ===== COMPTER LES ABONNÉS (via unified_follows) =====
 async function loadFollowersCount() {
-    if (!currentUser) return; // Utiliser l'UUID de l'utilisateur connecté
+    if (!currentUser) return;
     const { count, error } = await supabaseParrainPrive
         .from('unified_follows')
         .select('*', { count: 'exact', head: true })
-        .eq('following_id', currentUser.id); // Correction ici
+        .eq('following_id', currentUser.id); // <- correction : on utilise l'UUID de l'utilisateur
 
     if (error) {
         console.error('Erreur comptage abonnés:', error);
