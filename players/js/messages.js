@@ -371,6 +371,18 @@ function formatMessageDate(date) {
     }
 }
 
+// ===== FONCTION UTILITAIRE POUR DÉTERMINER LE TYPE DE FICHIER =====
+function getFileType(url) {
+    const ext = url.split('.').pop().split('?')[0].toLowerCase();
+    const imageExt = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+    const videoExt = ['mp4', 'webm', 'ogg', 'mov'];
+    const audioExt = ['mp3', 'wav', 'ogg', 'm4a', 'webm'];
+    if (imageExt.includes(ext)) return 'image';
+    if (videoExt.includes(ext)) return 'video';
+    if (audioExt.includes(ext)) return 'audio';
+    return 'other';
+}
+
 // ===== RENDU DES MESSAGES =====
 function renderMessages(messages) {
     const area = document.getElementById('chatMessagesArea');
@@ -388,14 +400,12 @@ function renderMessages(messages) {
         let attachmentHtml = '';
         if (msg.attachment_url) {
             const url = msg.attachment_url;
-            const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url) || url.includes('image');
-            const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(url) || url.includes('video');
-            const isAudio = /\.(mp3|wav|ogg|m4a|webm)$/i.test(url) || url.includes('audio');
-            if (isImage) {
+            const fileType = getFileType(url);
+            if (fileType === 'image') {
                 attachmentHtml = `<div class="message-attachment"><img src="${url}" alt="Image" onclick="window.open('${url}', '_blank')"></div>`;
-            } else if (isVideo) {
+            } else if (fileType === 'video') {
                 attachmentHtml = `<div class="message-attachment"><video src="${url}" controls style="max-width:200px; max-height:200px;"></video></div>`;
-            } else if (isAudio) {
+            } else if (fileType === 'audio') {
                 attachmentHtml = `<div class="message-attachment"><audio src="${url}" controls></audio></div>`;
             } else {
                 attachmentHtml = `<div class="message-attachment"><a href="${url}" target="_blank">Fichier joint</a></div>`;
@@ -419,9 +429,12 @@ function renderMessages(messages) {
 
 // ===== AJOUTER UN MESSAGE (Realtime) =====
 function appendMessage(msg) {
+    console.log('appendMessage appelé avec msg:', msg);
     const area = document.getElementById('chatMessagesArea');
     if (!area) return;
     const isMe = msg.sender_id === currentProfile.id;
+    console.log('isMe:', isMe);
+    console.log('attachment_url:', msg.attachment_url);
     const time = formatMessageDate(msg.created_at);
     let replyHtml = '';
     if (msg.reply_to_id) {
@@ -430,14 +443,12 @@ function appendMessage(msg) {
     let attachmentHtml = '';
     if (msg.attachment_url) {
         const url = msg.attachment_url;
-        const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url) || url.includes('image');
-        const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(url) || url.includes('video');
-        const isAudio = /\.(mp3|wav|ogg|m4a|webm)$/i.test(url) || url.includes('audio');
-        if (isImage) {
+        const fileType = getFileType(url);
+        if (fileType === 'image') {
             attachmentHtml = `<div class="message-attachment"><img src="${url}" alt="Image" onclick="window.open('${url}', '_blank')"></div>`;
-        } else if (isVideo) {
+        } else if (fileType === 'video') {
             attachmentHtml = `<div class="message-attachment"><video src="${url}" controls style="max-width:200px; max-height:200px;"></video></div>`;
-        } else if (isAudio) {
+        } else if (fileType === 'audio') {
             attachmentHtml = `<div class="message-attachment"><audio src="${url}" controls></audio></div>`;
         } else {
             attachmentHtml = `<div class="message-attachment"><a href="${url}" target="_blank">Fichier joint</a></div>`;
@@ -496,6 +507,9 @@ function handleFileSelect(e) {
         preview.innerHTML = '';
     }
 
+    // Stocker les fichiers dans le tableau attachments (pour les utiliser dans sendMessage)
+    attachments = Array.from(files);
+
     Array.from(files).forEach((file, index) => {
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -548,8 +562,6 @@ function handleFileSelect(e) {
         reader.readAsDataURL(file);
     });
 
-    // Stocker les fichiers dans le tableau attachments (pour les utiliser dans sendMessage)
-    attachments = Array.from(files);
     showToast(`${files.length} fichier(s) sélectionné(s)`, 'info');
 }
 
@@ -829,6 +841,7 @@ async function sendRecordedAudio() {
     const audioUrl = urlData.publicUrl;
 
     await insertMessage(conv.id, '', audioUrl);
+    console.log('Message audio inséré, en attente de Realtime...');
 
     recordedAudioBlob = null;
     audioChunks = [];
