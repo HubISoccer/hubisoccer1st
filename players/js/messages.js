@@ -18,7 +18,13 @@ let attachments = [];
 let contextMenuMsgId = null;
 let archivedConversationIds = new Set();
 let blockedUserIds = new Set();
-let showArchived = false; // false = afficher conversations actives, true = archives
+
+// Variables pour l'enregistrement audio
+let mediaRecorder = null;
+let audioChunks = [];
+let recordingTimer = null;
+let recordingSeconds = 0;
+let isRecording = false;
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -117,14 +123,12 @@ async function setOffline() {
 async function loadConversations() {
     console.log('Chargement des conversations...');
 
-    // Récupérer les IDs des conversations archivées
     const { data: archivedData } = await supabaseMessages
         .from('archived_conversations')
         .select('conversation_id')
         .eq('user_id', currentProfile.id);
     archivedConversationIds = new Set(archivedData?.map(a => a.conversation_id) || []);
 
-    // Récupérer les IDs des utilisateurs bloqués
     const { data: blockedData } = await supabaseMessages
         .from('blocked_users')
         .select('blocked_id')
@@ -162,12 +166,15 @@ async function loadConversations() {
                 lastMessage: conv.last_message_content,
                 lastTime: conv.last_message_time,
                 unread: 0,
-                online: false,
-                isArchived: archivedConversationIds.has(conv.id)
+                online: false
             };
+        })
+        .filter(conv => {
+            if (archivedConversationIds.has(conv.id)) return false;
+            if (blockedUserIds.has(conv.contactId)) return false;
+            return true;
         });
 
-    // Charger les statuts en ligne des contacts
     const contactIds = conversations.map(c => c.contactId).filter(Boolean);
     if (contactIds.length > 0) {
         const { data: presenceData } = await supabaseMessages
@@ -192,22 +199,7 @@ function renderConversations() {
     const list = document.getElementById('conversationsList');
     if (!list) return;
 
-    // Filtrer selon le mode (archives ou actives)
-    let filtered = conversations;
-    if (!showArchived) {
-        // Mode actives : exclure les archivées et les bloquées
-        filtered = conversations.filter(conv => {
-            if (conv.isArchived) return false;
-            if (blockedUserIds.has(conv.contactId)) return false;
-            return true;
-        });
-    } else {
-        // Mode archives : n'afficher que les archivées
-        filtered = conversations.filter(conv => conv.isArchived);
-    }
-
-    // Appliquer la recherche
-    filtered = filtered.filter(conv =>
+    const filtered = conversations.filter(conv =>
         (conv.contactName || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -216,7 +208,6 @@ function renderConversations() {
         const isActive = conv.id === currentConversationId;
         const onlineClass = conv.online ? 'online' : '';
         const avatarUrl = conv.contactAvatar ? conv.contactAvatar : 'img/user-default.jpg';
-        const archiveIcon = conv.isArchived ? '<i class="fas fa-archive" style="margin-right:5px; color:var(--gray);"></i>' : '';
 
         return `
             <div class="conversation-item ${isActive ? 'active' : ''}" data-conv-id="${conv.id}">
@@ -225,7 +216,7 @@ function renderConversations() {
                 </div>
                 <div class="conversation-info">
                     <div class="conversation-name">
-                        <span>${archiveIcon}${conv.contactName}</span>
+                        <span>${conv.contactName}</span>
                         <span class="conversation-time">${lastTime}</span>
                     </div>
                     <div class="conversation-last">
@@ -297,13 +288,6 @@ async function selectConversation(convId) {
             .eq('id', conv.contactId)
             .single();
         currentContact = contactProfile;
-        // Mettre à jour le statut en ligne du contact
-        const { data: presence } = await supabaseMessages
-            .from('user_presence')
-            .select('online')
-            .eq('user_id', conv.contactId)
-            .maybeSingle();
-        if (presence) currentContact.online = presence.online;
     }
 
     renderConversations();
@@ -373,7 +357,19 @@ function renderMessages(messages) {
         }
         let attachmentHtml = '';
         if (msg.attachment_url) {
-            attachmentHtml = `<div class="message-attachment"><img src="${msg.attachment_url}" alt="Image" onclick="window.open('${msg.attachment_url}', '_blank')"></div>`;
+            const url = msg.attachment_url;
+            const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url) || url.includes('image');
+            const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(url) || url.includes('video');
+            const isAudio = /\.(mp3|wav|ogg|m4a)$/i.test(url) || url.includes('audio');
+            if (isImage) {
+                attachmentHtml = `<div class="message-attachment"><img src="${url}" alt="Image" onclick="window.open('${url}', '_blank')"></div>`;
+            } else if (isVideo) {
+                attachmentHtml = `<div class="message-attachment"><video src="${url}" controls style="max-width:200px; max-height:200px;"></video></div>`;
+            } else if (isAudio) {
+                attachmentHtml = `<div class="message-attachment"><audio src="${url}" controls></audio></div>`;
+            } else {
+                attachmentHtml = `<div class="message-attachment"><a href="${url}" target="_blank">Fichier joint</a></div>`;
+            }
         }
         html += `
             <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}">
@@ -403,7 +399,19 @@ function appendMessage(msg) {
     }
     let attachmentHtml = '';
     if (msg.attachment_url) {
-        attachmentHtml = `<div class="message-attachment"><img src="${msg.attachment_url}" alt="Image" onclick="window.open('${msg.attachment_url}', '_blank')"></div>`;
+        const url = msg.attachment_url;
+        const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url) || url.includes('image');
+        const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(url) || url.includes('video');
+        const isAudio = /\.(mp3|wav|ogg|m4a)$/i.test(url) || url.includes('audio');
+        if (isImage) {
+            attachmentHtml = `<div class="message-attachment"><img src="${url}" alt="Image" onclick="window.open('${url}', '_blank')"></div>`;
+        } else if (isVideo) {
+            attachmentHtml = `<div class="message-attachment"><video src="${url}" controls style="max-width:200px; max-height:200px;"></video></div>`;
+        } else if (isAudio) {
+            attachmentHtml = `<div class="message-attachment"><audio src="${url}" controls></audio></div>`;
+        } else {
+            attachmentHtml = `<div class="message-attachment"><a href="${url}" target="_blank">Fichier joint</a></div>`;
+        }
     }
     const msgHtml = `
         <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}">
@@ -423,9 +431,156 @@ function appendMessage(msg) {
 function updateConversationLastMessage(convId, msg) {
     const conv = conversations.find(c => c.id === convId);
     if (conv) {
-        conv.lastMessage = msg.content || (msg.attachment_url ? '📷 Image' : '');
+        conv.lastMessage = msg.content || (msg.attachment_url ? '📎 Fichier' : '');
         conv.lastTime = msg.created_at;
         renderConversations();
+    }
+}
+
+// ===== GESTION DES FICHIERS (images et vidéos) =====
+function openFilePicker() {
+    let fileInput = document.getElementById('fileInput');
+    if (!fileInput) {
+        fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.id = 'fileInput';
+        fileInput.accept = 'image/*,video/*'; // Accepter aussi les vidéos
+        fileInput.style.display = 'none';
+        fileInput.multiple = true;
+        document.body.appendChild(fileInput);
+        fileInput.addEventListener('change', handleFileSelect);
+    }
+    fileInput.click();
+}
+
+function handleFileSelect(e) {
+    const files = e.target.files;
+    if (files.length === 0) return;
+    let preview = document.querySelector('.attachment-preview');
+    if (!preview) {
+        preview = document.createElement('div');
+        preview.className = 'attachment-preview';
+        document.getElementById('chatInputArea').appendChild(preview);
+    }
+    preview.innerHTML = '';
+    for (let file of files) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const mediaType = file.type.startsWith('image/') ? 'image' : 'video';
+            if (mediaType === 'image') {
+                const img = document.createElement('img');
+                img.src = ev.target.result;
+                img.style.maxWidth = '100px';
+                img.style.maxHeight = '100px';
+                img.style.margin = '5px';
+                img.style.borderRadius = '5px';
+                preview.appendChild(img);
+            } else {
+                const video = document.createElement('video');
+                video.src = ev.target.result;
+                video.controls = true;
+                video.style.maxWidth = '100px';
+                video.style.maxHeight = '100px';
+                video.style.margin = '5px';
+                video.style.borderRadius = '5px';
+                preview.appendChild(video);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+    showToast(`${files.length} fichier(s) sélectionné(s)`, 'info');
+}
+
+// ===== ENREGISTREMENT AUDIO =====
+function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function updateRecordingTimer() {
+    recordingSeconds++;
+    const timerDisplay = document.querySelector('.recording-timer');
+    if (timerDisplay) {
+        timerDisplay.textContent = formatTime(recordingSeconds);
+    }
+}
+
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        recordingSeconds = 0;
+
+        mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            // Arrêter les pistes pour libérer le micro
+            stream.getTracks().forEach(track => track.stop());
+
+            // Upload du fichier
+            const fileName = `${currentProfile.id}_audio_${Date.now()}.webm`;
+            const bucket = 'message-attachments';
+            const { error: uploadError } = await supabaseMessages.storage
+                .from(bucket)
+                .upload(fileName, audioBlob, { cacheControl: '3600', upsert: false });
+            if (uploadError) {
+                console.error('Erreur upload audio:', uploadError);
+                showToast('Erreur lors de l\'upload de l\'audio', 'error');
+                return;
+            }
+            const { data: urlData } = supabaseMessages.storage.from(bucket).getPublicUrl(fileName);
+            const audioUrl = urlData.publicUrl;
+
+            // Envoyer le message avec l'audio
+            const conv = conversations.find(c => c.id === currentConversationId);
+            if (conv) {
+                await insertMessage(conv.id, '', audioUrl);
+            }
+
+            // Nettoyer
+            audioChunks = [];
+            const timerDisplay = document.querySelector('.recording-timer');
+            if (timerDisplay) timerDisplay.remove();
+            const btn = document.querySelector('.audio-btn');
+            if (btn) btn.innerHTML = '<i class="fas fa-microphone"></i>';
+            isRecording = false;
+            if (recordingTimer) clearInterval(recordingTimer);
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+
+        // Afficher le timer
+        const btn = document.querySelector('.audio-btn');
+        btn.innerHTML = '<i class="fas fa-stop"></i>';
+        const timer = document.createElement('span');
+        timer.className = 'recording-timer';
+        timer.textContent = '0:00';
+        btn.parentNode.insertBefore(timer, btn.nextSibling);
+
+        recordingTimer = setInterval(updateRecordingTimer, 1000);
+    } catch (err) {
+        console.error('Erreur accès micro:', err);
+        showToast('Impossible d\'accéder au microphone', 'error');
+    }
+}
+
+async function stopRecording() {
+    if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+    }
+}
+
+function toggleRecording() {
+    if (isRecording) {
+        stopRecording();
+    } else {
+        startRecording();
     }
 }
 
@@ -448,7 +603,7 @@ async function sendMessage(e) {
         return;
     }
 
-    // Gérer les fichiers (images) sélectionnés
+    // Gérer les fichiers (images, vidéos) sélectionnés
     let attachmentUrls = [];
     if (files.length > 0) {
         for (let file of files) {
@@ -460,7 +615,7 @@ async function sendMessage(e) {
                 .upload(fileName, file, { cacheControl: '3600', upsert: false });
             if (uploadError) {
                 console.error('Erreur upload:', uploadError);
-                showToast('Erreur lors de l\'upload de l\'image', 'error');
+                showToast('Erreur lors de l\'upload du fichier', 'error');
                 return;
             }
             const { data: urlData } = supabaseMessages.storage.from(bucket).getPublicUrl(fileName);
@@ -468,7 +623,7 @@ async function sendMessage(e) {
         }
     }
 
-    // Envoyer un message pour chaque fichier (ou un seul message texte)
+    // Envoyer un message pour chaque fichier
     if (attachmentUrls.length > 0) {
         for (let url of attachmentUrls) {
             await insertMessage(conv.id, content, url);
@@ -505,7 +660,7 @@ async function insertMessage(conversationId, content, attachmentUrl) {
         return;
     }
 
-    const lastContent = attachmentUrl ? '📷 Image' : content;
+    const lastContent = attachmentUrl ? '📎 Fichier' : content;
     await supabaseMessages
         .from('player_conversations')
         .update({
@@ -513,48 +668,6 @@ async function insertMessage(conversationId, content, attachmentUrl) {
             last_message_time: new Date().toISOString()
         })
         .eq('id', conversationId);
-}
-
-// ===== GESTION DES FICHIERS =====
-function openFilePicker() {
-    let fileInput = document.getElementById('fileInput');
-    if (!fileInput) {
-        fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.id = 'fileInput';
-        fileInput.accept = 'image/*';
-        fileInput.style.display = 'none';
-        fileInput.multiple = true;
-        document.body.appendChild(fileInput);
-        fileInput.addEventListener('change', handleFileSelect);
-    }
-    fileInput.click();
-}
-
-function handleFileSelect(e) {
-    const files = e.target.files;
-    if (files.length === 0) return;
-    let preview = document.querySelector('.attachment-preview');
-    if (!preview) {
-        preview = document.createElement('div');
-        preview.className = 'attachment-preview';
-        document.getElementById('chatInputArea').appendChild(preview);
-    }
-    preview.innerHTML = '';
-    for (let file of files) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const img = document.createElement('img');
-            img.src = ev.target.result;
-            img.style.maxWidth = '100px';
-            img.style.maxHeight = '100px';
-            img.style.margin = '5px';
-            img.style.borderRadius = '5px';
-            preview.appendChild(img);
-        };
-        reader.readAsDataURL(file);
-    }
-    showToast(`${files.length} fichier(s) sélectionné(s)`, 'info');
 }
 
 // ===== SUPPRESSION D'UN MESSAGE =====
@@ -658,19 +771,7 @@ async function archiveConversation() {
         return;
     }
     if (existing) {
-        // Si déjà archivée, on peut proposer de désarchiver
-        const { error: deleteError } = await supabaseMessages
-            .from('archived_conversations')
-            .delete()
-            .eq('user_id', currentProfile.id)
-            .eq('conversation_id', currentConversationId);
-        if (deleteError) {
-            showToast('Erreur lors du désarchivage', 'error');
-        } else {
-            showToast('Conversation désarchivée', 'success');
-            backToConversations();
-            await loadConversations();
-        }
+        showToast('Conversation déjà archivée', 'info');
         return;
     }
     const { error } = await supabaseMessages
@@ -803,7 +904,7 @@ function renderChatHeader() {
             </div>
         </div>
         <div class="chat-actions">
-            <button class="chat-action-btn" onclick="archiveConversation()" title="Archiver/Désarchiver"><i class="fas fa-archive"></i></button>
+            <button class="chat-action-btn" onclick="archiveConversation()" title="Archiver"><i class="fas fa-archive"></i></button>
             <button class="chat-action-btn" onclick="blockUser()" title="Bloquer"><i class="fas fa-ban"></i></button>
             <button class="chat-action-btn danger" onclick="openDeleteConvModal()" title="Supprimer la conversation"><i class="fas fa-trash-alt"></i></button>
             <button class="chat-action-btn" onclick="openUserInfoModal()" title="Informations"><i class="fas fa-info-circle"></i></button>
@@ -830,7 +931,7 @@ function renderChatInput() {
                     <textarea class="message-input" id="messageInput" placeholder="Votre message..." rows="1"></textarea>
                 </div>
                 <button type="button" class="emoji-btn" onclick="openEmojiPicker()"><i class="fas fa-smile"></i></button>
-                <button type="button" class="attach-btn" onclick="openFilePicker()" title="Joindre une image"><i class="fas fa-image"></i></button>
+                <button type="button" class="audio-btn" onclick="toggleRecording()" title="Enregistrer un message vocal"><i class="fas fa-microphone"></i></button>
                 <button type="submit" class="send-btn"><i class="fas fa-paper-plane"></i></button>
             </div>
         </form>
@@ -847,19 +948,16 @@ function renderChatInput() {
 
 // ===== EMOJIS SIMPLES =====
 function openEmojiPicker() {
-    // Fermer le picker s'il est déjà ouvert
     const existingPicker = document.getElementById('simple-emoji-picker');
     if (existingPicker) {
         existingPicker.remove();
         return;
     }
 
-    // Créer la popup
     const picker = document.createElement('div');
     picker.id = 'simple-emoji-picker';
     picker.className = 'simple-emoji-picker';
     
-    // Liste d'emojis courants
     const emojis = ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '💀', '👻', '👽', '👾', '🤖', '💩', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'];
     
     emojis.forEach(emoji => {
@@ -879,7 +977,6 @@ function openEmojiPicker() {
         picker.appendChild(span);
     });
 
-    // Positionner la popup près du bouton
     const btn = document.querySelector('.emoji-btn');
     const rect = btn.getBoundingClientRect();
     picker.style.position = 'absolute';
@@ -981,21 +1078,6 @@ function initSearch() {
             renderConversations();
         });
     }
-}
-
-// ===== BAScule Archives/Actives =====
-function toggleArchiveView() {
-    showArchived = !showArchived;
-    const btn = document.getElementById('archiveToggleBtn');
-    const span = document.getElementById('archiveToggleText');
-    if (showArchived) {
-        btn.classList.add('active');
-        span.textContent = 'Actives';
-    } else {
-        btn.classList.remove('active');
-        span.textContent = 'Archives';
-    }
-    renderConversations();
 }
 
 // ===== SOUSCRIPTION AUX NOUVELLES CONVERSATIONS =====
@@ -1160,9 +1242,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSidebar();
     initLogout();
 
-    // Bouton de bascule archives
-    document.getElementById('archiveToggleBtn')?.addEventListener('click', toggleArchiveView);
-
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
         showToast('Changement de langue bientôt disponible', 'info');
@@ -1191,3 +1270,4 @@ window.confirmDeleteConversation = confirmDeleteConversation;
 window.openUserInfoModal = openUserInfoModal;
 window.closeUserInfoModal = closeUserInfoModal;
 window.openEmojiPicker = openEmojiPicker;
+window.toggleRecording = toggleRecording;
