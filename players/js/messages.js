@@ -213,6 +213,7 @@ async function selectConversation(convId) {
     renderConversations();
     await loadMessages(convId);
     renderChatHeader();
+    renderChatInput();
 
     messagesSubscription = supabaseMessages
         .channel(`player_messages:${convId}`)
