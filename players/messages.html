@@ -11,7 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- Navbar (identique) -->
+    <!-- Navbar -->
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
@@ -83,13 +83,55 @@
                 </div>
                 <!-- Zone de chat -->
                 <div class="chat-panel" id="chatPanel">
-                    <div class="chat-header" id="chatHeader"></div>
+                    <div class="chat-header" id="chatHeader">
+                        <!-- Le contenu sera injecté dynamiquement -->
+                    </div>
                     <div class="chat-messages-area" id="chatMessagesArea"></div>
                     <div class="chat-input-area" id="chatInputArea"></div>
                 </div>
             </div>
         </div>
     </main>
+
+    <!-- Modale de confirmation pour suppression de conversation -->
+    <div id="deleteConvModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Supprimer la conversation</h2>
+                <span class="close-modal" onclick="closeDeleteConvModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer cette conversation ? Tous les messages seront effacés définitivement.</p>
+                <div class="modal-actions">
+                    <button class="btn-cancel" onclick="closeDeleteConvModal()">Annuler</button>
+                    <button class="btn-confirm" onclick="confirmDeleteConversation()">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale d'information utilisateur -->
+    <div id="userInfoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Informations</h2>
+                <span class="close-modal" onclick="closeUserInfoModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="userInfoContent">
+                <!-- Rempli dynamiquement -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu contextuel pour les messages -->
+    <div id="messageContextMenu" class="context-menu" style="display: none;">
+        <ul>
+            <li onclick="copyMessageFromMenu()"><i class="fas fa-copy"></i> Copier</li>
+            <li onclick="replyToMessageFromMenu()"><i class="fas fa-reply"></i> Répondre</li>
+            <li onclick="deleteForMe()"><i class="fas fa-user-slash"></i> Supprimer pour moi</li>
+            <li onclick="deleteForEveryone()" id="deleteForEveryoneOption"><i class="fas fa-trash-alt"></i> Supprimer pour tous</li>
+        </ul>
+    </div>
 
     <!-- Toast container -->
     <div id="toastContainer" class="toast-container"></div>
