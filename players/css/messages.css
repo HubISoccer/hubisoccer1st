@@ -1029,3 +1029,30 @@ body {
         height: 30px;
     }
 }
+
+/* ===== BOUTON ARCHIVES ===== */
+.archive-toggle {
+    margin-top: 10px;
+    text-align: center;
+}
+.archive-btn {
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 8px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: var(--transition);
+}
+.archive-btn:hover {
+    background: var(--primary);
+    color: white;
+}
+.archive-btn.active {
+    background: var(--primary);
+    color: white;
+}
