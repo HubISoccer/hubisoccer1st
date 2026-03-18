@@ -78,14 +78,18 @@
                             <i class="fas fa-search"></i>
                             <input type="text" id="searchConv" placeholder="Rechercher...">
                         </div>
+                        <!-- Bouton pour basculer entre conversations et archives -->
+                        <div class="archive-toggle">
+                            <button id="archiveToggleBtn" class="archive-btn">
+                                <i class="fas fa-archive"></i> <span id="archiveToggleText">Archives</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="conversations-list" id="conversationsList"></div>
                 </div>
                 <!-- Zone de chat -->
                 <div class="chat-panel" id="chatPanel">
-                    <div class="chat-header" id="chatHeader">
-                        <!-- Le contenu sera injecté dynamiquement -->
-                    </div>
+                    <div class="chat-header" id="chatHeader"></div>
                     <div class="chat-messages-area" id="chatMessagesArea"></div>
                     <div class="chat-input-area" id="chatInputArea"></div>
                 </div>
@@ -117,9 +121,7 @@
                 <h2>Informations</h2>
                 <span class="close-modal" onclick="closeUserInfoModal()">&times;</span>
             </div>
-            <div class="modal-body" id="userInfoContent">
-                <!-- Rempli dynamiquement -->
-            </div>
+            <div class="modal-body" id="userInfoContent"></div>
         </div>
     </div>
 
