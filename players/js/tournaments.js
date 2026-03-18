@@ -1,103 +1,148 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseTournaments = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabasePlayerPrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
-let currentProfile = null;
+let currentPlayer = null;
 let tournaments = [];
 let currentTournament = null;
 let messages = [];
-let starredPlayers = new Set();
+let starredPlayers = new Set(); // IDs des joueurs (player_tournament_id)
 let messagesSubscription = null;
+const profileCache = new Map();
+
+// ===== TOAST =====
+function showToast(message, type = 'info', duration = 3000) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i></div>
+        <div class="toast-content">${message}</div>
+        <button class="toast-close"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(toast);
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.style.animation = 'fadeOut 0.3s forwards';
+        setTimeout(() => toast.remove(), 300);
+    });
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.animation = 'fadeOut 0.3s forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabaseTournaments.auth.getSession();
-    if (error || !session) {
+    try {
+        const { data: { session }, error } = await supabasePlayerPrive.auth.getSession();
+        if (error || !session) {
+            window.location.href = '../public/auth/login.html';
+            return null;
+        }
+        currentUser = session.user;
+        console.log('✅ Utilisateur connecté :', currentUser.email);
+        return currentUser;
+    } catch (err) {
+        console.error('❌ Erreur checkSession :', err);
         window.location.href = '../public/auth/login.html';
         return null;
     }
-    currentUser = session.user;
-    return currentUser;
 }
 
-// ===== CHARGEMENT DU PROFIL =====
-async function loadProfile() {
-    const { data, error } = await supabaseTournaments
-        .from('player_profiles')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .single();
-    if (error) {
-        console.error('Erreur chargement profil:', error);
+// ===== CHARGEMENT DU PROFIL JOUEUR (depuis profiles) =====
+async function loadPlayerProfile() {
+    try {
+        const { data, error } = await supabasePlayerPrive
+            .from('profiles')
+            .select('*')
+            .eq('id', currentUser.id)
+            .single();
+
+        if (error) {
+            console.error('Erreur chargement profil joueur:', error);
+            return null;
+        }
+        currentPlayer = data;
+        document.getElementById('userName').textContent = data.full_name || 'Joueur';
+        document.getElementById('userAvatar').src = data.avatar_url || 'img/user-default.jpg';
+        return currentPlayer;
+    } catch (err) {
+        console.error('❌ Exception loadPlayerProfile:', err);
         return null;
     }
-    currentProfile = data;
-    document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
-    document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
-    return currentProfile;
 }
 
 // ===== CHARGEMENT DES TOURNOIS =====
 async function loadTournaments() {
-    const { data, error } = await supabaseTournaments
+    const { data, error } = await supabasePlayerPrive
         .from('tournaments')
         .select('*')
         .order('date', { ascending: true });
 
     if (error) {
         console.error('Erreur chargement tournois:', error);
+        showToast('Erreur lors du chargement des tournois', 'error');
         return;
     }
 
     tournaments = data || [];
-    if (tournaments.length > 0) {
-        currentTournament = tournaments[0];
-        await loadTournamentDetails(currentTournament.id);
-        await loadStarredPlayers(currentTournament.id);
+    if (tournaments.length === 0) {
+        showToast('Aucun tournoi disponible', 'info');
+        return;
     }
+
+    currentTournament = tournaments[0];
+    await loadTournamentDetails(currentTournament.id);
+    await loadStarredPlayers(currentTournament.id);
     renderTournamentList();
     renderLiveTournament();
 }
 
 // ===== CHARGEMENT DES DÉTAILS D'UN TOURNOI (joueurs) =====
 async function loadTournamentDetails(tournamentId) {
-    const { data, error } = await supabaseTournaments
-        .from('tournament_players')
-        .select(`
-            id,
-            position,
-            jersey_number,
-            player:player_profiles(id, nom_complet, avatar_url, hub_id)
-        `)
-        .eq('tournament_id', tournamentId);
+    try {
+        const { data: playersData, error } = await supabasePlayerPrive
+            .from('tournament_players')
+            .select(`
+                id,
+                position,
+                jersey_number,
+                player_id,
+                profiles:player_id (full_name, avatar_url)
+            `)
+            .eq('tournament_id', tournamentId);
 
-    if (error) {
+        if (error) throw error;
+
+        currentTournament = {
+            ...currentTournament,
+            players: (playersData || []).map(p => ({
+                id: p.id,
+                playerId: p.player_id,
+                name: p.profiles?.full_name || 'Joueur inconnu',
+                avatar: p.profiles?.avatar_url,
+                position: p.position,
+                jersey_number: p.jersey_number
+            }))
+        };
+    } catch (error) {
         console.error('Erreur chargement joueurs:', error);
-        return;
+        showToast('Erreur lors du chargement des joueurs', 'error');
     }
-
-    currentTournament = {
-        ...currentTournament,
-        players: data.map(p => ({
-            id: p.id,
-            playerId: p.player.id,
-            name: p.player.nom_complet,
-            avatar: p.player.avatar_url,
-            position: p.position,
-            jersey_number: p.jersey_number
-        }))
-    };
 }
 
 // ===== CHARGEMENT DES ÉTOILES (favoris) =====
 async function loadStarredPlayers(tournamentId) {
-    const { data, error } = await supabaseTournaments
+    const { data, error } = await supabasePlayerPrive
         .from('player_stars')
         .select('player_id')
-        .eq('user_id', currentProfile.id)
+        .eq('user_id', currentPlayer.id)
         .eq('tournament_id', tournamentId);
 
     if (error) {
@@ -112,6 +157,11 @@ async function loadStarredPlayers(tournamentId) {
 function renderTournamentList() {
     const list = document.getElementById('tournamentList');
     if (!list) return;
+
+    if (tournaments.length === 0) {
+        list.innerHTML = '<p class="no-data">Aucun tournoi disponible</p>';
+        return;
+    }
 
     list.innerHTML = tournaments.map(t => `
         <div class="tournament-item" data-tournament-id="${t.id}">
@@ -133,11 +183,17 @@ function renderLiveTournament() {
     if (!currentTournament) return;
 
     const container = document.getElementById('liveTournament');
-    const streamUrl = currentTournament.stream_url || 'https://www.youtube.com/embed/dQw4w9WgXcQ'; // URL par défaut
+    
+    let videoHtml = '';
+    if (currentTournament.stream_url) {
+        videoHtml = `<iframe src="${currentTournament.stream_url}" frameborder="0" allowfullscreen></iframe>`;
+    } else {
+        videoHtml = '<div class="no-stream">Aucun stream disponible pour le moment</div>';
+    }
 
     container.innerHTML = `
         <div class="tournament-video">
-            <iframe src="${streamUrl}" frameborder="0" allowfullscreen></iframe>
+            ${videoHtml}
         </div>
         <div class="tournament-info">
             <h2 class="tournament-name">${currentTournament.name}</h2>
@@ -161,31 +217,34 @@ function renderLiveTournament() {
 
 // ===== CHARGEMENT DES MESSAGES DU CHAT =====
 async function loadMessages(tournamentId) {
-    const { data, error } = await supabaseTournaments
-        .from('tournament_messages')
-        .select(`
-            id,
-            message,
-            created_at,
-            user:player_profiles(id, nom_complet, avatar_url)
-        `)
-        .eq('tournament_id', tournamentId)
-        .order('created_at', { ascending: true });
+    try {
+        const { data, error } = await supabasePlayerPrive
+            .from('tournament_messages')
+            .select(`
+                id,
+                user_id,
+                message,
+                created_at,
+                profiles:user_id (full_name)
+            `)
+            .eq('tournament_id', tournamentId)
+            .order('created_at', { ascending: true });
 
-    if (error) {
+        if (error) throw error;
+
+        messages = (data || []).map(m => ({
+            id: m.id,
+            userId: m.user_id,
+            author: m.profiles?.full_name || 'Inconnu',
+            text: m.message,
+            time: new Date(m.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        }));
+
+        renderChatMessages();
+    } catch (error) {
         console.error('Erreur chargement messages:', error);
-        return;
+        showToast('Erreur lors du chargement des messages', 'error');
     }
-
-    messages = data.map(m => ({
-        id: m.id,
-        userId: m.user.id,
-        author: m.user.nom_complet,
-        text: m.message,
-        time: new Date(m.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-    }));
-
-    renderChatMessages();
 }
 
 // ===== RENDU DES MESSAGES DU CHAT =====
@@ -194,7 +253,7 @@ function renderChatMessages() {
     if (!chatDiv) return;
 
     chatDiv.innerHTML = messages.map(msg => {
-        const isOwn = msg.userId === currentProfile.id;
+        const isOwn = msg.userId === currentPlayer.id;
         return `
             <div class="chat-message ${isOwn ? 'own' : ''}">
                 <div class="author">${msg.author}</div>
@@ -213,29 +272,28 @@ async function sendMessage() {
     const text = input.value.trim();
     if (!text || !currentTournament) return;
 
-    const { error } = await supabaseTournaments
+    const { error } = await supabasePlayerPrive
         .from('tournament_messages')
         .insert([{
             tournament_id: currentTournament.id,
-            user_id: currentProfile.id,
+            user_id: currentPlayer.id,
             message: text
         }]);
 
     if (error) {
         console.error('Erreur envoi message:', error);
-        alert('Erreur lors de l\'envoi du message');
+        showToast('Erreur lors de l\'envoi du message', 'error');
         return;
     }
 
     input.value = '';
-    // Le message apparaîtra via Realtime
 }
 
 // ===== SOUSCRIPTION AUX NOUVEAUX MESSAGES =====
 function subscribeToMessages(tournamentId) {
     if (messagesSubscription) messagesSubscription.unsubscribe();
 
-    messagesSubscription = supabaseTournaments
+    messagesSubscription = supabasePlayerPrive
         .channel(`tournament_messages:${tournamentId}`)
         .on('postgres_changes', {
             event: 'INSERT',
@@ -243,21 +301,24 @@ function subscribeToMessages(tournamentId) {
             table: 'tournament_messages',
             filter: `tournament_id=eq.${tournamentId}`
         }, async (payload) => {
-            // Récupérer les infos de l'utilisateur pour le nouveau message
-            const { data: userData } = await supabaseTournaments
-                .from('player_profiles')
-                .select('nom_complet')
-                .eq('id', payload.new.user_id)
-                .single();
+            let authorName = profileCache.get(payload.new.user_id);
+            if (!authorName) {
+                const { data } = await supabasePlayerPrive
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', payload.new.user_id)
+                    .single();
+                authorName = data?.full_name || 'Inconnu';
+                profileCache.set(payload.new.user_id, authorName);
+            }
 
             const newMsg = {
                 id: payload.new.id,
                 userId: payload.new.user_id,
-                author: userData?.nom_complet || 'Inconnu',
+                author: authorName,
                 text: payload.new.message,
                 time: new Date(payload.new.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
             };
-
             messages.push(newMsg);
             renderChatMessages();
         })
@@ -300,7 +361,7 @@ function renderPlayersList() {
         return `
             <div class="player-item">
                 <div class="player-avatar">
-                    <img src="${p.avatar || 'img/user-default.jpg'}" alt="${p.name}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">
+                    <img src="${p.avatar || 'img/user-default.jpg'}" alt="${p.name}">
                 </div>
                 <div class="player-info">
                     <div class="player-name">${p.name}</div>
@@ -317,30 +378,22 @@ function renderPlayersList() {
 // ===== AJOUT/SUPPRESSION D'UNE ÉTOILE =====
 async function toggleStar(playerTournamentId) {
     if (starredPlayers.has(playerTournamentId)) {
-        // Supprimer l'étoile
-        const { error } = await supabaseTournaments
+        const { error } = await supabasePlayerPrive
             .from('player_stars')
             .delete()
-            .eq('user_id', currentProfile.id)
+            .eq('user_id', currentPlayer.id)
             .eq('tournament_id', currentTournament.id)
             .eq('player_id', playerTournamentId);
-
-        if (!error) {
-            starredPlayers.delete(playerTournamentId);
-        }
+        if (!error) starredPlayers.delete(playerTournamentId);
     } else {
-        // Ajouter une étoile
-        const { error } = await supabaseTournaments
+        const { error } = await supabasePlayerPrive
             .from('player_stars')
             .insert([{
-                user_id: currentProfile.id,
+                user_id: currentPlayer.id,
                 tournament_id: currentTournament.id,
                 player_id: playerTournamentId
             }]);
-
-        if (!error) {
-            starredPlayers.add(playerTournamentId);
-        }
+        if (!error) starredPlayers.add(playerTournamentId);
     }
     renderPlayersList();
 }
@@ -360,8 +413,8 @@ function initUserMenu() {
 
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
-    const sidebar = document.getElementById('sidebar');
-    const closeBtn = document.getElementById('closeSidebar');
+    const sidebar = document.getElementById('leftSidebar');
+    const closeBtn = document.getElementById('closeLeftSidebar');
     const overlay = document.getElementById('sidebarOverlay');
 
     function openSidebar() {
@@ -393,7 +446,7 @@ document.addEventListener('touchend', (e) => {
 }, false);
 
 function handleSwipe() {
-    const leftSidebar = document.getElementById('sidebar');
+    const leftSidebar = document.getElementById('leftSidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const diff = touchEndX - touchStartX;
 
@@ -411,7 +464,7 @@ function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabaseTournaments.auth.signOut().then(() => {
+            supabasePlayerPrive.auth.signOut().then(() => {
                 window.location.href = '../index.html';
             });
         });
@@ -420,12 +473,14 @@ function initLogout() {
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation tournaments.js');
+    console.log('🚀 Initialisation de la page tournois (joueur)');
 
     const user = await checkSession();
     if (!user) return;
 
-    await loadProfile();
+    await loadPlayerProfile();
+    if (!currentPlayer) return;
+
     await loadTournaments();
 
     if (currentTournament) {
@@ -447,7 +502,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
-        alert('Changement de langue bientôt disponible');
+        showToast('Changement de langue bientôt disponible', 'info');
     });
 
     console.log('✅ Initialisation terminée');
