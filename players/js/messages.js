@@ -14,18 +14,21 @@ let conversationsSubscription = null;
 let replyingTo = null;
 let searchTerm = '';
 let targetUserId = null;
-let attachments = [];
+let attachments = []; // pour stocker les fichiers sélectionnés avant envoi
 let contextMenuMsgId = null;
 let archivedConversationIds = new Set();
 let blockedUserIds = new Set();
-let isUploading = false; // Indique si un upload est en cours
+let isUploading = false;
+let showArchived = false; // true = afficher les archives, false = actives
 
 // Variables pour l'enregistrement audio
 let mediaRecorder = null;
+let recordedAudioBlob = null;
 let audioChunks = [];
 let recordingTimer = null;
 let recordingSeconds = 0;
 let isRecording = false;
+let recordingStream = null;
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -64,6 +67,8 @@ async function checkSession() {
         return null;
     }
     currentUser = session.user;
+    // Stocker le token pour les uploads
+    currentUser.access_token = session.access_token;
     return currentUser;
 }
 
@@ -157,26 +162,31 @@ async function loadConversations() {
         return;
     }
 
-    conversations = data
-        .map(conv => {
-            const contact = (conv.participant1.id === currentProfile.id) ? conv.participant2 : conv.participant1;
-            const contactName = contact?.nom_complet || 'Utilisateur inconnu';
-            return {
-                id: conv.id,
-                contactId: contact?.id,
-                contactName: contactName,
-                contactAvatar: contact?.avatar_url,
-                lastMessage: conv.last_message_content,
-                lastTime: conv.last_message_time,
-                unread: 0,
-                online: false
-            };
-        })
-        .filter(conv => {
+    let allConversations = data.map(conv => {
+        const contact = (conv.participant1.id === currentProfile.id) ? conv.participant2 : conv.participant1;
+        const contactName = contact?.nom_complet || 'Utilisateur inconnu';
+        return {
+            id: conv.id,
+            contactId: contact?.id,
+            contactName: contactName,
+            contactAvatar: contact?.avatar_url,
+            lastMessage: conv.last_message_content,
+            lastTime: conv.last_message_time,
+            unread: 0,
+            online: false
+        };
+    });
+
+    // Filtrer selon le mode (archives ou actives)
+    if (showArchived) {
+        conversations = allConversations.filter(conv => archivedConversationIds.has(conv.id));
+    } else {
+        conversations = allConversations.filter(conv => {
             if (archivedConversationIds.has(conv.id)) return false;
             if (blockedUserIds.has(conv.contactId)) return false;
             return true;
         });
+    }
 
     // Charger les statuts en ligne des contacts
     const contactIds = conversations.map(c => c.contactId).filter(Boolean);
@@ -197,6 +207,7 @@ async function loadConversations() {
 
     renderConversations();
 }
+
 // ===== RENDU DES CONVERSATIONS =====
 function renderConversations() {
     const list = document.getElementById('conversationsList');
@@ -211,6 +222,7 @@ function renderConversations() {
         const isActive = conv.id === currentConversationId;
         const onlineClass = conv.online ? 'online' : '';
         const avatarUrl = conv.contactAvatar ? conv.contactAvatar : 'img/user-default.jpg';
+        const unarchiveButton = showArchived ? `<button class="unarchive-btn" onclick="event.stopPropagation(); unarchiveConversation(${conv.id})"><i class="fas fa-undo"></i></button>` : '';
 
         return `
             <div class="conversation-item ${isActive ? 'active' : ''}" data-conv-id="${conv.id}">
@@ -227,6 +239,7 @@ function renderConversations() {
                         ${conv.unread > 0 ? `<span class="conversation-badge">${conv.unread}</span>` : ''}
                     </div>
                 </div>
+                ${unarchiveButton}
             </div>
         `;
     }).join('');
@@ -344,6 +357,20 @@ async function loadMessages(convId) {
     renderMessages(data);
 }
 
+// ===== FORMATAGE DE LA DATE DES MESSAGES =====
+function formatMessageDate(date) {
+    const now = new Date();
+    const msgDate = new Date(date);
+    const diffDays = Math.floor((now - msgDate) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) {
+        return "Aujourd'hui à " + msgDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    } else if (diffDays === 1) {
+        return "Hier à " + msgDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    } else {
+        return msgDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + " à " + msgDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
+}
+
 // ===== RENDU DES MESSAGES =====
 function renderMessages(messages) {
     const area = document.getElementById('chatMessagesArea');
@@ -351,7 +378,7 @@ function renderMessages(messages) {
     let html = '';
     messages.forEach(msg => {
         const isMe = msg.sender_id === currentProfile.id;
-        const time = new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        const time = formatMessageDate(msg.created_at);
         let replyHtml = '';
         if (msg.reply) {
             const replyContent = msg.reply.content ? `<span>${msg.reply.content}</span>` : '';
@@ -395,7 +422,7 @@ function appendMessage(msg) {
     const area = document.getElementById('chatMessagesArea');
     if (!area) return;
     const isMe = msg.sender_id === currentProfile.id;
-    const time = new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const time = formatMessageDate(msg.created_at);
     let replyHtml = '';
     if (msg.reply_to_id) {
         replyHtml = `<div class="reply-quote">Réponse à un message</div>`;
@@ -440,14 +467,14 @@ function updateConversationLastMessage(convId, msg) {
     }
 }
 
-// ===== GESTION DES FICHIERS (images et vidéos) =====
+// ===== GESTION DES FICHIERS AVEC PRÉVISUALISATION =====
 function openFilePicker() {
     let fileInput = document.getElementById('fileInput');
     if (!fileInput) {
         fileInput = document.createElement('input');
         fileInput.type = 'file';
         fileInput.id = 'fileInput';
-        fileInput.accept = 'image/*,video/*';
+        fileInput.accept = 'image/*,video/*,audio/*,.pdf';
         fileInput.style.display = 'none';
         fileInput.multiple = true;
         document.body.appendChild(fileInput);
@@ -459,130 +486,106 @@ function openFilePicker() {
 function handleFileSelect(e) {
     const files = e.target.files;
     if (files.length === 0) return;
+
     let preview = document.querySelector('.attachment-preview');
     if (!preview) {
         preview = document.createElement('div');
         preview.className = 'attachment-preview';
         document.getElementById('chatInputArea').appendChild(preview);
+    } else {
+        preview.innerHTML = '';
     }
-    preview.innerHTML = '';
-    for (let file of files) {
+
+    Array.from(files).forEach((file, index) => {
         const reader = new FileReader();
         reader.onload = (ev) => {
-            const mediaType = file.type.startsWith('image/') ? 'image' : 'video';
-            if (mediaType === 'image') {
-                const img = document.createElement('img');
-                img.src = ev.target.result;
-                img.style.maxWidth = '100px';
-                img.style.maxHeight = '100px';
-                img.style.margin = '5px';
-                img.style.borderRadius = '5px';
-                preview.appendChild(img);
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'preview-item';
+            fileDiv.dataset.index = index;
+
+            let mediaElement;
+            if (file.type.startsWith('image/')) {
+                mediaElement = document.createElement('img');
+                mediaElement.src = ev.target.result;
+                mediaElement.style.maxWidth = '100px';
+                mediaElement.style.maxHeight = '100px';
+                mediaElement.style.borderRadius = '5px';
+            } else if (file.type.startsWith('video/')) {
+                mediaElement = document.createElement('video');
+                mediaElement.src = ev.target.result;
+                mediaElement.controls = true;
+                mediaElement.style.maxWidth = '100px';
+                mediaElement.style.maxHeight = '100px';
+                mediaElement.style.borderRadius = '5px';
+            } else if (file.type.startsWith('audio/')) {
+                mediaElement = document.createElement('audio');
+                mediaElement.src = ev.target.result;
+                mediaElement.controls = true;
+                mediaElement.style.maxWidth = '100px';
+                mediaElement.style.maxHeight = '100px';
+                mediaElement.style.borderRadius = '5px';
             } else {
-                const video = document.createElement('video');
-                video.src = ev.target.result;
-                video.controls = true;
-                video.style.maxWidth = '100px';
-                video.style.maxHeight = '100px';
-                video.style.margin = '5px';
-                video.style.borderRadius = '5px';
-                preview.appendChild(video);
+                // Autres types (PDF, etc.)
+                mediaElement = document.createElement('i');
+                mediaElement.className = 'fas fa-file file-icon';
             }
+            mediaElement.style.margin = '5px';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-preview-btn';
+            removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+            removeBtn.onclick = () => {
+                fileDiv.remove();
+                // Retirer le fichier du tableau attachments
+                attachments = attachments.filter((_, i) => i !== index);
+                if (attachments.length === 0) preview.remove();
+            };
+
+            fileDiv.appendChild(mediaElement);
+            fileDiv.appendChild(removeBtn);
+            preview.appendChild(fileDiv);
         };
         reader.readAsDataURL(file);
-    }
+    });
+
+    // Stocker les fichiers dans le tableau attachments (pour les utiliser dans sendMessage)
+    attachments = Array.from(files);
     showToast(`${files.length} fichier(s) sélectionné(s)`, 'info');
 }
 
-// ===== ENREGISTREMENT AUDIO =====
-function formatTime(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
+// ===== UPLOAD DE FICHIER AVEC PROGRESSION =====
+function uploadFileWithProgress(file, bucket, onProgress) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const formData = new FormData();
+        formData.append('file', file);
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${currentProfile.id}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`, true);
+        xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+        xhr.setRequestHeader('Authorization', `Bearer ${currentUser.access_token}`);
 
-function updateRecordingTimer() {
-    recordingSeconds++;
-    const timerDisplay = document.querySelector('.recording-timer');
-    if (timerDisplay) {
-        timerDisplay.textContent = formatTime(recordingSeconds);
-    }
-}
-
-async function startRecording() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
-        recordingSeconds = 0;
-
-        mediaRecorder.ondataavailable = event => {
-            audioChunks.push(event.data);
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable && onProgress) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                onProgress(percent);
+            }
         };
 
-        mediaRecorder.onstop = async () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            stream.getTracks().forEach(track => track.stop());
-
-            const fileName = `${currentProfile.id}_audio_${Date.now()}.webm`;
-            const bucket = 'message-attachments';
-            const { error: uploadError } = await supabaseMessages.storage
-                .from(bucket)
-                .upload(fileName, audioBlob, { cacheControl: '3600', upsert: false });
-            if (uploadError) {
-                console.error('Erreur upload audio:', uploadError);
-                showToast('Erreur lors de l\'upload de l\'audio', 'error');
-                return;
+        xhr.onload = () => {
+            if (xhr.status === 200) {
+                const { data } = supabaseMessages.storage.from(bucket).getPublicUrl(fileName);
+                resolve(data.publicUrl);
+            } else {
+                reject(new Error('Upload failed'));
             }
-            const { data: urlData } = supabaseMessages.storage.from(bucket).getPublicUrl(fileName);
-            const audioUrl = urlData.publicUrl;
-
-            const conv = conversations.find(c => c.id === currentConversationId);
-            if (conv) {
-                await insertMessage(conv.id, '', audioUrl);
-            }
-
-            audioChunks = [];
-            const timerDisplay = document.querySelector('.recording-timer');
-            if (timerDisplay) timerDisplay.remove();
-            const btn = document.querySelector('.audio-btn');
-            if (btn) btn.innerHTML = '<i class="fas fa-microphone"></i>';
-            isRecording = false;
-            if (recordingTimer) clearInterval(recordingTimer);
         };
-
-        mediaRecorder.start();
-        isRecording = true;
-
-        const btn = document.querySelector('.audio-btn');
-        btn.innerHTML = '<i class="fas fa-stop"></i>';
-        const timer = document.createElement('span');
-        timer.className = 'recording-timer';
-        timer.textContent = '0:00';
-        btn.parentNode.insertBefore(timer, btn.nextSibling);
-
-        recordingTimer = setInterval(updateRecordingTimer, 1000);
-    } catch (err) {
-        console.error('Erreur accès micro:', err);
-        showToast('Impossible d\'accéder au microphone', 'error');
-    }
+        xhr.onerror = () => reject(new Error('Network error'));
+        xhr.send(formData);
+    });
 }
 
-function stopRecording() {
-    if (mediaRecorder && isRecording) {
-        mediaRecorder.stop();
-    }
-}
-
-function toggleRecording() {
-    if (isRecording) {
-        stopRecording();
-    } else {
-        startRecording();
-    }
-}
-
-// ===== ENVOI D'UN MESSAGE (avec upload et spinner) =====
+// ===== ENVOI D'UN MESSAGE (AVEC UPLOAD) =====
 async function sendMessage(e) {
     e.preventDefault();
     if (isUploading) {
@@ -592,10 +595,9 @@ async function sendMessage(e) {
 
     const input = document.getElementById('messageInput');
     const content = input.value.trim();
-    const fileInput = document.getElementById('fileInput');
-    const files = fileInput ? fileInput.files : [];
+    const files = attachments; // fichiers sélectionnés via le tableau
 
-    if (!content && files.length === 0 && attachments.length === 0) {
+    if (!content && files.length === 0) {
         showToast('Veuillez écrire un message ou joindre un fichier', 'warning');
         return;
     }
@@ -610,26 +612,30 @@ async function sendMessage(e) {
     const sendBtn = document.querySelector('.send-btn');
     sendBtn.classList.add('loading');
 
-    // Gérer les fichiers (images, vidéos) sélectionnés
     let attachmentUrls = [];
     if (files.length > 0) {
+        const progressDiv = document.getElementById('uploadProgress');
+        const progressBar = document.getElementById('progressBar');
+        const progressPercent = document.getElementById('progressPercent');
+        progressDiv.style.display = 'flex';
+
         for (let file of files) {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${currentProfile.id}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-            const bucket = 'message-attachments';
-            const { error: uploadError } = await supabaseMessages.storage
-                .from(bucket)
-                .upload(fileName, file, { cacheControl: '3600', upsert: false });
-            if (uploadError) {
-                console.error('Erreur upload:', uploadError);
-                showToast('Erreur lors de l\'upload du fichier', 'error');
+            try {
+                const url = await uploadFileWithProgress(file, 'message-attachments', (percent) => {
+                    progressBar.style.width = percent + '%';
+                    progressPercent.textContent = percent + '%';
+                });
+                attachmentUrls.push(url);
+            } catch (err) {
+                console.error('Upload error:', err);
+                showToast('Erreur upload', 'error');
                 isUploading = false;
                 sendBtn.classList.remove('loading');
+                progressDiv.style.display = 'none';
                 return;
             }
-            const { data: urlData } = supabaseMessages.storage.from(bucket).getPublicUrl(fileName);
-            attachmentUrls.push(urlData.publicUrl);
         }
+        progressDiv.style.display = 'none';
     }
 
     // Envoyer un message pour chaque fichier
@@ -644,7 +650,6 @@ async function sendMessage(e) {
     // Réinitialiser
     input.value = '';
     input.style.height = 'auto';
-    if (fileInput) fileInput.value = '';
     attachments = [];
     document.querySelector('.attachment-preview')?.remove();
     if (replyingTo) cancelReply();
@@ -680,6 +685,155 @@ async function insertMessage(conversationId, content, attachmentUrl) {
             last_message_time: new Date().toISOString()
         })
         .eq('id', conversationId);
+}
+
+// ===== ENREGISTREMENT AUDIO =====
+function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function updateRecordingTimer() {
+    recordingSeconds++;
+    const timerDisplay = document.querySelector('.recording-timer');
+    if (timerDisplay) {
+        timerDisplay.textContent = formatTime(recordingSeconds);
+    }
+}
+
+async function startRecording() {
+    try {
+        recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(recordingStream);
+        recordedAudioBlob = null;
+        audioChunks = [];
+        recordingSeconds = 0;
+
+        mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = () => {
+            recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            if (recordingStream) {
+                recordingStream.getTracks().forEach(track => track.stop());
+                recordingStream = null;
+            }
+            displayAudioPreview();
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+
+        const btn = document.querySelector('.audio-btn');
+        btn.innerHTML = '<i class="fas fa-stop"></i>';
+        const timer = document.createElement('span');
+        timer.className = 'recording-timer';
+        timer.id = 'recordingTimer';
+        timer.textContent = '0:00';
+        btn.parentNode.insertBefore(timer, btn.nextSibling);
+
+        recordingTimer = setInterval(updateRecordingTimer, 1000);
+    } catch (err) {
+        console.error('Erreur accès micro:', err);
+        showToast('Impossible d\'accéder au microphone', 'error');
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        clearInterval(recordingTimer);
+        isRecording = false;
+    }
+}
+
+function toggleRecording() {
+    if (isRecording) {
+        stopRecording();
+    } else {
+        startRecording();
+    }
+}
+
+function displayAudioPreview() {
+    if (!recordedAudioBlob) return;
+
+    const inputArea = document.getElementById('chatInputArea');
+    const originalForm = document.getElementById('messageForm');
+    originalForm.style.display = 'none';
+
+    const previewDiv = document.createElement('div');
+    previewDiv.id = 'audioPreview';
+    previewDiv.className = 'audio-preview';
+
+    const audioUrl = URL.createObjectURL(recordedAudioBlob);
+    const audio = document.createElement('audio');
+    audio.src = audioUrl;
+    audio.controls = true;
+
+    const sendBtn = document.createElement('button');
+    sendBtn.className = 'btn-send-audio';
+    sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Envoyer';
+    sendBtn.onclick = () => {
+        sendRecordedAudio();
+        previewDiv.remove();
+        originalForm.style.display = 'flex';
+    };
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn-cancel-audio';
+    cancelBtn.innerHTML = '<i class="fas fa-times"></i> Annuler';
+    cancelBtn.onclick = () => {
+        recordedAudioBlob = null;
+        audioChunks = [];
+        previewDiv.remove();
+        originalForm.style.display = 'flex';
+    };
+
+    previewDiv.appendChild(audio);
+    previewDiv.appendChild(sendBtn);
+    previewDiv.appendChild(cancelBtn);
+    inputArea.appendChild(previewDiv);
+}
+
+async function sendRecordedAudio() {
+    if (!recordedAudioBlob) return;
+
+    const conv = conversations.find(c => c.id === currentConversationId);
+    if (!conv) {
+        showToast('Aucune conversation sélectionnée', 'error');
+        return;
+    }
+
+    isUploading = true;
+    const sendBtn = document.querySelector('.send-btn');
+    sendBtn.classList.add('loading');
+
+    const fileName = `${currentProfile.id}_audio_${Date.now()}.webm`;
+    const bucket = 'message-attachments';
+    const { error: uploadError } = await supabaseMessages.storage
+        .from(bucket)
+        .upload(fileName, recordedAudioBlob, { cacheControl: '3600', upsert: false });
+
+    if (uploadError) {
+        console.error('Erreur upload audio:', uploadError);
+        showToast('Erreur lors de l\'upload de l\'audio', 'error');
+        isUploading = false;
+        sendBtn.classList.remove('loading');
+        return;
+    }
+
+    const { data: urlData } = supabaseMessages.storage.from(bucket).getPublicUrl(fileName);
+    const audioUrl = urlData.publicUrl;
+
+    await insertMessage(conv.id, '', audioUrl);
+
+    recordedAudioBlob = null;
+    audioChunks = [];
+    isUploading = false;
+    sendBtn.classList.remove('loading');
 }
 
 // ===== SUPPRESSION D'UN MESSAGE =====
@@ -970,9 +1124,9 @@ function openEmojiPicker() {
     const picker = document.createElement('div');
     picker.id = 'simple-emoji-picker';
     picker.className = 'simple-emoji-picker';
-    
+
     const emojis = ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '💀', '👻', '👽', '👾', '🤖', '💩', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'];
-    
+
     emojis.forEach(emoji => {
         const span = document.createElement('span');
         span.textContent = emoji;
@@ -995,7 +1149,7 @@ function openEmojiPicker() {
     picker.style.position = 'absolute';
     picker.style.top = (rect.bottom + window.scrollY) + 'px';
     picker.style.left = (rect.left + window.scrollX) + 'px';
-    
+
     document.body.appendChild(picker);
 }
 
@@ -1010,15 +1164,14 @@ function openStickerPicker() {
     const picker = document.createElement('div');
     picker.id = 'sticker-picker';
     picker.className = 'sticker-picker';
-    
-    // Stickers thématiques (sport, études, carrière, marketing, etc.)
+
     const stickers = [
         '⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱',
         '📚', '✏️', '📖', '📝', '🎓', '📐', '🔬', '🧪', '💻', '📊',
         '💼', '📈', '📉', '💰', '💳', '📦', '🚀', '💡', '🔑', '📌',
         '👔', '🧑‍💼', '🤝', '📞', '✉️', '📨', '📩', '📤', '📥', '🗂️'
     ];
-    
+
     stickers.forEach(sticker => {
         const span = document.createElement('span');
         span.textContent = sticker;
@@ -1041,8 +1194,79 @@ function openStickerPicker() {
     picker.style.position = 'absolute';
     picker.style.top = (rect.bottom + window.scrollY) + 'px';
     picker.style.left = (rect.left + window.scrollX) + 'px';
-    
+
     document.body.appendChild(picker);
+}
+
+// ===== GESTION DES UTILISATEURS BLOQUÉS =====
+async function loadBlockedUsers() {
+    if (!currentProfile) return [];
+    const { data, error } = await supabaseMessages
+        .from('blocked_users')
+        .select('blocked_id')
+        .eq('blocker_id', currentProfile.id);
+    if (error) {
+        console.error('Erreur chargement bloqués:', error);
+        showToast('Erreur lors du chargement des utilisateurs bloqués', 'error');
+        return [];
+    }
+    const blockedIds = data.map(b => b.blocked_id);
+    if (blockedIds.length === 0) return [];
+
+    const { data: profiles, error: profilesError } = await supabaseMessages
+        .from('player_profiles')
+        .select('id, nom_complet, avatar_url')
+        .in('id', blockedIds);
+    if (profilesError) {
+        console.error('Erreur chargement profils bloqués:', profilesError);
+        return [];
+    }
+    return profiles;
+}
+
+async function openBlockedUsersModal() {
+    const modal = document.getElementById('blockedUsersModal');
+    const listContainer = document.getElementById('blockedUsersList');
+    if (!modal || !listContainer) return;
+
+    const blockedUsers = await loadBlockedUsers();
+    if (blockedUsers.length === 0) {
+        listContainer.innerHTML = '<p class="no-data">Aucun utilisateur bloqué.</p>';
+    } else {
+        listContainer.innerHTML = blockedUsers.map(user => `
+            <div class="blocked-user-item" data-user-id="${user.id}">
+                <div class="blocked-user-avatar">
+                    <img src="${user.avatar_url || 'img/user-default.jpg'}" alt="${user.nom_complet}">
+                </div>
+                <div class="blocked-user-info">
+                    <div class="blocked-user-name">${user.nom_complet}</div>
+                </div>
+                <button class="blocked-user-unblock" onclick="unblockUser(${user.id})">Débloquer</button>
+            </div>
+        `).join('');
+    }
+    modal.style.display = 'block';
+}
+
+function closeBlockedUsersModal() {
+    document.getElementById('blockedUsersModal').style.display = 'none';
+}
+
+async function unblockUser(userId) {
+    if (!currentProfile || !userId) return;
+    const { error } = await supabaseMessages
+        .from('blocked_users')
+        .delete()
+        .eq('blocker_id', currentProfile.id)
+        .eq('blocked_id', userId);
+    if (error) {
+        console.error('Erreur déblocage:', error);
+        showToast('Erreur lors du déblocage', 'error');
+    } else {
+        showToast('Utilisateur débloqué', 'success');
+        closeBlockedUsersModal();
+        await loadConversations();
+    }
 }
 
 // ===== MESSAGE DE BIENVENUE AUTOMATIQUE (support) =====
@@ -1296,6 +1520,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelector('.chat-panel')?.classList.add('hide');
     }
 
+    // Boutons d'archives et bloqués
+    const archiveBtn = document.getElementById('archiveToggleBtn');
+    if (archiveBtn) {
+        archiveBtn.addEventListener('click', toggleArchive);
+    }
+    const blockedBtn = document.getElementById('blockedUsersBtn');
+    if (blockedBtn) {
+        blockedBtn.addEventListener('click', openBlockedUsersModal);
+    }
+
     initSearch();
     initUserMenu();
     initSidebar();
@@ -1331,3 +1565,32 @@ window.closeUserInfoModal = closeUserInfoModal;
 window.openEmojiPicker = openEmojiPicker;
 window.openStickerPicker = openStickerPicker;
 window.toggleRecording = toggleRecording;
+window.openBlockedUsersModal = openBlockedUsersModal;
+window.closeBlockedUsersModal = closeBlockedUsersModal;
+window.unblockUser = unblockUser;
+window.toggleArchive = toggleArchive;
+window.unarchiveConversation = unarchiveConversation;
+
+// ===== FONCTIONS D'ARCHIVE =====
+function toggleArchive() {
+    showArchived = !showArchived;
+    const btnText = document.getElementById('archiveToggleText');
+    if (btnText) {
+        btnText.textContent = showArchived ? 'Conversations' : 'Archives';
+    }
+    loadConversations();
+}
+
+async function unarchiveConversation(convId) {
+    const { error } = await supabaseMessages
+        .from('archived_conversations')
+        .delete()
+        .eq('user_id', currentProfile.id)
+        .eq('conversation_id', convId);
+    if (error) {
+        showToast('Erreur lors du désarchivage', 'error');
+    } else {
+        showToast('Conversation désarchivée', 'success');
+        await loadConversations();
+    }
+}
