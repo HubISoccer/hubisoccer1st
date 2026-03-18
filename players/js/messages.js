@@ -73,7 +73,44 @@ async function loadProfile() {
     currentProfile = data;
     document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
     document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
+    // Démarrer le suivi de présence
+    startPresenceTracking();
     return currentProfile;
+}
+
+// ===== GESTION DE LA PRÉSENCE EN LIGNE =====
+let presenceInterval = null;
+
+async function updatePresence() {
+    if (!currentProfile) return;
+    const { error } = await supabaseMessages
+        .from('user_presence')
+        .upsert({
+            user_id: currentProfile.id,
+            online: true,
+            last_seen: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+    if (error) console.error('Erreur mise à jour présence:', error);
+}
+
+function startPresenceTracking() {
+    updatePresence();
+    presenceInterval = setInterval(updatePresence, 30000);
+}
+
+function stopPresenceTracking() {
+    if (presenceInterval) clearInterval(presenceInterval);
+}
+
+async function setOffline() {
+    if (!currentProfile) return;
+    await supabaseMessages
+        .from('user_presence')
+        .upsert({
+            user_id: currentProfile.id,
+            online: false,
+            last_seen: new Date().toISOString()
+        }, { onConflict: 'user_id' });
 }
 
 // ===== CHARGEMENT DES CONVERSATIONS =====
@@ -133,6 +170,23 @@ async function loadConversations() {
             if (blockedUserIds.has(conv.contactId)) return false;
             return true;
         });
+
+    // Charger les statuts en ligne des contacts
+    const contactIds = conversations.map(c => c.contactId).filter(Boolean);
+    if (contactIds.length > 0) {
+        const { data: presenceData } = await supabaseMessages
+            .from('user_presence')
+            .select('user_id, online')
+            .in('user_id', contactIds);
+        if (presenceData) {
+            const presenceMap = {};
+            presenceData.forEach(p => presenceMap[p.user_id] = p);
+            conversations.forEach(c => {
+                const p = presenceMap[c.contactId];
+                if (p) c.online = p.online;
+            });
+        }
+    }
 
     renderConversations();
 }
@@ -573,7 +627,6 @@ function deleteForEveryone() {
 // ===== ACTIONS SUR LA CONVERSATION =====
 async function archiveConversation() {
     if (!currentConversationId || !currentProfile) return;
-    // Vérifier si déjà archivée
     const { data: existing, error: checkError } = await supabaseMessages
         .from('archived_conversations')
         .select('id')
@@ -608,7 +661,6 @@ async function archiveConversation() {
 async function blockUser() {
     if (!currentContact || !currentProfile) return;
     if (!confirm(`Bloquer ${currentContact.nom_complet} ? Vous ne recevrez plus de messages de sa part.`)) return;
-    // Vérifier si déjà bloqué
     const { data: existing, error: checkError } = await supabaseMessages
         .from('blocked_users')
         .select('id')
@@ -946,11 +998,11 @@ function initSidebar() {
 // ===== DÉCONNEXION =====
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
-        link.addEventListener('click', (e) => {
+        link.addEventListener('click', async (e) => {
             e.preventDefault();
-            supabaseMessages.auth.signOut().then(() => {
-                window.location.href = '../index.html';
-            });
+            await setOffline();
+            await supabaseMessages.auth.signOut();
+            window.location.href = '../index.html';
         });
     });
 }
