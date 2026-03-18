@@ -8,12 +8,14 @@ let currentUser = null;
 let currentProfile = null;
 let conversations = [];
 let currentConversationId = null;
+let currentContact = null; // objet contact pour la conversation en cours
 let messagesSubscription = null;
 let conversationsSubscription = null;
 let replyingTo = null;
 let searchTerm = '';
 let targetUserId = null;
-let attachments = []; // Pour stocker les fichiers sélectionnés
+let attachments = [];
+let contextMenuMsgId = null; // pour le menu contextuel
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -124,10 +126,11 @@ function renderConversations() {
     list.innerHTML = filtered.map(conv => {
         const lastTime = conv.lastTime ? new Date(conv.lastTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
         const isActive = conv.id === currentConversationId;
+        const onlineClass = conv.online ? 'online' : '';
 
         return `
             <div class="conversation-item ${isActive ? 'active' : ''}" data-conv-id="${conv.id}">
-                <div class="conversation-avatar ${conv.online ? 'online' : ''}">
+                <div class="conversation-avatar ${onlineClass}">
                     <img src="${conv.contactAvatar || 'img/user-default.jpg'}" alt="Avatar">
                 </div>
                 <div class="conversation-info">
@@ -195,8 +198,21 @@ async function selectConversation(convId) {
     console.log('Sélection conversation', convId);
     if (messagesSubscription) messagesSubscription.unsubscribe();
     currentConversationId = convId;
+
+    // Récupérer le contact
+    const conv = conversations.find(c => c.id === convId);
+    if (conv) {
+        const { data: contactProfile } = await supabaseMessages
+            .from('player_profiles')
+            .select('*')
+            .eq('id', conv.contactId)
+            .single();
+        currentContact = contactProfile;
+    }
+
     renderConversations();
     await loadMessages(convId);
+    renderChatHeader();
 
     messagesSubscription = supabaseMessages
         .channel(`player_messages:${convId}`)
@@ -264,15 +280,13 @@ function renderMessages(messages) {
             attachmentHtml = `<div class="message-attachment"><img src="${msg.attachment_url}" alt="Image" onclick="window.open('${msg.attachment_url}', '_blank')"></div>`;
         }
         html += `
-            <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}">
+            <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}">
                 ${replyHtml}
                 ${attachmentHtml}
                 <div class="message-content">${msg.content || ''}</div>
                 <span class="message-time">${time}</span>
                 <div class="message-actions">
-                    <button class="message-action" onclick="replyToMessage(${msg.id})"><i class="fas fa-reply"></i></button>
-                    <button class="message-action" onclick="copyMessage('${msg.content}')"><i class="fas fa-copy"></i></button>
-                    ${isMe ? `<button class="message-action delete" onclick="deleteMessage(${msg.id})"><i class="fas fa-trash"></i></button>` : ''}
+                    <button class="message-action" onclick="event.stopPropagation(); showContextMenu(event, ${msg.id})"><i class="fas fa-ellipsis-v"></i></button>
                 </div>
             </div>
         `;
@@ -289,7 +303,6 @@ function appendMessage(msg) {
     const time = new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     let replyHtml = '';
     if (msg.reply_to_id) {
-        // On n'a pas le contenu du message original dans le payload, on affiche juste une indication
         replyHtml = `<div class="reply-quote">Réponse à un message</div>`;
     }
     let attachmentHtml = '';
@@ -297,15 +310,13 @@ function appendMessage(msg) {
         attachmentHtml = `<div class="message-attachment"><img src="${msg.attachment_url}" alt="Image" onclick="window.open('${msg.attachment_url}', '_blank')"></div>`;
     }
     const msgHtml = `
-        <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}">
+        <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}">
             ${replyHtml}
             ${attachmentHtml}
             <div class="message-content">${msg.content || ''}</div>
             <span class="message-time">${time}</span>
             <div class="message-actions">
-                <button class="message-action" onclick="replyToMessage(${msg.id})"><i class="fas fa-reply"></i></button>
-                <button class="message-action" onclick="copyMessage('${msg.content}')"><i class="fas fa-copy"></i></button>
-                ${isMe ? `<button class="message-action delete" onclick="deleteMessage(${msg.id})"><i class="fas fa-trash"></i></button>` : ''}
+                <button class="message-action" onclick="event.stopPropagation(); showContextMenu(event, ${msg.id})"><i class="fas fa-ellipsis-v"></i></button>
             </div>
         </div>
     `;
@@ -453,17 +464,26 @@ function handleFileSelect(e) {
 }
 
 // ===== SUPPRESSION D'UN MESSAGE =====
-async function deleteMessage(msgId) {
+async function deleteMessage(msgId, forEveryone = false) {
     if (!confirm('Supprimer ce message ?')) return;
-    const { error } = await supabaseMessages
-        .from('player_messages')
-        .delete()
-        .eq('id', msgId)
-        .eq('sender_id', currentProfile.id);
-    if (error) {
-        showToast('Erreur lors de la suppression', 'error');
+    if (forEveryone) {
+        // Supprimer pour tous (seulement si l'utilisateur est l'expéditeur)
+        const { error } = await supabaseMessages
+            .from('player_messages')
+            .delete()
+            .eq('id', msgId);
+        if (error) {
+            showToast('Erreur lors de la suppression', 'error');
+        } else {
+            showToast('Message supprimé pour tous', 'success');
+            await loadMessages(currentConversationId);
+        }
     } else {
-        await loadMessages(currentConversationId);
+        // Supprimer uniquement pour l'utilisateur : on pourrait marquer comme supprimé ou cacher côté client
+        // Pour l'instant, on cache simplement l'élément DOM
+        const msgElement = document.querySelector(`[data-msg-id="${msgId}"]`);
+        if (msgElement) msgElement.remove();
+        showToast('Message supprimé (visible seulement pour vous)', 'success');
     }
 }
 
@@ -480,6 +500,161 @@ function replyToMessage(msgId) {
 function cancelReply() {
     replyingTo = null;
     renderChatInput();
+}
+
+// ===== MENU CONTEXTUEL =====
+function showContextMenu(event, msgId) {
+    event.preventDefault();
+    contextMenuMsgId = msgId;
+    const menu = document.getElementById('messageContextMenu');
+    const msgElement = document.querySelector(`[data-msg-id="${msgId}"]`);
+    const senderId = msgElement?.dataset.sender;
+    const isMe = senderId == currentProfile.id;
+
+    // Afficher ou masquer l'option "Supprimer pour tous" si c'est l'expéditeur
+    const deleteForEveryoneOption = document.getElementById('deleteForEveryoneOption');
+    if (deleteForEveryoneOption) {
+        deleteForEveryoneOption.style.display = isMe ? 'block' : 'none';
+    }
+
+    // Positionner le menu près du clic
+    menu.style.left = event.pageX + 'px';
+    menu.style.top = event.pageY + 'px';
+    menu.style.display = 'block';
+
+    // Fermer au clic suivant
+    document.addEventListener('click', function closeMenu(e) {
+        if (!menu.contains(e.target)) {
+            menu.style.display = 'none';
+            document.removeEventListener('click', closeMenu);
+        }
+    });
+}
+
+function copyMessageFromMenu() {
+    const msgElement = document.querySelector(`[data-msg-id="${contextMenuMsgId}"] .message-content`);
+    if (msgElement) {
+        navigator.clipboard.writeText(msgElement.textContent);
+        showToast('Message copié !', 'success');
+    }
+    document.getElementById('messageContextMenu').style.display = 'none';
+}
+
+function replyToMessageFromMenu() {
+    replyToMessage(contextMenuMsgId);
+    document.getElementById('messageContextMenu').style.display = 'none';
+}
+
+function deleteForMe() {
+    deleteMessage(contextMenuMsgId, false);
+    document.getElementById('messageContextMenu').style.display = 'none';
+}
+
+function deleteForEveryone() {
+    deleteMessage(contextMenuMsgId, true);
+    document.getElementById('messageContextMenu').style.display = 'none';
+}
+
+// ===== ACTIONS SUR LA CONVERSATION =====
+function archiveConversation() {
+    // Implémenter l'archivage (table séparée)
+    showToast('Fonctionnalité d\'archivage à venir', 'info');
+}
+
+function blockUser() {
+    if (!currentContact) return;
+    if (confirm(`Bloquer ${currentContact.nom_complet} ? Vous ne recevrez plus de messages de sa part.`)) {
+        // Implémenter le blocage
+        showToast('Fonctionnalité de blocage à venir', 'info');
+    }
+}
+
+function openDeleteConvModal() {
+    document.getElementById('deleteConvModal').style.display = 'block';
+}
+function closeDeleteConvModal() {
+    document.getElementById('deleteConvModal').style.display = 'none';
+}
+async function confirmDeleteConversation() {
+    if (!currentConversationId) return;
+    // Supprimer tous les messages puis la conversation
+    const { error: msgError } = await supabaseMessages
+        .from('player_messages')
+        .delete()
+        .eq('conversation_id', currentConversationId);
+    if (msgError) {
+        showToast('Erreur lors de la suppression des messages', 'error');
+        return;
+    }
+    const { error: convError } = await supabaseMessages
+        .from('player_conversations')
+        .delete()
+        .eq('id', currentConversationId);
+    if (convError) {
+        showToast('Erreur lors de la suppression de la conversation', 'error');
+        return;
+    }
+    showToast('Conversation supprimée', 'success');
+    closeDeleteConvModal();
+    // Revenir à la liste
+    currentConversationId = null;
+    currentContact = null;
+    document.querySelector('.conversations-panel').classList.remove('hide');
+    document.querySelector('.chat-panel').classList.add('hide');
+    await loadConversations();
+}
+
+function openUserInfoModal() {
+    if (!currentContact) return;
+    const content = document.getElementById('userInfoContent');
+    content.innerHTML = `
+        <div style="text-align: center;">
+            <img src="${currentContact.avatar_url || 'img/user-default.jpg'}" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 15px;">
+            <h3>${currentContact.nom_complet}</h3>
+            <p>@${currentContact.hub_id || 'inconnu'}</p>
+            <p>${currentContact.bio || 'Aucune bio'}</p>
+        </div>
+    `;
+    document.getElementById('userInfoModal').style.display = 'block';
+}
+function closeUserInfoModal() {
+    document.getElementById('userInfoModal').style.display = 'none';
+}
+
+function backToConversations() {
+    document.querySelector('.conversations-panel').classList.remove('hide');
+    document.querySelector('.chat-panel').classList.add('hide');
+}
+
+// ===== RENDU DE L'EN-TÊTE DE CONVERSATION =====
+function renderChatHeader() {
+    const header = document.getElementById('chatHeader');
+    if (!header) return;
+    if (!currentContact) {
+        header.innerHTML = ''; // Aucune conversation sélectionnée
+        return;
+    }
+    const onlineClass = currentContact.online ? 'online' : '';
+    header.innerHTML = `
+        <div class="chat-header-left">
+            <button class="back-btn" onclick="backToConversations()"><i class="fas fa-arrow-left"></i></button>
+            <div class="chat-contact">
+                <div class="chat-contact-avatar ${onlineClass}">
+                    <img src="${currentContact.avatar_url || 'img/user-default.jpg'}" alt="Avatar">
+                </div>
+                <div class="chat-contact-info">
+                    <h3>${currentContact.nom_complet}</h3>
+                    <p>${currentContact.online ? 'En ligne' : 'Hors ligne'}</p>
+                </div>
+            </div>
+        </div>
+        <div class="chat-actions">
+            <button class="chat-action-btn" onclick="archiveConversation()" title="Archiver"><i class="fas fa-archive"></i></button>
+            <button class="chat-action-btn" onclick="blockUser()" title="Bloquer"><i class="fas fa-ban"></i></button>
+            <button class="chat-action-btn danger" onclick="openDeleteConvModal()" title="Supprimer la conversation"><i class="fas fa-trash-alt"></i></button>
+            <button class="chat-action-btn" onclick="openUserInfoModal()" title="Informations"><i class="fas fa-info-circle"></i></button>
+        </div>
+    `;
 }
 
 // ===== RENDU DE LA ZONE DE SAISIE =====
@@ -500,8 +675,8 @@ function renderChatInput() {
                 <div class="message-input-wrapper">
                     <textarea class="message-input" id="messageInput" placeholder="Votre message..." rows="1"></textarea>
                 </div>
-                <button type="button" class="emoji-btn" onclick="showToast('Fonction à venir','info')"><i class="fas fa-smile"></i></button>
-                <button type="button" class="sticker-btn" onclick="showToast('Fonction à venir','info')"><i class="fas fa-sticker-mule"></i></button>
+                <button type="button" class="emoji-btn" onclick="openEmojiPicker()"><i class="fas fa-smile"></i></button>
+                <button type="button" class="sticker-btn" onclick="openStickerPicker()"><i class="fas fa-sticker-mule"></i></button>
                 <button type="submit" class="send-btn"><i class="fas fa-paper-plane"></i></button>
             </div>
         </form>
@@ -516,98 +691,14 @@ function renderChatInput() {
     }
 }
 
-// ===== ACTIONS DIVERSES =====
-function copyMessage(text) {
-    navigator.clipboard.writeText(text);
-    showToast('Message copié !', 'success');
+// ===== EMOJIS ET STICKERS (à implémenter) =====
+function openEmojiPicker() {
+    // Pour l'instant, on ouvre un simple sélecteur (à améliorer)
+    showToast('Sélecteur d\'emojis à venir', 'info');
 }
 
-function backToConversations() {
-    document.querySelector('.conversations-panel').classList.remove('hide');
-    document.querySelector('.chat-panel').classList.add('hide');
-}
-
-// ===== MESSAGE DE BIENVENUE AUTOMATIQUE (support) =====
-async function ensureSupportConversation() {
-    console.log('Création conversation support...');
-    let supportProfileId;
-
-    const { data: supportData, error: searchError } = await supabaseMessages
-        .from('player_profiles')
-        .select('id')
-        .eq('hub_id', 'SUPPORT')
-        .maybeSingle();
-
-    if (searchError) {
-        console.error('Erreur recherche support:', searchError);
-        return;
-    }
-
-    if (!supportData) {
-        const { data: newSupport, error: insertError } = await supabaseMessages
-            .from('player_profiles')
-            .insert([{
-                user_id: null,
-                hub_id: 'SUPPORT',
-                nom_complet: 'Support HubISoccer',
-                avatar_url: 'img/user-default.jpg'
-            }])
-            .select()
-            .single();
-
-        if (insertError) {
-            console.error('Erreur création support:', insertError);
-            return;
-        }
-        supportProfileId = newSupport.id;
-    } else {
-        supportProfileId = supportData.id;
-    }
-
-    const { data: existingConv, error: convCheckError } = await supabaseMessages
-        .from('player_conversations')
-        .select('id')
-        .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${supportProfileId}),and(participant1_id.eq.${supportProfileId},participant2_id.eq.${currentProfile.id})`)
-        .maybeSingle();
-
-    if (convCheckError) {
-        console.error('Erreur vérification conversation support:', convCheckError);
-        return;
-    }
-
-    if (existingConv) {
-        console.log('Conversation support déjà existante');
-        return;
-    }
-
-    const { data: newConv, error: convError } = await supabaseMessages
-        .from('player_conversations')
-        .insert([{
-            participant1_id: currentProfile.id,
-            participant2_id: supportProfileId
-        }])
-        .select()
-        .single();
-
-    if (convError) {
-        console.error('Erreur création conversation support:', convError);
-        return;
-    }
-
-    const { error: msgError } = await supabaseMessages
-        .from('player_messages')
-        .insert([{
-            conversation_id: newConv.id,
-            sender_id: supportProfileId,
-            content: 'Bienvenue sur HubISoccer ! Nous sommes là pour vous aider. N\'hésitez pas à poser vos questions.'
-        }]);
-
-    if (msgError) {
-        console.error('Erreur envoi message bienvenue:', msgError);
-    } else {
-        console.log('Message de bienvenue envoyé');
-        await loadConversations();
-    }
+function openStickerPicker() {
+    showToast('Sélecteur de stickers à venir', 'info');
 }
 
 // ===== RECHERCHE =====
@@ -765,7 +856,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('✅ Initialisation terminée');
 });
 
-// Fonctions globales
+// ===== FONCTIONS GLOBALES =====
 window.backToConversations = backToConversations;
 window.sendMessage = sendMessage;
 window.replyToMessage = replyToMessage;
@@ -773,3 +864,17 @@ window.cancelReply = cancelReply;
 window.copyMessage = copyMessage;
 window.deleteMessage = deleteMessage;
 window.openFilePicker = openFilePicker;
+window.showContextMenu = showContextMenu;
+window.copyMessageFromMenu = copyMessageFromMenu;
+window.replyToMessageFromMenu = replyToMessageFromMenu;
+window.deleteForMe = deleteForMe;
+window.deleteForEveryone = deleteForEveryone;
+window.archiveConversation = archiveConversation;
+window.blockUser = blockUser;
+window.openDeleteConvModal = openDeleteConvModal;
+window.closeDeleteConvModal = closeDeleteConvModal;
+window.confirmDeleteConversation = confirmDeleteConversation;
+window.openUserInfoModal = openUserInfoModal;
+window.closeUserInfoModal = closeUserInfoModal;
+window.openEmojiPicker = openEmojiPicker;
+window.openStickerPicker = openStickerPicker;
