@@ -505,3 +505,5 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     console.log('✅ Initialisation terminée');
 });
+
+// ===== Final =====
