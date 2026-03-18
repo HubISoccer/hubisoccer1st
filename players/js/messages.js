@@ -18,7 +18,7 @@ let attachments = [];
 let contextMenuMsgId = null;
 let archivedConversationIds = new Set();
 let blockedUserIds = new Set();
-let emojiPicker = null; // pour le sélecteur d'emojis
+let showArchived = false; // false = afficher conversations actives, true = archives
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -162,13 +162,9 @@ async function loadConversations() {
                 lastMessage: conv.last_message_content,
                 lastTime: conv.last_message_time,
                 unread: 0,
-                online: false
+                online: false,
+                isArchived: archivedConversationIds.has(conv.id)
             };
-        })
-        .filter(conv => {
-            if (archivedConversationIds.has(conv.id)) return false;
-            if (blockedUserIds.has(conv.contactId)) return false;
-            return true;
         });
 
     // Charger les statuts en ligne des contacts
@@ -196,7 +192,22 @@ function renderConversations() {
     const list = document.getElementById('conversationsList');
     if (!list) return;
 
-    const filtered = conversations.filter(conv =>
+    // Filtrer selon le mode (archives ou actives)
+    let filtered = conversations;
+    if (!showArchived) {
+        // Mode actives : exclure les archivées et les bloquées
+        filtered = conversations.filter(conv => {
+            if (conv.isArchived) return false;
+            if (blockedUserIds.has(conv.contactId)) return false;
+            return true;
+        });
+    } else {
+        // Mode archives : n'afficher que les archivées
+        filtered = conversations.filter(conv => conv.isArchived);
+    }
+
+    // Appliquer la recherche
+    filtered = filtered.filter(conv =>
         (conv.contactName || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -205,6 +216,7 @@ function renderConversations() {
         const isActive = conv.id === currentConversationId;
         const onlineClass = conv.online ? 'online' : '';
         const avatarUrl = conv.contactAvatar ? conv.contactAvatar : 'img/user-default.jpg';
+        const archiveIcon = conv.isArchived ? '<i class="fas fa-archive" style="margin-right:5px; color:var(--gray);"></i>' : '';
 
         return `
             <div class="conversation-item ${isActive ? 'active' : ''}" data-conv-id="${conv.id}">
@@ -213,7 +225,7 @@ function renderConversations() {
                 </div>
                 <div class="conversation-info">
                     <div class="conversation-name">
-                        <span>${conv.contactName}</span>
+                        <span>${archiveIcon}${conv.contactName}</span>
                         <span class="conversation-time">${lastTime}</span>
                     </div>
                     <div class="conversation-last">
@@ -285,6 +297,13 @@ async function selectConversation(convId) {
             .eq('id', conv.contactId)
             .single();
         currentContact = contactProfile;
+        // Mettre à jour le statut en ligne du contact
+        const { data: presence } = await supabaseMessages
+            .from('user_presence')
+            .select('online')
+            .eq('user_id', conv.contactId)
+            .maybeSingle();
+        if (presence) currentContact.online = presence.online;
     }
 
     renderConversations();
@@ -639,7 +658,19 @@ async function archiveConversation() {
         return;
     }
     if (existing) {
-        showToast('Conversation déjà archivée', 'info');
+        // Si déjà archivée, on peut proposer de désarchiver
+        const { error: deleteError } = await supabaseMessages
+            .from('archived_conversations')
+            .delete()
+            .eq('user_id', currentProfile.id)
+            .eq('conversation_id', currentConversationId);
+        if (deleteError) {
+            showToast('Erreur lors du désarchivage', 'error');
+        } else {
+            showToast('Conversation désarchivée', 'success');
+            backToConversations();
+            await loadConversations();
+        }
         return;
     }
     const { error } = await supabaseMessages
@@ -772,7 +803,7 @@ function renderChatHeader() {
             </div>
         </div>
         <div class="chat-actions">
-            <button class="chat-action-btn" onclick="archiveConversation()" title="Archiver"><i class="fas fa-archive"></i></button>
+            <button class="chat-action-btn" onclick="archiveConversation()" title="Archiver/Désarchiver"><i class="fas fa-archive"></i></button>
             <button class="chat-action-btn" onclick="blockUser()" title="Bloquer"><i class="fas fa-ban"></i></button>
             <button class="chat-action-btn danger" onclick="openDeleteConvModal()" title="Supprimer la conversation"><i class="fas fa-trash-alt"></i></button>
             <button class="chat-action-btn" onclick="openUserInfoModal()" title="Informations"><i class="fas fa-info-circle"></i></button>
@@ -814,14 +845,28 @@ function renderChatInput() {
     }
 }
 
-// ===== EMOJIS =====
+// ===== EMOJIS SIMPLES =====
 function openEmojiPicker() {
-    if (!emojiPicker) {
-        // Créer l'élément du picker
-        const picker = document.createElement('emoji-picker');
-        picker.classList.add('emoji-picker');
-        picker.addEventListener('emoji-click', event => {
-            const emoji = event.detail.unicode;
+    // Fermer le picker s'il est déjà ouvert
+    const existingPicker = document.getElementById('simple-emoji-picker');
+    if (existingPicker) {
+        existingPicker.remove();
+        return;
+    }
+
+    // Créer la popup
+    const picker = document.createElement('div');
+    picker.id = 'simple-emoji-picker';
+    picker.className = 'simple-emoji-picker';
+    
+    // Liste d'emojis courants
+    const emojis = ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '💀', '👻', '👽', '👾', '🤖', '💩', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'];
+    
+    emojis.forEach(emoji => {
+        const span = document.createElement('span');
+        span.textContent = emoji;
+        span.className = 'emoji-item';
+        span.onclick = () => {
             const textarea = document.getElementById('messageInput');
             if (textarea) {
                 const start = textarea.selectionStart;
@@ -830,14 +875,18 @@ function openEmojiPicker() {
                 textarea.dispatchEvent(new Event('input'));
             }
             picker.remove();
-            emojiPicker = null;
-        });
-        document.body.appendChild(picker);
-        emojiPicker = picker;
-    } else {
-        emojiPicker.remove();
-        emojiPicker = null;
-    }
+        };
+        picker.appendChild(span);
+    });
+
+    // Positionner la popup près du bouton
+    const btn = document.querySelector('.emoji-btn');
+    const rect = btn.getBoundingClientRect();
+    picker.style.position = 'absolute';
+    picker.style.top = (rect.bottom + window.scrollY) + 'px';
+    picker.style.left = (rect.left + window.scrollX) + 'px';
+    
+    document.body.appendChild(picker);
 }
 
 // ===== MESSAGE DE BIENVENUE AUTOMATIQUE (support) =====
@@ -932,6 +981,21 @@ function initSearch() {
             renderConversations();
         });
     }
+}
+
+// ===== BAScule Archives/Actives =====
+function toggleArchiveView() {
+    showArchived = !showArchived;
+    const btn = document.getElementById('archiveToggleBtn');
+    const span = document.getElementById('archiveToggleText');
+    if (showArchived) {
+        btn.classList.add('active');
+        span.textContent = 'Actives';
+    } else {
+        btn.classList.remove('active');
+        span.textContent = 'Archives';
+    }
+    renderConversations();
 }
 
 // ===== SOUSCRIPTION AUX NOUVELLES CONVERSATIONS =====
@@ -1095,6 +1159,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     initUserMenu();
     initSidebar();
     initLogout();
+
+    // Bouton de bascule archives
+    document.getElementById('archiveToggleBtn')?.addEventListener('click', toggleArchiveView);
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
