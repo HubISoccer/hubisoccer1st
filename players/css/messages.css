@@ -365,6 +365,19 @@
     color: var(--gray);
     border-radius: 5px;
 }
+.message-attachment {
+    margin-bottom: 5px;
+}
+.message-attachment img {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.message-attachment img:hover {
+    opacity: 0.9;
+}
 
 .chat-input-area {
     padding: 15px 20px;
@@ -402,6 +415,18 @@
 .cancel-reply:hover {
     background: rgba(0,0,0,0.05);
     color: var(--dark);
+}
+.attachment-preview {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.attachment-preview img {
+    max-width: 80px;
+    max-height: 80px;
+    border-radius: 5px;
+    border: 1px solid var(--light-gray);
 }
 .input-row {
     display: flex;
