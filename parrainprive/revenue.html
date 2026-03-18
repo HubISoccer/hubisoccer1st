@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mes dons | HubISoccer - Parrain</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Styles spécifiques autonomes -->
+    <link rel="stylesheet" href="css/parrain-revenue.css">
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- NAVBAR -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Espace Parrain</span>
+        </div>
+        <div class="nav-right">
+            <!-- Sélecteur de langue 24 langues -->
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+                <option value="lin">🇨🇬 Lingala</option>
+                <option value="wol">🇸🇳 Wolof</option>
+                <option value="diou">🇨🇮 Dioula</option>
+                <option value="ha">🇳🇬 Hausa</option>
+                <option value="sw">🇰🇪 Kiswahili</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="pt">🇵🇹 Português</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="ar">🇸🇦 العربية</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="ja">🇯🇵 日本語</option>
+                <option value="tr">🇹🇷 Türkçe</option>
+                <option value="ko">🇰🇷 한국어</option>
+                <option value="hi">🇮🇳 हिन्दी</option>
+                <option value="nl">🇳🇱 Nederlands</option>
+                <option value="pl">🇵🇱 Polski</option>
+                <option value="vi">🇻🇳 Tiếng Việt</option>
+            </select>
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="dashboard.html">Mon profil</a>
+                    <a href="support.html">Paramètres</a>
+                    <a href="#" id="languageLink">Langue (Français)</a>
+                    <a href="#" id="logoutLink">Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+        </div>
+    </nav>
+
+    <!-- Sidebar gauche -->
+    <div class="sidebar left-sidebar" id="leftSidebar">
+        <div class="sidebar-header">
+            <h3>Menu Parrain</h3>
+            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+            <a href="feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
+            <a href="verification.html"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
+            <a href="edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV</a>
+            <a href="certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
+            <a href="tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournois</a>
+            <a href="revenue.html" class="active"><i class="fas fa-coins"></i> Mes Dons</a>
+            <hr>
+            <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
+            <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Contenu principal -->
+    <main class="revenue-main">
+        <div class="revenue-container">
+            <h1 class="page-title"><i class="fas fa-coins"></i> Mes dons & portefeuille</h1>
+
+            <!-- Cartes de solde et actions -->
+            <div class="wallet-overview">
+                <div class="wallet-card">
+                    <div class="wallet-icon"><i class="fas fa-wallet"></i></div>
+                    <div class="wallet-info">
+                        <h3>Solde disponible</h3>
+                        <p class="wallet-balance" id="walletBalance">0 FCFA</p>
+                    </div>
+                    <div class="wallet-actions">
+                        <button class="btn-deposit" id="depositBtn"><i class="fas fa-plus-circle"></i> Déposer</button>
+                        <button class="btn-withdraw" id="withdrawBtn"><i class="fas fa-minus-circle"></i> Retirer</button>
+                    </div>
+                </div>
+                <div class="wallet-card small">
+                    <h4>Total reçu</h4>
+                    <p id="totalEarned">0 FCFA</p>
+                </div>
+                <div class="wallet-card small">
+                    <h4>Total dépensé</h4>
+                    <p id="totalSpent">0 FCFA</p>
+                </div>
+            </div>
+
+            <!-- Statistiques de bonus -->
+            <div class="bonus-stats">
+                <h2>Mes bonus</h2>
+                <div class="bonus-grid">
+                    <div class="bonus-item">
+                        <span class="bonus-icon"><i class="fas fa-hand-holding-heart"></i></span>
+                        <span class="bonus-label">Dons reçus</span>
+                        <span class="bonus-value" id="bonusDons">0</span>
+                    </div>
+                    <div class="bonus-item">
+                        <span class="bonus-icon"><i class="fas fa-users"></i></span>
+                        <span class="bonus-label">Filleuls</span>
+                        <span class="bonus-value" id="bonusFilleuls">0</span>
+                    </div>
+                    <div class="bonus-item">
+                        <span class="bonus-icon"><i class="fas fa-star"></i></span>
+                        <span class="bonus-label">Parrainages</span>
+                        <span class="bonus-value" id="bonusParrainages">0</span>
+                    </div>
+                    <div class="bonus-item">
+                        <span class="bonus-icon"><i class="fas fa-gift"></i></span>
+                        <span class="bonus-label">Primes diverses</span>
+                        <span class="bonus-value" id="bonusPrimes">0</span>
+                    </div>
+                </div>
+
+                <!-- Section bonus d'inscription -->
+                <div class="bonus-withdraw">
+                    <p class="bonus-inscription-label">
+                        <i class="fas fa-gift"></i> Bonus d'inscription : <strong id="bonusInscription">5000 FCFA (0/50 abonnés)</strong>
+                    </p>
+                    <button class="btn-withdraw-bonus" id="withdrawBonusBtn" disabled>
+                        <i class="fas fa-arrow-right"></i> Retirer le bonus
+                    </button>
+                    <p class="bonus-info">Vous devez avoir 50 abonnés pour retirer votre bonus.</p>
+                </div>
+            </div>
+
+            <!-- Historique des transactions -->
+            <div class="transactions">
+                <h2>Historique des transactions</h2>
+                <div class="transactions-list" id="transactionsList">
+                    <!-- Les transactions seront chargées dynamiquement -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODALE DE DÉPÔT -->
+    <div id="depositModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Effectuer un dépôt</h2>
+                <span class="close-modal" onclick="closeDepositModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="depositForm">
+                    <div class="form-group">
+                        <label>Montant (FCFA)</label>
+                        <input type="number" id="depositAmount" min="100" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Mode de paiement</label>
+                        <select id="depositMethod">
+                            <option value="mobile">Mobile Money</option>
+                            <option value="card">Carte bancaire</option>
+                            <option value="wallet">Portefeuille HubISoccer</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-submit">Valider le dépôt</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE RETRAIT -->
+    <div id="withdrawModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Effectuer un retrait</h2>
+                <span class="close-modal" onclick="closeWithdrawModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="withdrawForm">
+                    <div class="form-group">
+                        <label>Montant (FCFA)</label>
+                        <input type="number" id="withdrawAmount" min="100" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Méthode de retrait</label>
+                        <select id="withdrawMethod">
+                            <option value="mobile">Mobile Money</option>
+                            <option value="bank">Virement bancaire</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Numéro/Nom du bénéficiaire</label>
+                        <input type="text" id="withdrawRecipient" required>
+                    </div>
+                    <button type="submit" class="btn-submit">Demander le retrait</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/parrain-revenue.js"></script>
+</body>
+</html>
