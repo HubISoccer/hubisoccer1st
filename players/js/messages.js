@@ -8,16 +8,16 @@ let currentUser = null;
 let currentProfile = null;
 let conversations = [];
 let currentConversationId = null;
-let currentContact = null; // objet contact pour la conversation en cours
+let currentContact = null;
 let messagesSubscription = null;
 let conversationsSubscription = null;
 let replyingTo = null;
 let searchTerm = '';
 let targetUserId = null;
 let attachments = [];
-let contextMenuMsgId = null; // pour le menu contextuel
-let archivedConversationIds = new Set(); // IDs des conversations archivées par l'utilisateur
-let blockedUserIds = new Set(); // IDs des utilisateurs bloqués par l'utilisateur
+let contextMenuMsgId = null;
+let archivedConversationIds = new Set();
+let blockedUserIds = new Set();
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -129,9 +129,7 @@ async function loadConversations() {
             };
         })
         .filter(conv => {
-            // Exclure les conversations archivées
             if (archivedConversationIds.has(conv.id)) return false;
-            // Exclure les conversations avec un utilisateur bloqué
             if (blockedUserIds.has(conv.contactId)) return false;
             return true;
         });
@@ -152,11 +150,12 @@ function renderConversations() {
         const lastTime = conv.lastTime ? new Date(conv.lastTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
         const isActive = conv.id === currentConversationId;
         const onlineClass = conv.online ? 'online' : '';
+        const avatarUrl = conv.contactAvatar ? conv.contactAvatar : 'img/user-default.jpg';
 
         return `
             <div class="conversation-item ${isActive ? 'active' : ''}" data-conv-id="${conv.id}">
                 <div class="conversation-avatar ${onlineClass}">
-                    <img src="${conv.contactAvatar || 'img/user-default.jpg'}" alt="Avatar">
+                    <img src="${avatarUrl}" alt="Avatar">
                 </div>
                 <div class="conversation-info">
                     <div class="conversation-name">
@@ -224,7 +223,6 @@ async function selectConversation(convId) {
     if (messagesSubscription) messagesSubscription.unsubscribe();
     currentConversationId = convId;
 
-    // Récupérer le contact
     const conv = conversations.find(c => c.id === convId);
     if (conv) {
         const { data: contactProfile } = await supabaseMessages
@@ -434,7 +432,6 @@ async function insertMessage(conversationId, content, attachmentUrl) {
         return;
     }
 
-    // Mettre à jour la conversation avec le dernier message
     const lastContent = attachmentUrl ? '📷 Image' : content;
     await supabaseMessages
         .from('player_conversations')
@@ -464,7 +461,6 @@ function openFilePicker() {
 function handleFileSelect(e) {
     const files = e.target.files;
     if (files.length === 0) return;
-    // Afficher une prévisualisation
     let preview = document.querySelector('.attachment-preview');
     if (!preview) {
         preview = document.createElement('div');
@@ -492,7 +488,6 @@ function handleFileSelect(e) {
 async function deleteMessage(msgId, forEveryone = false) {
     if (!confirm('Supprimer ce message ?')) return;
     if (forEveryone) {
-        // Supprimer pour tous (seulement si l'utilisateur est l'expéditeur)
         const { error } = await supabaseMessages
             .from('player_messages')
             .delete()
@@ -504,8 +499,6 @@ async function deleteMessage(msgId, forEveryone = false) {
             await loadMessages(currentConversationId);
         }
     } else {
-        // Supprimer uniquement pour l'utilisateur : on pourrait marquer comme supprimé ou cacher côté client
-        // Pour l'instant, on cache simplement l'élément DOM
         const msgElement = document.querySelector(`[data-msg-id="${msgId}"]`);
         if (msgElement) msgElement.remove();
         showToast('Message supprimé (visible seulement pour vous)', 'success');
@@ -536,18 +529,15 @@ function showContextMenu(event, msgId) {
     const senderId = msgElement?.dataset.sender;
     const isMe = senderId == currentProfile.id;
 
-    // Afficher ou masquer l'option "Supprimer pour tous" si c'est l'expéditeur
     const deleteForEveryoneOption = document.getElementById('deleteForEveryoneOption');
     if (deleteForEveryoneOption) {
         deleteForEveryoneOption.style.display = isMe ? 'block' : 'none';
     }
 
-    // Positionner le menu près du clic
     menu.style.left = event.pageX + 'px';
     menu.style.top = event.pageY + 'px';
     menu.style.display = 'block';
 
-    // Fermer au clic suivant
     document.addEventListener('click', function closeMenu(e) {
         if (!menu.contains(e.target)) {
             menu.style.display = 'none';
@@ -610,9 +600,7 @@ async function archiveConversation() {
         showToast('Erreur lors de l\'archivage', 'error');
     } else {
         showToast('Conversation archivée', 'success');
-        // Revenir à la liste après archivage
         backToConversations();
-        // Recharger les conversations pour qu'elle disparaisse
         await loadConversations();
     }
 }
@@ -647,7 +635,6 @@ async function blockUser() {
         showToast('Erreur lors du blocage', 'error');
     } else {
         showToast(`Utilisateur ${currentContact.nom_complet} bloqué`, 'success');
-        // Revenir à la liste et recharger
         backToConversations();
         await loadConversations();
     }
@@ -661,7 +648,6 @@ function closeDeleteConvModal() {
 }
 async function confirmDeleteConversation() {
     if (!currentConversationId) return;
-    // Supprimer tous les messages puis la conversation
     const { error: msgError } = await supabaseMessages
         .from('player_messages')
         .delete()
@@ -680,7 +666,6 @@ async function confirmDeleteConversation() {
     }
     showToast('Conversation supprimée', 'success');
     closeDeleteConvModal();
-    // Revenir à la liste
     currentConversationId = null;
     currentContact = null;
     document.querySelector('.conversations-panel').classList.remove('hide');
@@ -691,9 +676,10 @@ async function confirmDeleteConversation() {
 function openUserInfoModal() {
     if (!currentContact) return;
     const content = document.getElementById('userInfoContent');
+    const avatarUrl = currentContact.avatar_url ? currentContact.avatar_url : 'img/user-default.jpg';
     content.innerHTML = `
         <div style="text-align: center;">
-            <img src="${currentContact.avatar_url || 'img/user-default.jpg'}" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 15px;">
+            <img src="${avatarUrl}" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 15px;">
             <h3>${currentContact.nom_complet}</h3>
             <p>@${currentContact.hub_id || 'inconnu'}</p>
             <p>${currentContact.bio || 'Aucune bio'}</p>
@@ -715,16 +701,17 @@ function renderChatHeader() {
     const header = document.getElementById('chatHeader');
     if (!header) return;
     if (!currentContact) {
-        header.innerHTML = ''; // Aucune conversation sélectionnée
+        header.innerHTML = '';
         return;
     }
     const onlineClass = currentContact.online ? 'online' : '';
+    const avatarUrl = currentContact.avatar_url ? currentContact.avatar_url : 'img/user-default.jpg';
     header.innerHTML = `
         <div class="chat-header-left">
             <button class="back-btn" onclick="backToConversations()"><i class="fas fa-arrow-left"></i></button>
             <div class="chat-contact">
                 <div class="chat-contact-avatar ${onlineClass}">
-                    <img src="${currentContact.avatar_url || 'img/user-default.jpg'}" alt="Avatar">
+                    <img src="${avatarUrl}" alt="Avatar">
                 </div>
                 <div class="chat-contact-info">
                     <h3>${currentContact.nom_complet}</h3>
@@ -777,7 +764,6 @@ function renderChatInput() {
 
 // ===== EMOJIS ET STICKERS (à implémenter) =====
 function openEmojiPicker() {
-    // Pour l'instant, on ouvre un simple sélecteur (à améliorer)
     showToast('Sélecteur d\'emojis à venir', 'info');
 }
 
@@ -973,7 +959,7 @@ function initLogout() {
 function getTargetUserIdFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
     const to = urlParams.get('to');
-    return to; // on retourne la chaîne brute (peut être un UUID ou un nombre)
+    return to;
 }
 async function getPlayerProfileIdFromUUID(uuid) {
     const { data, error } = await supabaseMessages
@@ -1006,11 +992,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     subscribeToNewConversations();
 
     if (targetUserId) {
-        // Vérifier si c'est un UUID (contient des lettres et des tirets) ou un nombre
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUserId);
         let actualId = targetUserId;
         if (isUUID) {
-            // Convertir l'UUID en player_profiles.id
             actualId = await getPlayerProfileIdFromUUID(targetUserId);
             if (!actualId) {
                 showToast('Utilisateur cible introuvable', 'error');
