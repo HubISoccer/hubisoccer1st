@@ -13,6 +13,7 @@ let conversationsSubscription = null;
 let replyingTo = null;
 let searchTerm = '';
 let targetUserId = null;
+let attachments = []; // Pour stocker les fichiers sélectionnés
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -95,7 +96,6 @@ async function loadConversations() {
 
     conversations = data.map(conv => {
         const contact = (conv.participant1.id === currentProfile.id) ? conv.participant2 : conv.participant1;
-        // Sécuriser le nom du contact
         const contactName = contact?.nom_complet || 'Utilisateur inconnu';
         return {
             id: conv.id,
@@ -229,9 +229,10 @@ async function loadMessages(convId) {
             id,
             sender_id,
             content,
+            attachment_url,
             reply_to_id,
             created_at,
-            reply:reply_to_id (content)
+            reply:reply_to_id (content, attachment_url)
         `)
         .eq('conversation_id', convId)
         .order('created_at', { ascending: true });
@@ -252,11 +253,21 @@ function renderMessages(messages) {
     messages.forEach(msg => {
         const isMe = msg.sender_id === currentProfile.id;
         const time = new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        const replyQuote = msg.reply ? `<div class="reply-quote">${msg.reply.content}</div>` : '';
+        let replyHtml = '';
+        if (msg.reply) {
+            const replyContent = msg.reply.content ? `<span>${msg.reply.content}</span>` : '';
+            const replyAttachment = msg.reply.attachment_url ? `<i class="fas fa-image"></i> Image` : '';
+            replyHtml = `<div class="reply-quote">${replyContent} ${replyAttachment}</div>`;
+        }
+        let attachmentHtml = '';
+        if (msg.attachment_url) {
+            attachmentHtml = `<div class="message-attachment"><img src="${msg.attachment_url}" alt="Image" onclick="window.open('${msg.attachment_url}', '_blank')"></div>`;
+        }
         html += `
             <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}">
-                ${replyQuote}
-                <div class="message-content">${msg.content}</div>
+                ${replyHtml}
+                ${attachmentHtml}
+                <div class="message-content">${msg.content || ''}</div>
                 <span class="message-time">${time}</span>
                 <div class="message-actions">
                     <button class="message-action" onclick="replyToMessage(${msg.id})"><i class="fas fa-reply"></i></button>
@@ -276,11 +287,20 @@ function appendMessage(msg) {
     if (!area) return;
     const isMe = msg.sender_id === currentProfile.id;
     const time = new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    const replyHtml = msg.reply_to_id ? `<div class="reply-quote">Réponse à un message</div>` : '';
+    let replyHtml = '';
+    if (msg.reply_to_id) {
+        // On n'a pas le contenu du message original dans le payload, on affiche juste une indication
+        replyHtml = `<div class="reply-quote">Réponse à un message</div>`;
+    }
+    let attachmentHtml = '';
+    if (msg.attachment_url) {
+        attachmentHtml = `<div class="message-attachment"><img src="${msg.attachment_url}" alt="Image" onclick="window.open('${msg.attachment_url}', '_blank')"></div>`;
+    }
     const msgHtml = `
         <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}">
             ${replyHtml}
-            <div class="message-content">${msg.content}</div>
+            ${attachmentHtml}
+            <div class="message-content">${msg.content || ''}</div>
             <span class="message-time">${time}</span>
             <div class="message-actions">
                 <button class="message-action" onclick="replyToMessage(${msg.id})"><i class="fas fa-reply"></i></button>
@@ -296,18 +316,24 @@ function appendMessage(msg) {
 function updateConversationLastMessage(convId, msg) {
     const conv = conversations.find(c => c.id === convId);
     if (conv) {
-        conv.lastMessage = msg.content;
+        conv.lastMessage = msg.content || (msg.attachment_url ? '📷 Image' : '');
         conv.lastTime = msg.created_at;
         renderConversations();
     }
 }
 
-// ===== ENVOI D'UN MESSAGE =====
+// ===== ENVOI D'UN MESSAGE (avec upload) =====
 async function sendMessage(e) {
     e.preventDefault();
     const input = document.getElementById('messageInput');
     const content = input.value.trim();
-    if (!content) return;
+    const fileInput = document.getElementById('fileInput');
+    const files = fileInput ? fileInput.files : [];
+
+    if (!content && files.length === 0 && attachments.length === 0) {
+        showToast('Veuillez écrire un message ou joindre un fichier', 'warning');
+        return;
+    }
 
     const conv = conversations.find(c => c.id === currentConversationId);
     if (!conv) {
@@ -315,15 +341,53 @@ async function sendMessage(e) {
         return;
     }
 
-    console.log('Envoi message:', content);
+    // Gérer les fichiers (images) sélectionnés
+    let attachmentUrls = [];
+    if (files.length > 0) {
+        for (let file of files) {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${currentProfile.id}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const bucket = 'message-attachments';
+            const { error: uploadError } = await supabaseMessages.storage
+                .from(bucket)
+                .upload(fileName, file, { cacheControl: '3600', upsert: false });
+            if (uploadError) {
+                console.error('Erreur upload:', uploadError);
+                showToast('Erreur lors de l\'upload de l\'image', 'error');
+                return;
+            }
+            const { data: urlData } = supabaseMessages.storage.from(bucket).getPublicUrl(fileName);
+            attachmentUrls.push(urlData.publicUrl);
+        }
+    }
 
+    // Envoyer un message pour chaque fichier (ou un seul message texte)
+    if (attachmentUrls.length > 0) {
+        for (let url of attachmentUrls) {
+            await insertMessage(conv.id, content, url);
+        }
+    } else {
+        await insertMessage(conv.id, content, null);
+    }
+
+    // Réinitialiser
+    input.value = '';
+    input.style.height = 'auto';
+    if (fileInput) fileInput.value = '';
+    attachments = [];
+    document.querySelector('.attachment-preview')?.remove();
+    if (replyingTo) cancelReply();
+}
+
+async function insertMessage(conversationId, content, attachmentUrl) {
     const { data: newMsg, error: msgError } = await supabaseMessages
         .from('player_messages')
         .insert({
-            conversation_id: currentConversationId,
+            conversation_id: conversationId,
             sender_id: currentProfile.id,
             content: content,
-            reply_to_id: replyingTo ? replyingTo.id : null
+            reply_to_id: replyingTo ? replyingTo.id : null,
+            attachment_url: attachmentUrl
         })
         .select()
         .single();
@@ -334,17 +398,58 @@ async function sendMessage(e) {
         return;
     }
 
+    // Mettre à jour la conversation avec le dernier message
+    const lastContent = attachmentUrl ? '📷 Image' : content;
     await supabaseMessages
         .from('player_conversations')
         .update({
-            last_message_content: content,
+            last_message_content: lastContent,
             last_message_time: new Date().toISOString()
         })
-        .eq('id', currentConversationId);
+        .eq('id', conversationId);
+}
 
-    input.value = '';
-    input.style.height = 'auto';
-    if (replyingTo) cancelReply();
+// ===== GESTION DES FICHIERS =====
+function openFilePicker() {
+    let fileInput = document.getElementById('fileInput');
+    if (!fileInput) {
+        fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.id = 'fileInput';
+        fileInput.accept = 'image/*';
+        fileInput.style.display = 'none';
+        fileInput.multiple = true;
+        document.body.appendChild(fileInput);
+        fileInput.addEventListener('change', handleFileSelect);
+    }
+    fileInput.click();
+}
+
+function handleFileSelect(e) {
+    const files = e.target.files;
+    if (files.length === 0) return;
+    // Afficher une prévisualisation
+    let preview = document.querySelector('.attachment-preview');
+    if (!preview) {
+        preview = document.createElement('div');
+        preview.className = 'attachment-preview';
+        document.getElementById('chatInputArea').appendChild(preview);
+    }
+    preview.innerHTML = '';
+    for (let file of files) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const img = document.createElement('img');
+            img.src = ev.target.result;
+            img.style.maxWidth = '100px';
+            img.style.maxHeight = '100px';
+            img.style.margin = '5px';
+            img.style.borderRadius = '5px';
+            preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+    }
+    showToast(`${files.length} fichier(s) sélectionné(s)`, 'info');
 }
 
 // ===== SUPPRESSION D'UN MESSAGE =====
@@ -377,6 +482,7 @@ function cancelReply() {
     renderChatInput();
 }
 
+// ===== RENDU DE LA ZONE DE SAISIE =====
 function renderChatInput() {
     const area = document.getElementById('chatInputArea');
     if (!area) return;
@@ -390,7 +496,7 @@ function renderChatInput() {
         <form class="message-form" id="messageForm" onsubmit="sendMessage(event)">
             ${replyIndicator}
             <div class="input-row">
-                <button type="button" class="attach-btn" onclick="showToast('Fonction à venir','info')"><i class="fas fa-paperclip"></i></button>
+                <button type="button" class="attach-btn" onclick="openFilePicker()"><i class="fas fa-paperclip"></i></button>
                 <div class="message-input-wrapper">
                     <textarea class="message-input" id="messageInput" placeholder="Votre message..." rows="1"></textarea>
                 </div>
@@ -421,7 +527,7 @@ function backToConversations() {
     document.querySelector('.chat-panel').classList.add('hide');
 }
 
-// ===== MESSAGE DE BIENVENUE AUTOMATIQUE =====
+// ===== MESSAGE DE BIENVENUE AUTOMATIQUE (support) =====
 async function ensureSupportConversation() {
     console.log('Création conversation support...');
     let supportProfileId;
@@ -526,7 +632,6 @@ function subscribeToNewConversations() {
             filter: `participant1_id=eq.${currentProfile.id} OR participant2_id=eq.${currentProfile.id}`
         }, async (payload) => {
             console.log('Nouvelle conversation créée', payload.new);
-            // Recharger les conversations pour mettre à jour la liste
             await loadConversations();
         })
         .subscribe();
@@ -628,13 +733,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadConversations();
     await ensureSupportConversation();
 
-    // Souscrire aux nouvelles conversations
     subscribeToNewConversations();
 
     if (targetUserId && targetUserId !== currentProfile.id) {
         const convId = await findOrCreateConversationWithUser(targetUserId);
         if (convId) {
-            await loadConversations(); // recharger pour inclure la nouvelle
+            await loadConversations();
             await selectConversation(convId);
         } else {
             showToast('Impossible de créer la conversation', 'error');
@@ -668,6 +772,4 @@ window.replyToMessage = replyToMessage;
 window.cancelReply = cancelReply;
 window.copyMessage = copyMessage;
 window.deleteMessage = deleteMessage;
-window.attachFile = () => showToast('Fonction à venir', 'info');
-window.openEmoji = () => showToast('Fonction à venir', 'info');
-window.openSticker = () => showToast('Fonction à venir', 'info');
+window.openFilePicker = openFilePicker;
