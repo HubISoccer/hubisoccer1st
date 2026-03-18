@@ -180,16 +180,23 @@ function renderTournamentList() {
     });
 }
 
-// ===== RENDU DU TOURNOI EN DIRECT =====
+// ===== RENDU DU TOURNOI EN DIRECT (corrigé pour éviter les erreurs YouTube) =====
 function renderLiveTournament() {
     if (!currentTournament) return;
 
     const container = document.getElementById('liveTournament');
-    const streamUrl = currentTournament.stream_url || 'https://www.youtube.com/embed/dQw4w9WgXcQ';
+    
+    // Gestion de la vidéo : si pas de stream, afficher un placeholder
+    let videoHtml = '';
+    if (currentTournament.stream_url) {
+        videoHtml = `<iframe src="${currentTournament.stream_url}" frameborder="0" allowfullscreen></iframe>`;
+    } else {
+        videoHtml = '<div class="no-stream">Aucun stream disponible pour le moment</div>';
+    }
 
     container.innerHTML = `
         <div class="tournament-video">
-            <iframe src="${streamUrl}" frameborder="0" allowfullscreen></iframe>
+            ${videoHtml}
         </div>
         <div class="tournament-info">
             <h2 class="tournament-name">${currentTournament.name}</h2>
@@ -505,5 +512,3 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     console.log('✅ Initialisation terminée');
 });
-
-// ===== Final =====
