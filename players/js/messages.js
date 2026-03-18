@@ -16,6 +16,8 @@ let searchTerm = '';
 let targetUserId = null;
 let attachments = [];
 let contextMenuMsgId = null; // pour le menu contextuel
+let archivedConversationIds = new Set(); // IDs des conversations archivées par l'utilisateur
+let blockedUserIds = new Set(); // IDs des utilisateurs bloqués par l'utilisateur
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -77,6 +79,21 @@ async function loadProfile() {
 // ===== CHARGEMENT DES CONVERSATIONS =====
 async function loadConversations() {
     console.log('Chargement des conversations...');
+
+    // Récupérer les IDs des conversations archivées
+    const { data: archivedData } = await supabaseMessages
+        .from('archived_conversations')
+        .select('conversation_id')
+        .eq('user_id', currentProfile.id);
+    archivedConversationIds = new Set(archivedData?.map(a => a.conversation_id) || []);
+
+    // Récupérer les IDs des utilisateurs bloqués
+    const { data: blockedData } = await supabaseMessages
+        .from('blocked_users')
+        .select('blocked_id')
+        .eq('blocker_id', currentProfile.id);
+    blockedUserIds = new Set(blockedData?.map(b => b.blocked_id) || []);
+
     const { data, error } = await supabaseMessages
         .from('player_conversations')
         .select(`
@@ -96,20 +113,28 @@ async function loadConversations() {
         return;
     }
 
-    conversations = data.map(conv => {
-        const contact = (conv.participant1.id === currentProfile.id) ? conv.participant2 : conv.participant1;
-        const contactName = contact?.nom_complet || 'Utilisateur inconnu';
-        return {
-            id: conv.id,
-            contactId: contact?.id,
-            contactName: contactName,
-            contactAvatar: contact?.avatar_url,
-            lastMessage: conv.last_message_content,
-            lastTime: conv.last_message_time,
-            unread: 0,
-            online: false
-        };
-    });
+    conversations = data
+        .map(conv => {
+            const contact = (conv.participant1.id === currentProfile.id) ? conv.participant2 : conv.participant1;
+            const contactName = contact?.nom_complet || 'Utilisateur inconnu';
+            return {
+                id: conv.id,
+                contactId: contact?.id,
+                contactName: contactName,
+                contactAvatar: contact?.avatar_url,
+                lastMessage: conv.last_message_content,
+                lastTime: conv.last_message_time,
+                unread: 0,
+                online: false
+            };
+        })
+        .filter(conv => {
+            // Exclure les conversations archivées
+            if (archivedConversationIds.has(conv.id)) return false;
+            // Exclure les conversations avec un utilisateur bloqué
+            if (blockedUserIds.has(conv.contactId)) return false;
+            return true;
+        });
 
     renderConversations();
 }
@@ -556,16 +581,75 @@ function deleteForEveryone() {
 }
 
 // ===== ACTIONS SUR LA CONVERSATION =====
-function archiveConversation() {
-    // Implémenter l'archivage (table séparée)
-    showToast('Fonctionnalité d\'archivage à venir', 'info');
+async function archiveConversation() {
+    if (!currentConversationId || !currentProfile) return;
+    // Vérifier si déjà archivée
+    const { data: existing, error: checkError } = await supabaseMessages
+        .from('archived_conversations')
+        .select('id')
+        .eq('user_id', currentProfile.id)
+        .eq('conversation_id', currentConversationId)
+        .maybeSingle();
+    if (checkError) {
+        console.error('Erreur vérification archivage:', checkError);
+        showToast('Erreur lors de l\'archivage', 'error');
+        return;
+    }
+    if (existing) {
+        showToast('Conversation déjà archivée', 'info');
+        return;
+    }
+    const { error } = await supabaseMessages
+        .from('archived_conversations')
+        .insert([{
+            user_id: currentProfile.id,
+            conversation_id: currentConversationId
+        }]);
+    if (error) {
+        console.error('Erreur archivage:', error);
+        showToast('Erreur lors de l\'archivage', 'error');
+    } else {
+        showToast('Conversation archivée', 'success');
+        // Revenir à la liste après archivage
+        backToConversations();
+        // Recharger les conversations pour qu'elle disparaisse
+        await loadConversations();
+    }
 }
 
-function blockUser() {
-    if (!currentContact) return;
-    if (confirm(`Bloquer ${currentContact.nom_complet} ? Vous ne recevrez plus de messages de sa part.`)) {
-        // Implémenter le blocage
-        showToast('Fonctionnalité de blocage à venir', 'info');
+async function blockUser() {
+    if (!currentContact || !currentProfile) return;
+    if (!confirm(`Bloquer ${currentContact.nom_complet} ? Vous ne recevrez plus de messages de sa part.`)) return;
+    // Vérifier si déjà bloqué
+    const { data: existing, error: checkError } = await supabaseMessages
+        .from('blocked_users')
+        .select('id')
+        .eq('blocker_id', currentProfile.id)
+        .eq('blocked_id', currentContact.id)
+        .maybeSingle();
+    if (checkError) {
+        console.error('Erreur vérification blocage:', checkError);
+        showToast('Erreur lors du blocage', 'error');
+        return;
+    }
+    if (existing) {
+        showToast('Cet utilisateur est déjà bloqué', 'info');
+        return;
+    }
+    const { error } = await supabaseMessages
+        .from('blocked_users')
+        .insert([{
+            blocker_id: currentProfile.id,
+            blocked_id: currentContact.id
+        }]);
+    if (error) {
+        console.error('Erreur blocage:', error);
+        showToast('Erreur lors du blocage', 'error');
+    } else {
+        showToast(`Utilisateur ${currentContact.nom_complet} bloqué`, 'success');
+        // Revenir à la liste et recharger
+        backToConversations();
+        await loadConversations();
     }
 }
 
@@ -972,7 +1056,6 @@ window.backToConversations = backToConversations;
 window.sendMessage = sendMessage;
 window.replyToMessage = replyToMessage;
 window.cancelReply = cancelReply;
-// window.copyMessage = copyMessage; // ligne supprimée car copyMessage n'existe pas
 window.deleteMessage = deleteMessage;
 window.openFilePicker = openFilePicker;
 window.showContextMenu = showContextMenu;
