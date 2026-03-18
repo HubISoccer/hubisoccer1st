@@ -18,6 +18,7 @@ let attachments = [];
 let contextMenuMsgId = null;
 let archivedConversationIds = new Set();
 let blockedUserIds = new Set();
+let emojiPicker = null; // pour le sélecteur d'emojis
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -73,7 +74,6 @@ async function loadProfile() {
     currentProfile = data;
     document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
     document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
-    // Démarrer le suivi de présence
     startPresenceTracking();
     return currentProfile;
 }
@@ -799,7 +799,7 @@ function renderChatInput() {
                     <textarea class="message-input" id="messageInput" placeholder="Votre message..." rows="1"></textarea>
                 </div>
                 <button type="button" class="emoji-btn" onclick="openEmojiPicker()"><i class="fas fa-smile"></i></button>
-                <button type="button" class="sticker-btn" onclick="openStickerPicker()"><i class="fas fa-sticker-mule"></i></button>
+                <button type="button" class="attach-btn" onclick="openFilePicker()" title="Joindre une image"><i class="fas fa-image"></i></button>
                 <button type="submit" class="send-btn"><i class="fas fa-paper-plane"></i></button>
             </div>
         </form>
@@ -814,13 +814,30 @@ function renderChatInput() {
     }
 }
 
-// ===== EMOJIS ET STICKERS (à implémenter) =====
+// ===== EMOJIS =====
 function openEmojiPicker() {
-    showToast('Sélecteur d\'emojis à venir', 'info');
-}
-
-function openStickerPicker() {
-    showToast('Sélecteur de stickers à venir', 'info');
+    if (!emojiPicker) {
+        // Créer l'élément du picker
+        const picker = document.createElement('emoji-picker');
+        picker.classList.add('emoji-picker');
+        picker.addEventListener('emoji-click', event => {
+            const emoji = event.detail.unicode;
+            const textarea = document.getElementById('messageInput');
+            if (textarea) {
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                textarea.value = textarea.value.substring(0, start) + emoji + textarea.value.substring(end);
+                textarea.dispatchEvent(new Event('input'));
+            }
+            picker.remove();
+            emojiPicker = null;
+        });
+        document.body.appendChild(picker);
+        emojiPicker = picker;
+    } else {
+        emojiPicker.remove();
+        emojiPicker = null;
+    }
 }
 
 // ===== MESSAGE DE BIENVENUE AUTOMATIQUE (support) =====
@@ -1107,4 +1124,3 @@ window.confirmDeleteConversation = confirmDeleteConversation;
 window.openUserInfoModal = openUserInfoModal;
 window.closeUserInfoModal = closeUserInfoModal;
 window.openEmojiPicker = openEmojiPicker;
-window.openStickerPicker = openStickerPicker;
