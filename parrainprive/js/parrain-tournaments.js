@@ -11,6 +11,8 @@ let currentTournament = null;
 let messages = [];
 let starredPlayers = new Set(); // IDs des joueurs (player_tournament_id)
 let messagesSubscription = null;
+// Cache pour les profils (évite les requêtes répétées)
+const profileCache = new Map();
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -54,13 +56,13 @@ async function checkSession() {
     }
 }
 
-// ===== CHARGEMENT DU PROFIL PARRAIN =====
+// ===== CHARGEMENT DU PROFIL PARRAIN (depuis profiles) =====
 async function loadParrainProfile() {
     try {
         const { data, error } = await supabaseParrainPrive
-            .from('parrain_profiles')
+            .from('profiles')
             .select('*')
-            .eq('user_id', currentUser.id)
+            .eq('id', currentUser.id)
             .single();
 
         if (error) {
@@ -68,7 +70,7 @@ async function loadParrainProfile() {
             return null;
         }
         currentParrain = data;
-        document.getElementById('userName').textContent = `${data.first_name} ${data.last_name}`;
+        document.getElementById('userName').textContent = data.full_name || 'Parrain';
         document.getElementById('userAvatar').src = data.avatar_url || 'img/user-default.jpg';
         return currentParrain;
     } catch (err) {
@@ -86,53 +88,55 @@ async function loadTournaments() {
 
     if (error) {
         console.error('Erreur chargement tournois:', error);
+        showToast('Erreur lors du chargement des tournois', 'error');
         return;
     }
 
     tournaments = data || [];
-    if (tournaments.length > 0) {
-        currentTournament = tournaments[0];
-        await loadTournamentDetails(currentTournament.id);
-        await loadStarredPlayers(currentTournament.id);
+    if (tournaments.length === 0) {
+        showToast('Aucun tournoi disponible', 'info');
+        return;
     }
+
+    currentTournament = tournaments[0];
+    await loadTournamentDetails(currentTournament.id);
+    await loadStarredPlayers(currentTournament.id);
     renderTournamentList();
     renderLiveTournament();
 }
 
 // ===== CHARGEMENT DES DÉTAILS D'UN TOURNOI (joueurs) =====
 async function loadTournamentDetails(tournamentId) {
-    const { data: playersData, error } = await supabaseParrainPrive
-        .from('tournament_players')
-        .select('*')
-        .eq('tournament_id', tournamentId);
+    try {
+        // Récupérer tous les joueurs du tournoi avec leurs profils en une seule requête
+        const { data: playersData, error } = await supabaseParrainPrive
+            .from('tournament_players')
+            .select(`
+                id,
+                position,
+                jersey_number,
+                player_id,
+                profiles:player_id (full_name, avatar_url)
+            `)
+            .eq('tournament_id', tournamentId);
 
-    if (error) {
+        if (error) throw error;
+
+        currentTournament = {
+            ...currentTournament,
+            players: (playersData || []).map(p => ({
+                id: p.id,
+                playerId: p.player_id,
+                name: p.profiles?.full_name || 'Joueur inconnu',
+                avatar: p.profiles?.avatar_url,
+                position: p.position,
+                jersey_number: p.jersey_number
+            }))
+        };
+    } catch (error) {
         console.error('Erreur chargement joueurs:', error);
-        return;
+        showToast('Erreur lors du chargement des joueurs', 'error');
     }
-
-    const players = [];
-    for (const p of playersData || []) {
-        const { data: playerProfile } = await supabaseParrainPrive
-            .from('player_profiles')
-            .select('id, first_name, last_name, avatar_url')
-            .eq('id', p.player_id)
-            .single();
-
-        players.push({
-            id: p.id,
-            playerId: p.player_id,
-            name: playerProfile ? `${playerProfile.first_name} ${playerProfile.last_name}` : 'Joueur inconnu',
-            avatar: playerProfile?.avatar_url,
-            position: p.position,
-            jersey_number: p.jersey_number
-        });
-    }
-
-    currentTournament = {
-        ...currentTournament,
-        players: players
-    };
 }
 
 // ===== CHARGEMENT DES ÉTOILES (favoris) =====
@@ -155,6 +159,11 @@ async function loadStarredPlayers(tournamentId) {
 function renderTournamentList() {
     const list = document.getElementById('tournamentList');
     if (!list) return;
+
+    if (tournaments.length === 0) {
+        list.innerHTML = '<p class="no-data">Aucun tournoi disponible</p>';
+        return;
+    }
 
     list.innerHTML = tournaments.map(t => `
         <div class="tournament-item" data-tournament-id="${t.id}">
@@ -202,54 +211,36 @@ function renderLiveTournament() {
     renderChatMessages();
 }
 
-// ===== RECHERCHE DU NOM DE L'AUTEUR DANS LES TABLES DE PROFILS =====
-async function getAuthorInfo(userId) {
-    // Chercher d'abord dans parrain_profiles
-    const { data: parrain } = await supabaseParrainPrive
-        .from('parrain_profiles')
-        .select('first_name, last_name')
-        .eq('id', userId)
-        .maybeSingle();
-    if (parrain) return parrain;
-
-    // Puis dans player_profiles
-    const { data: player } = await supabaseParrainPrive
-        .from('player_profiles')
-        .select('first_name, last_name')
-        .eq('id', userId)
-        .maybeSingle();
-    if (player) return player;
-
-    // Ajouter d'autres tables si nécessaire (agent, coach, etc.)
-    return { first_name: 'Utilisateur', last_name: 'inconnu' };
-}
-
-// ===== CHARGEMENT DES MESSAGES DU CHAT =====
+// ===== CHARGEMENT DES MESSAGES DU CHAT (optimisé avec jointure) =====
 async function loadMessages(tournamentId) {
-    const { data, error } = await supabaseParrainPrive
-        .from('tournament_messages')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('created_at', { ascending: true });
+    try {
+        const { data, error } = await supabaseParrainPrive
+            .from('tournament_messages')
+            .select(`
+                id,
+                user_id,
+                message,
+                created_at,
+                profiles:user_id (full_name)
+            `)
+            .eq('tournament_id', tournamentId)
+            .order('created_at', { ascending: true });
 
-    if (error) {
-        console.error('Erreur chargement messages:', error);
-        return;
-    }
+        if (error) throw error;
 
-    messages = [];
-    for (const m of data || []) {
-        const authorInfo = await getAuthorInfo(m.user_id);
-        messages.push({
+        messages = (data || []).map(m => ({
             id: m.id,
             userId: m.user_id,
-            author: `${authorInfo.first_name} ${authorInfo.last_name}`.trim() || 'Inconnu',
+            author: m.profiles?.full_name || 'Inconnu',
             text: m.message,
             time: new Date(m.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-        });
-    }
+        }));
 
-    renderChatMessages();
+        renderChatMessages();
+    } catch (error) {
+        console.error('Erreur chargement messages:', error);
+        showToast('Erreur lors du chargement des messages', 'error');
+    }
 }
 
 // ===== RENDU DES MESSAGES DU CHAT =====
@@ -292,9 +283,10 @@ async function sendMessage() {
     }
 
     input.value = '';
+    // Le message sera ajouté via la subscription
 }
 
-// ===== SOUSCRIPTION AUX NOUVEAUX MESSAGES =====
+// ===== SOUSCRIPTION AUX NOUVEAUX MESSAGES (optimisée) =====
 function subscribeToMessages(tournamentId) {
     if (messagesSubscription) messagesSubscription.unsubscribe();
 
@@ -306,11 +298,22 @@ function subscribeToMessages(tournamentId) {
             table: 'tournament_messages',
             filter: `tournament_id=eq.${tournamentId}`
         }, async (payload) => {
-            const authorInfo = await getAuthorInfo(payload.new.user_id);
+            // Récupérer le profil de l'auteur (avec cache)
+            let authorName = profileCache.get(payload.new.user_id);
+            if (!authorName) {
+                const { data } = await supabaseParrainPrive
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', payload.new.user_id)
+                    .single();
+                authorName = data?.full_name || 'Inconnu';
+                profileCache.set(payload.new.user_id, authorName);
+            }
+
             const newMsg = {
                 id: payload.new.id,
                 userId: payload.new.user_id,
-                author: `${authorInfo.first_name} ${authorInfo.last_name}`.trim() || 'Inconnu',
+                author: authorName,
                 text: payload.new.message,
                 time: new Date(payload.new.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
             };
