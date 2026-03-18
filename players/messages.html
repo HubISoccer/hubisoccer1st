@@ -78,9 +78,12 @@
                             <i class="fas fa-search"></i>
                             <input type="text" id="searchConv" placeholder="Rechercher...">
                         </div>
-                        <div class="archive-toggle">
+                        <div class="action-buttons">
                             <button id="archiveToggleBtn" class="archive-btn">
                                 <i class="fas fa-archive"></i> <span id="archiveToggleText">Archives</span>
+                            </button>
+                            <button id="blockedUsersBtn" class="blocked-users-btn">
+                                <i class="fas fa-ban"></i> <span>Bloqués</span>
                             </button>
                         </div>
                     </div>
@@ -90,13 +93,23 @@
                 <div class="chat-panel" id="chatPanel">
                     <div class="chat-header" id="chatHeader"></div>
                     <div class="chat-messages-area" id="chatMessagesArea"></div>
-                    <div class="chat-input-area" id="chatInputArea"></div>
+                    <div class="chat-input-area" id="chatInputArea">
+                        <!-- La zone de saisie est générée dynamiquement -->
+                    </div>
                 </div>
             </div>
         </div>
     </main>
 
+    <!-- Barre de progression pour upload (cachée par défaut) -->
+    <div id="uploadProgress" class="upload-progress" style="display: none;">
+        <div class="progress-bar" id="progressBar"></div>
+        <span id="progressPercent">0%</span>
+    </div>
+
     <!-- Modales -->
+
+    <!-- Modale de suppression de conversation -->
     <div id="deleteConvModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -113,6 +126,20 @@
         </div>
     </div>
 
+    <!-- Modale des utilisateurs bloqués -->
+    <div id="blockedUsersModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Utilisateurs bloqués</h2>
+                <span class="close-modal" onclick="closeBlockedUsersModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="blockedUsersList" class="blocked-users-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale d'informations utilisateur -->
     <div id="userInfoModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -123,6 +150,7 @@
         </div>
     </div>
 
+    <!-- Menu contextuel pour les messages -->
     <div id="messageContextMenu" class="context-menu" style="display: none;">
         <ul>
             <li onclick="copyMessageFromMenu()"><i class="fas fa-copy"></i> Copier</li>
