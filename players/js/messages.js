@@ -213,7 +213,6 @@ async function selectConversation(convId) {
     renderConversations();
     await loadMessages(convId);
     renderChatHeader();
-    renderChatInput();
 
     messagesSubscription = supabaseMessages
         .channel(`player_messages:${convId}`)
@@ -702,6 +701,89 @@ function openStickerPicker() {
     showToast('Sélecteur de stickers à venir', 'info');
 }
 
+// ===== MESSAGE DE BIENVENUE AUTOMATIQUE (support) =====
+async function ensureSupportConversation() {
+    console.log('Création conversation support...');
+    let supportProfileId;
+
+    const { data: supportData, error: searchError } = await supabaseMessages
+        .from('player_profiles')
+        .select('id')
+        .eq('hub_id', 'SUPPORT')
+        .maybeSingle();
+
+    if (searchError) {
+        console.error('Erreur recherche support:', searchError);
+        return;
+    }
+
+    if (!supportData) {
+        const { data: newSupport, error: insertError } = await supabaseMessages
+            .from('player_profiles')
+            .insert([{
+                user_id: null,
+                hub_id: 'SUPPORT',
+                nom_complet: 'Support HubISoccer',
+                avatar_url: 'img/user-default.jpg'
+            }])
+            .select()
+            .single();
+
+        if (insertError) {
+            console.error('Erreur création support:', insertError);
+            return;
+        }
+        supportProfileId = newSupport.id;
+    } else {
+        supportProfileId = supportData.id;
+    }
+
+    const { data: existingConv, error: convCheckError } = await supabaseMessages
+        .from('player_conversations')
+        .select('id')
+        .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${supportProfileId}),and(participant1_id.eq.${supportProfileId},participant2_id.eq.${currentProfile.id})`)
+        .maybeSingle();
+
+    if (convCheckError) {
+        console.error('Erreur vérification conversation support:', convCheckError);
+        return;
+    }
+
+    if (existingConv) {
+        console.log('Conversation support déjà existante');
+        return;
+    }
+
+    const { data: newConv, error: convError } = await supabaseMessages
+        .from('player_conversations')
+        .insert([{
+            participant1_id: currentProfile.id,
+            participant2_id: supportProfileId
+        }])
+        .select()
+        .single();
+
+    if (convError) {
+        console.error('Erreur création conversation support:', convError);
+        return;
+    }
+
+    const { error: msgError } = await supabaseMessages
+        .from('player_messages')
+        .insert([{
+            conversation_id: newConv.id,
+            sender_id: supportProfileId,
+            content: 'Bienvenue sur HubISoccer ! Nous sommes là pour vous aider. N\'hésitez pas à poser vos questions.'
+        }]);
+
+    if (msgError) {
+        console.error('Erreur envoi message bienvenue:', msgError);
+    } else {
+        console.log('Message de bienvenue envoyé');
+        await loadConversations();
+    }
+}
+
 // ===== RECHERCHE =====
 function initSearch() {
     const input = document.getElementById('searchConv');
@@ -807,7 +889,19 @@ function initLogout() {
 function getTargetUserIdFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
     const to = urlParams.get('to');
-    return to ? parseInt(to) : null;
+    return to; // on retourne la chaîne brute (peut être un UUID ou un nombre)
+}
+async function getPlayerProfileIdFromUUID(uuid) {
+    const { data, error } = await supabaseMessages
+        .from('player_profiles')
+        .select('id')
+        .eq('user_id', uuid)
+        .maybeSingle();
+    if (error) {
+        console.error('Erreur recherche player_profiles par UUID:', error);
+        return null;
+    }
+    return data ? data.id : null;
 }
 
 // ===== INITIALISATION =====
@@ -827,13 +921,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     subscribeToNewConversations();
 
-    if (targetUserId && targetUserId !== currentProfile.id) {
-        const convId = await findOrCreateConversationWithUser(targetUserId);
-        if (convId) {
-            await loadConversations();
-            await selectConversation(convId);
+    if (targetUserId) {
+        // Vérifier si c'est un UUID (contient des lettres et des tirets) ou un nombre
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUserId);
+        let actualId = targetUserId;
+        if (isUUID) {
+            // Convertir l'UUID en player_profiles.id
+            actualId = await getPlayerProfileIdFromUUID(targetUserId);
+            if (!actualId) {
+                showToast('Utilisateur cible introuvable', 'error');
+                return;
+            }
         } else {
-            showToast('Impossible de créer la conversation', 'error');
+            actualId = parseInt(targetUserId);
+        }
+
+        if (actualId && actualId !== currentProfile.id) {
+            const convId = await findOrCreateConversationWithUser(actualId);
+            if (convId) {
+                await loadConversations();
+                await selectConversation(convId);
+            } else {
+                showToast('Impossible de créer la conversation', 'error');
+            }
         }
     }
 
@@ -862,7 +972,7 @@ window.backToConversations = backToConversations;
 window.sendMessage = sendMessage;
 window.replyToMessage = replyToMessage;
 window.cancelReply = cancelReply;
-window.copyMessage = copyMessage;
+// window.copyMessage = copyMessage; // ligne supprimée car copyMessage n'existe pas
 window.deleteMessage = deleteMessage;
 window.openFilePicker = openFilePicker;
 window.showContextMenu = showContextMenu;
