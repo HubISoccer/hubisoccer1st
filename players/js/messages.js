@@ -18,6 +18,7 @@ let attachments = [];
 let contextMenuMsgId = null;
 let archivedConversationIds = new Set();
 let blockedUserIds = new Set();
+let isUploading = false; // Indique si un upload est en cours
 
 // Variables pour l'enregistrement audio
 let mediaRecorder = null;
@@ -123,12 +124,14 @@ async function setOffline() {
 async function loadConversations() {
     console.log('Chargement des conversations...');
 
+    // Récupérer les IDs des conversations archivées
     const { data: archivedData } = await supabaseMessages
         .from('archived_conversations')
         .select('conversation_id')
         .eq('user_id', currentProfile.id);
     archivedConversationIds = new Set(archivedData?.map(a => a.conversation_id) || []);
 
+    // Récupérer les IDs des utilisateurs bloqués
     const { data: blockedData } = await supabaseMessages
         .from('blocked_users')
         .select('blocked_id')
@@ -175,6 +178,7 @@ async function loadConversations() {
             return true;
         });
 
+    // Charger les statuts en ligne des contacts
     const contactIds = conversations.map(c => c.contactId).filter(Boolean);
     if (contactIds.length > 0) {
         const { data: presenceData } = await supabaseMessages
@@ -193,7 +197,6 @@ async function loadConversations() {
 
     renderConversations();
 }
-
 // ===== RENDU DES CONVERSATIONS =====
 function renderConversations() {
     const list = document.getElementById('conversationsList');
@@ -444,7 +447,7 @@ function openFilePicker() {
         fileInput = document.createElement('input');
         fileInput.type = 'file';
         fileInput.id = 'fileInput';
-        fileInput.accept = 'image/*,video/*'; // Accepter aussi les vidéos
+        fileInput.accept = 'image/*,video/*';
         fileInput.style.display = 'none';
         fileInput.multiple = true;
         document.body.appendChild(fileInput);
@@ -519,10 +522,8 @@ async function startRecording() {
 
         mediaRecorder.onstop = async () => {
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            // Arrêter les pistes pour libérer le micro
             stream.getTracks().forEach(track => track.stop());
 
-            // Upload du fichier
             const fileName = `${currentProfile.id}_audio_${Date.now()}.webm`;
             const bucket = 'message-attachments';
             const { error: uploadError } = await supabaseMessages.storage
@@ -536,13 +537,11 @@ async function startRecording() {
             const { data: urlData } = supabaseMessages.storage.from(bucket).getPublicUrl(fileName);
             const audioUrl = urlData.publicUrl;
 
-            // Envoyer le message avec l'audio
             const conv = conversations.find(c => c.id === currentConversationId);
             if (conv) {
                 await insertMessage(conv.id, '', audioUrl);
             }
 
-            // Nettoyer
             audioChunks = [];
             const timerDisplay = document.querySelector('.recording-timer');
             if (timerDisplay) timerDisplay.remove();
@@ -555,7 +554,6 @@ async function startRecording() {
         mediaRecorder.start();
         isRecording = true;
 
-        // Afficher le timer
         const btn = document.querySelector('.audio-btn');
         btn.innerHTML = '<i class="fas fa-stop"></i>';
         const timer = document.createElement('span');
@@ -570,7 +568,7 @@ async function startRecording() {
     }
 }
 
-async function stopRecording() {
+function stopRecording() {
     if (mediaRecorder && isRecording) {
         mediaRecorder.stop();
     }
@@ -584,9 +582,14 @@ function toggleRecording() {
     }
 }
 
-// ===== ENVOI D'UN MESSAGE (avec upload) =====
+// ===== ENVOI D'UN MESSAGE (avec upload et spinner) =====
 async function sendMessage(e) {
     e.preventDefault();
+    if (isUploading) {
+        showToast('Un fichier est déjà en cours d\'envoi', 'warning');
+        return;
+    }
+
     const input = document.getElementById('messageInput');
     const content = input.value.trim();
     const fileInput = document.getElementById('fileInput');
@@ -603,6 +606,10 @@ async function sendMessage(e) {
         return;
     }
 
+    isUploading = true;
+    const sendBtn = document.querySelector('.send-btn');
+    sendBtn.classList.add('loading');
+
     // Gérer les fichiers (images, vidéos) sélectionnés
     let attachmentUrls = [];
     if (files.length > 0) {
@@ -616,6 +623,8 @@ async function sendMessage(e) {
             if (uploadError) {
                 console.error('Erreur upload:', uploadError);
                 showToast('Erreur lors de l\'upload du fichier', 'error');
+                isUploading = false;
+                sendBtn.classList.remove('loading');
                 return;
             }
             const { data: urlData } = supabaseMessages.storage.from(bucket).getPublicUrl(fileName);
@@ -639,6 +648,9 @@ async function sendMessage(e) {
     attachments = [];
     document.querySelector('.attachment-preview')?.remove();
     if (replyingTo) cancelReply();
+
+    isUploading = false;
+    sendBtn.classList.remove('loading');
 }
 
 async function insertMessage(conversationId, content, attachmentUrl) {
@@ -931,6 +943,7 @@ function renderChatInput() {
                     <textarea class="message-input" id="messageInput" placeholder="Votre message..." rows="1"></textarea>
                 </div>
                 <button type="button" class="emoji-btn" onclick="openEmojiPicker()"><i class="fas fa-smile"></i></button>
+                <button type="button" class="sticker-btn" onclick="openStickerPicker()"><i class="fas fa-images"></i></button>
                 <button type="button" class="audio-btn" onclick="toggleRecording()" title="Enregistrer un message vocal"><i class="fas fa-microphone"></i></button>
                 <button type="submit" class="send-btn"><i class="fas fa-paper-plane"></i></button>
             </div>
@@ -978,6 +991,52 @@ function openEmojiPicker() {
     });
 
     const btn = document.querySelector('.emoji-btn');
+    const rect = btn.getBoundingClientRect();
+    picker.style.position = 'absolute';
+    picker.style.top = (rect.bottom + window.scrollY) + 'px';
+    picker.style.left = (rect.left + window.scrollX) + 'px';
+    
+    document.body.appendChild(picker);
+}
+
+// ===== STICKERS THÉMATIQUES =====
+function openStickerPicker() {
+    const existingPicker = document.getElementById('sticker-picker');
+    if (existingPicker) {
+        existingPicker.remove();
+        return;
+    }
+
+    const picker = document.createElement('div');
+    picker.id = 'sticker-picker';
+    picker.className = 'sticker-picker';
+    
+    // Stickers thématiques (sport, études, carrière, marketing, etc.)
+    const stickers = [
+        '⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱',
+        '📚', '✏️', '📖', '📝', '🎓', '📐', '🔬', '🧪', '💻', '📊',
+        '💼', '📈', '📉', '💰', '💳', '📦', '🚀', '💡', '🔑', '📌',
+        '👔', '🧑‍💼', '🤝', '📞', '✉️', '📨', '📩', '📤', '📥', '🗂️'
+    ];
+    
+    stickers.forEach(sticker => {
+        const span = document.createElement('span');
+        span.textContent = sticker;
+        span.className = 'sticker-item';
+        span.onclick = () => {
+            const textarea = document.getElementById('messageInput');
+            if (textarea) {
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                textarea.value = textarea.value.substring(0, start) + sticker + textarea.value.substring(end);
+                textarea.dispatchEvent(new Event('input'));
+            }
+            picker.remove();
+        };
+        picker.appendChild(span);
+    });
+
+    const btn = document.querySelector('.sticker-btn');
     const rect = btn.getBoundingClientRect();
     picker.style.position = 'absolute';
     picker.style.top = (rect.bottom + window.scrollY) + 'px';
@@ -1270,4 +1329,5 @@ window.confirmDeleteConversation = confirmDeleteConversation;
 window.openUserInfoModal = openUserInfoModal;
 window.closeUserInfoModal = closeUserInfoModal;
 window.openEmojiPicker = openEmojiPicker;
+window.openStickerPicker = openStickerPicker;
 window.toggleRecording = toggleRecording;
