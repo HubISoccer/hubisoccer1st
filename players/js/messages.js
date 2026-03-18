@@ -390,7 +390,7 @@ function renderMessages(messages) {
             const url = msg.attachment_url;
             const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url) || url.includes('image');
             const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(url) || url.includes('video');
-            const isAudio = /\.(mp3|wav|ogg|m4a)$/i.test(url) || url.includes('audio');
+            const isAudio = /\.(mp3|wav|ogg|m4a|webm)$/i.test(url) || url.includes('audio');
             if (isImage) {
                 attachmentHtml = `<div class="message-attachment"><img src="${url}" alt="Image" onclick="window.open('${url}', '_blank')"></div>`;
             } else if (isVideo) {
@@ -432,7 +432,7 @@ function appendMessage(msg) {
         const url = msg.attachment_url;
         const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url) || url.includes('image');
         const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(url) || url.includes('video');
-        const isAudio = /\.(mp3|wav|ogg|m4a)$/i.test(url) || url.includes('audio');
+        const isAudio = /\.(mp3|wav|ogg|m4a|webm)$/i.test(url) || url.includes('audio');
         if (isImage) {
             attachmentHtml = `<div class="message-attachment"><img src="${url}" alt="Image" onclick="window.open('${url}', '_blank')"></div>`;
         } else if (isVideo) {
