@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -9,7 +9,7 @@ let playerProfile = null;
 let scoutingData = null;
 const avatarBucket = 'avatars';
 
-// ===== TOAST (copié des autres pages) =====
+// ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -40,7 +40,7 @@ function showToast(message, type = 'info', duration = 3000) {
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabaseClient.auth.getSession();
+    const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
     if (error || !session) {
         window.location.href = '../public/auth/login.html';
         return null;
@@ -51,7 +51,7 @@ async function checkSession() {
 
 // ===== CHARGEMENT DU PROFIL =====
 async function loadPlayerProfile() {
-    const { data, error } = await supabaseClient
+    const { data, error } = await supabasePlayersSpacePrive
         .from('player_profiles')
         .select('*')
         .eq('user_id', currentUser.id)
@@ -72,7 +72,7 @@ async function loadPlayerProfile() {
 async function loadScoutingData() {
     if (!playerProfile) return;
 
-    const { data, error } = await supabaseClient
+    const { data, error } = await supabasePlayersSpacePrive
         .from('player_scouting')
         .select('*')
         .eq('player_id', playerProfile.id)
@@ -88,7 +88,7 @@ async function loadScoutingData() {
         scoutingData = data;
     } else {
         // Créer une entrée par défaut avec des valeurs à zéro
-        const { data: newData, error: insertError } = await supabaseClient
+        const { data: newData, error: insertError } = await supabasePlayersSpacePrive
             .from('player_scouting')
             .insert([{
                 player_id: playerProfile.id
@@ -109,6 +109,35 @@ async function loadScoutingData() {
     updateScoutingUI();    // Met à jour tous les attributs
 }
 
+// ===== FONCTIONS UTILITAIRES =====
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+function formatMoney(value) {
+    if (value >= 1000000) return (value / 1000000).toFixed(1) + ' M€';
+    if (value >= 1000) return (value / 1000).toFixed(0) + ' K€';
+    return value + ' €';
+}
+
+function calculateAge(dateString) {
+    if (!dateString) return '0';
+    const today = new Date();
+    const birthDate = new Date(dateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+    return age;
+}
+
+// Mapping code pays -> drapeau (à compléter)
+const flagMap = {
+    'BJ': '🇧🇯', 'FR': '🇫🇷', 'CI': '🇨🇮', 'SN': '🇸🇳', 'CM': '🇨🇲',
+    'MA': '🇲🇦', 'TN': '🇹🇳', 'DZ': '🇩🇿', 'NG': '🇳🇬', 'GH': '🇬🇭',
+    'BF': '🇧🇫', 'TG': '🇹🇬', 'NE': '🇳🇪', 'ML': '🇲🇱', 'GN': '🇬🇳'
+};
+
 // ===== MISE À JOUR DE L'INTERFACE (infos personnelles) =====
 function updateUIWithProfile() {
     if (!playerProfile) return;
@@ -118,16 +147,27 @@ function updateUIWithProfile() {
     document.getElementById('playerFullName').textContent = fullName;
     document.getElementById('playerPosition').textContent = playerProfile.position || 'Poste non renseigné';
 
-    // Informations de base (si les colonnes existent dans player_profiles)
-    document.getElementById('playerAge').textContent = playerProfile.age || '0'; // À calculer si vous avez date_naissance
-    document.getElementById('playerHeight').textContent = playerProfile.height || playerProfile.taille_cm || '0';
-    document.getElementById('playerWeight').textContent = playerProfile.poids_kg || '0';
-    document.getElementById('playerNationality').textContent = playerProfile.nationalite || '-';
-    document.getElementById('playerFoot').textContent = playerProfile.preferred_foot || playerProfile.pied_fort || '-';
-    document.getElementById('playerClub').textContent = playerProfile.club || '-';
+    // Pseudo
+    setText('playerPseudo', playerProfile.pseudo || '-');
+
+    // Téléphone, email, drapeau
+    setText('playerPhone', playerProfile.phone || '-');
+    setText('playerEmail', playerProfile.email || '-');
+    const countryCode = playerProfile.nationalite || playerProfile.country || '';
+    const flag = flagMap[countryCode] || '🌍';
+    document.getElementById('playerCountryFlag').textContent = flag;
+    document.getElementById('playerCountryName').textContent = countryCode || '-';
+
+    // Informations de base
+    setText('playerAge', calculateAge(playerProfile.date_naissance));
+    setText('playerHeight', playerProfile.height || playerProfile.taille_cm || '0');
+    setText('playerWeight', playerProfile.poids_kg || '0');
+    setText('playerNationality', playerProfile.nationalite || '-');
+    setText('playerFoot', playerProfile.preferred_foot || playerProfile.pied_fort || '-');
+    setText('playerClub', playerProfile.club || '-');
 
     // ID HubISoccer (sur la carte de gauche)
-    document.getElementById('playerID').textContent = `ID: ${playerProfile.hub_id || '-'}`;
+    setText('playerID', `ID: ${playerProfile.hub_id || '-'}`);
 
     // Avatar
     if (playerProfile.avatar_url) {
@@ -139,9 +179,9 @@ function updateUIWithProfile() {
     }
 
     // Mini-stats (profil complété, vues, favoris)
-    document.getElementById('profileCompletion').textContent = playerProfile.profile_completion || 0;
-    document.getElementById('scoutingViews').textContent = playerProfile.scouting_views || 0;
-    document.getElementById('recruiterFavs').textContent = playerProfile.recruiter_favs || 0;
+    setText('profileCompletion', playerProfile.profile_completion || 0);
+    setText('scoutingViews', playerProfile.scouting_views || 0);
+    setText('recruiterFavs', playerProfile.recruiter_favs || 0);
 }
 
 // ===== MISE À JOUR DES ATTRIBUTS DE SCOUTING =====
@@ -211,7 +251,7 @@ function updateScoutingUI() {
 function updateMainSkills() {
     if (!scoutingData) return;
 
-    // Calcul des moyennes (valeurs sur 20)
+    // Calcul des moyennes (valeurs sur 100)
     const defense = average([
         scoutingData.technique_marquage,
         scoutingData.mental_agressivite,
@@ -305,77 +345,64 @@ function average(arr) {
     return Math.round(sum / valid.length);
 }
 
-// Met à jour la barre et la valeur
+// Met à jour la barre et la valeur (les notes sont sur 100)
 function setSkill(elementId, value) {
     const bar = document.getElementById(elementId);
     const valueSpan = document.getElementById(elementId + '_value');
     if (bar) {
-        const percent = (value / 20) * 100; // On suppose que les notes sont sur 20
-        bar.style.width = percent + '%';
+        bar.style.width = value + '%'; // value est déjà sur 100
     }
     if (valueSpan) valueSpan.textContent = value;
-}
-
-// ===== FONCTIONS UTILITAIRES =====
-function setText(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value;
-}
-
-function formatMoney(value) {
-    if (value >= 1000000) return (value / 1000000).toFixed(1) + ' M€';
-    if (value >= 1000) return (value / 1000).toFixed(0) + ' K€';
-    return value + ' €';
 }
 
 // ===== UPLOAD AVATAR =====
 async function uploadAvatar(file) {
     if (!currentUser || !playerProfile) return;
 
+    // Limite de taille (exemple : 2 Mo)
+    if (file.size > 2 * 1024 * 1024) {
+        showToast('L\'image ne doit pas dépasser 2 Mo', 'error');
+        return;
+    }
+
     const fileExt = file.name.split('.').pop();
     const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
     const filePath = fileName;
 
-    const { error: uploadError } = await supabaseClient.storage
+    const { error: uploadError } = await supabasePlayersSpacePrive.storage
         .from(avatarBucket)
         .upload(filePath, file);
 
     if (uploadError) {
-        alert('Erreur upload : ' + uploadError.message);
+        showToast('Erreur upload : ' + uploadError.message, 'error');
         return;
     }
 
-    const { data: urlData } = supabaseClient.storage
+    const { data: urlData } = supabasePlayersSpacePrive.storage
         .from(avatarBucket)
         .getPublicUrl(filePath);
 
     const publicUrl = urlData.publicUrl;
 
-    const { error: updateError } = await supabaseClient
+    const { error: updateError } = await supabasePlayersSpacePrive
         .from('player_profiles')
         .update({ avatar_url: publicUrl })
         .eq('id', playerProfile.id);
 
     if (updateError) {
-        alert('Erreur mise à jour avatar : ' + updateError.message);
+        showToast('Erreur mise à jour avatar : ' + updateError.message, 'error');
         return;
     }
 
     playerProfile.avatar_url = publicUrl;
     document.getElementById('profileDisplay').src = publicUrl;
     document.getElementById('userAvatar').src = publicUrl;
+    showToast('Avatar mis à jour avec succès', 'success');
 }
 
 function triggerUpload() {
     document.getElementById('fileInput').click();
 }
-
-document.addEventListener('change', function(e) {
-    if (e.target.matches('#fileInput')) {
-        const file = e.target.files[0];
-        if (file) uploadAvatar(file);
-    }
-});
 
 // ===== COPIER ID =====
 async function copyID() {
@@ -387,7 +414,7 @@ async function copyID() {
         span.innerText = "Copié ! ✅";
         setTimeout(() => span.innerText = oldText, 2000);
     } catch {
-        alert('Erreur de copie.');
+        showToast('Erreur de copie.', 'error');
     }
 }
 
@@ -396,11 +423,8 @@ function initAttrTabs() {
     const tabs = document.querySelectorAll('.attr-tab');
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            // Retirer la classe active de tous les onglets et contenus
             document.querySelectorAll('.attr-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.attr-content').forEach(c => c.classList.remove('active'));
-
-            // Activer l'onglet cliqué
             tab.classList.add('active');
             const cat = tab.dataset.cat;
             document.getElementById(`${cat}-attrs`).classList.add('active');
@@ -476,7 +500,7 @@ function addMenuHandle() {
 
 // ===== DÉCONNEXION =====
 async function logout() {
-    const { error } = await supabaseClient.auth.signOut();
+    const { error } = await supabasePlayersSpacePrive.auth.signOut();
     if (error) console.error('Erreur déconnexion:', error);
     window.location.href = '../index.html';
 }
@@ -496,6 +520,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSidebar();
     initAttrTabs();
 
+    // Écouteur direct pour l'upload
+    document.getElementById('fileInput')?.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) uploadAvatar(file);
+    });
+
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
@@ -506,6 +536,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
         showToast('Changement de langue bientôt disponible', 'info');
+    });
+
+    // Gestion du sélecteur de langue
+    document.getElementById('langSelect')?.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+        // Plus tard, on implémentera le chargement des traductions
     });
 
     // Exposer les fonctions globales nécessaires
