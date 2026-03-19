@@ -14,12 +14,12 @@ let conversationsSubscription = null;
 let replyingTo = null;
 let searchTerm = '';
 let targetUserId = null;
-let attachments = []; // pour stocker les fichiers sélectionnés avant envoi
+let attachments = [];
 let contextMenuMsgId = null;
 let archivedConversationIds = new Set();
 let blockedUserIds = new Set();
 let isUploading = false;
-let showArchived = false; // true = afficher les archives, false = actives
+let showArchived = false;
 
 // Variables pour l'enregistrement audio
 let mediaRecorder = null;
@@ -73,25 +73,24 @@ async function checkSession() {
         return null;
     }
     currentUser = session.user;
-    // Stocker le token pour les uploads
     currentUser.access_token = session.access_token;
     return currentUser;
 }
 
-// ===== CHARGEMENT DU PROFIL =====
+// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
 async function loadProfile() {
     const { data, error } = await supabaseMessages
-        .from('player_profiles')
+        .from('profiles')
         .select('*')
-        .eq('user_id', currentUser.id)
+        .eq('id', currentUser.id)
         .single();
     if (error) {
         console.error('Erreur chargement profil:', error);
         return null;
     }
     currentProfile = data;
-    document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
-    document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
+    document.getElementById('userName').textContent = data.full_name || 'Utilisateur';
+    document.getElementById('userAvatar').src = data.avatar_url || 'img/user-default.jpg';
     startPresenceTracking();
     return currentProfile;
 }
@@ -151,18 +150,18 @@ async function loadConversations() {
     blockedUserIds = new Set(blockedData?.map(b => b.blocked_id) || []);
 
     const { data, error } = await supabaseMessages
-        .from('player_conversations')
+        .from('conversations')
         .select(`
             id,
             participant1_id,
             participant2_id,
             last_message_content,
-            last_message_time,
-            participant1:player_profiles!participant1_id (id, nom_complet, avatar_url, hub_id),
-            participant2:player_profiles!participant2_id (id, nom_complet, avatar_url, hub_id)
+            last_message_at,
+            participant1:profiles!participant1_id (id, full_name, avatar_url, username),
+            participant2:profiles!participant2_id (id, full_name, avatar_url, username)
         `)
         .or(`participant1_id.eq.${currentProfile.id},participant2_id.eq.${currentProfile.id}`)
-        .order('last_message_time', { ascending: false, nullsFirst: false });
+        .order('last_message_at', { ascending: false, nullsFirst: false });
 
     if (error) {
         console.error('Erreur chargement conversations:', error);
@@ -172,14 +171,14 @@ async function loadConversations() {
 
     let allConversations = data.map(conv => {
         const contact = (conv.participant1.id === currentProfile.id) ? conv.participant2 : conv.participant1;
-        const contactName = contact?.nom_complet || 'Utilisateur inconnu';
+        const contactName = contact?.full_name || 'Utilisateur inconnu';
         return {
             id: conv.id,
             contactId: contact?.id,
             contactName: contactName,
             contactAvatar: contact?.avatar_url,
             lastMessage: conv.last_message_content,
-            lastTime: conv.last_message_time,
+            lastTime: conv.last_message_at,
             unread: 0,
             online: false
         };
@@ -266,7 +265,7 @@ async function findOrCreateConversationWithUser(userId) {
     console.log('Recherche/création conversation avec utilisateur', userId);
 
     const { data: existingConv, error: searchError } = await supabaseMessages
-        .from('player_conversations')
+        .from('conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${userId}),and(participant1_id.eq.${userId},participant2_id.eq.${currentProfile.id})`)
         .maybeSingle();
@@ -282,7 +281,7 @@ async function findOrCreateConversationWithUser(userId) {
     }
 
     const { data: newConv, error: createError } = await supabaseMessages
-        .from('player_conversations')
+        .from('conversations')
         .insert([{
             participant1_id: currentProfile.id,
             participant2_id: userId
@@ -308,7 +307,7 @@ async function selectConversation(convId) {
     const conv = conversations.find(c => c.id === convId);
     if (conv) {
         const { data: contactProfile } = await supabaseMessages
-            .from('player_profiles')
+            .from('profiles')
             .select('*')
             .eq('id', conv.contactId)
             .single();
@@ -318,14 +317,14 @@ async function selectConversation(convId) {
     renderConversations();
     await loadMessages(convId);
     renderChatHeader();
-    renderChatInput(); // S'assurer que la zone de saisie est présente
+    renderChatInput();
 
     messagesSubscription = supabaseMessages
-        .channel(`player_messages:${convId}`)
+        .channel(`messages:${convId}`)
         .on('postgres_changes', {
             event: 'INSERT',
             schema: 'public',
-            table: 'player_messages',
+            table: 'messages',
             filter: `conversation_id=eq.${convId}`
         }, payload => {
             console.log('Nouveau message reçu', payload.new);
@@ -347,7 +346,7 @@ async function loadMessages(convId) {
     console.log('Chargement des messages pour conversation', convId);
     showLoader(true);
     const { data, error } = await supabaseMessages
-        .from('player_messages')
+        .from('messages')
         .select(`
             id,
             sender_id,
@@ -520,7 +519,6 @@ function appendMessage(msg) {
     `;
     area.insertAdjacentHTML('beforeend', msgHtml);
 
-    // Gérer l'URL signée si nécessaire
     if (msg.attachment_path) {
         getSignedUrl(msg.attachment_path).then(signedUrl => {
             if (!signedUrl) return;
@@ -578,7 +576,6 @@ function handleFileSelect(e) {
         preview.innerHTML = '';
     }
 
-    // Stocker les fichiers dans le tableau attachments (pour les utiliser dans sendMessage)
     attachments = Array.from(files);
 
     Array.from(files).forEach((file, index) => {
@@ -610,7 +607,6 @@ function handleFileSelect(e) {
                 mediaElement.style.maxHeight = '100px';
                 mediaElement.style.borderRadius = '5px';
             } else {
-                // Autres types (PDF, etc.)
                 mediaElement = document.createElement('i');
                 mediaElement.className = 'fas fa-file file-icon';
             }
@@ -621,7 +617,6 @@ function handleFileSelect(e) {
             removeBtn.innerHTML = '<i class="fas fa-times"></i>';
             removeBtn.onclick = () => {
                 fileDiv.remove();
-                // Retirer le fichier du tableau attachments
                 attachments = attachments.filter((_, i) => i !== index);
                 if (attachments.length === 0) preview.remove();
             };
@@ -636,7 +631,7 @@ function handleFileSelect(e) {
     showToast(`${files.length} fichier(s) sélectionné(s)`, 'info');
 }
 
-// ===== UPLOAD DE FICHIER AVEC PROGRESSION (retourne le chemin) =====
+// ===== UPLOAD DE FICHIER AVEC PROGRESSION =====
 function uploadFileWithProgress(file, bucket, onProgress) {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -657,7 +652,6 @@ function uploadFileWithProgress(file, bucket, onProgress) {
 
         xhr.onload = () => {
             if (xhr.status === 200) {
-                // Retourner le chemin relatif (bucket/nomFichier)
                 resolve(`${bucket}/${fileName}`);
             } else {
                 reject(new Error('Upload failed'));
@@ -668,7 +662,7 @@ function uploadFileWithProgress(file, bucket, onProgress) {
     });
 }
 
-// ===== ENVOI D'UN MESSAGE (AVEC UPLOAD) =====
+// ===== ENVOI D'UN MESSAGE =====
 async function sendMessage(e) {
     e.preventDefault();
     if (isUploading) {
@@ -678,7 +672,7 @@ async function sendMessage(e) {
 
     const input = document.getElementById('messageInput');
     const content = input.value.trim();
-    const files = attachments; // fichiers sélectionnés via le tableau
+    const files = attachments;
 
     if (!content && files.length === 0) {
         showToast('Veuillez écrire un message ou joindre un fichier', 'warning');
@@ -721,7 +715,6 @@ async function sendMessage(e) {
         progressDiv.style.display = 'none';
     }
 
-    // Envoyer un message pour chaque fichier
     if (attachmentPaths.length > 0) {
         for (let path of attachmentPaths) {
             await insertMessage(conv.id, content, null, path);
@@ -730,7 +723,6 @@ async function sendMessage(e) {
         await insertMessage(conv.id, content, null, null);
     }
 
-    // Réinitialiser
     input.value = '';
     input.style.height = 'auto';
     attachments = [];
@@ -748,15 +740,11 @@ async function insertMessage(conversationId, content, attachmentUrl, attachmentP
         content: content,
         reply_to_id: replyingTo ? replyingTo.id : null
     };
-    if (attachmentUrl) {
-        insertData.attachment_url = attachmentUrl;
-    }
-    if (attachmentPath) {
-        insertData.attachment_path = attachmentPath;
-    }
+    if (attachmentUrl) insertData.attachment_url = attachmentUrl;
+    if (attachmentPath) insertData.attachment_path = attachmentPath;
 
     const { data: newMsg, error: msgError } = await supabaseMessages
-        .from('player_messages')
+        .from('messages')
         .insert(insertData)
         .select()
         .single();
@@ -769,10 +757,10 @@ async function insertMessage(conversationId, content, attachmentUrl, attachmentP
 
     const lastContent = attachmentUrl || attachmentPath ? '📎 Fichier' : content;
     await supabaseMessages
-        .from('player_conversations')
+        .from('conversations')
         .update({
             last_message_content: lastContent,
-            last_message_time: new Date().toISOString()
+            last_message_at: new Date().toISOString()
         })
         .eq('id', conversationId);
 }
@@ -892,9 +880,7 @@ function displayAudioPreview() {
 
 function resetAudioButton() {
     const btn = document.querySelector('.audio-btn');
-    if (btn) {
-        btn.innerHTML = '<i class="fas fa-microphone"></i>';
-    }
+    if (btn) btn.innerHTML = '<i class="fas fa-microphone"></i>';
     const timer = document.getElementById('recordingTimer');
     if (timer) timer.remove();
     isRecording = false;
@@ -913,13 +899,11 @@ async function sendRecordedAudio() {
     const sendBtn = document.querySelector('.send-btn');
     sendBtn.classList.add('loading');
 
-    // Afficher la barre de progression
     const progressDiv = document.getElementById('uploadProgress');
     const progressBar = document.getElementById('progressBar');
     const progressPercent = document.getElementById('progressPercent');
     progressDiv.style.display = 'flex';
 
-    // Créer un fichier à partir du blob (nécessaire pour uploadFileWithProgress)
     const file = new File([recordedAudioBlob], 'audio.webm', { type: 'audio/webm' });
 
     try {
@@ -951,7 +935,7 @@ async function deleteMessage(msgId, forEveryone = false) {
     if (!confirm('Supprimer ce message ?')) return;
     if (forEveryone) {
         const { error } = await supabaseMessages
-            .from('player_messages')
+            .from('messages')
             .delete()
             .eq('id', msgId);
         if (error) {
@@ -1068,7 +1052,7 @@ async function archiveConversation() {
 
 async function blockUser() {
     if (!currentContact || !currentProfile) return;
-    if (!confirm(`Bloquer ${currentContact.nom_complet} ? Vous ne recevrez plus de messages de sa part.`)) return;
+    if (!confirm(`Bloquer ${currentContact.full_name} ? Vous ne recevrez plus de messages de sa part.`)) return;
     const { data: existing, error: checkError } = await supabaseMessages
         .from('blocked_users')
         .select('id')
@@ -1094,7 +1078,7 @@ async function blockUser() {
         console.error('Erreur blocage:', error);
         showToast('Erreur lors du blocage', 'error');
     } else {
-        showToast(`Utilisateur ${currentContact.nom_complet} bloqué`, 'success');
+        showToast('Utilisateur bloqué', 'success');
         backToConversations();
         await loadConversations();
     }
@@ -1109,7 +1093,7 @@ function closeDeleteConvModal() {
 async function confirmDeleteConversation() {
     if (!currentConversationId) return;
     const { error: msgError } = await supabaseMessages
-        .from('player_messages')
+        .from('messages')
         .delete()
         .eq('conversation_id', currentConversationId);
     if (msgError) {
@@ -1117,7 +1101,7 @@ async function confirmDeleteConversation() {
         return;
     }
     const { error: convError } = await supabaseMessages
-        .from('player_conversations')
+        .from('conversations')
         .delete()
         .eq('id', currentConversationId);
     if (convError) {
@@ -1140,8 +1124,8 @@ function openUserInfoModal() {
     content.innerHTML = `
         <div style="text-align: center;">
             <img src="${avatarUrl}" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 15px;">
-            <h3>${currentContact.nom_complet}</h3>
-            <p>@${currentContact.hub_id || 'inconnu'}</p>
+            <h3>${currentContact.full_name || 'Utilisateur'}</h3>
+            <p>@${currentContact.username || ''}</p>
             <p>${currentContact.bio || 'Aucune bio'}</p>
         </div>
     `;
@@ -1174,7 +1158,7 @@ function renderChatHeader() {
                     <img src="${avatarUrl}" alt="Avatar">
                 </div>
                 <div class="chat-contact-info">
-                    <h3>${currentContact.nom_complet}</h3>
+                    <h3>${currentContact.full_name || 'Inconnu'}</h3>
                     <p>${currentContact.online ? 'En ligne' : 'Hors ligne'}</p>
                 </div>
             </div>
@@ -1324,8 +1308,8 @@ async function loadBlockedUsers() {
     if (blockedIds.length === 0) return [];
 
     const { data: profiles, error: profilesError } = await supabaseMessages
-        .from('player_profiles')
-        .select('id, nom_complet, avatar_url')
+        .from('profiles')
+        .select('id, full_name, avatar_url')
         .in('id', blockedIds);
     if (profilesError) {
         console.error('Erreur chargement profils bloqués:', profilesError);
@@ -1346,12 +1330,12 @@ async function openBlockedUsersModal() {
         listContainer.innerHTML = blockedUsers.map(user => `
             <div class="blocked-user-item" data-user-id="${user.id}">
                 <div class="blocked-user-avatar">
-                    <img src="${user.avatar_url || 'img/user-default.jpg'}" alt="${user.nom_complet}">
+                    <img src="${user.avatar_url || 'img/user-default.jpg'}" alt="${user.full_name}">
                 </div>
                 <div class="blocked-user-info">
-                    <div class="blocked-user-name">${user.nom_complet}</div>
+                    <div class="blocked-user-name">${user.full_name}</div>
                 </div>
-                <button class="blocked-user-unblock" onclick="unblockUser(${user.id})">Débloquer</button>
+                <button class="blocked-user-unblock" onclick="unblockUser('${user.id}')">Débloquer</button>
             </div>
         `).join('');
     }
@@ -1385,9 +1369,9 @@ async function ensureSupportConversation() {
     let supportProfileId;
 
     const { data: supportData, error: searchError } = await supabaseMessages
-        .from('player_profiles')
+        .from('profiles')
         .select('id')
-        .eq('hub_id', 'SUPPORT')
+        .eq('username', 'SUPPORT')
         .maybeSingle();
 
     if (searchError) {
@@ -1396,12 +1380,13 @@ async function ensureSupportConversation() {
     }
 
     if (!supportData) {
+        // Créer un profil support (UUID fixe ou auto-généré)
         const { data: newSupport, error: insertError } = await supabaseMessages
-            .from('player_profiles')
+            .from('profiles')
             .insert([{
-                user_id: null,
-                hub_id: 'SUPPORT',
-                nom_complet: 'Support HubISoccer',
+                id: '00000000-0000-0000-0000-000000000001', // UUID fixe, ou laisser auto-généré
+                username: 'SUPPORT',
+                full_name: 'Support HubISoccer',
                 avatar_url: 'img/user-default.jpg'
             }])
             .select()
@@ -1417,7 +1402,7 @@ async function ensureSupportConversation() {
     }
 
     const { data: existingConv, error: convCheckError } = await supabaseMessages
-        .from('player_conversations')
+        .from('conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${supportProfileId}),and(participant1_id.eq.${supportProfileId},participant2_id.eq.${currentProfile.id})`)
         .maybeSingle();
@@ -1433,7 +1418,7 @@ async function ensureSupportConversation() {
     }
 
     const { data: newConv, error: convError } = await supabaseMessages
-        .from('player_conversations')
+        .from('conversations')
         .insert([{
             participant1_id: currentProfile.id,
             participant2_id: supportProfileId
@@ -1447,7 +1432,7 @@ async function ensureSupportConversation() {
     }
 
     const { error: msgError } = await supabaseMessages
-        .from('player_messages')
+        .from('messages')
         .insert([{
             conversation_id: newConv.id,
             sender_id: supportProfileId,
@@ -1476,11 +1461,11 @@ function initSearch() {
 // ===== SOUSCRIPTION AUX NOUVELLES CONVERSATIONS =====
 function subscribeToNewConversations() {
     conversationsSubscription = supabaseMessages
-        .channel('player_conversations_changes')
+        .channel('conversations_changes')
         .on('postgres_changes', {
             event: 'INSERT',
             schema: 'public',
-            table: 'player_conversations',
+            table: 'conversations',
             filter: `participant1_id=eq.${currentProfile.id} OR participant2_id=eq.${currentProfile.id}`
         }, async (payload) => {
             console.log('Nouvelle conversation créée', payload.new);
@@ -1570,64 +1555,9 @@ function getTargetUserIdFromUrl() {
     return to;
 }
 
-// Fonction modifiée pour créer le profil joueur s'il n'existe pas
-async function getPlayerProfileIdFromUUID(uuid) {
-    // Chercher d'abord dans player_profiles
-    const { data, error } = await supabaseMessages
-        .from('player_profiles')
-        .select('id')
-        .eq('user_id', uuid)
-        .maybeSingle();
-
-    if (error) {
-        console.error('Erreur recherche player_profiles par UUID:', error);
-        return null;
-    }
-
-    if (data) {
-        return data.id; // Profil existant
-    }
-
-    // Si le profil n'existe pas, on le crée à partir de la table profiles
-    const { data: profileData, error: profileError } = await supabaseMessages
-        .from('profiles')
-        .select('full_name, avatar_url, username')
-        .eq('id', uuid)
-        .single();
-
-    if (profileError) {
-        console.error('Erreur récupération profil public:', profileError);
-        showToast('Impossible de récupérer les informations de l\'utilisateur', 'error');
-        return null;
-    }
-
-    // Créer une entrée dans player_profiles
-    const newPlayer = {
-        user_id: uuid,
-        nom_complet: profileData.full_name || 'Utilisateur',
-        avatar_url: profileData.avatar_url,
-        hub_id: profileData.username || uuid
-    };
-
-    const { data: newData, error: insertError } = await supabaseMessages
-        .from('player_profiles')
-        .insert(newPlayer)
-        .select()
-        .single();
-
-    if (insertError) {
-        console.error('Erreur création profil joueur:', insertError);
-        showToast('Erreur lors de la création du profil', 'error');
-        return null;
-    }
-
-    console.log('Profil joueur créé pour l\'UUID', uuid, 'avec ID', newData.id);
-    return newData.id;
-}
-
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation messages');
+    console.log('🚀 Initialisation messages (unifié)');
 
     const user = await checkSession();
     if (!user) return;
@@ -1643,18 +1573,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     subscribeToNewConversations();
 
     if (targetUserId) {
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUserId);
-        let actualId = targetUserId;
-        if (isUUID) {
-            actualId = await getPlayerProfileIdFromUUID(targetUserId);
-            if (!actualId) {
-                showToast('Utilisateur cible introuvable', 'error');
-                return;
-            }
-        } else {
-            actualId = parseInt(targetUserId);
-        }
-
+        // Le paramètre to est un UUID (provenant de profiles.id)
+        const actualId = targetUserId; // c'est déjà un UUID
         if (actualId && actualId !== currentProfile.id) {
             const convId = await findOrCreateConversationWithUser(actualId);
             if (convId) {
@@ -1673,25 +1593,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelector('.chat-panel')?.classList.add('hide');
     }
 
-    // Boutons d'archives et bloqués
     const archiveBtn = document.getElementById('archiveToggleBtn');
-    if (archiveBtn) {
-        archiveBtn.addEventListener('click', toggleArchive);
-    }
+    if (archiveBtn) archiveBtn.addEventListener('click', toggleArchive);
     const blockedBtn = document.getElementById('blockedUsersBtn');
-    if (blockedBtn) {
-        blockedBtn.addEventListener('click', openBlockedUsersModal);
-    }
-
-    // Bouton rafraîchir
+    if (blockedBtn) blockedBtn.addEventListener('click', openBlockedUsersModal);
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', () => {
             showLoader(true);
             loadConversations().then(() => {
-                if (currentConversationId) {
-                    loadMessages(currentConversationId);
-                }
+                if (currentConversationId) loadMessages(currentConversationId);
                 showLoader(false);
             });
         });
@@ -1738,13 +1649,10 @@ window.unblockUser = unblockUser;
 window.toggleArchive = toggleArchive;
 window.unarchiveConversation = unarchiveConversation;
 
-// ===== FONCTIONS D'ARCHIVE =====
 function toggleArchive() {
     showArchived = !showArchived;
     const btnText = document.getElementById('archiveToggleText');
-    if (btnText) {
-        btnText.textContent = showArchived ? 'Conversations' : 'Archives';
-    }
+    if (btnText) btnText.textContent = showArchived ? 'Conversations' : 'Archives';
     loadConversations();
 }
 
