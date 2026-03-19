@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -12,10 +12,39 @@ let signaturePadModal = null;
 let signatureLocked = false;
 let signatureDataURL = null;
 
+// ===== TOAST =====
+function showToast(message, type = 'info', duration = 3000) {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i></div>
+        <div class="toast-content">${message}</div>
+        <button class="toast-close"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(toast);
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.style.animation = 'fadeOut 0.3s forwards';
+        setTimeout(() => toast.remove(), 300);
+    });
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.animation = 'fadeOut 0.3s forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
+
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
     try {
-        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
         if (error || !session) {
             window.location.href = '../public/auth/login.html';
             return null;
@@ -34,12 +63,12 @@ async function checkSession() {
 async function loadPlayerProfile() {
     if (!currentUser?.id) {
         console.error('currentUser.id manquant');
-        playerProfile = { nom_complet: 'Joueur', hub_id: 'TEMP-' + Date.now() };
+        showToast('Erreur de session. Veuillez vous reconnecter.', 'error');
         return;
     }
     try {
         console.log('Tentative de chargement du profil pour user_id:', currentUser.id);
-        const { data, error } = await supabaseClient
+        const { data, error } = await supabasePlayersSpacePrive
             .from('player_profiles')
             .select('*')
             .eq('user_id', currentUser.id)
@@ -47,23 +76,18 @@ async function loadPlayerProfile() {
 
         if (error) {
             console.error('Erreur chargement profil:', error);
-            playerProfile = { 
-                id: null, 
-                nom_complet: 'Joueur', 
-                hub_id: 'TEMP-' + Date.now() 
-            };
+            showToast('Erreur lors du chargement du profil', 'error');
+            playerProfile = null;
         } else {
-            playerProfile = data || { 
-                id: null, 
-                nom_complet: 'Joueur', 
-                hub_id: 'TEMP-' + Date.now() 
-            };
+            playerProfile = data;
+            document.getElementById('userName').textContent = playerProfile?.nom_complet || 'Joueur';
+            document.getElementById('userAvatar').src = playerProfile?.avatar_url || 'img/user-default.jpg';
         }
-        document.getElementById('userName').textContent = playerProfile.nom_complet || 'Joueur';
         console.log('✅ Profil utilisé :', playerProfile);
     } catch (err) {
         console.error('❌ Exception loadPlayerProfile :', err);
-        playerProfile = { nom_complet: 'Joueur', hub_id: 'TEMP-' + Date.now() };
+        showToast('Erreur lors du chargement du profil', 'error');
+        playerProfile = null;
     }
 }
 
@@ -79,7 +103,7 @@ async function loadDocuments() {
         ];
 
         if (playerProfile?.id) {
-            const { data: existingDocs, error } = await supabaseClient
+            const { data: existingDocs, error } = await supabasePlayersSpacePrive
                 .from('document_requests')
                 .select('*')
                 .eq('player_id', playerProfile.id);
@@ -103,6 +127,7 @@ async function loadDocuments() {
         renderDocuments();
     } catch (err) {
         console.error('❌ Exception loadDocuments :', err);
+        showToast('Erreur lors du chargement des documents', 'error');
     }
 }
 
@@ -147,7 +172,7 @@ function renderDocuments() {
 // ===== UPLOAD D'UN DOCUMENT =====
 async function uploadDocument(docId) {
     if (!currentUser || !playerProfile) {
-        alert('Utilisateur non connecté ou profil manquant');
+        showToast('Utilisateur non connecté ou profil manquant', 'error');
         return;
     }
     const input = document.createElement('input');
@@ -162,29 +187,29 @@ async function uploadDocument(docId) {
             const fileName = `${currentUser.id}_${docId}_${Date.now()}.${fileExt}`;
             const filePath = `player_docs/${fileName}`;
 
-            const { error: uploadError } = await supabaseClient.storage
+            const { error: uploadError } = await supabasePlayersSpacePrive.storage
                 .from('documents')
                 .upload(filePath, file);
 
             if (uploadError) {
-                alert('Erreur upload : ' + uploadError.message);
+                showToast('Erreur upload : ' + uploadError.message, 'error');
                 return;
             }
 
-            const { data: urlData } = supabaseClient.storage
+            const { data: urlData } = supabasePlayersSpacePrive.storage
                 .from('documents')
                 .getPublicUrl(filePath);
             const publicUrl = urlData.publicUrl;
 
             const doc = documentsList.find(d => d.id === docId);
             if (doc.request_id) {
-                const { error: updateError } = await supabaseClient
+                const { error: updateError } = await supabasePlayersSpacePrive
                     .from('document_requests')
                     .update({ file_url: publicUrl, file_name: file.name, status: 'pending' })
                     .eq('id', doc.request_id);
                 if (updateError) throw updateError;
             } else {
-                const { error: insertError } = await supabaseClient
+                const { error: insertError } = await supabasePlayersSpacePrive
                     .from('document_requests')
                     .insert([{
                         player_id: playerProfile.id,
@@ -196,10 +221,10 @@ async function uploadDocument(docId) {
                 if (insertError) throw insertError;
             }
 
-            alert('Document téléversé avec succès ! En attente de validation.');
+            showToast('Document téléversé avec succès ! En attente de validation.', 'success');
             loadDocuments();
         } catch (err) {
-            alert('Erreur : ' + err.message);
+            showToast('Erreur : ' + err.message, 'error');
         }
     };
     input.click();
@@ -209,12 +234,12 @@ async function uploadDocument(docId) {
 function openSignatureModal() {
     const modal = document.getElementById('signatureModal');
     modal.style.display = 'block';
-    
+
     if (!signaturePadModal) {
         const canvas = document.getElementById('signatureCanvasModal');
         canvas.width = canvas.offsetWidth || 800;
         canvas.height = canvas.offsetHeight || 300;
-        
+
         const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#551B8C';
         signaturePadModal = new SignaturePad(canvas, {
             backgroundColor: 'white',
@@ -235,7 +260,7 @@ function openSignatureModal() {
 
         document.getElementById('lockSignatureModal').addEventListener('click', (e) => {
             if (signaturePadModal.isEmpty()) {
-                alert('Veuillez d\'abord signer.');
+                showToast('Veuillez d\'abord signer.', 'warning');
                 return;
             }
             signatureLocked = !signatureLocked;
@@ -250,17 +275,18 @@ function openSignatureModal() {
 
         document.getElementById('saveSignatureModal').addEventListener('click', () => {
             if (signaturePadModal.isEmpty()) {
-                alert('Veuillez signer avant de valider.');
+                showToast('Veuillez signer avant de valider.', 'warning');
                 return;
             }
             signatureDataURL = signaturePadModal.toDataURL('image/png');
-            
+
             const previewImg = document.getElementById('signatureImage');
             previewImg.src = signatureDataURL;
             previewImg.style.display = 'block';
             document.querySelector('.signature-placeholder').style.display = 'none';
-            
+
             closeSignatureModal();
+            showToast('Signature enregistrée', 'success');
         });
 
         canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
@@ -274,16 +300,37 @@ function closeSignatureModal() {
 window.openSignatureModal = openSignatureModal;
 window.closeSignatureModal = closeSignatureModal;
 
-// ===== SOUMISSION DE LA DEMANDE DE LICENCE (CORRIGÉE) =====
+// ===== PRÉ-REMPLISSAGE DU FORMULAIRE AVEC LE PROFIL =====
+function populateFormFromProfile() {
+    if (!playerProfile) return;
+    const fields = {
+        'nom': playerProfile.nom_complet?.split(' ')[1] || '',
+        'prenom': playerProfile.nom_complet?.split(' ')[0] || '',
+        'dateNaissance': playerProfile.date_naissance || '',
+        'nationalite': playerProfile.nationalite || '',
+        'telephone': playerProfile.phone || '',
+        'taille': playerProfile.taille_cm || '',
+        'poids': playerProfile.poids_kg || '',
+        'piedFort': playerProfile.pied_fort || playerProfile.preferred_foot || '',
+        'club': playerProfile.club || '',
+        'email': playerProfile.email || '', // pour info, pas dans le formulaire
+    };
+    for (const [id, value] of Object.entries(fields)) {
+        const input = document.getElementById(id);
+        if (input && value) input.value = value;
+    }
+}
+
+// ===== SOUMISSION DE LA DEMANDE DE LICENCE =====
 async function submitLicense(e) {
     e.preventDefault();
 
     if (!signatureDataURL) {
-        alert('Veuillez signer avant de soumettre.');
+        showToast('Veuillez signer avant de soumettre.', 'warning');
         return;
     }
     if (!currentUser || !playerProfile) {
-        alert('Données utilisateur manquantes');
+        showToast('Données utilisateur manquantes', 'error');
         return;
     }
 
@@ -309,24 +356,24 @@ async function submitLicense(e) {
         const signatureFileName = `${currentUser.id}_signature_${Date.now()}.png`;
         const signaturePath = `signatures/${signatureFileName}`;
 
-        const { error: uploadError } = await supabaseClient.storage
+        const { error: uploadError } = await supabasePlayersSpacePrive.storage
             .from('documents')
             .upload(signaturePath, signatureBlob);
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabaseClient.storage
+        const { data: urlData } = supabasePlayersSpacePrive.storage
             .from('documents')
             .getPublicUrl(signaturePath);
         const signatureUrl = urlData.publicUrl;
 
-        // Insertion dans license_requests avec le nouveau champ "status"
-        const { data, error } = await supabaseClient
+        // Insertion dans license_requests
+        const { data, error } = await supabasePlayersSpacePrive
             .from('license_requests')
             .insert([{
                 player_id: playerProfile.id,
                 ...formData,
                 signature_url: signatureUrl,
-                status: 'admin_pending',  // ← remplace admin_validated: false
+                status: 'admin_pending',
                 created_at: new Date()
             }])
             .select()
@@ -334,27 +381,27 @@ async function submitLicense(e) {
 
         if (error) throw error;
 
-        alert('Demande soumise avec succès ! Elle sera traitée sous 0 à 100h.');
+        showToast('Demande soumise avec succès ! Elle sera traitée sous 0 à 100h.', 'success');
         licenseRequest = data;
-        
+
         // Nettoyer
         sessionStorage.removeItem('licenseFormData');
         signatureDataURL = null;
         document.getElementById('signatureImage').style.display = 'none';
         document.querySelector('.signature-placeholder').style.display = 'block';
-        
+
         document.getElementById('licenseForm').reset();
         checkLicenseStatus();
     } catch (err) {
-        alert('Erreur lors de la soumission : ' + err.message);
+        showToast('Erreur lors de la soumission : ' + err.message, 'error');
     }
 }
 
-// ===== VÉRIFICATION DU STATUT (CORRIGÉE) =====
+// ===== VÉRIFICATION DU STATUT =====
 async function checkLicenseStatus() {
     if (!playerProfile || !playerProfile.id) return;
     try {
-        const { data, error } = await supabaseClient
+        const { data, error } = await supabasePlayersSpacePrive
             .from('license_requests')
             .select('*')
             .eq('player_id', playerProfile.id)
@@ -373,7 +420,6 @@ async function checkLicenseStatus() {
             const statusCard = document.getElementById('statusCard');
             if (statusSection) statusSection.style.display = 'block';
             if (statusCard) {
-                // Utiliser le champ "status" au lieu de "admin_validated"
                 if (data.status === 'approved' && data.carte_url) {
                     statusCard.innerHTML = `
                         <div class="status-icon"><i class="fas fa-check-circle"></i></div>
@@ -384,7 +430,6 @@ async function checkLicenseStatus() {
                         </div>
                     `;
                 } else {
-                    // Afficher un message en fonction du statut (admin_pending, president_pending, etc.)
                     let message = 'En attente de validation.';
                     if (data.status === 'admin_pending') message = 'En attente de validation par l\'administration.';
                     else if (data.status === 'president_pending') message = 'En attente de validation finale par le président.';
@@ -404,7 +449,7 @@ async function checkLicenseStatus() {
     }
 }
 
-// ===== MISE À JOUR DE L'APERÇU =====
+// ===== MISE À JOUR DE L'APERÇU (RECTO-VERSO) =====
 function updateCardPreview() {
     const nom = document.getElementById('nom')?.value || '---';
     const prenom = document.getElementById('prenom')?.value || '---';
@@ -413,6 +458,8 @@ function updateCardPreview() {
     const taille = document.getElementById('taille')?.value || '---';
     const pied = document.getElementById('piedFort')?.value || '---';
     const club = document.getElementById('club')?.value || 'Libre';
+    const adresse = document.getElementById('adresse')?.value || '---';
+    const pays = document.getElementById('pays')?.value || '---';
 
     let dateFormatted = dateNaissance;
     if (dateNaissance && dateNaissance !== '---') {
@@ -420,43 +467,56 @@ function updateCardPreview() {
         dateFormatted = d.toLocaleDateString('fr-FR');
     }
 
-    const preview = document.getElementById('cardPreview');
-    if (!preview) return;
+    // Face avant
+    const frontInfo = document.getElementById('cardFrontInfo');
+    if (frontInfo) {
+        frontInfo.innerHTML = `
+            <p><span class="label">Nom :</span> <span class="value">${nom.toUpperCase()}</span></p>
+            <p><span class="label">Prénom :</span> <span class="value">${prenom}</span></p>
+            <p><span class="label">Né(e) le :</span> <span class="value">${dateFormatted}</span></p>
+            <p><span class="label">Nationalité :</span> <span class="value">${nationalite}</span></p>
+            <p><span class="label">Taille :</span> <span class="value">${taille} cm</span></p>
+            <p><span class="label">Pied :</span> <span class="value">${pied}</span></p>
+        `;
+    }
+    const frontFooter = document.getElementById('cardFrontFooter');
+    if (frontFooter) {
+        frontFooter.innerHTML = `
+            <div class="signatures">
+                <div class="signature-box">
+                    <span class="signature-label">Signature joueur</span>
+                </div>
+                <div class="signature-box">
+                    <span class="stamp"><i class="fas fa-stamp"></i></span>
+                    <span class="signature-label">Cachet officiel</span>
+                </div>
+            </div>
+            <div class="id-number">ID: ${playerProfile?.hub_id || '---'}</div>
+        `;
+    }
 
-    preview.innerHTML = `
-        <div class="card-template">
-            <div class="card-header">
-                <h4>LICENCE HUBISOCCER</h4>
-                <p>Joueur</p>
-            </div>
-            <div class="card-body">
-                <div class="card-photo">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="card-info">
-                    <p><span class="label">Nom :</span> <span class="value">${nom.toUpperCase()}</span></p>
-                    <p><span class="label">Prénom :</span> <span class="value">${prenom}</span></p>
-                    <p><span class="label">Né(e) le :</span> <span class="value">${dateFormatted}</span></p>
-                    <p><span class="label">Nationalité :</span> <span class="value">${nationalite}</span></p>
-                    <p><span class="label">Taille :</span> <span class="value">${taille} cm</span></p>
-                    <p><span class="label">Pied :</span> <span class="value">${pied}</span></p>
-                    <p><span class="label">Club :</span> <span class="value">${club}</span></p>
-                </div>
-            </div>
-            <div class="card-footer">
-                <div class="signatures">
-                    <div class="signature-box">
-                        <span class="signature-label">Signature joueur</span>
-                    </div>
-                    <div class="signature-box">
-                        <span class="stamp"><i class="fas fa-stamp"></i></span>
-                        <span class="signature-label">Cachet officiel</span>
-                    </div>
-                </div>
-                <div class="id-number">ID: ${playerProfile?.hub_id || '---'}</div>
-            </div>
-        </div>
-    `;
+    // Face arrière
+    const backInfo = document.getElementById('cardBackInfo');
+    if (backInfo) {
+        backInfo.innerHTML = `
+            <p><span class="label">Adresse :</span> <span class="value">${adresse}</span></p>
+            <p><span class="label">Pays :</span> <span class="value">${pays}</span></p>
+            <p><span class="label">Club :</span> <span class="value">${club}</span></p>
+            <p><span class="label">N° licence :</span> <span class="value">${licenseRequest?.id || '---'}</span></p>
+            <p><span class="label">Délivrance :</span> <span class="value">${licenseRequest ? new Date(licenseRequest.created_at).toLocaleDateString('fr-FR') : '---'}</span></p>
+        `;
+    }
+}
+
+// ===== GESTION DU FLIP DE LA CARTE =====
+function initCardFlip() {
+    const container = document.querySelector('.card-flip-container');
+    const btn = document.getElementById('flipCardBtn');
+    if (container && btn) {
+        btn.addEventListener('click', () => {
+            container.classList.toggle('flipped');
+        });
+    }
 }
 
 // ===== FONCTIONS UI =====
@@ -476,31 +536,59 @@ function initSidebar() {
     const sidebar = document.getElementById('sidebar');
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
-
-    if (!menuBtn || !sidebar || !closeBtn || !overlay) {
-        console.warn('Éléments de la sidebar manquants');
-        return;
-    }
+    const menuHandle = document.getElementById('menuHandle');
 
     function openSidebar() {
         sidebar.classList.add('active');
-        overlay.classList.add('active');
+        if (overlay) overlay.classList.add('active');
     }
     function closeSidebarFunc() {
         sidebar.classList.remove('active');
-        overlay.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
     }
 
-    menuBtn.addEventListener('click', openSidebar);
-    closeBtn.addEventListener('click', closeSidebarFunc);
-    overlay.addEventListener('click', closeSidebarFunc);
+    if (menuBtn) menuBtn.addEventListener('click', openSidebar);
+    if (menuHandle) menuHandle.addEventListener('click', openSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
+    if (overlay) overlay.addEventListener('click', closeSidebarFunc);
+
+    // Swipe
+    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+    const swipeThreshold = 50;
+
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diffX = touchEndX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
+
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+            e.preventDefault();
+            if (diffX > 0 && touchStartX < 50) openSidebar();
+            else if (diffX < 0) closeSidebarFunc();
+        }
+    }, { passive: false });
+}
+
+function addMenuHandle() {
+    if (document.getElementById('menuHandle')) return;
+    const handle = document.createElement('div');
+    handle.id = 'menuHandle';
+    handle.className = 'menu-handle';
+    handle.setAttribute('aria-label', 'Ouvrir le menu');
+    handle.innerHTML = '<span></span>';
+    document.body.appendChild(handle);
 }
 
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabaseClient.auth.signOut().then(() => {
+            supabasePlayersSpacePrive.auth.signOut().then(() => {
                 window.location.href = '../index.html';
             });
         });
@@ -540,6 +628,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!user) return;
 
     await loadPlayerProfile();
+    if (!playerProfile) {
+        showToast('Profil non trouvé. Veuillez compléter votre inscription.', 'error');
+        return;
+    }
+
     await loadDocuments();
     await checkLicenseStatus();
 
@@ -550,6 +643,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Formulaire #licenseForm introuvable');
     }
 
+    // Pré-remplir le formulaire avec les données du profil
+    populateFormFromProfile();
+
     const inputs = document.querySelectorAll('#licenseForm input, #licenseForm select');
     inputs.forEach(input => {
         input.addEventListener('input', () => {
@@ -557,17 +653,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             saveFormToSession();
         });
     });
-    
+
     restoreFormFromSession();
     updateCardPreview();
+    initCardFlip();
 
+    addMenuHandle();
     initUserMenu();
     initSidebar();
     initLogout();
 
+    document.getElementById('langSelect')?.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+        // Plus tard, implémenter la traduction
+    });
+
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
-        alert('Changement de langue bientôt disponible');
+        showToast('Changement de langue bientôt disponible', 'info');
     });
 
     console.log('✅ Initialisation terminée');
