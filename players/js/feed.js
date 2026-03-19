@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabasePlayerPrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -70,9 +70,9 @@ async function withButtonSpinner(button, asyncFn) {
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabasePlayerPrive.auth.getSession();
+    const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
     if (error || !session) {
-        window.location.href = '../public/auth/login.html'; // Chemin adapté pour joueur
+        window.location.href = '../public/auth/login.html';
         return null;
     }
     currentUser = session.user;
@@ -81,7 +81,7 @@ async function checkSession() {
 
 // ===== CHARGEMENT DU PROFIL =====
 async function loadProfile() {
-    const { data, error } = await supabasePlayerPrive
+    const { data, error } = await supabasePlayersSpacePrive
         .from('profiles')
         .select('*')
         .eq('id', currentUser.id)
@@ -102,7 +102,7 @@ async function loadProfile() {
 // ===== CHARGEMENT DES NOTIFICATIONS =====
 async function loadNotifications() {
     if (!currentProfile) return;
-    const { data, error } = await supabasePlayerPrive
+    const { data, error } = await supabasePlayersSpacePrive
         .from('notifications')
         .select('*')
         .eq('user_id', currentProfile.id)
@@ -141,6 +141,7 @@ function renderNotificationsModal() {
             case 'share': icon = '🔄'; break;
             case 'follow': icon = '👤'; break;
             case 'mention': icon = '@'; break;
+            default: icon = '🔔';
         }
         return `
             <li data-id="${n.id}" onclick="markNotificationAsRead('${n.id}')">
@@ -157,7 +158,7 @@ function renderNotificationsModal() {
 
 // ===== MARQUER UNE NOTIFICATION COMME LUE =====
 async function markNotificationAsRead(notificationId) {
-    await supabasePlayerPrive
+    await supabasePlayersSpacePrive
         .from('notifications')
         .update({ is_read: true })
         .eq('id', notificationId);
@@ -166,7 +167,7 @@ async function markNotificationAsRead(notificationId) {
 
 // ===== MARQUER TOUT COMME LU =====
 async function markAllNotificationsAsRead() {
-    await supabasePlayerPrive
+    await supabasePlayersSpacePrive
         .from('notifications')
         .update({ is_read: true })
         .eq('user_id', currentProfile.id)
@@ -190,7 +191,7 @@ function closeNotificationsModal() {
 
 // ===== CHARGEMENT DES COLLECTIONS =====
 async function loadCollections() {
-    const { data, error } = await supabasePlayerPrive
+    const { data, error } = await supabasePlayersSpacePrive
         .from('collections')
         .select('*')
         .eq('user_id', currentProfile.id)
@@ -228,7 +229,7 @@ function setCurrentCollection(collectionId) {
 async function createCollection() {
     const name = prompt('Nom de la nouvelle collection :');
     if (!name) return;
-    const { error } = await supabasePlayerPrive
+    const { error } = await supabasePlayersSpacePrive
         .from('collections')
         .insert({ user_id: currentProfile.id, name });
     if (error) {
@@ -241,7 +242,7 @@ async function createCollection() {
 
 // ===== AJOUTER UN POST À UNE COLLECTION =====
 async function addPostToCollection(postId, collectionId) {
-    const { error } = await supabasePlayerPrive
+    const { error } = await supabasePlayersSpacePrive
         .from('collection_items')
         .insert({ collection_id: collectionId, post_id: postId });
     if (error) {
@@ -256,7 +257,7 @@ async function addPostToCollection(postId, collectionId) {
 
 // ===== RETIRER UN POST D'UNE COLLECTION =====
 async function removePostFromCollection(postId, collectionId) {
-    const { error } = await supabasePlayerPrive
+    const { error } = await supabasePlayersSpacePrive
         .from('collection_items')
         .delete()
         .eq('collection_id', collectionId)
@@ -274,14 +275,14 @@ async function removePostFromCollection(postId, collectionId) {
 // ===== CHARGEMENT DES DONNÉES UTILISATEUR =====
 async function loadUserMetadata() {
     // Likes
-    const { data: likesData } = await supabasePlayerPrive
+    const { data: likesData } = await supabasePlayersSpacePrive
         .from('unified_likes')
         .select('post_id')
         .eq('user_id', currentProfile.id);
     likedPosts = new Set(likesData?.map(l => l.post_id) || []);
 
     // Saved (collection 'Favoris')
-    const { data: savedData } = await supabasePlayerPrive
+    const { data: savedData } = await supabasePlayersSpacePrive
         .from('collection_items')
         .select('post_id, collections!inner(name)')
         .eq('collections.user_id', currentProfile.id)
@@ -289,7 +290,7 @@ async function loadUserMetadata() {
     savedPosts = new Set(savedData?.map(s => s.post_id) || []);
 
     // Hidden
-    const { data: hiddenData } = await supabasePlayerPrive
+    const { data: hiddenData } = await supabasePlayersSpacePrive
         .from('unified_hidden')
         .select('post_id')
         .eq('user_id', currentProfile.id);
@@ -304,7 +305,7 @@ async function loadPosts() {
         const feedLoader = document.getElementById('feedLoader');
         if (feedLoader) feedLoader.style.display = 'flex';
 
-        let query = supabasePlayerPrive
+        let query = supabasePlayersSpacePrive
             .from('unified_posts')
             .select('*')
             .order('created_at', { ascending: false });
@@ -313,7 +314,7 @@ async function loadPosts() {
         if (postsError) throw postsError;
 
         const authorIds = postsData.map(p => p.user_id).filter(Boolean);
-        const { data: profilesData, error: profilesError } = await supabasePlayerPrive
+        const { data: profilesData, error: profilesError } = await supabasePlayersSpacePrive
             .from('profiles')
             .select('id, full_name, avatar_url, username, role, privacy, badges')
             .in('id', authorIds);
@@ -331,15 +332,15 @@ async function loadPosts() {
                 if (!isFollowing) continue;
             }
 
-            const { count: likesCount } = await supabasePlayerPrive
+            const { count: likesCount } = await supabasePlayersSpacePrive
                 .from('unified_likes')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
-            const { count: commentsCount } = await supabasePlayerPrive
+            const { count: commentsCount } = await supabasePlayersSpacePrive
                 .from('unified_comments')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
-            const { count: sharesCount } = await supabasePlayerPrive
+            const { count: sharesCount } = await supabasePlayersSpacePrive
                 .from('unified_shares')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
@@ -355,13 +356,13 @@ async function loadPosts() {
 
         const visiblePosts = postsWithCounts.filter(post => !hiddenPosts.has(post.id));
 
-        const { data: followingData } = await supabasePlayerPrive
+        const { data: followingData } = await supabasePlayersSpacePrive
             .from('unified_follows')
             .select('following_id')
             .eq('follower_id', currentProfile.id);
         const followingIds = followingData?.map(f => f.following_id) || [];
 
-        const { data: collectionItems } = await supabasePlayerPrive
+        const { data: collectionItems } = await supabasePlayersSpacePrive
             .from('collection_items')
             .select('post_id, collection_id, collections(name)')
             .eq('collections.user_id', currentProfile.id);
@@ -442,7 +443,7 @@ async function loadHiddenPosts() {
             return;
         }
 
-        const { data: postsData, error: postsError } = await supabasePlayerPrive
+        const { data: postsData, error: postsError } = await supabasePlayersSpacePrive
             .from('unified_posts')
             .select('*')
             .in('id', hiddenIds)
@@ -450,7 +451,7 @@ async function loadHiddenPosts() {
         if (postsError) throw postsError;
 
         const authorIds = postsData.map(p => p.user_id).filter(Boolean);
-        const { data: profilesData, error: profilesError } = await supabasePlayerPrive
+        const { data: profilesData, error: profilesError } = await supabasePlayersSpacePrive
             .from('profiles')
             .select('id, full_name, avatar_url, username, role, badges')
             .in('id', authorIds);
@@ -461,15 +462,15 @@ async function loadHiddenPosts() {
 
         const postsWithCounts = [];
         for (const post of postsData) {
-            const { count: likesCount } = await supabasePlayerPrive
+            const { count: likesCount } = await supabasePlayersSpacePrive
                 .from('unified_likes')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
-            const { count: commentsCount } = await supabasePlayerPrive
+            const { count: commentsCount } = await supabasePlayersSpacePrive
                 .from('unified_comments')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
-            const { count: sharesCount } = await supabasePlayerPrive
+            const { count: sharesCount } = await supabasePlayersSpacePrive
                 .from('unified_shares')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
@@ -664,7 +665,7 @@ function showCollectionsModal(postId) {
     const list = document.getElementById('collectionsModalList');
     if (!modal || !list) return;
     list.innerHTML = collections.map(c => {
-        const isIn = posts.find(p => p.id === postId)?.collections?.includes(c.id);
+        const isIn = posts.find(p => p.id == postId)?.collections?.includes(c.id);
         return `
             <li>
                 <span>${c.name}</span>
@@ -731,7 +732,7 @@ function shareOn(platform) {
 
 // ===== CHARGEMENT DES COMMENTAIRES =====
 async function loadComments(postId) {
-    const { data, error } = await supabasePlayerPrive
+    const { data, error } = await supabasePlayersSpacePrive
         .from('unified_comments')
         .select(`
             *,
@@ -767,7 +768,7 @@ async function loadComments(postId) {
 async function renderComment(comment, postId) {
     const authorName = comment.author?.full_name || 'Anonyme';
     const timeAgo = timeSince(new Date(comment.created_at));
-    const { data: replies, error } = await supabasePlayerPrive
+    const { data: replies, error } = await supabasePlayersSpacePrive
         .from('unified_comments')
         .select(`
             *,
@@ -810,7 +811,7 @@ async function renderComment(comment, postId) {
 async function editComment(commentId, postId) {
     const newContent = prompt('Modifier votre commentaire :');
     if (!newContent) return;
-    const { error } = await supabasePlayerPrive
+    const { error } = await supabasePlayersSpacePrive
         .from('unified_comments')
         .update({ content: newContent })
         .eq('id', commentId);
@@ -830,7 +831,7 @@ async function editComment(commentId, postId) {
 // ===== SUPPRESSION D'UN COMMENTAIRE =====
 async function deleteComment(commentId, postId) {
     if (!confirm('Supprimer ce commentaire ?')) return;
-    const { error } = await supabasePlayerPrive
+    const { error } = await supabasePlayersSpacePrive
         .from('unified_comments')
         .delete()
         .eq('id', commentId);
@@ -850,7 +851,7 @@ async function deleteComment(commentId, postId) {
 // ===== SIGNALEMENT D'UN COMMENTAIRE =====
 async function reportComment(commentId, postId) {
     const reason = prompt('Pourquoi signalez-vous ce commentaire ? (optionnel)');
-    const { error } = await supabasePlayerPrive
+    const { error } = await supabasePlayersSpacePrive
         .from('comment_reports')
         .insert({ user_id: currentProfile.id, comment_id: commentId, reason: reason || null });
     if (error) {
@@ -893,14 +894,14 @@ async function likePost(postId) {
     button.disabled = true;
     try {
         if (likedPosts.has(postId)) {
-            await supabasePlayerPrive
+            await supabasePlayersSpacePrive
                 .from('unified_likes')
                 .delete()
                 .eq('user_id', currentProfile.id)
                 .eq('post_id', postId);
             likedPosts.delete(postId);
         } else {
-            await supabasePlayerPrive
+            await supabasePlayersSpacePrive
                 .from('unified_likes')
                 .insert({ user_id: currentProfile.id, post_id: postId });
             likedPosts.add(postId);
@@ -926,7 +927,7 @@ async function addComment(postId) {
     const originalText = button.innerHTML;
     button.innerHTML = '<span class="button-spinner"></span>';
     try {
-        await supabasePlayerPrive
+        await supabasePlayersSpacePrive
             .from('unified_comments')
             .insert({
                 user_id: currentProfile.id,
@@ -958,7 +959,7 @@ function scrollToComments(postId) {
 }
 
 async function showLikes(postId) {
-    const { data, error } = await supabasePlayerPrive
+    const { data, error } = await supabasePlayersSpacePrive
         .from('unified_likes')
         .select('user_id, author:profiles!user_id (id, full_name, avatar_url, username)')
         .eq('post_id', postId);
@@ -989,7 +990,7 @@ async function editPost(postId) {
     const button = event.target.closest('button');
     button.disabled = true;
     try {
-        await supabasePlayerPrive
+        await supabasePlayersSpacePrive
             .from('unified_posts')
             .update({ content: newContent })
             .eq('id', postId);
@@ -1011,7 +1012,7 @@ async function deletePost(postId) {
     const button = event.target.closest('button');
     button.disabled = true;
     try {
-        await supabasePlayerPrive
+        await supabasePlayersSpacePrive
             .from('unified_posts')
             .delete()
             .eq('id', postId);
@@ -1035,7 +1036,7 @@ async function hidePost(postId) {
     button.innerHTML = '<span class="button-spinner"></span>';
     button.disabled = true;
     try {
-        await supabasePlayerPrive
+        await supabasePlayersSpacePrive
             .from('unified_hidden')
             .insert({ user_id: currentProfile.id, post_id: postId });
         hiddenPosts.add(postId);
@@ -1056,7 +1057,7 @@ async function hidePost(postId) {
 async function unhidePost(postId) {
     if (!confirm('Voulez-vous réafficher ce post dans votre fil ?')) return;
     try {
-        await supabasePlayerPrive
+        await supabasePlayersSpacePrive
             .from('unified_hidden')
             .delete()
             .eq('user_id', currentProfile.id)
@@ -1077,7 +1078,7 @@ async function reportPost(postId) {
     button.innerHTML = '<span class="button-spinner"></span>';
     button.disabled = true;
     try {
-        await supabasePlayerPrive
+        await supabasePlayersSpacePrive
             .from('unified_reports')
             .insert({ user_id: currentProfile.id, post_id: postId, reason: reason || null });
         showToast('Merci, votre signalement a été enregistré.', 'success');
@@ -1098,13 +1099,13 @@ async function toggleFollow(button) {
 
     try {
         if (isFollowing) {
-            await supabasePlayerPrive
+            await supabasePlayersSpacePrive
                 .from('unified_follows')
                 .delete()
                 .eq('follower_id', currentProfile.id)
                 .eq('following_id', followedId);
         } else {
-            await supabasePlayerPrive
+            await supabasePlayersSpacePrive
                 .from('unified_follows')
                 .insert({ follower_id: currentProfile.id, following_id: followedId });
         }
@@ -1124,7 +1125,7 @@ async function toggleFollow(button) {
 // ===== PROFIL UTILISATEUR =====
 async function openUserProfile(userId) {
     selectedUserId = userId;
-    const { data, error } = await supabasePlayerPrive
+    const { data, error } = await supabasePlayersSpacePrive
         .from('profiles')
         .select('full_name, avatar_url, username, bio, badges, privacy')
         .eq('id', userId)
@@ -1165,8 +1166,8 @@ async function createPost(content, file, postType = 'text', pollData = null) {
     if (file) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
-        const bucket = 'parrain-posts'; // Adapté pour joueur
-        const { error: uploadError } = await supabasePlayerPrive.storage
+        const bucket = 'player-posts'; // Adapté pour joueur
+        const { error: uploadError } = await supabasePlayersSpacePrive.storage
             .from(bucket)
             .upload(fileName, file, {
                 cacheControl: '3600',
@@ -1176,7 +1177,7 @@ async function createPost(content, file, postType = 'text', pollData = null) {
             showToast('Erreur upload : ' + uploadError.message, 'error');
             return;
         }
-        const { data: urlData } = supabasePlayerPrive.storage
+        const { data: urlData } = supabasePlayersSpacePrive.storage
             .from(bucket)
             .getPublicUrl(fileName);
         mediaUrl = urlData.publicUrl;
@@ -1199,7 +1200,7 @@ async function createPost(content, file, postType = 'text', pollData = null) {
         postData.event_location = pollData.location;
     }
 
-    const { error } = await supabasePlayerPrive
+    const { error } = await supabasePlayersSpacePrive
         .from('unified_posts')
         .insert(postData);
 
@@ -1249,7 +1250,7 @@ function closePrivacyModal() {
 
 async function savePrivacy() {
     const selected = document.querySelector('input[name="privacy"]:checked').value;
-    const { error } = await supabasePlayerPrive
+    const { error } = await supabasePlayersSpacePrive
         .from('profiles')
         .update({ privacy: selected })
         .eq('id', currentProfile.id);
@@ -1286,7 +1287,7 @@ function showPersonalHistory() {
 
 // ===== RENDU DE LA SIDEBAR DROITE =====
 async function loadFollowers() {
-    const { data: followersData } = await supabasePlayerPrive
+    const { data: followersData } = await supabasePlayersSpacePrive
         .from('unified_follows')
         .select('follower_id, follower:profiles!follower_id (id, full_name, avatar_url, username)')
         .eq('following_id', currentProfile.id);
@@ -1300,7 +1301,7 @@ async function loadFollowers() {
         </li>
     `).join('');
 
-    const { data: followingData } = await supabasePlayerPrive
+    const { data: followingData } = await supabasePlayersSpacePrive
         .from('unified_follows')
         .select('following_id, followed:profiles!following_id (id, full_name, avatar_url, username)')
         .eq('follower_id', currentProfile.id);
@@ -1318,7 +1319,7 @@ async function loadFollowers() {
     document.getElementById('insightEngagement').textContent = '12%';
     document.getElementById('insightNewFollowers').textContent = `+${Math.floor(Math.random() * 10)}`;
 
-    const { data: suggestionsData } = await supabasePlayerPrive
+    const { data: suggestionsData } = await supabasePlayersSpacePrive
         .from('profiles')
         .select('id, full_name, avatar_url, username')
         .neq('id', currentProfile.id)
@@ -1334,7 +1335,7 @@ async function loadFollowers() {
         `).join('');
     }
 
-    const { data: trendsData } = await supabasePlayerPrive
+    const { data: trendsData } = await supabasePlayersSpacePrive
         .from('unified_posts')
         .select('id, content, user_id')
         .order('created_at', { ascending: false })
@@ -1414,7 +1415,7 @@ function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', async (e) => {
             e.preventDefault();
-            await supabasePlayerPrive.auth.signOut();
+            await supabasePlayersSpacePrive.auth.signOut();
             window.location.href = '../index.html';
         });
     });
@@ -1487,7 +1488,7 @@ async function saveProfileChanges(e) {
     saveBtn.innerHTML = '<span class="button-spinner"></span> Enregistrement...';
 
     try {
-        const { error } = await supabasePlayerPrive
+        const { error } = await supabasePlayersSpacePrive
             .from('profiles')
             .update(updates)
             .eq('id', currentProfile.id);
@@ -1674,7 +1675,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         initLogout();
 
         // Realtime pour les nouvelles publications
-        supabasePlayerPrive
+        supabasePlayersSpacePrive
             .channel('unified_posts_changes_player')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'unified_posts' }, payload => {
                 newPostsCount++;
@@ -1683,7 +1684,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             .subscribe();
 
         // Realtime pour les notifications
-        supabasePlayerPrive
+        supabasePlayersSpacePrive
             .channel('notifications_changes_player')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentProfile.id}` }, payload => {
                 loadNotifications();
@@ -1701,6 +1702,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('languageLink')?.addEventListener('click', (e) => {
             e.preventDefault();
             showToast('Changement de langue bientôt disponible', 'info');
+        });
+
+        // Sélecteur de langue
+        document.getElementById('langSelect')?.addEventListener('change', (e) => {
+            const lang = e.target.value;
+            showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
         });
 
         console.log('✅ Initialisation terminée');
@@ -1776,7 +1783,7 @@ async function sendReply() {
     const originalText = button.innerHTML;
     button.innerHTML = '<span class="button-spinner"></span>';
     try {
-        await supabasePlayerPrive
+        await supabasePlayersSpacePrive
             .from('unified_comments')
             .insert({
                 user_id: currentProfile.id,
