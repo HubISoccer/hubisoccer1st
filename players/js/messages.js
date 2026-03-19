@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseMessages = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -20,6 +20,8 @@ let archivedConversationIds = new Set();
 let blockedUserIds = new Set();
 let isUploading = false;
 let showArchived = false;
+let selectedMessages = new Set(); // Pour la sélection multiple
+let selectionMode = false;
 
 // Variables pour l'enregistrement audio
 let mediaRecorder = null;
@@ -67,7 +69,7 @@ function showLoader(show = true) {
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabaseMessages.auth.getSession();
+    const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
     if (error || !session) {
         window.location.href = '../public/auth/login.html';
         return null;
@@ -77,12 +79,12 @@ async function checkSession() {
     return currentUser;
 }
 
-// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
+// ===== CHARGEMENT DU PROFIL (depuis player_profiles) =====
 async function loadProfile() {
-    const { data, error } = await supabaseMessages
-        .from('profiles')
+    const { data, error } = await supabasePlayersSpacePrive
+        .from('player_profiles')
         .select('*')
-        .eq('id', currentUser.id)
+        .eq('user_id', currentUser.id)
         .single();
     if (error) {
         console.error('Erreur chargement profil:', error);
@@ -100,8 +102,8 @@ let presenceInterval = null;
 
 async function updatePresence() {
     if (!currentProfile) return;
-    const { error } = await supabaseMessages
-        .from('user_presence')
+    const { error } = await supabasePlayersSpacePrive
+        .from('player_user_presence')
         .upsert({
             user_id: currentProfile.id,
             online: true,
@@ -121,8 +123,8 @@ function stopPresenceTracking() {
 
 async function setOffline() {
     if (!currentProfile) return;
-    await supabaseMessages
-        .from('user_presence')
+    await supabasePlayersSpacePrive
+        .from('player_user_presence')
         .upsert({
             user_id: currentProfile.id,
             online: false,
@@ -136,32 +138,32 @@ async function loadConversations() {
     showLoader(true);
 
     // Récupérer les IDs des conversations archivées
-    const { data: archivedData } = await supabaseMessages
-        .from('archived_conversations')
+    const { data: archivedData } = await supabasePlayersSpacePrive
+        .from('player_archived_conversations')
         .select('conversation_id')
         .eq('user_id', currentProfile.id);
     archivedConversationIds = new Set(archivedData?.map(a => a.conversation_id) || []);
 
     // Récupérer les IDs des utilisateurs bloqués
-    const { data: blockedData } = await supabaseMessages
-        .from('blocked_users')
+    const { data: blockedData } = await supabasePlayersSpacePrive
+        .from('player_blocked_users')
         .select('blocked_id')
         .eq('blocker_id', currentProfile.id);
     blockedUserIds = new Set(blockedData?.map(b => b.blocked_id) || []);
 
-    const { data, error } = await supabaseMessages
-        .from('conversations')
+    const { data, error } = await supabasePlayersSpacePrive
+        .from('player_conversations')
         .select(`
             id,
             participant1_id,
             participant2_id,
             last_message_content,
-            last_message_at,
-            participant1:profiles!participant1_id (id, full_name, avatar_url, username),
-            participant2:profiles!participant2_id (id, full_name, avatar_url, username)
+            last_message_time,
+            participant1:player_profiles!participant1_id (id, full_name, avatar_url, username),
+            participant2:player_profiles!participant2_id (id, full_name, avatar_url, username)
         `)
         .or(`participant1_id.eq.${currentProfile.id},participant2_id.eq.${currentProfile.id}`)
-        .order('last_message_at', { ascending: false, nullsFirst: false });
+        .order('last_message_time', { ascending: false, nullsFirst: false });
 
     if (error) {
         console.error('Erreur chargement conversations:', error);
@@ -178,7 +180,7 @@ async function loadConversations() {
             contactName: contactName,
             contactAvatar: contact?.avatar_url,
             lastMessage: conv.last_message_content,
-            lastTime: conv.last_message_at,
+            lastTime: conv.last_message_time,
             unread: 0,
             online: false
         };
@@ -198,8 +200,8 @@ async function loadConversations() {
     // Charger les statuts en ligne des contacts
     const contactIds = conversations.map(c => c.contactId).filter(Boolean);
     if (contactIds.length > 0) {
-        const { data: presenceData } = await supabaseMessages
-            .from('user_presence')
+        const { data: presenceData } = await supabasePlayersSpacePrive
+            .from('player_user_presence')
             .select('user_id, online')
             .in('user_id', contactIds);
         if (presenceData) {
@@ -264,8 +266,8 @@ function renderConversations() {
 async function findOrCreateConversationWithUser(userId) {
     console.log('Recherche/création conversation avec utilisateur', userId);
 
-    const { data: existingConv, error: searchError } = await supabaseMessages
-        .from('conversations')
+    const { data: existingConv, error: searchError } = await supabasePlayersSpacePrive
+        .from('player_conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${userId}),and(participant1_id.eq.${userId},participant2_id.eq.${currentProfile.id})`)
         .maybeSingle();
@@ -280,8 +282,8 @@ async function findOrCreateConversationWithUser(userId) {
         return existingConv.id;
     }
 
-    const { data: newConv, error: createError } = await supabaseMessages
-        .from('conversations')
+    const { data: newConv, error: createError } = await supabasePlayersSpacePrive
+        .from('player_conversations')
         .insert([{
             participant1_id: currentProfile.id,
             participant2_id: userId
@@ -306,8 +308,8 @@ async function selectConversation(convId) {
 
     const conv = conversations.find(c => c.id === convId);
     if (conv) {
-        const { data: contactProfile } = await supabaseMessages
-            .from('profiles')
+        const { data: contactProfile } = await supabasePlayersSpacePrive
+            .from('player_profiles')
             .select('*')
             .eq('id', conv.contactId)
             .single();
@@ -319,12 +321,12 @@ async function selectConversation(convId) {
     renderChatHeader();
     renderChatInput();
 
-    messagesSubscription = supabaseMessages
-        .channel(`messages:${convId}`)
+    messagesSubscription = supabasePlayersSpacePrive
+        .channel(`player_messages:${convId}`)
         .on('postgres_changes', {
             event: 'INSERT',
             schema: 'public',
-            table: 'messages',
+            table: 'player_messages',
             filter: `conversation_id=eq.${convId}`
         }, payload => {
             console.log('Nouveau message reçu', payload.new);
@@ -345,8 +347,8 @@ async function selectConversation(convId) {
 async function loadMessages(convId) {
     console.log('Chargement des messages pour conversation', convId);
     showLoader(true);
-    const { data, error } = await supabaseMessages
-        .from('messages')
+    const { data, error } = await supabasePlayersSpacePrive
+        .from('player_messages')
         .select(`
             id,
             sender_id,
@@ -355,7 +357,7 @@ async function loadMessages(convId) {
             attachment_path,
             reply_to_id,
             created_at,
-            reply:reply_to_id (content, attachment_url)
+            is_read
         `)
         .eq('conversation_id', convId)
         .order('created_at', { ascending: true });
@@ -366,7 +368,20 @@ async function loadMessages(convId) {
         return;
     }
 
-    renderMessages(data);
+    // Charger les messages cités séparément
+    const replyIds = data.filter(m => m.reply_to_id).map(m => m.reply_to_id);
+    let repliesMap = new Map();
+    if (replyIds.length > 0) {
+        const { data: replies, error: replyError } = await supabasePlayersSpacePrive
+            .from('player_messages')
+            .select('id, content, attachment_url')
+            .in('id', replyIds);
+        if (!replyError) {
+            replies.forEach(r => repliesMap.set(r.id, r));
+        }
+    }
+
+    renderMessages(data, repliesMap);
     showLoader(false);
 }
 
@@ -401,7 +416,7 @@ async function getSignedUrl(path, expiresIn = 3600) {
     const parts = path.split('/');
     const bucket = parts[0];
     const fileName = parts.slice(1).join('/');
-    const { data, error } = await supabaseMessages.storage
+    const { data, error } = await supabasePlayersSpacePrive.storage
         .from(bucket)
         .createSignedUrl(fileName, expiresIn);
     if (error) {
@@ -412,7 +427,7 @@ async function getSignedUrl(path, expiresIn = 3600) {
 }
 
 // ===== RENDU DES MESSAGES =====
-function renderMessages(messages) {
+function renderMessages(messages, repliesMap = new Map()) {
     const area = document.getElementById('chatMessagesArea');
     if (!area) return;
     let html = '';
@@ -420,10 +435,13 @@ function renderMessages(messages) {
         const isMe = msg.sender_id === currentProfile.id;
         const time = formatMessageDate(msg.created_at);
         let replyHtml = '';
-        if (msg.reply) {
-            const replyContent = msg.reply.content ? `<span>${msg.reply.content}</span>` : '';
-            const replyAttachment = msg.reply.attachment_url ? `<i class="fas fa-image"></i> Image` : '';
-            replyHtml = `<div class="reply-quote">${replyContent} ${replyAttachment}</div>`;
+        if (msg.reply_to_id) {
+            const replied = repliesMap.get(msg.reply_to_id);
+            if (replied) {
+                const replyContent = replied.content ? `<span>${replied.content}</span>` : '';
+                const replyAttachment = replied.attachment_url ? `<i class="fas fa-image"></i> Image` : '';
+                replyHtml = `<div class="reply-quote">${replyContent} ${replyAttachment}</div>`;
+            }
         }
         let attachmentHtml = '';
         let fileType = null;
@@ -442,14 +460,18 @@ function renderMessages(messages) {
                 attachmentHtml = `<div class="message-attachment"><a href="${msg.attachment_url}" target="_blank">Fichier joint</a></div>`;
             }
         }
+        const selectedClass = selectedMessages.has(msg.id) ? 'selected' : '';
         html += `
-            <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}">
+            <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'} ${selectedClass}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}" onclick="handleMessageClick(event, ${msg.id})">
                 ${replyHtml}
                 ${attachmentHtml}
                 <div class="message-content">${msg.content || ''}</div>
                 <span class="message-time">${time}</span>
                 <div class="message-actions">
                     <button class="message-action" onclick="event.stopPropagation(); showContextMenu(event, ${msg.id})"><i class="fas fa-ellipsis-v"></i></button>
+                </div>
+                <div class="read-status">
+                    ${isMe && msg.is_read ? '<i class="fas fa-check-double" style="color:var(--gold);" title="Lu"></i>' : isMe && !msg.is_read ? '<i class="fas fa-check" title="Délivré"></i>' : ''}
                 </div>
             </div>
         `;
@@ -475,6 +497,14 @@ function renderMessages(messages) {
             }
         }
     });
+
+    // Marquer les messages comme lus si la conversation est ouverte
+    messages.filter(m => !m.is_read && m.sender_id !== currentProfile.id).forEach(async m => {
+        await supabasePlayersSpacePrive
+            .from('player_messages')
+            .update({ is_read: true })
+            .eq('id', m.id);
+    });
 }
 
 // ===== AJOUTER UN MESSAGE (Realtime) =====
@@ -486,6 +516,7 @@ function appendMessage(msg) {
     const time = formatMessageDate(msg.created_at);
     let replyHtml = '';
     if (msg.reply_to_id) {
+        // On ne peut pas charger le message cité immédiatement, on affiche juste un placeholder
         replyHtml = `<div class="reply-quote">Réponse à un message</div>`;
     }
     let attachmentHtml = '';
@@ -507,13 +538,16 @@ function appendMessage(msg) {
     }
 
     const msgHtml = `
-        <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}">
+        <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}" onclick="handleMessageClick(event, ${msg.id})">
             ${replyHtml}
             ${attachmentHtml}
             <div class="message-content">${msg.content || ''}</div>
             <span class="message-time">${time}</span>
             <div class="message-actions">
                 <button class="message-action" onclick="event.stopPropagation(); showContextMenu(event, ${msg.id})"><i class="fas fa-ellipsis-v"></i></button>
+            </div>
+            <div class="read-status">
+                ${isMe && msg.is_read ? '<i class="fas fa-check-double" style="color:var(--gold);" title="Lu"></i>' : isMe && !msg.is_read ? '<i class="fas fa-check" title="Délivré"></i>' : ''}
             </div>
         </div>
     `;
@@ -544,6 +578,79 @@ function updateConversationLastMessage(convId, msg) {
         conv.lastMessage = msg.content || (msg.attachment_path || msg.attachment_url ? '📎 Fichier' : '');
         conv.lastTime = msg.created_at;
         renderConversations();
+    }
+}
+
+// ===== GESTION DE LA SÉLECTION MULTIPLE =====
+function handleMessageClick(event, msgId) {
+    if (selectionMode) {
+        event.preventDefault();
+        event.stopPropagation();
+        const msgElement = document.querySelector(`[data-msg-id="${msgId}"]`);
+        if (selectedMessages.has(msgId)) {
+            selectedMessages.delete(msgId);
+            msgElement.classList.remove('selected');
+        } else {
+            selectedMessages.add(msgId);
+            msgElement.classList.add('selected');
+        }
+        // Afficher une barre d'actions en bas si au moins un message sélectionné
+        updateSelectionBar();
+    } else {
+        // Sinon, comportement normal (ouvrir le menu contextuel ?) -> on laisse le clic normal
+        // Mais pour éviter de déclencher d'autres actions, on ne fait rien de spécial
+    }
+}
+
+function updateSelectionBar() {
+    let selectionBar = document.getElementById('selectionBar');
+    if (!selectionBar) {
+        selectionBar = document.createElement('div');
+        selectionBar.id = 'selectionBar';
+        selectionBar.className = 'selection-bar';
+        selectionBar.innerHTML = `
+            <span id="selectedCount">0</span> message(s) sélectionné(s)
+            <button onclick="deleteSelectedMessages()"><i class="fas fa-trash-alt"></i> Supprimer</button>
+            <button onclick="cancelSelection()">Annuler</button>
+        `;
+        document.body.appendChild(selectionBar);
+    }
+    const count = selectedMessages.size;
+    selectionBar.style.display = count > 0 ? 'flex' : 'none';
+    document.getElementById('selectedCount').textContent = count;
+}
+
+function cancelSelection() {
+    selectionMode = false;
+    selectedMessages.clear();
+    document.querySelectorAll('.message-bubble.selected').forEach(el => el.classList.remove('selected'));
+    document.getElementById('selectionBar')?.remove();
+}
+
+async function deleteSelectedMessages() {
+    if (selectedMessages.size === 0) return;
+    if (!confirm(`Supprimer définitivement ${selectedMessages.size} message(s) ?`)) return;
+    // Supprimer pour tous (ou pour soi ?) – on va proposer un choix
+    const forEveryone = confirm('Supprimer pour tous les participants ? (Annuler pour ne supprimer que pour vous)');
+    if (forEveryone) {
+        for (let msgId of selectedMessages) {
+            await supabasePlayersSpacePrive
+                .from('player_messages')
+                .delete()
+                .eq('id', msgId);
+        }
+        showToast('Messages supprimés pour tous', 'success');
+    } else {
+        // Pour l'instant, suppression locale sans persistance
+        // Idéalement, il faudrait une table de suppression
+        selectedMessages.forEach(msgId => {
+            document.querySelector(`[data-msg-id="${msgId}"]`)?.remove();
+        });
+        showToast('Messages supprimés localement', 'success');
+    }
+    cancelSelection();
+    if (forEveryone) {
+        await loadMessages(currentConversationId);
     }
 }
 
@@ -738,13 +845,14 @@ async function insertMessage(conversationId, content, attachmentUrl, attachmentP
         conversation_id: conversationId,
         sender_id: currentProfile.id,
         content: content,
-        reply_to_id: replyingTo ? replyingTo.id : null
+        reply_to_id: replyingTo ? replyingTo.id : null,
+        is_read: false
     };
     if (attachmentUrl) insertData.attachment_url = attachmentUrl;
     if (attachmentPath) insertData.attachment_path = attachmentPath;
 
-    const { data: newMsg, error: msgError } = await supabaseMessages
-        .from('messages')
+    const { data: newMsg, error: msgError } = await supabasePlayersSpacePrive
+        .from('player_messages')
         .insert(insertData)
         .select()
         .single();
@@ -756,11 +864,11 @@ async function insertMessage(conversationId, content, attachmentUrl, attachmentP
     }
 
     const lastContent = attachmentUrl || attachmentPath ? '📎 Fichier' : content;
-    await supabaseMessages
-        .from('conversations')
+    await supabasePlayersSpacePrive
+        .from('player_conversations')
         .update({
             last_message_content: lastContent,
-            last_message_at: new Date().toISOString()
+            last_message_time: new Date().toISOString()
         })
         .eq('id', conversationId);
 }
@@ -895,6 +1003,12 @@ async function sendRecordedAudio() {
         return;
     }
 
+    // Limite de durée : 10 minutes
+    if (recordingSeconds > 600) {
+        showToast('L\'enregistrement ne doit pas dépasser 10 minutes', 'warning');
+        return;
+    }
+
     isUploading = true;
     const sendBtn = document.querySelector('.send-btn');
     sendBtn.classList.add('loading');
@@ -934,8 +1048,8 @@ async function sendRecordedAudio() {
 async function deleteMessage(msgId, forEveryone = false) {
     if (!confirm('Supprimer ce message ?')) return;
     if (forEveryone) {
-        const { error } = await supabaseMessages
-            .from('messages')
+        const { error } = await supabasePlayersSpacePrive
+            .from('player_messages')
             .delete()
             .eq('id', msgId);
         if (error) {
@@ -945,8 +1059,8 @@ async function deleteMessage(msgId, forEveryone = false) {
             await loadMessages(currentConversationId);
         }
     } else {
-        const msgElement = document.querySelector(`[data-msg-id="${msgId}"]`);
-        if (msgElement) msgElement.remove();
+        // Pour l'instant, suppression locale
+        document.querySelector(`[data-msg-id="${msgId}"]`)?.remove();
         showToast('Message supprimé (visible seulement pour vous)', 'success');
     }
 }
@@ -966,6 +1080,13 @@ function cancelReply() {
     renderChatInput();
 }
 
+// ===== ÉPINGLER =====
+async function pinMessageFromMenu() {
+    // À implémenter avec une table player_pinned_messages
+    showToast('Fonctionnalité à venir', 'info');
+    document.getElementById('messageContextMenu').style.display = 'none';
+}
+
 // ===== MENU CONTEXTUEL =====
 function showContextMenu(event, msgId) {
     event.preventDefault();
@@ -980,8 +1101,11 @@ function showContextMenu(event, msgId) {
         deleteForEveryoneOption.style.display = isMe ? 'block' : 'none';
     }
 
-    menu.style.left = event.pageX + 'px';
-    menu.style.top = event.pageY + 'px';
+    // Ajuster la position pour ne pas sortir de l'écran
+    const x = Math.min(event.pageX, window.innerWidth - menu.offsetWidth - 10);
+    const y = Math.min(event.pageY, window.innerHeight - menu.offsetHeight - 10);
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
     menu.style.display = 'block';
 
     document.addEventListener('click', function closeMenu(e) {
@@ -1019,8 +1143,8 @@ function deleteForEveryone() {
 // ===== ACTIONS SUR LA CONVERSATION =====
 async function archiveConversation() {
     if (!currentConversationId || !currentProfile) return;
-    const { data: existing, error: checkError } = await supabaseMessages
-        .from('archived_conversations')
+    const { data: existing, error: checkError } = await supabasePlayersSpacePrive
+        .from('player_archived_conversations')
         .select('id')
         .eq('user_id', currentProfile.id)
         .eq('conversation_id', currentConversationId)
@@ -1034,8 +1158,8 @@ async function archiveConversation() {
         showToast('Conversation déjà archivée', 'info');
         return;
     }
-    const { error } = await supabaseMessages
-        .from('archived_conversations')
+    const { error } = await supabasePlayersSpacePrive
+        .from('player_archived_conversations')
         .insert([{
             user_id: currentProfile.id,
             conversation_id: currentConversationId
@@ -1053,8 +1177,8 @@ async function archiveConversation() {
 async function blockUser() {
     if (!currentContact || !currentProfile) return;
     if (!confirm(`Bloquer ${currentContact.full_name} ? Vous ne recevrez plus de messages de sa part.`)) return;
-    const { data: existing, error: checkError } = await supabaseMessages
-        .from('blocked_users')
+    const { data: existing, error: checkError } = await supabasePlayersSpacePrive
+        .from('player_blocked_users')
         .select('id')
         .eq('blocker_id', currentProfile.id)
         .eq('blocked_id', currentContact.id)
@@ -1068,8 +1192,8 @@ async function blockUser() {
         showToast('Cet utilisateur est déjà bloqué', 'info');
         return;
     }
-    const { error } = await supabaseMessages
-        .from('blocked_users')
+    const { error } = await supabasePlayersSpacePrive
+        .from('player_blocked_users')
         .insert([{
             blocker_id: currentProfile.id,
             blocked_id: currentContact.id
@@ -1092,16 +1216,16 @@ function closeDeleteConvModal() {
 }
 async function confirmDeleteConversation() {
     if (!currentConversationId) return;
-    const { error: msgError } = await supabaseMessages
-        .from('messages')
+    const { error: msgError } = await supabasePlayersSpacePrive
+        .from('player_messages')
         .delete()
         .eq('conversation_id', currentConversationId);
     if (msgError) {
         showToast('Erreur lors de la suppression des messages', 'error');
         return;
     }
-    const { error: convError } = await supabaseMessages
-        .from('conversations')
+    const { error: convError } = await supabasePlayersSpacePrive
+        .from('player_conversations')
         .delete()
         .eq('id', currentConversationId);
     if (convError) {
@@ -1295,8 +1419,8 @@ function openStickerPicker() {
 // ===== GESTION DES UTILISATEURS BLOQUÉS =====
 async function loadBlockedUsers() {
     if (!currentProfile) return [];
-    const { data, error } = await supabaseMessages
-        .from('blocked_users')
+    const { data, error } = await supabasePlayersSpacePrive
+        .from('player_blocked_users')
         .select('blocked_id')
         .eq('blocker_id', currentProfile.id);
     if (error) {
@@ -1307,8 +1431,8 @@ async function loadBlockedUsers() {
     const blockedIds = data.map(b => b.blocked_id);
     if (blockedIds.length === 0) return [];
 
-    const { data: profiles, error: profilesError } = await supabaseMessages
-        .from('profiles')
+    const { data: profiles, error: profilesError } = await supabasePlayersSpacePrive
+        .from('player_profiles')
         .select('id, full_name, avatar_url')
         .in('id', blockedIds);
     if (profilesError) {
@@ -1348,8 +1472,8 @@ function closeBlockedUsersModal() {
 
 async function unblockUser(userId) {
     if (!currentProfile || !userId) return;
-    const { error } = await supabaseMessages
-        .from('blocked_users')
+    const { error } = await supabasePlayersSpacePrive
+        .from('player_blocked_users')
         .delete()
         .eq('blocker_id', currentProfile.id)
         .eq('blocked_id', userId);
@@ -1368,8 +1492,8 @@ async function ensureSupportConversation() {
     console.log('Création conversation support...');
     let supportProfileId;
 
-    const { data: supportData, error: searchError } = await supabaseMessages
-        .from('profiles')
+    const { data: supportData, error: searchError } = await supabasePlayersSpacePrive
+        .from('player_profiles')
         .select('id')
         .eq('username', 'SUPPORT')
         .maybeSingle();
@@ -1381,10 +1505,10 @@ async function ensureSupportConversation() {
 
     if (!supportData) {
         // Créer un profil support (UUID fixe ou auto-généré)
-        const { data: newSupport, error: insertError } = await supabaseMessages
-            .from('profiles')
+        const { data: newSupport, error: insertError } = await supabasePlayersSpacePrive
+            .from('player_profiles')
             .insert([{
-                id: '00000000-0000-0000-0000-000000000001', // UUID fixe, ou laisser auto-généré
+                id: 999999999, // ID BIGINT fictif, à adapter
                 username: 'SUPPORT',
                 full_name: 'Support HubISoccer',
                 avatar_url: 'img/user-default.jpg'
@@ -1401,8 +1525,8 @@ async function ensureSupportConversation() {
         supportProfileId = supportData.id;
     }
 
-    const { data: existingConv, error: convCheckError } = await supabaseMessages
-        .from('conversations')
+    const { data: existingConv, error: convCheckError } = await supabasePlayersSpacePrive
+        .from('player_conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${supportProfileId}),and(participant1_id.eq.${supportProfileId},participant2_id.eq.${currentProfile.id})`)
         .maybeSingle();
@@ -1417,8 +1541,8 @@ async function ensureSupportConversation() {
         return;
     }
 
-    const { data: newConv, error: convError } = await supabaseMessages
-        .from('conversations')
+    const { data: newConv, error: convError } = await supabasePlayersSpacePrive
+        .from('player_conversations')
         .insert([{
             participant1_id: currentProfile.id,
             participant2_id: supportProfileId
@@ -1431,8 +1555,8 @@ async function ensureSupportConversation() {
         return;
     }
 
-    const { error: msgError } = await supabaseMessages
-        .from('messages')
+    const { error: msgError } = await supabasePlayersSpacePrive
+        .from('player_messages')
         .insert([{
             conversation_id: newConv.id,
             sender_id: supportProfileId,
@@ -1460,12 +1584,12 @@ function initSearch() {
 
 // ===== SOUSCRIPTION AUX NOUVELLES CONVERSATIONS =====
 function subscribeToNewConversations() {
-    conversationsSubscription = supabaseMessages
-        .channel('conversations_changes')
+    conversationsSubscription = supabasePlayersSpacePrive
+        .channel('player_conversations_changes')
         .on('postgres_changes', {
             event: 'INSERT',
             schema: 'public',
-            table: 'conversations',
+            table: 'player_conversations',
             filter: `participant1_id=eq.${currentProfile.id} OR participant2_id=eq.${currentProfile.id}`
         }, async (payload) => {
             console.log('Nouvelle conversation créée', payload.new);
@@ -1485,10 +1609,10 @@ document.addEventListener('touchstart', (e) => {
 
 document.addEventListener('touchend', (e) => {
     touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
+    handleSwipe(e);
 }, false);
 
-function handleSwipe() {
+function handleSwipe(e) {
     const leftSidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const diff = touchEndX - touchStartX;
@@ -1497,6 +1621,7 @@ function handleSwipe() {
         leftSidebar?.classList.add('active');
         overlay?.classList.add('active');
     } else if (diff < -swipeThreshold && leftSidebar?.classList.contains('active')) {
+        if (e.cancelable) e.preventDefault();
         leftSidebar?.classList.remove('active');
         overlay?.classList.remove('active');
     }
@@ -1542,7 +1667,7 @@ function initLogout() {
         link.addEventListener('click', async (e) => {
             e.preventDefault();
             await setOffline();
-            await supabaseMessages.auth.signOut();
+            await supabasePlayersSpacePrive.auth.signOut();
             window.location.href = '../index.html';
         });
     });
@@ -1552,12 +1677,12 @@ function initLogout() {
 function getTargetUserIdFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
     const to = urlParams.get('to');
-    return to;
+    return to ? parseInt(to) : null;
 }
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation messages (unifié)');
+    console.log('🚀 Initialisation messages (joueur)');
 
     const user = await checkSession();
     if (!user) return;
@@ -1572,17 +1697,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     subscribeToNewConversations();
 
-    if (targetUserId) {
-        // Le paramètre to est un UUID (provenant de profiles.id)
-        const actualId = targetUserId; // c'est déjà un UUID
-        if (actualId && actualId !== currentProfile.id) {
-            const convId = await findOrCreateConversationWithUser(actualId);
-            if (convId) {
-                await loadConversations();
-                await selectConversation(convId);
-            } else {
-                showToast('Impossible de créer la conversation', 'error');
-            }
+    if (targetUserId && targetUserId !== currentProfile.id) {
+        const convId = await findOrCreateConversationWithUser(targetUserId);
+        if (convId) {
+            await loadConversations();
+            await selectConversation(convId);
+        } else {
+            showToast('Impossible de créer la conversation', 'error');
         }
     }
 
@@ -1613,6 +1734,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSidebar();
     initLogout();
 
+    document.getElementById('langSelect')?.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+    });
+
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
         showToast('Changement de langue bientôt disponible', 'info');
@@ -1631,6 +1757,7 @@ window.openFilePicker = openFilePicker;
 window.showContextMenu = showContextMenu;
 window.copyMessageFromMenu = copyMessageFromMenu;
 window.replyToMessageFromMenu = replyToMessageFromMenu;
+window.pinMessageFromMenu = pinMessageFromMenu;
 window.deleteForMe = deleteForMe;
 window.deleteForEveryone = deleteForEveryone;
 window.archiveConversation = archiveConversation;
@@ -1657,8 +1784,8 @@ function toggleArchive() {
 }
 
 async function unarchiveConversation(convId) {
-    const { error } = await supabaseMessages
-        .from('archived_conversations')
+    const { error } = await supabasePlayersSpacePrive
+        .from('player_archived_conversations')
         .delete()
         .eq('user_id', currentProfile.id)
         .eq('conversation_id', convId);
