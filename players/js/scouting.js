@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseScouting = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -40,62 +40,77 @@ function showToast(message, type = 'info', duration = 3000) {
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabaseScouting.auth.getSession();
-    if (error || !session) {
+    try {
+        const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
+        if (error || !session) {
+            window.location.href = '../public/auth/login.html';
+            return null;
+        }
+        currentUser = session.user;
+        return currentUser;
+    } catch (err) {
+        console.error('❌ Erreur checkSession :', err);
         window.location.href = '../public/auth/login.html';
         return null;
     }
-    currentUser = session.user;
-    return currentUser;
 }
 
 // ===== CHARGEMENT DU PROFIL =====
 async function loadPlayerProfile() {
-    const { data, error } = await supabaseScouting
-        .from('player_profiles')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .single();
-    if (error) {
-        console.error('Erreur chargement profil:', error);
-        showToast('Erreur chargement profil', 'error');
+    try {
+        const { data, error } = await supabasePlayersSpacePrive
+            .from('player_profiles')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .single();
+        if (error) {
+            console.error('Erreur chargement profil:', error);
+            showToast('Erreur chargement profil', 'error');
+            return null;
+        }
+        playerProfile = data;
+        document.getElementById('userName').textContent = playerProfile.nom_complet || 'Joueur';
+        document.getElementById('userAvatar').src = playerProfile.avatar_url || 'img/user-default.jpg';
+        return playerProfile;
+    } catch (err) {
+        console.error('❌ Exception loadPlayerProfile:', err);
         return null;
     }
-    playerProfile = data;
-    document.getElementById('userName').textContent = playerProfile.nom_complet || 'Joueur';
-    document.getElementById('userAvatar').src = playerProfile.avatar_url || 'img/user-default.jpg';
-    return playerProfile;
 }
 
 // ===== CHARGEMENT DES DONNÉES DE SCOUTING =====
 async function loadScoutingData() {
-    const { data, error } = await supabaseScouting
-        .from('player_scouting')
-        .select('*')
-        .eq('player_id', playerProfile.id)
-        .maybeSingle();
-    if (error) {
-        console.error('Erreur chargement scouting:', error);
-        showToast('Erreur chargement données', 'error');
-        return;
-    }
-    if (!data) {
-        // Créer une ligne par défaut
-        const { data: newData, error: insertError } = await supabaseScouting
+    try {
+        const { data, error } = await supabasePlayersSpacePrive
             .from('player_scouting')
-            .insert([{ player_id: playerProfile.id }])
-            .select()
-            .single();
-        if (insertError) {
-            console.error('Erreur création scouting:', insertError);
-            showToast('Erreur initialisation', 'error');
+            .select('*')
+            .eq('player_id', playerProfile.id)
+            .maybeSingle();
+        if (error) {
+            console.error('Erreur chargement scouting:', error);
+            showToast('Erreur chargement données', 'error');
             return;
         }
-        scoutingData = newData;
-    } else {
-        scoutingData = data;
+        if (!data) {
+            // Créer une ligne par défaut
+            const { data: newData, error: insertError } = await supabasePlayersSpacePrive
+                .from('player_scouting')
+                .insert([{ player_id: playerProfile.id }])
+                .select()
+                .single();
+            if (insertError) {
+                console.error('Erreur création scouting:', insertError);
+                showToast('Erreur initialisation', 'error');
+                return;
+            }
+            scoutingData = newData;
+        } else {
+            scoutingData = data;
+        }
+        updateUI();
+    } catch (err) {
+        console.error('❌ Exception loadScoutingData:', err);
     }
-    updateUI();
 }
 
 // ===== FONCTIONS DE CALCUL DES 8 COMPÉTENCES =====
@@ -289,11 +304,23 @@ function updateRadar(skills) {
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
-    userMenu?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle('show');
-    });
-    document.addEventListener('click', () => dropdown?.classList.remove('show'));
+    if (userMenu && dropdown) {
+        userMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+        document.addEventListener('click', () => dropdown.classList.remove('show'));
+    }
+}
+
+function addMenuHandle() {
+    if (document.getElementById('menuHandle')) return;
+    const handle = document.createElement('div');
+    handle.id = 'menuHandle';
+    handle.className = 'menu-handle';
+    handle.setAttribute('aria-label', 'Ouvrir le menu');
+    handle.innerHTML = '<span></span>';
+    document.body.appendChild(handle);
 }
 
 function initSidebar() {
@@ -301,24 +328,62 @@ function initSidebar() {
     const sidebar = document.getElementById('sidebar');
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    function open() { sidebar?.classList.add('active'); overlay?.classList.add('active'); }
-    function close() { sidebar?.classList.remove('active'); overlay?.classList.remove('active'); }
-    menuBtn?.addEventListener('click', open);
-    closeBtn?.addEventListener('click', close);
-    overlay?.addEventListener('click', close);
+    const menuHandle = document.getElementById('menuHandle');
+
+    function openSidebar() {
+        sidebar.classList.add('active');
+        if (overlay) overlay.classList.add('active');
+    }
+    function closeSidebarFunc() {
+        sidebar.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
+    }
+
+    if (menuBtn) menuBtn.addEventListener('click', openSidebar);
+    if (menuHandle) menuHandle.addEventListener('click', openSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
+    if (overlay) overlay.addEventListener('click', closeSidebarFunc);
+
+    // Swipe avec correction
+    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+    const swipeThreshold = 50;
+
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diffX = touchEndX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
+
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+            if (e.cancelable) {
+                e.preventDefault();
+            }
+            if (diffX > 0 && touchStartX < 50) {
+                openSidebar();
+            } else if (diffX < 0 && sidebar.classList.contains('active')) {
+                closeSidebarFunc();
+            }
+        }
+    }, { passive: false });
 }
 
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabaseScouting.auth.signOut().then(() => window.location.href = '../index.html');
+            supabasePlayersSpacePrive.auth.signOut().then(() => window.location.href = '../index.html');
         });
     });
 }
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 Initialisation scouting.js');
+
     const user = await checkSession();
     if (!user) return;
 
@@ -327,9 +392,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await loadScoutingData();
 
+    addMenuHandle();
     initUserMenu();
     initSidebar();
     initLogout();
+
+    document.getElementById('langSelect')?.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+    });
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
