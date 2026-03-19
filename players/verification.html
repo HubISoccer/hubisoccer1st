@@ -2,13 +2,11 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Vérification & Licence | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles globaux -->
-    <link rel="stylesheet" href="css/global.css">
-    <!-- Styles spécifiques -->
+    <!-- Styles spécifiques (autonome) -->
     <link rel="stylesheet" href="css/verification.css">
     <!-- Signature Pad -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
@@ -23,6 +21,33 @@
             <span class="dashboard-title">Espace Joueur</span>
         </div>
         <div class="nav-right">
+            <!-- Sélecteur de langue (24 langues) -->
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+                <option value="lin">🇨🇬 Lingala</option>
+                <option value="wol">🇸🇳 Wolof</option>
+                <option value="diou">🇨🇮 Dioula</option>
+                <option value="ha">🇳🇬 Hausa</option>
+                <option value="sw">🇰🇪 Kiswahili</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="pt">🇵🇹 Português</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="ar">🇸🇦 العربية</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="ja">🇯🇵 日本語</option>
+                <option value="tr">🇹🇷 Türkçe</option>
+                <option value="ko">🇰🇷 한국어</option>
+                <option value="hi">🇮🇳 हिन्दी</option>
+                <option value="nl">🇳🇱 Nederlands</option>
+                <option value="pl">🇵🇱 Polski</option>
+                <option value="vi">🇻🇳 Tiếng Việt</option>
+            </select>
             <div class="notif-icon" id="notifIcon">
                 <i class="fas fa-bell"></i>
                 <span class="notif-badge" id="notifBadge">0</span>
@@ -163,7 +188,7 @@
                                 </div>
                             </div>
 
-                            <!-- Signature avec bouton d'ouverture de modale -->
+                            <!-- Signature avec modale -->
                             <div class="signature-group">
                                 <label>Signature *</label>
                                 <div class="signature-preview" id="signaturePreview" onclick="openSignatureModal()">
@@ -180,11 +205,48 @@
                         </form>
                     </div>
 
-                    <!-- Aperçu de la carte -->
+                    <!-- Aperçu de la carte (recto-verso) -->
                     <div class="license-preview">
                         <h3>Aperçu de votre carte</h3>
-                        <div class="card-preview" id="cardPreview">
-                            <!-- La carte sera générée dynamiquement -->
+                        <div class="card-flip-container" id="cardPreview">
+                            <!-- Face avant -->
+                            <div class="card-front">
+                                <div class="card-template">
+                                    <div class="card-header">
+                                        <h4>LICENCE HUBISOCCER</h4>
+                                        <p>Joueur</p>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="card-photo">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <div class="card-info" id="cardFrontInfo">
+                                            <!-- Dynamique -->
+                                        </div>
+                                    </div>
+                                    <div class="card-footer" id="cardFrontFooter">
+                                        <!-- Dynamique -->
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Face arrière -->
+                            <div class="card-back">
+                                <div class="card-template">
+                                    <div class="card-header">
+                                        <h4>INFORMATIONS COMPLÉMENTAIRES</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="card-info" id="cardBackInfo">
+                                            <!-- Dynamique -->
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <div class="stamp"><i class="fas fa-stamp"></i> Cachet officiel</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Bouton de retournement -->
+                            <button class="flip-btn" id="flipCardBtn"><i class="fas fa-sync-alt"></i> Retourner</button>
                         </div>
                     </div>
                 </div>
