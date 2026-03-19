@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseTransfers = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -9,64 +9,113 @@ let currentProfile = null;
 let transfers = [];
 let offers = [];
 
+// ===== TOAST =====
+function showToast(message, type = 'info', duration = 3000) {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i></div>
+        <div class="toast-content">${message}</div>
+        <button class="toast-close"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(toast);
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.style.animation = 'fadeOut 0.3s forwards';
+        setTimeout(() => toast.remove(), 300);
+    });
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.animation = 'fadeOut 0.3s forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
+
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabaseTransfers.auth.getSession();
-    if (error || !session) {
+    try {
+        const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
+        if (error || !session) {
+            window.location.href = '../public/auth/login.html';
+            return null;
+        }
+        currentUser = session.user;
+        return currentUser;
+    } catch (err) {
+        console.error('❌ Erreur checkSession :', err);
         window.location.href = '../public/auth/login.html';
         return null;
     }
-    currentUser = session.user;
-    return currentUser;
 }
 
 // ===== CHARGEMENT DU PROFIL =====
 async function loadProfile() {
-    const { data, error } = await supabaseTransfers
-        .from('player_profiles')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .single();
-    if (error) {
-        console.error('Erreur chargement profil:', error);
+    try {
+        const { data, error } = await supabasePlayersSpacePrive
+            .from('player_profiles')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .single();
+
+        if (error) {
+            console.error('Erreur chargement profil:', error);
+            return null;
+        }
+        currentProfile = data;
+        document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
+        document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
+        return currentProfile;
+    } catch (err) {
+        console.error('❌ Exception loadProfile:', err);
         return null;
     }
-    currentProfile = data;
-    document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
-    document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
-    return currentProfile;
 }
 
 // ===== CHARGEMENT DES TRANSFERTS =====
 async function loadTransfers() {
-    const { data, error } = await supabaseTransfers
-        .from('player_transfers')
-        .select('*')
-        .eq('player_id', currentProfile.id)
-        .order('transfer_date', { ascending: false });
+    try {
+        const { data, error } = await supabasePlayersSpacePrive
+            .from('player_transfers')
+            .select('*')
+            .eq('user_id', currentProfile.id)  // Attention: colonne user_id (bigint) correspond à l'ID de player_profiles
+            .order('date_transfert', { ascending: false });
 
-    if (error) {
-        console.error('Erreur chargement transferts:', error);
-        return;
+        if (error) {
+            console.error('Erreur chargement transferts:', error);
+            return;
+        }
+        transfers = data || [];
+        renderTransfers();
+    } catch (err) {
+        console.error('❌ Exception loadTransfers:', err);
     }
-    transfers = data || [];
-    renderTransfers();
 }
 
 // ===== CHARGEMENT DES OFFRES =====
 async function loadOffers() {
-    const { data, error } = await supabaseTransfers
-        .from('player_offers')
-        .select('*')
-        .eq('player_id', currentProfile.id)
-        .order('offer_date', { ascending: false });
+    try {
+        const { data, error } = await supabasePlayersSpacePrive
+            .from('player_offers')
+            .select('*')
+            .eq('user_id', currentProfile.id)
+            .order('date_offre', { ascending: false });
 
-    if (error) {
-        console.error('Erreur chargement offres:', error);
-        return;
+        if (error) {
+            console.error('Erreur chargement offres:', error);
+            return;
+        }
+        offers = data || [];
+        renderOffers();
+    } catch (err) {
+        console.error('❌ Exception loadOffers:', err);
     }
-    offers = data || [];
-    renderOffers();
 }
 
 // ===== RENDU DES TRANSFERTS =====
@@ -81,30 +130,32 @@ function renderTransfers() {
 
     list.innerHTML = transfers.map(t => {
         const typeLabel = {
-            transfer: 'Transfert',
-            loan: 'Prêt',
-            end: 'Fin de contrat'
-        }[t.type] || 'Transfert';
+            'transfert': 'Transfert',
+            'pret': 'Prêt',
+            'fin_contrat': 'Fin de contrat'
+        }[t.type_transfert] || 'Transfert';
 
         const typeClass = {
-            transfer: 'transfer',
-            loan: 'loan',
-            end: 'end'
-        }[t.type] || 'transfer';
+            'transfert': 'transfer',
+            'pret': 'loan',
+            'fin_contrat': 'end'
+        }[t.type_transfert] || 'transfer';
 
-        const feeDisplay = t.fee > 0 
-            ? `${t.fee.toLocaleString()} ${t.currency}` 
+        const feeDisplay = t.montant > 0 
+            ? `${t.montant.toLocaleString()} FCFA` 
             : 'Gratuit (libre)';
+
+        const dateFormatted = t.date_transfert ? new Date(t.date_transfert).toLocaleDateString('fr-FR') : 'Date inconnue';
 
         return `
             <div class="transfer-card">
                 <div class="transfer-info">
                     <span class="transfer-type ${typeClass}">${typeLabel}</span>
                     <div class="transfer-clubs">
-                        ${t.from_club} <i class="fas fa-arrow-right"></i> ${t.to_club}
+                        ${t.club_depart} <i class="fas fa-arrow-right"></i> ${t.club_arrivee}
                     </div>
-                    <div class="transfer-date">${new Date(t.transfer_date).toLocaleDateString('fr-FR')}</div>
-                    <div class="transfer-fee ${t.fee === 0 ? 'free' : ''}">${feeDisplay}</div>
+                    <div class="transfer-date">${dateFormatted}</div>
+                    <div class="transfer-fee ${t.montant === 0 ? 'free' : ''}">${feeDisplay}</div>
                 </div>
             </div>
         `;
@@ -123,23 +174,24 @@ function renderOffers() {
 
     list.innerHTML = offers.map(o => {
         const statusLabel = {
-            accepted: 'Acceptée',
-            pending: 'En attente',
-            rejected: 'Rejetée'
-        }[o.status] || 'En attente';
+            'acceptee': 'Acceptée',
+            'en_attente': 'En attente',
+            'rejetee': 'Rejetée'
+        }[o.statut] || 'En attente';
 
-        const amountDisplay = o.amount.toLocaleString() + ' FCFA';
+        const amountDisplay = o.montant_offre ? o.montant_offre.toLocaleString() + ' FCFA' : 'Non spécifié';
+        const dateFormatted = o.date_offre ? new Date(o.date_offre).toLocaleDateString('fr-FR') : 'Date inconnue';
 
         return `
             <div class="offer-card">
                 <div class="offer-info">
-                    <div class="offer-club">${o.from_club}</div>
+                    <div class="offer-club">${o.club_offrant}</div>
                     <div class="offer-details">
-                        <span>Offre du ${new Date(o.offer_date).toLocaleDateString('fr-FR')}</span>
+                        <span>Offre du ${dateFormatted}</span>
                         <span class="offer-amount">${amountDisplay}</span>
                     </div>
                 </div>
-                <div class="offer-status ${o.status}">${statusLabel}</div>
+                <div class="offer-status ${o.statut === 'acceptee' ? 'accepted' : o.statut === 'en_attente' ? 'pending' : 'rejected'}">${statusLabel}</div>
             </div>
         `;
     }).join('');
@@ -173,53 +225,64 @@ function initUserMenu() {
     }
 }
 
+// ===== POIGNÉE DE MENU =====
+function addMenuHandle() {
+    if (document.getElementById('menuHandle')) return;
+    const handle = document.createElement('div');
+    handle.id = 'menuHandle';
+    handle.className = 'menu-handle';
+    handle.setAttribute('aria-label', 'Ouvrir le menu');
+    handle.innerHTML = '<span></span>';
+    document.body.appendChild(handle);
+}
+
 // ===== SIDEBAR =====
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const menuHandle = document.getElementById('menuHandle');
 
     function openSidebar() {
-        sidebar?.classList.add('active');
-        overlay?.classList.add('active');
+        sidebar.classList.add('active');
+        if (overlay) overlay.classList.add('active');
     }
     function closeSidebarFunc() {
-        sidebar?.classList.remove('active');
-        overlay?.classList.remove('active');
+        sidebar.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
     }
 
-    menuBtn?.addEventListener('click', openSidebar);
-    closeBtn?.addEventListener('click', closeSidebarFunc);
-    overlay?.addEventListener('click', closeSidebarFunc);
-}
+    if (menuBtn) menuBtn.addEventListener('click', openSidebar);
+    if (menuHandle) menuHandle.addEventListener('click', openSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
+    if (overlay) overlay.addEventListener('click', closeSidebarFunc);
 
-// ===== GESTION DES SWIPES =====
-let touchStartX = 0;
-let touchEndX = 0;
-const swipeThreshold = 50;
+    // Swipe avec correction
+    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+    const swipeThreshold = 50;
 
-document.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-}, false);
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
 
-document.addEventListener('touchend', (e) => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-}, false);
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diffX = touchEndX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
 
-function handleSwipe() {
-    const leftSidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const diff = touchEndX - touchStartX;
-
-    if (diff > swipeThreshold && touchStartX < 50) {
-        leftSidebar?.classList.add('active');
-        overlay?.classList.add('active');
-    } else if (diff < -swipeThreshold && leftSidebar?.classList.contains('active')) {
-        leftSidebar?.classList.remove('active');
-        overlay?.classList.remove('active');
-    }
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+            if (e.cancelable) {
+                e.preventDefault();
+            }
+            if (diffX > 0 && touchStartX < 50) {
+                openSidebar();
+            } else if (diffX < 0 && sidebar.classList.contains('active')) {
+                closeSidebarFunc();
+            }
+        }
+    }, { passive: false });
 }
 
 // ===== DÉCONNEXION =====
@@ -227,7 +290,7 @@ function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabaseTransfers.auth.signOut().then(() => {
+            supabasePlayersSpacePrive.auth.signOut().then(() => {
                 window.location.href = '../index.html';
             });
         });
@@ -251,13 +314,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadOffers();
 
     initTabs();
+    addMenuHandle();
     initUserMenu();
     initSidebar();
     initLogout();
 
+    document.getElementById('langSelect')?.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+        // Plus tard, implémenter la traduction
+    });
+
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
-        alert('Changement de langue bientôt disponible');
+        showToast('Changement de langue bientôt disponible', 'info');
     });
 
     console.log('✅ Initialisation terminée');
