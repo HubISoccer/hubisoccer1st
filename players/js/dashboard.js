@@ -476,16 +476,21 @@ function initSidebar() {
     }, { passive: true });
 
     document.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        const diffX = touchEndX - touchStartX;
-        const diffY = e.changedTouches[0].screenY - touchStartY;
+    touchEndX = e.changedTouches[0].screenX;
+    const diffX = touchEndX - touchStartX;
+    const diffY = e.changedTouches[0].screenY - touchStartY;
 
-        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
-            e.preventDefault();
-            if (diffX > 0 && touchStartX < 50) openSidebar();
-            else if (diffX < 0) closeSidebarFunc();
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+        if (e.cancelable) {
+            e.preventDefault(); // Empêche le scroll seulement si possible
         }
-    }, { passive: false });
+        if (diffX > 0 && touchStartX < 50) {
+            openSidebar();
+        } else if (diffX < 0) {
+            closeSidebarFunc();
+        }
+    }
+}, { passive: false });
 }
 
 function addMenuHandle() {
