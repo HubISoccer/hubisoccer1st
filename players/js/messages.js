@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // votre clé
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabaseMessages = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -69,7 +69,7 @@ function showLoader(show = true) {
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const { data: { session }, error } = await supabaseMessages.auth.getSession();
     if (error || !session) {
         window.location.href = '../public/auth/login.html';
         return null;
@@ -81,7 +81,7 @@ async function checkSession() {
 
 // ===== CHARGEMENT DU PROFIL (depuis profiles) =====
 async function loadProfile() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseMessages
         .from('profiles')
         .select('*')
         .eq('id', currentUser.id)
@@ -102,7 +102,7 @@ let presenceInterval = null;
 
 async function updatePresence() {
     if (!currentProfile) return;
-    const { error } = await supabase
+    const { error } = await supabaseMessages
         .from('user_presence')
         .upsert({
             user_id: currentProfile.id,
@@ -123,7 +123,7 @@ function stopPresenceTracking() {
 
 async function setOffline() {
     if (!currentProfile) return;
-    await supabase
+    await supabaseMessages
         .from('user_presence')
         .upsert({
             user_id: currentProfile.id,
@@ -138,20 +138,20 @@ async function loadConversations() {
     showLoader(true);
 
     // Récupérer les IDs des conversations archivées
-    const { data: archivedData } = await supabase
+    const { data: archivedData } = await supabaseMessages
         .from('archived_conversations')
         .select('conversation_id')
         .eq('user_id', currentProfile.id);
     archivedConversationIds = new Set(archivedData?.map(a => a.conversation_id) || []);
 
     // Récupérer les IDs des utilisateurs bloqués
-    const { data: blockedData } = await supabase
+    const { data: blockedData } = await supabaseMessages
         .from('blocked_users')
         .select('blocked_id')
         .eq('blocker_id', currentProfile.id);
     blockedUserIds = new Set(blockedData?.map(b => b.blocked_id) || []);
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseMessages
         .from('conversations')
         .select(`
             id,
@@ -200,7 +200,7 @@ async function loadConversations() {
     // Charger les statuts en ligne des contacts
     const contactIds = conversations.map(c => c.contactId).filter(Boolean);
     if (contactIds.length > 0) {
-        const { data: presenceData } = await supabase
+        const { data: presenceData } = await supabaseMessages
             .from('user_presence')
             .select('user_id, online')
             .in('user_id', contactIds);
@@ -266,7 +266,7 @@ function renderConversations() {
 async function findOrCreateConversationWithUser(userId) {
     console.log('Recherche/création conversation avec utilisateur', userId);
 
-    const { data: existingConv, error: searchError } = await supabase
+    const { data: existingConv, error: searchError } = await supabaseMessages
         .from('conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${userId}),and(participant1_id.eq.${userId},participant2_id.eq.${currentProfile.id})`)
@@ -282,7 +282,7 @@ async function findOrCreateConversationWithUser(userId) {
         return existingConv.id;
     }
 
-    const { data: newConv, error: createError } = await supabase
+    const { data: newConv, error: createError } = await supabaseMessages
         .from('conversations')
         .insert([{
             participant1_id: currentProfile.id,
@@ -308,7 +308,7 @@ async function selectConversation(convId) {
 
     const conv = conversations.find(c => c.id === convId);
     if (conv) {
-        const { data: contactProfile } = await supabase
+        const { data: contactProfile } = await supabaseMessages
             .from('profiles')
             .select('*')
             .eq('id', conv.contactId)
@@ -321,7 +321,7 @@ async function selectConversation(convId) {
     renderChatHeader();
     renderChatInput();
 
-    messagesSubscription = supabase
+    messagesSubscription = supabaseMessages
         .channel(`messages:${convId}`)
         .on('postgres_changes', {
             event: 'INSERT',
@@ -347,7 +347,7 @@ async function selectConversation(convId) {
 async function loadMessages(convId) {
     console.log('Chargement des messages pour conversation', convId);
     showLoader(true);
-    const { data, error } = await supabase
+    const { data, error } = await supabaseMessages
         .from('messages')
         .select(`
             id,
@@ -372,7 +372,7 @@ async function loadMessages(convId) {
     const replyIds = data.filter(m => m.reply_to_id).map(m => m.reply_to_id);
     let repliesMap = new Map();
     if (replyIds.length > 0) {
-        const { data: replies, error: replyError } = await supabase
+        const { data: replies, error: replyError } = await supabaseMessages
             .from('messages')
             .select('id, content, attachment_url')
             .in('id', replyIds);
@@ -416,7 +416,7 @@ async function getSignedUrl(path, expiresIn = 3600) {
     const parts = path.split('/');
     const bucket = parts[0];
     const fileName = parts.slice(1).join('/');
-    const { data, error } = await supabase.storage
+    const { data, error } = await supabaseMessages.storage
         .from(bucket)
         .createSignedUrl(fileName, expiresIn);
     if (error) {
@@ -500,7 +500,7 @@ function renderMessages(messages, repliesMap = new Map()) {
 
     // Marquer les messages comme lus si la conversation est ouverte
     messages.filter(m => !m.is_read && m.sender_id !== currentProfile.id).forEach(async m => {
-        await supabase
+        await supabaseMessages
             .from('messages')
             .update({ is_read: true })
             .eq('id', m.id);
@@ -629,7 +629,7 @@ async function deleteSelectedMessages() {
     const forEveryone = confirm('Supprimer pour tous les participants ? (Annuler pour ne supprimer que pour vous)');
     if (forEveryone) {
         for (let msgId of selectedMessages) {
-            await supabase
+            await supabaseMessages
                 .from('messages')
                 .delete()
                 .eq('id', msgId);
@@ -843,7 +843,7 @@ async function insertMessage(conversationId, content, attachmentUrl, attachmentP
     if (attachmentUrl) insertData.attachment_url = attachmentUrl;
     if (attachmentPath) insertData.attachment_path = attachmentPath;
 
-    const { data: newMsg, error: msgError } = await supabase
+    const { data: newMsg, error: msgError } = await supabaseMessages
         .from('messages')
         .insert(insertData)
         .select()
@@ -856,7 +856,7 @@ async function insertMessage(conversationId, content, attachmentUrl, attachmentP
     }
 
     const lastContent = attachmentUrl || attachmentPath ? '📎 Fichier' : content;
-    await supabase
+    await supabaseMessages
         .from('conversations')
         .update({
             last_message_content: lastContent,
@@ -1040,7 +1040,7 @@ async function sendRecordedAudio() {
 async function deleteMessage(msgId, forEveryone = false) {
     if (!confirm('Supprimer ce message ?')) return;
     if (forEveryone) {
-        const { error } = await supabase
+        const { error } = await supabaseMessages
             .from('messages')
             .delete()
             .eq('id', msgId);
@@ -1128,7 +1128,7 @@ function deleteForEveryone() {
 // ===== ACTIONS SUR LA CONVERSATION =====
 async function archiveConversation() {
     if (!currentConversationId || !currentProfile) return;
-    const { data: existing, error: checkError } = await supabase
+    const { data: existing, error: checkError } = await supabaseMessages
         .from('archived_conversations')
         .select('id')
         .eq('user_id', currentProfile.id)
@@ -1143,7 +1143,7 @@ async function archiveConversation() {
         showToast('Conversation déjà archivée', 'info');
         return;
     }
-    const { error } = await supabase
+    const { error } = await supabaseMessages
         .from('archived_conversations')
         .insert([{
             user_id: currentProfile.id,
@@ -1162,7 +1162,7 @@ async function archiveConversation() {
 async function blockUser() {
     if (!currentContact || !currentProfile) return;
     if (!confirm(`Bloquer ${currentContact.full_name} ? Vous ne recevrez plus de messages de sa part.`)) return;
-    const { data: existing, error: checkError } = await supabase
+    const { data: existing, error: checkError } = await supabaseMessages
         .from('blocked_users')
         .select('id')
         .eq('blocker_id', currentProfile.id)
@@ -1177,7 +1177,7 @@ async function blockUser() {
         showToast('Cet utilisateur est déjà bloqué', 'info');
         return;
     }
-    const { error } = await supabase
+    const { error } = await supabaseMessages
         .from('blocked_users')
         .insert([{
             blocker_id: currentProfile.id,
@@ -1201,7 +1201,7 @@ function closeDeleteConvModal() {
 }
 async function confirmDeleteConversation() {
     if (!currentConversationId) return;
-    const { error: msgError } = await supabase
+    const { error: msgError } = await supabaseMessages
         .from('messages')
         .delete()
         .eq('conversation_id', currentConversationId);
@@ -1209,7 +1209,7 @@ async function confirmDeleteConversation() {
         showToast('Erreur lors de la suppression des messages', 'error');
         return;
     }
-    const { error: convError } = await supabase
+    const { error: convError } = await supabaseMessages
         .from('conversations')
         .delete()
         .eq('id', currentConversationId);
@@ -1404,7 +1404,7 @@ function openStickerPicker() {
 // ===== GESTION DES UTILISATEURS BLOQUÉS =====
 async function loadBlockedUsers() {
     if (!currentProfile) return [];
-    const { data, error } = await supabase
+    const { data, error } = await supabaseMessages
         .from('blocked_users')
         .select('blocked_id')
         .eq('blocker_id', currentProfile.id);
@@ -1416,7 +1416,7 @@ async function loadBlockedUsers() {
     const blockedIds = data.map(b => b.blocked_id);
     if (blockedIds.length === 0) return [];
 
-    const { data: profiles, error: profilesError } = await supabase
+    const { data: profiles, error: profilesError } = await supabaseMessages
         .from('profiles')
         .select('id, full_name, avatar_url')
         .in('id', blockedIds);
@@ -1457,7 +1457,7 @@ function closeBlockedUsersModal() {
 
 async function unblockUser(userId) {
     if (!currentProfile || !userId) return;
-    const { error } = await supabase
+    const { error } = await supabaseMessages
         .from('blocked_users')
         .delete()
         .eq('blocker_id', currentProfile.id)
@@ -1477,7 +1477,7 @@ async function ensureSupportConversation() {
     console.log('Création conversation support...');
     let supportProfileId;
 
-    const { data: supportData, error: searchError } = await supabase
+    const { data: supportData, error: searchError } = await supabaseMessages
         .from('profiles')
         .select('id')
         .eq('username', 'SUPPORT')
@@ -1490,7 +1490,7 @@ async function ensureSupportConversation() {
 
     if (!supportData) {
         // Créer un profil support
-        const { data: newSupport, error: insertError } = await supabase
+        const { data: newSupport, error: insertError } = await supabaseMessages
             .from('profiles')
             .insert([{
                 id: crypto.randomUUID(), // générer un UUID
@@ -1510,7 +1510,7 @@ async function ensureSupportConversation() {
         supportProfileId = supportData.id;
     }
 
-    const { data: existingConv, error: convCheckError } = await supabase
+    const { data: existingConv, error: convCheckError } = await supabaseMessages
         .from('conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${supportProfileId}),and(participant1_id.eq.${supportProfileId},participant2_id.eq.${currentProfile.id})`)
@@ -1526,7 +1526,7 @@ async function ensureSupportConversation() {
         return;
     }
 
-    const { data: newConv, error: convError } = await supabase
+    const { data: newConv, error: convError } = await supabaseMessages
         .from('conversations')
         .insert([{
             participant1_id: currentProfile.id,
@@ -1540,7 +1540,7 @@ async function ensureSupportConversation() {
         return;
     }
 
-    const { error: msgError } = await supabase
+    const { error: msgError } = await supabaseMessages
         .from('messages')
         .insert([{
             conversation_id: newConv.id,
@@ -1569,7 +1569,7 @@ function initSearch() {
 
 // ===== SOUSCRIPTION AUX NOUVELLES CONVERSATIONS =====
 function subscribeToNewConversations() {
-    conversationsSubscription = supabase
+    conversationsSubscription = supabaseMessages
         .channel('conversations_changes')
         .on('postgres_changes', {
             event: 'INSERT',
@@ -1652,7 +1652,7 @@ function initLogout() {
         link.addEventListener('click', async (e) => {
             e.preventDefault();
             await setOffline();
-            await supabase.auth.signOut();
+            await supabaseMessages.auth.signOut();
             window.location.href = '../index.html';
         });
     });
@@ -1768,7 +1768,7 @@ function toggleArchive() {
 }
 
 async function unarchiveConversation(convId) {
-    const { error } = await supabase
+    const { error } = await supabaseMessages
         .from('archived_conversations')
         .delete()
         .eq('user_id', currentProfile.id)
