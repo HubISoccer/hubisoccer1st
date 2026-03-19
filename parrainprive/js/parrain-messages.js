@@ -89,7 +89,6 @@ async function loadProfile() {
         return null;
     }
     currentProfile = data;
-    // Concaténer first_name et last_name pour obtenir le nom complet
     const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Parrain';
     document.getElementById('userName').textContent = fullName;
     document.getElementById('userAvatar').src = data.avatar_url || 'img/user-default.jpg';
@@ -132,7 +131,7 @@ async function setOffline() {
         }, { onConflict: 'user_id' });
 }
 
-// ===== CHARGEMENT DES CONVERSATIONS =====
+// ===== CHARGEMENT DES CONVERSATIONS (adapté à la structure existante) =====
 async function loadConversations() {
     console.log('Chargement des conversations...');
     showLoader(true);
@@ -158,12 +157,12 @@ async function loadConversations() {
             participant1_id,
             participant2_id,
             last_message_content,
-            last_message_time,
+            last_message_at,
             participant1:parrain_profiles!participant1_id (id, first_name, last_name, avatar_url),
             participant2:parrain_profiles!participant2_id (id, first_name, last_name, avatar_url)
         `)
         .or(`participant1_id.eq.${currentProfile.id},participant2_id.eq.${currentProfile.id}`)
-        .order('last_message_time', { ascending: false, nullsFirst: false });
+        .order('last_message_at', { ascending: false, nullsFirst: false });
 
     if (error) {
         console.error('Erreur chargement conversations:', error);
@@ -180,7 +179,7 @@ async function loadConversations() {
             contactName: contactName,
             contactAvatar: contact?.avatar_url,
             lastMessage: conv.last_message_content,
-            lastTime: conv.last_message_time,
+            lastTime: conv.last_message_at, // ← adaptation ici
             unread: 0,
             online: false
         };
@@ -262,7 +261,7 @@ function renderConversations() {
     });
 }
 
-// ===== CRÉER UNE CONVERSATION AVEC UN UTILISATEUR =====
+// ===== CRÉER UNE CONVERSATION AVEC UN UTILISATEUR (avec types) =====
 async function findOrCreateConversationWithUser(userId) {
     console.log('Recherche/création conversation avec utilisateur', userId);
 
@@ -282,11 +281,14 @@ async function findOrCreateConversationWithUser(userId) {
         return existingConv.id;
     }
 
+    // Insertion avec les colonnes de type obligatoires
     const { data: newConv, error: createError } = await supabaseMessages
         .from('parrain_conversations')
         .insert([{
             participant1_id: currentProfile.id,
-            participant2_id: userId
+            participant1_type: 'parrain',
+            participant2_id: userId,
+            participant2_type: 'parrain'
         }])
         .select()
         .single();
@@ -762,7 +764,7 @@ async function insertMessage(conversationId, content, attachmentUrl, attachmentP
         .from('parrain_conversations')
         .update({
             last_message_content: lastContent,
-            last_message_time: new Date().toISOString()
+            last_message_at: new Date().toISOString() // ← adaptation ici
         })
         .eq('id', conversationId);
 }
@@ -1427,7 +1429,9 @@ async function ensureSupportConversation() {
         .from('parrain_conversations')
         .insert([{
             participant1_id: currentProfile.id,
-            participant2_id: supportProfileId
+            participant1_type: 'parrain',
+            participant2_id: supportProfileId,
+            participant2_type: 'parrain'
         }])
         .select()
         .single();
