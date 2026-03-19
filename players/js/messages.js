@@ -59,6 +59,12 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
+// ===== LOADER GLOBAL =====
+function showLoader(show = true) {
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.style.display = show ? 'flex' : 'none';
+}
+
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
     const { data: { session }, error } = await supabaseMessages.auth.getSession();
@@ -128,6 +134,7 @@ async function setOffline() {
 // ===== CHARGEMENT DES CONVERSATIONS =====
 async function loadConversations() {
     console.log('Chargement des conversations...');
+    showLoader(true);
 
     // Récupérer les IDs des conversations archivées
     const { data: archivedData } = await supabaseMessages
@@ -159,6 +166,7 @@ async function loadConversations() {
 
     if (error) {
         console.error('Erreur chargement conversations:', error);
+        showLoader(false);
         return;
     }
 
@@ -206,6 +214,7 @@ async function loadConversations() {
     }
 
     renderConversations();
+    showLoader(false);
 }
 
 // ===== RENDU DES CONVERSATIONS =====
@@ -336,6 +345,7 @@ async function selectConversation(convId) {
 // ===== CHARGEMENT DES MESSAGES =====
 async function loadMessages(convId) {
     console.log('Chargement des messages pour conversation', convId);
+    showLoader(true);
     const { data, error } = await supabaseMessages
         .from('player_messages')
         .select(`
@@ -353,10 +363,12 @@ async function loadMessages(convId) {
 
     if (error) {
         console.error('Erreur chargement messages:', error);
+        showLoader(false);
         return;
     }
 
     renderMessages(data);
+    showLoader(false);
 }
 
 // ===== FORMATAGE DE LA DATE DES MESSAGES =====
@@ -901,30 +913,37 @@ async function sendRecordedAudio() {
     const sendBtn = document.querySelector('.send-btn');
     sendBtn.classList.add('loading');
 
-    const fileName = `${currentProfile.id}_audio_${Date.now()}.webm`;
-    const bucket = 'message-attachments';
-    const { error: uploadError } = await supabaseMessages.storage
-        .from(bucket)
-        .upload(fileName, recordedAudioBlob, { cacheControl: '3600', upsert: false });
+    // Afficher la barre de progression
+    const progressDiv = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('progressBar');
+    const progressPercent = document.getElementById('progressPercent');
+    progressDiv.style.display = 'flex';
 
-    if (uploadError) {
-        console.error('Erreur upload audio:', uploadError);
+    // Créer un fichier à partir du blob (nécessaire pour uploadFileWithProgress)
+    const file = new File([recordedAudioBlob], 'audio.webm', { type: 'audio/webm' });
+
+    try {
+        const path = await uploadFileWithProgress(file, 'message-attachments', (percent) => {
+            progressBar.style.width = percent + '%';
+            progressPercent.textContent = percent + '%';
+        });
+        progressDiv.style.display = 'none';
+
+        await insertMessage(conv.id, '', null, path);
+        console.log('Message audio inséré, en attente de Realtime...');
+
+        recordedAudioBlob = null;
+        audioChunks = [];
+        resetAudioButton();
+    } catch (err) {
+        console.error('Upload error:', err);
         showToast('Erreur lors de l\'upload de l\'audio', 'error');
+        progressDiv.style.display = 'none';
+        resetAudioButton();
+    } finally {
         isUploading = false;
         sendBtn.classList.remove('loading');
-        resetAudioButton();
-        return;
     }
-
-    const audioPath = `${bucket}/${fileName}`;
-    await insertMessage(conv.id, '', null, audioPath);
-    console.log('Message audio inséré, en attente de Realtime...');
-
-    recordedAudioBlob = null;
-    audioChunks = [];
-    isUploading = false;
-    sendBtn.classList.remove('loading');
-    resetAudioButton();
 }
 
 // ===== SUPPRESSION D'UN MESSAGE =====
@@ -1662,6 +1681,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const blockedBtn = document.getElementById('blockedUsersBtn');
     if (blockedBtn) {
         blockedBtn.addEventListener('click', openBlockedUsersModal);
+    }
+
+    // Bouton rafraîchir
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            showLoader(true);
+            loadConversations().then(() => {
+                if (currentConversationId) {
+                    loadMessages(currentConversationId);
+                }
+                showLoader(false);
+            });
+        });
     }
 
     initSearch();
