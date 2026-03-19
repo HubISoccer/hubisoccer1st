@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // votre clé
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -20,7 +20,7 @@ let archivedConversationIds = new Set();
 let blockedUserIds = new Set();
 let isUploading = false;
 let showArchived = false;
-let selectedMessages = new Set(); // Pour la sélection multiple
+let selectedMessages = new Set();
 let selectionMode = false;
 
 // Variables pour l'enregistrement audio
@@ -69,7 +69,7 @@ function showLoader(show = true) {
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
+    const { data: { session }, error } = await supabase.auth.getSession();
     if (error || !session) {
         window.location.href = '../public/auth/login.html';
         return null;
@@ -79,12 +79,12 @@ async function checkSession() {
     return currentUser;
 }
 
-// ===== CHARGEMENT DU PROFIL (depuis player_profiles) =====
+// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
 async function loadProfile() {
-    const { data, error } = await supabasePlayersSpacePrive
-        .from('player_profiles')
+    const { data, error } = await supabase
+        .from('profiles')
         .select('*')
-        .eq('user_id', currentUser.id)
+        .eq('id', currentUser.id)
         .single();
     if (error) {
         console.error('Erreur chargement profil:', error);
@@ -102,8 +102,8 @@ let presenceInterval = null;
 
 async function updatePresence() {
     if (!currentProfile) return;
-    const { error } = await supabasePlayersSpacePrive
-        .from('player_user_presence')
+    const { error } = await supabase
+        .from('user_presence')
         .upsert({
             user_id: currentProfile.id,
             online: true,
@@ -123,8 +123,8 @@ function stopPresenceTracking() {
 
 async function setOffline() {
     if (!currentProfile) return;
-    await supabasePlayersSpacePrive
-        .from('player_user_presence')
+    await supabase
+        .from('user_presence')
         .upsert({
             user_id: currentProfile.id,
             online: false,
@@ -138,32 +138,32 @@ async function loadConversations() {
     showLoader(true);
 
     // Récupérer les IDs des conversations archivées
-    const { data: archivedData } = await supabasePlayersSpacePrive
-        .from('player_archived_conversations')
+    const { data: archivedData } = await supabase
+        .from('archived_conversations')
         .select('conversation_id')
         .eq('user_id', currentProfile.id);
     archivedConversationIds = new Set(archivedData?.map(a => a.conversation_id) || []);
 
     // Récupérer les IDs des utilisateurs bloqués
-    const { data: blockedData } = await supabasePlayersSpacePrive
-        .from('player_blocked_users')
+    const { data: blockedData } = await supabase
+        .from('blocked_users')
         .select('blocked_id')
         .eq('blocker_id', currentProfile.id);
     blockedUserIds = new Set(blockedData?.map(b => b.blocked_id) || []);
 
-    const { data, error } = await supabasePlayersSpacePrive
-        .from('player_conversations')
+    const { data, error } = await supabase
+        .from('conversations')
         .select(`
             id,
             participant1_id,
             participant2_id,
             last_message_content,
-            last_message_time,
-            participant1:player_profiles!participant1_id (id, full_name, avatar_url, username),
-            participant2:player_profiles!participant2_id (id, full_name, avatar_url, username)
+            last_message_at,
+            participant1:profiles!participant1_id (id, full_name, avatar_url, username),
+            participant2:profiles!participant2_id (id, full_name, avatar_url, username)
         `)
         .or(`participant1_id.eq.${currentProfile.id},participant2_id.eq.${currentProfile.id}`)
-        .order('last_message_time', { ascending: false, nullsFirst: false });
+        .order('last_message_at', { ascending: false, nullsFirst: false });
 
     if (error) {
         console.error('Erreur chargement conversations:', error);
@@ -180,7 +180,7 @@ async function loadConversations() {
             contactName: contactName,
             contactAvatar: contact?.avatar_url,
             lastMessage: conv.last_message_content,
-            lastTime: conv.last_message_time,
+            lastTime: conv.last_message_at,
             unread: 0,
             online: false
         };
@@ -200,8 +200,8 @@ async function loadConversations() {
     // Charger les statuts en ligne des contacts
     const contactIds = conversations.map(c => c.contactId).filter(Boolean);
     if (contactIds.length > 0) {
-        const { data: presenceData } = await supabasePlayersSpacePrive
-            .from('player_user_presence')
+        const { data: presenceData } = await supabase
+            .from('user_presence')
             .select('user_id, online')
             .in('user_id', contactIds);
         if (presenceData) {
@@ -266,8 +266,8 @@ function renderConversations() {
 async function findOrCreateConversationWithUser(userId) {
     console.log('Recherche/création conversation avec utilisateur', userId);
 
-    const { data: existingConv, error: searchError } = await supabasePlayersSpacePrive
-        .from('player_conversations')
+    const { data: existingConv, error: searchError } = await supabase
+        .from('conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${userId}),and(participant1_id.eq.${userId},participant2_id.eq.${currentProfile.id})`)
         .maybeSingle();
@@ -282,8 +282,8 @@ async function findOrCreateConversationWithUser(userId) {
         return existingConv.id;
     }
 
-    const { data: newConv, error: createError } = await supabasePlayersSpacePrive
-        .from('player_conversations')
+    const { data: newConv, error: createError } = await supabase
+        .from('conversations')
         .insert([{
             participant1_id: currentProfile.id,
             participant2_id: userId
@@ -308,8 +308,8 @@ async function selectConversation(convId) {
 
     const conv = conversations.find(c => c.id === convId);
     if (conv) {
-        const { data: contactProfile } = await supabasePlayersSpacePrive
-            .from('player_profiles')
+        const { data: contactProfile } = await supabase
+            .from('profiles')
             .select('*')
             .eq('id', conv.contactId)
             .single();
@@ -321,12 +321,12 @@ async function selectConversation(convId) {
     renderChatHeader();
     renderChatInput();
 
-    messagesSubscription = supabasePlayersSpacePrive
-        .channel(`player_messages:${convId}`)
+    messagesSubscription = supabase
+        .channel(`messages:${convId}`)
         .on('postgres_changes', {
             event: 'INSERT',
             schema: 'public',
-            table: 'player_messages',
+            table: 'messages',
             filter: `conversation_id=eq.${convId}`
         }, payload => {
             console.log('Nouveau message reçu', payload.new);
@@ -347,8 +347,8 @@ async function selectConversation(convId) {
 async function loadMessages(convId) {
     console.log('Chargement des messages pour conversation', convId);
     showLoader(true);
-    const { data, error } = await supabasePlayersSpacePrive
-        .from('player_messages')
+    const { data, error } = await supabase
+        .from('messages')
         .select(`
             id,
             sender_id,
@@ -372,8 +372,8 @@ async function loadMessages(convId) {
     const replyIds = data.filter(m => m.reply_to_id).map(m => m.reply_to_id);
     let repliesMap = new Map();
     if (replyIds.length > 0) {
-        const { data: replies, error: replyError } = await supabasePlayersSpacePrive
-            .from('player_messages')
+        const { data: replies, error: replyError } = await supabase
+            .from('messages')
             .select('id, content, attachment_url')
             .in('id', replyIds);
         if (!replyError) {
@@ -416,7 +416,7 @@ async function getSignedUrl(path, expiresIn = 3600) {
     const parts = path.split('/');
     const bucket = parts[0];
     const fileName = parts.slice(1).join('/');
-    const { data, error } = await supabasePlayersSpacePrive.storage
+    const { data, error } = await supabase.storage
         .from(bucket)
         .createSignedUrl(fileName, expiresIn);
     if (error) {
@@ -500,8 +500,8 @@ function renderMessages(messages, repliesMap = new Map()) {
 
     // Marquer les messages comme lus si la conversation est ouverte
     messages.filter(m => !m.is_read && m.sender_id !== currentProfile.id).forEach(async m => {
-        await supabasePlayersSpacePrive
-            .from('player_messages')
+        await supabase
+            .from('messages')
             .update({ is_read: true })
             .eq('id', m.id);
     });
@@ -594,11 +594,7 @@ function handleMessageClick(event, msgId) {
             selectedMessages.add(msgId);
             msgElement.classList.add('selected');
         }
-        // Afficher une barre d'actions en bas si au moins un message sélectionné
         updateSelectionBar();
-    } else {
-        // Sinon, comportement normal (ouvrir le menu contextuel ?) -> on laisse le clic normal
-        // Mais pour éviter de déclencher d'autres actions, on ne fait rien de spécial
     }
 }
 
@@ -630,28 +626,24 @@ function cancelSelection() {
 async function deleteSelectedMessages() {
     if (selectedMessages.size === 0) return;
     if (!confirm(`Supprimer définitivement ${selectedMessages.size} message(s) ?`)) return;
-    // Supprimer pour tous (ou pour soi ?) – on va proposer un choix
     const forEveryone = confirm('Supprimer pour tous les participants ? (Annuler pour ne supprimer que pour vous)');
     if (forEveryone) {
         for (let msgId of selectedMessages) {
-            await supabasePlayersSpacePrive
-                .from('player_messages')
+            await supabase
+                .from('messages')
                 .delete()
                 .eq('id', msgId);
         }
         showToast('Messages supprimés pour tous', 'success');
+        await loadMessages(currentConversationId);
     } else {
-        // Pour l'instant, suppression locale sans persistance
-        // Idéalement, il faudrait une table de suppression
+        // Suppression locale uniquement (pas de persistance)
         selectedMessages.forEach(msgId => {
             document.querySelector(`[data-msg-id="${msgId}"]`)?.remove();
         });
         showToast('Messages supprimés localement', 'success');
     }
     cancelSelection();
-    if (forEveryone) {
-        await loadMessages(currentConversationId);
-    }
 }
 
 // ===== GESTION DES FICHIERS AVEC PRÉVISUALISATION =====
@@ -851,8 +843,8 @@ async function insertMessage(conversationId, content, attachmentUrl, attachmentP
     if (attachmentUrl) insertData.attachment_url = attachmentUrl;
     if (attachmentPath) insertData.attachment_path = attachmentPath;
 
-    const { data: newMsg, error: msgError } = await supabasePlayersSpacePrive
-        .from('player_messages')
+    const { data: newMsg, error: msgError } = await supabase
+        .from('messages')
         .insert(insertData)
         .select()
         .single();
@@ -864,11 +856,11 @@ async function insertMessage(conversationId, content, attachmentUrl, attachmentP
     }
 
     const lastContent = attachmentUrl || attachmentPath ? '📎 Fichier' : content;
-    await supabasePlayersSpacePrive
-        .from('player_conversations')
+    await supabase
+        .from('conversations')
         .update({
             last_message_content: lastContent,
-            last_message_time: new Date().toISOString()
+            last_message_at: new Date().toISOString()
         })
         .eq('id', conversationId);
 }
@@ -1048,8 +1040,8 @@ async function sendRecordedAudio() {
 async function deleteMessage(msgId, forEveryone = false) {
     if (!confirm('Supprimer ce message ?')) return;
     if (forEveryone) {
-        const { error } = await supabasePlayersSpacePrive
-            .from('player_messages')
+        const { error } = await supabase
+            .from('messages')
             .delete()
             .eq('id', msgId);
         if (error) {
@@ -1059,7 +1051,7 @@ async function deleteMessage(msgId, forEveryone = false) {
             await loadMessages(currentConversationId);
         }
     } else {
-        // Pour l'instant, suppression locale
+        // Suppression locale uniquement
         document.querySelector(`[data-msg-id="${msgId}"]`)?.remove();
         showToast('Message supprimé (visible seulement pour vous)', 'success');
     }
@@ -1080,13 +1072,6 @@ function cancelReply() {
     renderChatInput();
 }
 
-// ===== ÉPINGLER =====
-async function pinMessageFromMenu() {
-    // À implémenter avec une table player_pinned_messages
-    showToast('Fonctionnalité à venir', 'info');
-    document.getElementById('messageContextMenu').style.display = 'none';
-}
-
 // ===== MENU CONTEXTUEL =====
 function showContextMenu(event, msgId) {
     event.preventDefault();
@@ -1094,7 +1079,7 @@ function showContextMenu(event, msgId) {
     const menu = document.getElementById('messageContextMenu');
     const msgElement = document.querySelector(`[data-msg-id="${msgId}"]`);
     const senderId = msgElement?.dataset.sender;
-    const isMe = senderId == currentProfile.id;
+    const isMe = senderId === currentProfile.id;
 
     const deleteForEveryoneOption = document.getElementById('deleteForEveryoneOption');
     if (deleteForEveryoneOption) {
@@ -1143,8 +1128,8 @@ function deleteForEveryone() {
 // ===== ACTIONS SUR LA CONVERSATION =====
 async function archiveConversation() {
     if (!currentConversationId || !currentProfile) return;
-    const { data: existing, error: checkError } = await supabasePlayersSpacePrive
-        .from('player_archived_conversations')
+    const { data: existing, error: checkError } = await supabase
+        .from('archived_conversations')
         .select('id')
         .eq('user_id', currentProfile.id)
         .eq('conversation_id', currentConversationId)
@@ -1158,8 +1143,8 @@ async function archiveConversation() {
         showToast('Conversation déjà archivée', 'info');
         return;
     }
-    const { error } = await supabasePlayersSpacePrive
-        .from('player_archived_conversations')
+    const { error } = await supabase
+        .from('archived_conversations')
         .insert([{
             user_id: currentProfile.id,
             conversation_id: currentConversationId
@@ -1177,8 +1162,8 @@ async function archiveConversation() {
 async function blockUser() {
     if (!currentContact || !currentProfile) return;
     if (!confirm(`Bloquer ${currentContact.full_name} ? Vous ne recevrez plus de messages de sa part.`)) return;
-    const { data: existing, error: checkError } = await supabasePlayersSpacePrive
-        .from('player_blocked_users')
+    const { data: existing, error: checkError } = await supabase
+        .from('blocked_users')
         .select('id')
         .eq('blocker_id', currentProfile.id)
         .eq('blocked_id', currentContact.id)
@@ -1192,8 +1177,8 @@ async function blockUser() {
         showToast('Cet utilisateur est déjà bloqué', 'info');
         return;
     }
-    const { error } = await supabasePlayersSpacePrive
-        .from('player_blocked_users')
+    const { error } = await supabase
+        .from('blocked_users')
         .insert([{
             blocker_id: currentProfile.id,
             blocked_id: currentContact.id
@@ -1216,16 +1201,16 @@ function closeDeleteConvModal() {
 }
 async function confirmDeleteConversation() {
     if (!currentConversationId) return;
-    const { error: msgError } = await supabasePlayersSpacePrive
-        .from('player_messages')
+    const { error: msgError } = await supabase
+        .from('messages')
         .delete()
         .eq('conversation_id', currentConversationId);
     if (msgError) {
         showToast('Erreur lors de la suppression des messages', 'error');
         return;
     }
-    const { error: convError } = await supabasePlayersSpacePrive
-        .from('player_conversations')
+    const { error: convError } = await supabase
+        .from('conversations')
         .delete()
         .eq('id', currentConversationId);
     if (convError) {
@@ -1419,8 +1404,8 @@ function openStickerPicker() {
 // ===== GESTION DES UTILISATEURS BLOQUÉS =====
 async function loadBlockedUsers() {
     if (!currentProfile) return [];
-    const { data, error } = await supabasePlayersSpacePrive
-        .from('player_blocked_users')
+    const { data, error } = await supabase
+        .from('blocked_users')
         .select('blocked_id')
         .eq('blocker_id', currentProfile.id);
     if (error) {
@@ -1431,8 +1416,8 @@ async function loadBlockedUsers() {
     const blockedIds = data.map(b => b.blocked_id);
     if (blockedIds.length === 0) return [];
 
-    const { data: profiles, error: profilesError } = await supabasePlayersSpacePrive
-        .from('player_profiles')
+    const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
         .select('id, full_name, avatar_url')
         .in('id', blockedIds);
     if (profilesError) {
@@ -1472,8 +1457,8 @@ function closeBlockedUsersModal() {
 
 async function unblockUser(userId) {
     if (!currentProfile || !userId) return;
-    const { error } = await supabasePlayersSpacePrive
-        .from('player_blocked_users')
+    const { error } = await supabase
+        .from('blocked_users')
         .delete()
         .eq('blocker_id', currentProfile.id)
         .eq('blocked_id', userId);
@@ -1492,8 +1477,8 @@ async function ensureSupportConversation() {
     console.log('Création conversation support...');
     let supportProfileId;
 
-    const { data: supportData, error: searchError } = await supabasePlayersSpacePrive
-        .from('player_profiles')
+    const { data: supportData, error: searchError } = await supabase
+        .from('profiles')
         .select('id')
         .eq('username', 'SUPPORT')
         .maybeSingle();
@@ -1504,11 +1489,11 @@ async function ensureSupportConversation() {
     }
 
     if (!supportData) {
-        // Créer un profil support (UUID fixe ou auto-généré)
-        const { data: newSupport, error: insertError } = await supabasePlayersSpacePrive
-            .from('player_profiles')
+        // Créer un profil support
+        const { data: newSupport, error: insertError } = await supabase
+            .from('profiles')
             .insert([{
-                id: 999999999, // ID BIGINT fictif, à adapter
+                id: crypto.randomUUID(), // générer un UUID
                 username: 'SUPPORT',
                 full_name: 'Support HubISoccer',
                 avatar_url: 'img/user-default.jpg'
@@ -1525,8 +1510,8 @@ async function ensureSupportConversation() {
         supportProfileId = supportData.id;
     }
 
-    const { data: existingConv, error: convCheckError } = await supabasePlayersSpacePrive
-        .from('player_conversations')
+    const { data: existingConv, error: convCheckError } = await supabase
+        .from('conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${supportProfileId}),and(participant1_id.eq.${supportProfileId},participant2_id.eq.${currentProfile.id})`)
         .maybeSingle();
@@ -1541,8 +1526,8 @@ async function ensureSupportConversation() {
         return;
     }
 
-    const { data: newConv, error: convError } = await supabasePlayersSpacePrive
-        .from('player_conversations')
+    const { data: newConv, error: convError } = await supabase
+        .from('conversations')
         .insert([{
             participant1_id: currentProfile.id,
             participant2_id: supportProfileId
@@ -1555,8 +1540,8 @@ async function ensureSupportConversation() {
         return;
     }
 
-    const { error: msgError } = await supabasePlayersSpacePrive
-        .from('player_messages')
+    const { error: msgError } = await supabase
+        .from('messages')
         .insert([{
             conversation_id: newConv.id,
             sender_id: supportProfileId,
@@ -1584,12 +1569,12 @@ function initSearch() {
 
 // ===== SOUSCRIPTION AUX NOUVELLES CONVERSATIONS =====
 function subscribeToNewConversations() {
-    conversationsSubscription = supabasePlayersSpacePrive
-        .channel('player_conversations_changes')
+    conversationsSubscription = supabase
+        .channel('conversations_changes')
         .on('postgres_changes', {
             event: 'INSERT',
             schema: 'public',
-            table: 'player_conversations',
+            table: 'conversations',
             filter: `participant1_id=eq.${currentProfile.id} OR participant2_id=eq.${currentProfile.id}`
         }, async (payload) => {
             console.log('Nouvelle conversation créée', payload.new);
@@ -1667,7 +1652,7 @@ function initLogout() {
         link.addEventListener('click', async (e) => {
             e.preventDefault();
             await setOffline();
-            await supabasePlayersSpacePrive.auth.signOut();
+            await supabase.auth.signOut();
             window.location.href = '../index.html';
         });
     });
@@ -1677,12 +1662,12 @@ function initLogout() {
 function getTargetUserIdFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
     const to = urlParams.get('to');
-    return to ? parseInt(to) : null;
+    return to; // c'est un UUID
 }
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation messages (joueur)');
+    console.log('🚀 Initialisation messages (unifié)');
 
     const user = await checkSession();
     if (!user) return;
@@ -1757,7 +1742,6 @@ window.openFilePicker = openFilePicker;
 window.showContextMenu = showContextMenu;
 window.copyMessageFromMenu = copyMessageFromMenu;
 window.replyToMessageFromMenu = replyToMessageFromMenu;
-window.pinMessageFromMenu = pinMessageFromMenu;
 window.deleteForMe = deleteForMe;
 window.deleteForEveryone = deleteForEveryone;
 window.archiveConversation = archiveConversation;
@@ -1784,8 +1768,8 @@ function toggleArchive() {
 }
 
 async function unarchiveConversation(convId) {
-    const { error } = await supabasePlayersSpacePrive
-        .from('player_archived_conversations')
+    const { error } = await supabase
+        .from('archived_conversations')
         .delete()
         .eq('user_id', currentProfile.id)
         .eq('conversation_id', convId);
