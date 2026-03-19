@@ -309,6 +309,7 @@ async function selectConversation(convId) {
     renderConversations();
     await loadMessages(convId);
     renderChatHeader();
+    renderChatInput(); // S'assurer que la zone de saisie est présente
 
     messagesSubscription = supabaseMessages
         .channel(`player_messages:${convId}`)
@@ -342,6 +343,7 @@ async function loadMessages(convId) {
             sender_id,
             content,
             attachment_url,
+            attachment_path,
             reply_to_id,
             created_at,
             reply:reply_to_id (content, attachment_url)
@@ -372,8 +374,8 @@ function formatMessageDate(date) {
 }
 
 // ===== FONCTION UTILITAIRE POUR DÉTERMINER LE TYPE DE FICHIER =====
-function getFileType(url) {
-    const ext = url.split('.').pop().split('?')[0].toLowerCase();
+function getFileType(path) {
+    const ext = path.split('.').pop().split('?')[0].toLowerCase();
     const imageExt = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
     const videoExt = ['mp4', 'webm', 'ogg', 'mov'];
     const audioExt = ['mp3', 'wav', 'ogg', 'm4a', 'webm'];
@@ -381,6 +383,21 @@ function getFileType(url) {
     if (videoExt.includes(ext)) return 'video';
     if (audioExt.includes(ext)) return 'audio';
     return 'other';
+}
+
+// ===== GÉNÉRATION D'URL SIGNÉE =====
+async function getSignedUrl(path, expiresIn = 3600) {
+    const parts = path.split('/');
+    const bucket = parts[0];
+    const fileName = parts.slice(1).join('/');
+    const { data, error } = await supabaseMessages.storage
+        .from(bucket)
+        .createSignedUrl(fileName, expiresIn);
+    if (error) {
+        console.error('Erreur génération URL signée:', error);
+        return null;
+    }
+    return data.signedUrl;
 }
 
 // ===== RENDU DES MESSAGES =====
@@ -398,17 +415,20 @@ function renderMessages(messages) {
             replyHtml = `<div class="reply-quote">${replyContent} ${replyAttachment}</div>`;
         }
         let attachmentHtml = '';
-        if (msg.attachment_url) {
-            const url = msg.attachment_url;
-            const fileType = getFileType(url);
+        let fileType = null;
+        if (msg.attachment_path) {
+            fileType = getFileType(msg.attachment_path);
+            attachmentHtml = `<div class="message-attachment" data-path="${msg.attachment_path}" data-type="${fileType}" data-msg-id="${msg.id}"></div>`;
+        } else if (msg.attachment_url) {
+            fileType = getFileType(msg.attachment_url);
             if (fileType === 'image') {
-                attachmentHtml = `<div class="message-attachment"><img src="${url}" alt="Image" onclick="window.open('${url}', '_blank')"></div>`;
+                attachmentHtml = `<div class="message-attachment"><img src="${msg.attachment_url}" alt="Image" onclick="window.open('${msg.attachment_url}', '_blank')"></div>`;
             } else if (fileType === 'video') {
-                attachmentHtml = `<div class="message-attachment"><video src="${url}" controls style="max-width:200px; max-height:200px;"></video></div>`;
+                attachmentHtml = `<div class="message-attachment"><video src="${msg.attachment_url}" controls style="max-width:200px; max-height:200px;"></video></div>`;
             } else if (fileType === 'audio') {
-                attachmentHtml = `<div class="message-attachment"><audio src="${url}" controls></audio></div>`;
+                attachmentHtml = `<div class="message-attachment"><audio src="${msg.attachment_url}" controls></audio></div>`;
             } else {
-                attachmentHtml = `<div class="message-attachment"><a href="${url}" target="_blank">Fichier joint</a></div>`;
+                attachmentHtml = `<div class="message-attachment"><a href="${msg.attachment_url}" target="_blank">Fichier joint</a></div>`;
             }
         }
         html += `
@@ -424,7 +444,26 @@ function renderMessages(messages) {
         `;
     });
     area.innerHTML = html;
-    area.scrollTop = area.scrollHeight;
+
+    // Générer les URLs signées pour les messages avec attachment_path
+    messages.forEach(async (msg) => {
+        if (msg.attachment_path) {
+            const signedUrl = await getSignedUrl(msg.attachment_path);
+            if (!signedUrl) return;
+            const container = document.querySelector(`.message-attachment[data-msg-id="${msg.id}"]`);
+            if (!container) return;
+            const fileType = container.dataset.type;
+            if (fileType === 'image') {
+                container.innerHTML = `<img src="${signedUrl}" alt="Image" onclick="window.open('${signedUrl}', '_blank')">`;
+            } else if (fileType === 'video') {
+                container.innerHTML = `<video src="${signedUrl}" controls style="max-width:200px; max-height:200px;"></video>`;
+            } else if (fileType === 'audio') {
+                container.innerHTML = `<audio src="${signedUrl}" controls></audio>`;
+            } else {
+                container.innerHTML = `<a href="${signedUrl}" target="_blank">Fichier joint</a>`;
+            }
+        }
+    });
 }
 
 // ===== AJOUTER UN MESSAGE (Realtime) =====
@@ -433,27 +472,29 @@ function appendMessage(msg) {
     const area = document.getElementById('chatMessagesArea');
     if (!area) return;
     const isMe = msg.sender_id === currentProfile.id;
-    console.log('isMe:', isMe);
-    console.log('attachment_url:', msg.attachment_url);
     const time = formatMessageDate(msg.created_at);
     let replyHtml = '';
     if (msg.reply_to_id) {
         replyHtml = `<div class="reply-quote">Réponse à un message</div>`;
     }
     let attachmentHtml = '';
-    if (msg.attachment_url) {
-        const url = msg.attachment_url;
-        const fileType = getFileType(url);
+    let fileType = null;
+    if (msg.attachment_path) {
+        fileType = getFileType(msg.attachment_path);
+        attachmentHtml = `<div class="message-attachment" data-path="${msg.attachment_path}" data-type="${fileType}" data-msg-id="${msg.id}"></div>`;
+    } else if (msg.attachment_url) {
+        fileType = getFileType(msg.attachment_url);
         if (fileType === 'image') {
-            attachmentHtml = `<div class="message-attachment"><img src="${url}" alt="Image" onclick="window.open('${url}', '_blank')"></div>`;
+            attachmentHtml = `<div class="message-attachment"><img src="${msg.attachment_url}" alt="Image" onclick="window.open('${msg.attachment_url}', '_blank')"></div>`;
         } else if (fileType === 'video') {
-            attachmentHtml = `<div class="message-attachment"><video src="${url}" controls style="max-width:200px; max-height:200px;"></video></div>`;
+            attachmentHtml = `<div class="message-attachment"><video src="${msg.attachment_url}" controls style="max-width:200px; max-height:200px;"></video></div>`;
         } else if (fileType === 'audio') {
-            attachmentHtml = `<div class="message-attachment"><audio src="${url}" controls></audio></div>`;
+            attachmentHtml = `<div class="message-attachment"><audio src="${msg.attachment_url}" controls></audio></div>`;
         } else {
-            attachmentHtml = `<div class="message-attachment"><a href="${url}" target="_blank">Fichier joint</a></div>`;
+            attachmentHtml = `<div class="message-attachment"><a href="${msg.attachment_url}" target="_blank">Fichier joint</a></div>`;
         }
     }
+
     const msgHtml = `
         <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}">
             ${replyHtml}
@@ -466,13 +507,31 @@ function appendMessage(msg) {
         </div>
     `;
     area.insertAdjacentHTML('beforeend', msgHtml);
-    area.scrollTop = area.scrollHeight;
+
+    // Gérer l'URL signée si nécessaire
+    if (msg.attachment_path) {
+        getSignedUrl(msg.attachment_path).then(signedUrl => {
+            if (!signedUrl) return;
+            const container = document.querySelector(`.message-attachment[data-msg-id="${msg.id}"]`);
+            if (!container) return;
+            const fileType = container.dataset.type;
+            if (fileType === 'image') {
+                container.innerHTML = `<img src="${signedUrl}" alt="Image" onclick="window.open('${signedUrl}', '_blank')">`;
+            } else if (fileType === 'video') {
+                container.innerHTML = `<video src="${signedUrl}" controls style="max-width:200px; max-height:200px;"></video>`;
+            } else if (fileType === 'audio') {
+                container.innerHTML = `<audio src="${signedUrl}" controls></audio>`;
+            } else {
+                container.innerHTML = `<a href="${signedUrl}" target="_blank">Fichier joint</a>`;
+            }
+        });
+    }
 }
 
 function updateConversationLastMessage(convId, msg) {
     const conv = conversations.find(c => c.id === convId);
     if (conv) {
-        conv.lastMessage = msg.content || (msg.attachment_url ? '📎 Fichier' : '');
+        conv.lastMessage = msg.content || (msg.attachment_path || msg.attachment_url ? '📎 Fichier' : '');
         conv.lastTime = msg.created_at;
         renderConversations();
     }
@@ -565,7 +624,7 @@ function handleFileSelect(e) {
     showToast(`${files.length} fichier(s) sélectionné(s)`, 'info');
 }
 
-// ===== UPLOAD DE FICHIER AVEC PROGRESSION =====
+// ===== UPLOAD DE FICHIER AVEC PROGRESSION (retourne le chemin) =====
 function uploadFileWithProgress(file, bucket, onProgress) {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -586,8 +645,8 @@ function uploadFileWithProgress(file, bucket, onProgress) {
 
         xhr.onload = () => {
             if (xhr.status === 200) {
-                const { data } = supabaseMessages.storage.from(bucket).getPublicUrl(fileName);
-                resolve(data.publicUrl);
+                // Retourner le chemin relatif (bucket/nomFichier)
+                resolve(`${bucket}/${fileName}`);
             } else {
                 reject(new Error('Upload failed'));
             }
@@ -624,7 +683,7 @@ async function sendMessage(e) {
     const sendBtn = document.querySelector('.send-btn');
     sendBtn.classList.add('loading');
 
-    let attachmentUrls = [];
+    let attachmentPaths = [];
     if (files.length > 0) {
         const progressDiv = document.getElementById('uploadProgress');
         const progressBar = document.getElementById('progressBar');
@@ -633,11 +692,11 @@ async function sendMessage(e) {
 
         for (let file of files) {
             try {
-                const url = await uploadFileWithProgress(file, 'message-attachments', (percent) => {
+                const path = await uploadFileWithProgress(file, 'message-attachments', (percent) => {
                     progressBar.style.width = percent + '%';
                     progressPercent.textContent = percent + '%';
                 });
-                attachmentUrls.push(url);
+                attachmentPaths.push(path);
             } catch (err) {
                 console.error('Upload error:', err);
                 showToast('Erreur upload', 'error');
@@ -651,12 +710,12 @@ async function sendMessage(e) {
     }
 
     // Envoyer un message pour chaque fichier
-    if (attachmentUrls.length > 0) {
-        for (let url of attachmentUrls) {
-            await insertMessage(conv.id, content, url);
+    if (attachmentPaths.length > 0) {
+        for (let path of attachmentPaths) {
+            await insertMessage(conv.id, content, null, path);
         }
     } else {
-        await insertMessage(conv.id, content, null);
+        await insertMessage(conv.id, content, null, null);
     }
 
     // Réinitialiser
@@ -670,16 +729,23 @@ async function sendMessage(e) {
     sendBtn.classList.remove('loading');
 }
 
-async function insertMessage(conversationId, content, attachmentUrl) {
+async function insertMessage(conversationId, content, attachmentUrl, attachmentPath) {
+    const insertData = {
+        conversation_id: conversationId,
+        sender_id: currentProfile.id,
+        content: content,
+        reply_to_id: replyingTo ? replyingTo.id : null
+    };
+    if (attachmentUrl) {
+        insertData.attachment_url = attachmentUrl;
+    }
+    if (attachmentPath) {
+        insertData.attachment_path = attachmentPath;
+    }
+
     const { data: newMsg, error: msgError } = await supabaseMessages
         .from('player_messages')
-        .insert({
-            conversation_id: conversationId,
-            sender_id: currentProfile.id,
-            content: content,
-            reply_to_id: replyingTo ? replyingTo.id : null,
-            attachment_url: attachmentUrl
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -689,7 +755,7 @@ async function insertMessage(conversationId, content, attachmentUrl) {
         return;
     }
 
-    const lastContent = attachmentUrl ? '📎 Fichier' : content;
+    const lastContent = attachmentUrl || attachmentPath ? '📎 Fichier' : content;
     await supabaseMessages
         .from('player_conversations')
         .update({
@@ -788,10 +854,11 @@ function displayAudioPreview() {
     const sendBtn = document.createElement('button');
     sendBtn.className = 'btn-send-audio';
     sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Envoyer';
-    sendBtn.onclick = () => {
-        sendRecordedAudio();
+    sendBtn.onclick = async () => {
+        await sendRecordedAudio();
         previewDiv.remove();
         originalForm.style.display = 'flex';
+        resetAudioButton();
     };
 
     const cancelBtn = document.createElement('button');
@@ -802,12 +869,23 @@ function displayAudioPreview() {
         audioChunks = [];
         previewDiv.remove();
         originalForm.style.display = 'flex';
+        resetAudioButton();
     };
 
     previewDiv.appendChild(audio);
     previewDiv.appendChild(sendBtn);
     previewDiv.appendChild(cancelBtn);
     inputArea.appendChild(previewDiv);
+}
+
+function resetAudioButton() {
+    const btn = document.querySelector('.audio-btn');
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-microphone"></i>';
+    }
+    const timer = document.getElementById('recordingTimer');
+    if (timer) timer.remove();
+    isRecording = false;
 }
 
 async function sendRecordedAudio() {
@@ -834,19 +912,19 @@ async function sendRecordedAudio() {
         showToast('Erreur lors de l\'upload de l\'audio', 'error');
         isUploading = false;
         sendBtn.classList.remove('loading');
+        resetAudioButton();
         return;
     }
 
-    const { data: urlData } = supabaseMessages.storage.from(bucket).getPublicUrl(fileName);
-    const audioUrl = urlData.publicUrl;
-
-    await insertMessage(conv.id, '', audioUrl);
+    const audioPath = `${bucket}/${fileName}`;
+    await insertMessage(conv.id, '', null, audioPath);
     console.log('Message audio inséré, en attente de Realtime...');
 
     recordedAudioBlob = null;
     audioChunks = [];
     isUploading = false;
     sendBtn.classList.remove('loading');
+    resetAudioButton();
 }
 
 // ===== SUPPRESSION D'UN MESSAGE =====
