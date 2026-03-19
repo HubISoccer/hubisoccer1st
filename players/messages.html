@@ -74,11 +74,16 @@
                 <div class="conversations-panel">
                     <div class="conversations-header">
                         <h2>Conversations</h2>
-                        <div class="search-box">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="searchConv" placeholder="Rechercher...">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="search-box" style="flex: 1;">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="searchConv" placeholder="Rechercher...">
+                            </div>
+                            <button id="refreshBtn" class="refresh-btn" title="Rafraîchir">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
                         </div>
-                        <div class="action-buttons">
+                        <div class="action-buttons" style="margin-top: 10px;">
                             <button id="archiveToggleBtn" class="archive-btn">
                                 <i class="fas fa-archive"></i> <span id="archiveToggleText">Archives</span>
                             </button>
@@ -105,6 +110,11 @@
     <div id="uploadProgress" class="upload-progress" style="display: none;">
         <div class="progress-bar" id="progressBar"></div>
         <span id="progressPercent">0%</span>
+    </div>
+
+    <!-- Loader global -->
+    <div id="globalLoader" class="global-loader" style="display: none;">
+        <div class="spinner"></div>
     </div>
 
     <!-- Modales -->
