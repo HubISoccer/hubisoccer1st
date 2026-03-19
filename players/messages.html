@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Mes Messages | HubISoccer</title>
+    <title>Mes Messages | HubISoccer - Parrain</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="css/global.css">
-    <link rel="stylesheet" href="css/messages.css">
+    <!-- Styles spécifiques à la messagerie (autonome) -->
+    <link rel="stylesheet" href="css/parrain-messages.css">
+    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -15,7 +16,7 @@
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
-            <span class="dashboard-title">Espace Joueur</span>
+            <span class="dashboard-title">Espace Parrain</span>
         </div>
         <div class="nav-right">
             <div class="notif-icon" id="notifIcon">
@@ -27,7 +28,7 @@
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
-                    <a href="edit-cv.html">Mon profil</a>
+                    <a href="dashboard.html">Mon profil</a>
                     <a href="support.html">Paramètres</a>
                     <a href="#" id="languageLink">Langue (Français)</a>
                     <a href="#" id="logoutLink">Déconnexion</a>
@@ -39,23 +40,21 @@
         </div>
     </nav>
 
-    <!-- Sidebar gauche -->
-    <div class="sidebar" id="sidebar">
+    <!-- Sidebar gauche (menu parrain) -->
+    <div class="sidebar left-sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h3>Menu Joueur</h3>
+            <h3>Menu Parrain</h3>
             <button class="close-sidebar" id="closeSidebar"><i class="fas fa-times"></i></button>
         </div>
         <nav class="sidebar-nav">
             <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
             <a href="feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
             <a href="verification.html"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
-            <a href="edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV Pro</a>
+            <a href="edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV</a>
             <a href="certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
-            <a href="tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournoi (Live)</a>
-            <a href="transfers.html"><i class="fas fa-exchange-alt"></i> Historique Transferts</a>
+            <a href="tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournois</a>
+            <a href="revenue.html"><i class="fas fa-coins"></i> Mes Dons</a>
             <hr>
-            <a href="videos.html"><i class="fas fa-video"></i> Mes Vidéos</a>
-            <a href="revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
             <a href="messages.html" class="active"><i class="fas fa-envelope"></i> Messages</a>
             <a href="support.html"><i class="fas fa-headset"></i> Support</a>
             <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
@@ -192,6 +191,7 @@
         </div>
     </footer>
 
-    <script src="js/messages.js"></script>
+    <!-- Script JavaScript unifié (à placer dans le dossier js de l'espace parrain) -->
+    <script src="js/parrain-messages.js"></script>
 </body>
 </html>
