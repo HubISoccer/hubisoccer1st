@@ -1550,17 +1550,60 @@ function getTargetUserIdFromUrl() {
     const to = urlParams.get('to');
     return to;
 }
+
+// Fonction modifiée pour créer le profil joueur s'il n'existe pas
 async function getPlayerProfileIdFromUUID(uuid) {
+    // Chercher d'abord dans player_profiles
     const { data, error } = await supabaseMessages
         .from('player_profiles')
         .select('id')
         .eq('user_id', uuid)
         .maybeSingle();
+
     if (error) {
         console.error('Erreur recherche player_profiles par UUID:', error);
         return null;
     }
-    return data ? data.id : null;
+
+    if (data) {
+        return data.id; // Profil existant
+    }
+
+    // Si le profil n'existe pas, on le crée à partir de la table profiles
+    const { data: profileData, error: profileError } = await supabaseMessages
+        .from('profiles')
+        .select('full_name, avatar_url, username')
+        .eq('id', uuid)
+        .single();
+
+    if (profileError) {
+        console.error('Erreur récupération profil public:', profileError);
+        showToast('Impossible de récupérer les informations de l\'utilisateur', 'error');
+        return null;
+    }
+
+    // Créer une entrée dans player_profiles
+    const newPlayer = {
+        user_id: uuid,
+        nom_complet: profileData.full_name || 'Utilisateur',
+        avatar_url: profileData.avatar_url,
+        hub_id: profileData.username || uuid
+    };
+
+    const { data: newData, error: insertError } = await supabaseMessages
+        .from('player_profiles')
+        .insert(newPlayer)
+        .select()
+        .single();
+
+    if (insertError) {
+        console.error('Erreur création profil joueur:', insertError);
+        showToast('Erreur lors de la création du profil', 'error');
+        return null;
+    }
+
+    console.log('Profil joueur créé pour l\'UUID', uuid, 'avec ID', newData.id);
+    return newData.id;
 }
 
 // ===== INITIALISATION =====
