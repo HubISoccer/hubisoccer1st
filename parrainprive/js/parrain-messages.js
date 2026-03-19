@@ -77,20 +77,19 @@ async function checkSession() {
     return currentUser;
 }
 
-// ===== CHARGEMENT DU PROFIL PARRAIN =====
+// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
 async function loadProfile() {
     const { data, error } = await supabaseMessages
-        .from('parrain_profiles')
+        .from('profiles')
         .select('*')
-        .eq('user_id', currentUser.id)
+        .eq('id', currentUser.id)
         .single();
     if (error) {
         console.error('Erreur chargement profil:', error);
         return null;
     }
     currentProfile = data;
-    const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Parrain';
-    document.getElementById('userName').textContent = fullName;
+    document.getElementById('userName').textContent = data.full_name || 'Utilisateur';
     document.getElementById('userAvatar').src = data.avatar_url || 'img/user-default.jpg';
     startPresenceTracking();
     return currentProfile;
@@ -102,7 +101,7 @@ let presenceInterval = null;
 async function updatePresence() {
     if (!currentProfile) return;
     const { error } = await supabaseMessages
-        .from('parrain_user_presence')
+        .from('user_presence')
         .upsert({
             user_id: currentProfile.id,
             online: true,
@@ -123,7 +122,7 @@ function stopPresenceTracking() {
 async function setOffline() {
     if (!currentProfile) return;
     await supabaseMessages
-        .from('parrain_user_presence')
+        .from('user_presence')
         .upsert({
             user_id: currentProfile.id,
             online: false,
@@ -131,35 +130,35 @@ async function setOffline() {
         }, { onConflict: 'user_id' });
 }
 
-// ===== CHARGEMENT DES CONVERSATIONS (adapté à la structure existante) =====
+// ===== CHARGEMENT DES CONVERSATIONS =====
 async function loadConversations() {
     console.log('Chargement des conversations...');
     showLoader(true);
 
     // Récupérer les IDs des conversations archivées
     const { data: archivedData } = await supabaseMessages
-        .from('parrain_archived_conversations')
+        .from('archived_conversations')
         .select('conversation_id')
         .eq('user_id', currentProfile.id);
     archivedConversationIds = new Set(archivedData?.map(a => a.conversation_id) || []);
 
     // Récupérer les IDs des utilisateurs bloqués
     const { data: blockedData } = await supabaseMessages
-        .from('parrain_blocked_users')
+        .from('blocked_users')
         .select('blocked_id')
         .eq('blocker_id', currentProfile.id);
     blockedUserIds = new Set(blockedData?.map(b => b.blocked_id) || []);
 
     const { data, error } = await supabaseMessages
-        .from('parrain_conversations')
+        .from('conversations')
         .select(`
             id,
             participant1_id,
             participant2_id,
             last_message_content,
             last_message_at,
-            participant1:parrain_profiles!participant1_id (id, first_name, last_name, avatar_url),
-            participant2:parrain_profiles!participant2_id (id, first_name, last_name, avatar_url)
+            participant1:profiles!participant1_id (id, full_name, avatar_url, username),
+            participant2:profiles!participant2_id (id, full_name, avatar_url, username)
         `)
         .or(`participant1_id.eq.${currentProfile.id},participant2_id.eq.${currentProfile.id}`)
         .order('last_message_at', { ascending: false, nullsFirst: false });
@@ -172,14 +171,14 @@ async function loadConversations() {
 
     let allConversations = data.map(conv => {
         const contact = (conv.participant1.id === currentProfile.id) ? conv.participant2 : conv.participant1;
-        const contactName = contact ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() : 'Utilisateur inconnu';
+        const contactName = contact?.full_name || 'Utilisateur inconnu';
         return {
             id: conv.id,
             contactId: contact?.id,
             contactName: contactName,
             contactAvatar: contact?.avatar_url,
             lastMessage: conv.last_message_content,
-            lastTime: conv.last_message_at, // ← adaptation ici
+            lastTime: conv.last_message_at,
             unread: 0,
             online: false
         };
@@ -200,7 +199,7 @@ async function loadConversations() {
     const contactIds = conversations.map(c => c.contactId).filter(Boolean);
     if (contactIds.length > 0) {
         const { data: presenceData } = await supabaseMessages
-            .from('parrain_user_presence')
+            .from('user_presence')
             .select('user_id, online')
             .in('user_id', contactIds);
         if (presenceData) {
@@ -261,12 +260,12 @@ function renderConversations() {
     });
 }
 
-// ===== CRÉER UNE CONVERSATION AVEC UN UTILISATEUR (avec types) =====
+// ===== CRÉER UNE CONVERSATION AVEC UN UTILISATEUR =====
 async function findOrCreateConversationWithUser(userId) {
     console.log('Recherche/création conversation avec utilisateur', userId);
 
     const { data: existingConv, error: searchError } = await supabaseMessages
-        .from('parrain_conversations')
+        .from('conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${userId}),and(participant1_id.eq.${userId},participant2_id.eq.${currentProfile.id})`)
         .maybeSingle();
@@ -281,14 +280,11 @@ async function findOrCreateConversationWithUser(userId) {
         return existingConv.id;
     }
 
-    // Insertion avec les colonnes de type obligatoires
     const { data: newConv, error: createError } = await supabaseMessages
-        .from('parrain_conversations')
+        .from('conversations')
         .insert([{
             participant1_id: currentProfile.id,
-            participant1_type: 'parrain',
-            participant2_id: userId,
-            participant2_type: 'parrain'
+            participant2_id: userId
         }])
         .select()
         .single();
@@ -311,7 +307,7 @@ async function selectConversation(convId) {
     const conv = conversations.find(c => c.id === convId);
     if (conv) {
         const { data: contactProfile } = await supabaseMessages
-            .from('parrain_profiles')
+            .from('profiles')
             .select('*')
             .eq('id', conv.contactId)
             .single();
@@ -324,11 +320,11 @@ async function selectConversation(convId) {
     renderChatInput();
 
     messagesSubscription = supabaseMessages
-        .channel(`parrain_messages:${convId}`)
+        .channel(`messages:${convId}`)
         .on('postgres_changes', {
             event: 'INSERT',
             schema: 'public',
-            table: 'parrain_messages',
+            table: 'messages',
             filter: `conversation_id=eq.${convId}`
         }, payload => {
             console.log('Nouveau message reçu', payload.new);
@@ -350,7 +346,7 @@ async function loadMessages(convId) {
     console.log('Chargement des messages pour conversation', convId);
     showLoader(true);
     const { data, error } = await supabaseMessages
-        .from('parrain_messages')
+        .from('messages')
         .select(`
             id,
             sender_id,
@@ -748,7 +744,7 @@ async function insertMessage(conversationId, content, attachmentUrl, attachmentP
     if (attachmentPath) insertData.attachment_path = attachmentPath;
 
     const { data: newMsg, error: msgError } = await supabaseMessages
-        .from('parrain_messages')
+        .from('messages')
         .insert(insertData)
         .select()
         .single();
@@ -761,10 +757,10 @@ async function insertMessage(conversationId, content, attachmentUrl, attachmentP
 
     const lastContent = attachmentUrl || attachmentPath ? '📎 Fichier' : content;
     await supabaseMessages
-        .from('parrain_conversations')
+        .from('conversations')
         .update({
             last_message_content: lastContent,
-            last_message_at: new Date().toISOString() // ← adaptation ici
+            last_message_at: new Date().toISOString()
         })
         .eq('id', conversationId);
 }
@@ -939,7 +935,7 @@ async function deleteMessage(msgId, forEveryone = false) {
     if (!confirm('Supprimer ce message ?')) return;
     if (forEveryone) {
         const { error } = await supabaseMessages
-            .from('parrain_messages')
+            .from('messages')
             .delete()
             .eq('id', msgId);
         if (error) {
@@ -1024,7 +1020,7 @@ function deleteForEveryone() {
 async function archiveConversation() {
     if (!currentConversationId || !currentProfile) return;
     const { data: existing, error: checkError } = await supabaseMessages
-        .from('parrain_archived_conversations')
+        .from('archived_conversations')
         .select('id')
         .eq('user_id', currentProfile.id)
         .eq('conversation_id', currentConversationId)
@@ -1039,7 +1035,7 @@ async function archiveConversation() {
         return;
     }
     const { error } = await supabaseMessages
-        .from('parrain_archived_conversations')
+        .from('archived_conversations')
         .insert([{
             user_id: currentProfile.id,
             conversation_id: currentConversationId
@@ -1056,9 +1052,9 @@ async function archiveConversation() {
 
 async function blockUser() {
     if (!currentContact || !currentProfile) return;
-    if (!confirm(`Bloquer ${currentContact.first_name} ${currentContact.last_name} ? Vous ne recevrez plus de messages de sa part.`)) return;
+    if (!confirm(`Bloquer ${currentContact.full_name} ? Vous ne recevrez plus de messages de sa part.`)) return;
     const { data: existing, error: checkError } = await supabaseMessages
-        .from('parrain_blocked_users')
+        .from('blocked_users')
         .select('id')
         .eq('blocker_id', currentProfile.id)
         .eq('blocked_id', currentContact.id)
@@ -1073,7 +1069,7 @@ async function blockUser() {
         return;
     }
     const { error } = await supabaseMessages
-        .from('parrain_blocked_users')
+        .from('blocked_users')
         .insert([{
             blocker_id: currentProfile.id,
             blocked_id: currentContact.id
@@ -1082,7 +1078,7 @@ async function blockUser() {
         console.error('Erreur blocage:', error);
         showToast('Erreur lors du blocage', 'error');
     } else {
-        showToast(`Utilisateur bloqué`, 'success');
+        showToast('Utilisateur bloqué', 'success');
         backToConversations();
         await loadConversations();
     }
@@ -1097,7 +1093,7 @@ function closeDeleteConvModal() {
 async function confirmDeleteConversation() {
     if (!currentConversationId) return;
     const { error: msgError } = await supabaseMessages
-        .from('parrain_messages')
+        .from('messages')
         .delete()
         .eq('conversation_id', currentConversationId);
     if (msgError) {
@@ -1105,7 +1101,7 @@ async function confirmDeleteConversation() {
         return;
     }
     const { error: convError } = await supabaseMessages
-        .from('parrain_conversations')
+        .from('conversations')
         .delete()
         .eq('id', currentConversationId);
     if (convError) {
@@ -1128,8 +1124,8 @@ function openUserInfoModal() {
     content.innerHTML = `
         <div style="text-align: center;">
             <img src="${avatarUrl}" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 15px;">
-            <h3>${currentContact.first_name || ''} ${currentContact.last_name || ''}</h3>
-            <p>@${currentContact.id}</p>
+            <h3>${currentContact.full_name || 'Utilisateur'}</h3>
+            <p>@${currentContact.username || ''}</p>
             <p>${currentContact.bio || 'Aucune bio'}</p>
         </div>
     `;
@@ -1154,7 +1150,6 @@ function renderChatHeader() {
     }
     const onlineClass = currentContact.online ? 'online' : '';
     const avatarUrl = currentContact.avatar_url ? currentContact.avatar_url : 'img/user-default.jpg';
-    const fullName = `${currentContact.first_name || ''} ${currentContact.last_name || ''}`.trim() || 'Inconnu';
     header.innerHTML = `
         <div class="chat-header-left">
             <button class="back-btn" onclick="backToConversations()"><i class="fas fa-arrow-left"></i></button>
@@ -1163,7 +1158,7 @@ function renderChatHeader() {
                     <img src="${avatarUrl}" alt="Avatar">
                 </div>
                 <div class="chat-contact-info">
-                    <h3>${fullName}</h3>
+                    <h3>${currentContact.full_name || 'Inconnu'}</h3>
                     <p>${currentContact.online ? 'En ligne' : 'Hors ligne'}</p>
                 </div>
             </div>
@@ -1301,7 +1296,7 @@ function openStickerPicker() {
 async function loadBlockedUsers() {
     if (!currentProfile) return [];
     const { data, error } = await supabaseMessages
-        .from('parrain_blocked_users')
+        .from('blocked_users')
         .select('blocked_id')
         .eq('blocker_id', currentProfile.id);
     if (error) {
@@ -1313,17 +1308,14 @@ async function loadBlockedUsers() {
     if (blockedIds.length === 0) return [];
 
     const { data: profiles, error: profilesError } = await supabaseMessages
-        .from('parrain_profiles')
-        .select('id, first_name, last_name, avatar_url')
+        .from('profiles')
+        .select('id, full_name, avatar_url')
         .in('id', blockedIds);
     if (profilesError) {
         console.error('Erreur chargement profils bloqués:', profilesError);
         return [];
     }
-    return profiles.map(p => ({
-        ...p,
-        fullName: `${p.first_name || ''} ${p.last_name || ''}`.trim()
-    }));
+    return profiles;
 }
 
 async function openBlockedUsersModal() {
@@ -1338,12 +1330,12 @@ async function openBlockedUsersModal() {
         listContainer.innerHTML = blockedUsers.map(user => `
             <div class="blocked-user-item" data-user-id="${user.id}">
                 <div class="blocked-user-avatar">
-                    <img src="${user.avatar_url || 'img/user-default.jpg'}" alt="${user.fullName}">
+                    <img src="${user.avatar_url || 'img/user-default.jpg'}" alt="${user.full_name}">
                 </div>
                 <div class="blocked-user-info">
-                    <div class="blocked-user-name">${user.fullName}</div>
+                    <div class="blocked-user-name">${user.full_name}</div>
                 </div>
-                <button class="blocked-user-unblock" onclick="unblockUser(${user.id})">Débloquer</button>
+                <button class="blocked-user-unblock" onclick="unblockUser('${user.id}')">Débloquer</button>
             </div>
         `).join('');
     }
@@ -1357,7 +1349,7 @@ function closeBlockedUsersModal() {
 async function unblockUser(userId) {
     if (!currentProfile || !userId) return;
     const { error } = await supabaseMessages
-        .from('parrain_blocked_users')
+        .from('blocked_users')
         .delete()
         .eq('blocker_id', currentProfile.id)
         .eq('blocked_id', userId);
@@ -1377,9 +1369,9 @@ async function ensureSupportConversation() {
     let supportProfileId;
 
     const { data: supportData, error: searchError } = await supabaseMessages
-        .from('parrain_profiles')
+        .from('profiles')
         .select('id')
-        .eq('hub_id', 'SUPPORT')
+        .eq('username', 'SUPPORT')
         .maybeSingle();
 
     if (searchError) {
@@ -1388,13 +1380,13 @@ async function ensureSupportConversation() {
     }
 
     if (!supportData) {
+        // Créer un profil support (UUID fixe ou auto-généré)
         const { data: newSupport, error: insertError } = await supabaseMessages
-            .from('parrain_profiles')
+            .from('profiles')
             .insert([{
-                user_id: null,
-                hub_id: 'SUPPORT',
-                first_name: 'Support',
-                last_name: 'HubISoccer',
+                id: '00000000-0000-0000-0000-000000000001', // UUID fixe, ou laisser auto-généré
+                username: 'SUPPORT',
+                full_name: 'Support HubISoccer',
                 avatar_url: 'img/user-default.jpg'
             }])
             .select()
@@ -1410,7 +1402,7 @@ async function ensureSupportConversation() {
     }
 
     const { data: existingConv, error: convCheckError } = await supabaseMessages
-        .from('parrain_conversations')
+        .from('conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${supportProfileId}),and(participant1_id.eq.${supportProfileId},participant2_id.eq.${currentProfile.id})`)
         .maybeSingle();
@@ -1426,12 +1418,10 @@ async function ensureSupportConversation() {
     }
 
     const { data: newConv, error: convError } = await supabaseMessages
-        .from('parrain_conversations')
+        .from('conversations')
         .insert([{
             participant1_id: currentProfile.id,
-            participant1_type: 'parrain',
-            participant2_id: supportProfileId,
-            participant2_type: 'parrain'
+            participant2_id: supportProfileId
         }])
         .select()
         .single();
@@ -1442,7 +1432,7 @@ async function ensureSupportConversation() {
     }
 
     const { error: msgError } = await supabaseMessages
-        .from('parrain_messages')
+        .from('messages')
         .insert([{
             conversation_id: newConv.id,
             sender_id: supportProfileId,
@@ -1471,11 +1461,11 @@ function initSearch() {
 // ===== SOUSCRIPTION AUX NOUVELLES CONVERSATIONS =====
 function subscribeToNewConversations() {
     conversationsSubscription = supabaseMessages
-        .channel('parrain_conversations_changes')
+        .channel('conversations_changes')
         .on('postgres_changes', {
             event: 'INSERT',
             schema: 'public',
-            table: 'parrain_conversations',
+            table: 'conversations',
             filter: `participant1_id=eq.${currentProfile.id} OR participant2_id=eq.${currentProfile.id}`
         }, async (payload) => {
             console.log('Nouvelle conversation créée', payload.new);
@@ -1565,63 +1555,9 @@ function getTargetUserIdFromUrl() {
     return to;
 }
 
-async function getParrainProfileIdFromUUID(uuid) {
-    const { data, error } = await supabaseMessages
-        .from('parrain_profiles')
-        .select('id')
-        .eq('user_id', uuid)
-        .maybeSingle();
-
-    if (error) {
-        console.error('Erreur recherche parrain_profiles par UUID:', error);
-        return null;
-    }
-
-    if (data) return data.id;
-
-    const { data: profileData, error: profileError } = await supabaseMessages
-        .from('profiles')
-        .select('full_name, avatar_url, username')
-        .eq('id', uuid)
-        .single();
-
-    if (profileError) {
-        console.error('Erreur récupération profil public:', profileError);
-        showToast('Impossible de récupérer les informations de l\'utilisateur', 'error');
-        return null;
-    }
-
-    const names = profileData.full_name ? profileData.full_name.split(' ') : ['Utilisateur', ''];
-    const firstName = names[0] || 'Utilisateur';
-    const lastName = names.slice(1).join(' ') || '';
-
-    const newParrain = {
-        user_id: uuid,
-        first_name: firstName,
-        last_name: lastName,
-        avatar_url: profileData.avatar_url,
-        hub_id: profileData.username || uuid
-    };
-
-    const { data: newData, error: insertError } = await supabaseMessages
-        .from('parrain_profiles')
-        .insert(newParrain)
-        .select()
-        .single();
-
-    if (insertError) {
-        console.error('Erreur création profil parrain:', insertError);
-        showToast('Erreur lors de la création du profil', 'error');
-        return null;
-    }
-
-    console.log('Profil parrain créé pour l\'UUID', uuid, 'avec ID', newData.id);
-    return newData.id;
-}
-
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation messages (parrain)');
+    console.log('🚀 Initialisation messages (unifié)');
 
     const user = await checkSession();
     if (!user) return;
@@ -1637,18 +1573,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     subscribeToNewConversations();
 
     if (targetUserId) {
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUserId);
-        let actualId = targetUserId;
-        if (isUUID) {
-            actualId = await getParrainProfileIdFromUUID(targetUserId);
-            if (!actualId) {
-                showToast('Utilisateur cible introuvable', 'error');
-                return;
-            }
-        } else {
-            actualId = parseInt(targetUserId);
-        }
-
+        // Le paramètre to est un UUID (provenant de profiles.id)
+        const actualId = targetUserId; // c'est déjà un UUID
         if (actualId && actualId !== currentProfile.id) {
             const convId = await findOrCreateConversationWithUser(actualId);
             if (convId) {
@@ -1732,7 +1658,7 @@ function toggleArchive() {
 
 async function unarchiveConversation(convId) {
     const { error } = await supabaseMessages
-        .from('parrain_archived_conversations')
+        .from('archived_conversations')
         .delete()
         .eq('user_id', currentProfile.id)
         .eq('conversation_id', convId);
