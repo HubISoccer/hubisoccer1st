@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseSupport = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -39,7 +39,7 @@ function showToast(message, type = 'info', duration = 3000) {
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
     try {
-        const { data: { session }, error } = await supabaseSupport.auth.getSession();
+        const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
         if (error || !session) {
             window.location.href = '../public/auth/login.html';
             return null;
@@ -57,7 +57,7 @@ async function checkSession() {
 // ===== CHARGEMENT DU PROFIL =====
 async function loadProfile() {
     try {
-        const { data, error } = await supabaseSupport
+        const { data, error } = await supabasePlayersSpacePrive
             .from('player_profiles')
             .select('*')
             .eq('user_id', currentUser.id)
@@ -80,7 +80,7 @@ async function loadProfile() {
 // ===== CHARGEMENT DE LA FAQ =====
 async function loadFAQ() {
     try {
-        const { data, error } = await supabaseSupport
+        const { data, error } = await supabasePlayersSpacePrive
             .from('support_faq')
             .select('*')
             .eq('is_active', true)
@@ -117,7 +117,7 @@ function renderFAQ(items) {
     `).join('');
 }
 
-// Fonction globale pour le toggle (doit être accessible)
+// Fonction globale pour le toggle
 window.toggleFAQ = function(index) {
     const answer = document.getElementById(`faq-${index}`);
     const question = answer.previousElementSibling;
@@ -147,7 +147,7 @@ async function handleTicketSubmit(e) {
         const fileName = `ticket_${currentProfile.id}_${Date.now()}.${fileExt}`;
         const filePath = `support/${fileName}`;
 
-        const { error: uploadError } = await supabaseSupport.storage
+        const { error: uploadError } = await supabasePlayersSpacePrive.storage
             .from('documents')
             .upload(filePath, file);
 
@@ -157,14 +157,14 @@ async function handleTicketSubmit(e) {
             return;
         }
 
-        const { data: urlData } = supabaseSupport.storage
+        const { data: urlData } = supabasePlayersSpacePrive.storage
             .from('documents')
             .getPublicUrl(filePath);
         attachmentUrl = urlData.publicUrl;
     }
 
     // Insertion du ticket
-    const { error: insertError } = await supabaseSupport
+    const { error: insertError } = await supabasePlayersSpacePrive
         .from('support_tickets')
         .insert([{
             player_id: currentProfile.id,
@@ -197,31 +197,69 @@ function initUserMenu() {
     document.addEventListener('click', () => dropdown.classList.remove('show'));
 }
 
+function addMenuHandle() {
+    if (document.getElementById('menuHandle')) return;
+    const handle = document.createElement('div');
+    handle.id = 'menuHandle';
+    handle.className = 'menu-handle';
+    handle.setAttribute('aria-label', 'Ouvrir le menu');
+    handle.innerHTML = '<span></span>';
+    document.body.appendChild(handle);
+}
+
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const menuHandle = document.getElementById('menuHandle');
 
     function openSidebar() {
         sidebar.classList.add('active');
-        overlay.classList.add('active');
+        if (overlay) overlay.classList.add('active');
     }
     function closeSidebarFunc() {
         sidebar.classList.remove('active');
-        overlay.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
     }
 
-    menuBtn?.addEventListener('click', openSidebar);
-    closeBtn?.addEventListener('click', closeSidebarFunc);
-    overlay?.addEventListener('click', closeSidebarFunc);
+    if (menuBtn) menuBtn.addEventListener('click', openSidebar);
+    if (menuHandle) menuHandle.addEventListener('click', openSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
+    if (overlay) overlay.addEventListener('click', closeSidebarFunc);
+
+    // Swipe avec correction
+    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+    const swipeThreshold = 50;
+
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diffX = touchEndX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
+
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+            if (e.cancelable) {
+                e.preventDefault();
+            }
+            if (diffX > 0 && touchStartX < 50) {
+                openSidebar();
+            } else if (diffX < 0 && sidebar.classList.contains('active')) {
+                closeSidebarFunc();
+            }
+        }
+    }, { passive: false });
 }
 
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabaseSupport.auth.signOut().then(() => {
+            supabasePlayersSpacePrive.auth.signOut().then(() => {
                 window.location.href = '../index.html';
             });
         });
@@ -243,9 +281,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Attacher le formulaire
     document.getElementById('ticketForm').addEventListener('submit', handleTicketSubmit);
 
+    addMenuHandle();
     initUserMenu();
     initSidebar();
     initLogout();
+
+    document.getElementById('langSelect')?.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+    });
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
