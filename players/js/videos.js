@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseVideos = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -40,48 +40,64 @@ function showToast(message, type = 'info', duration = 3000) {
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabaseVideos.auth.getSession();
-    if (error || !session) {
+    try {
+        const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
+        if (error || !session) {
+            window.location.href = '../public/auth/login.html';
+            return null;
+        }
+        currentUser = session.user;
+        return currentUser;
+    } catch (err) {
+        console.error('❌ Erreur checkSession:', err);
         window.location.href = '../public/auth/login.html';
         return null;
     }
-    currentUser = session.user;
-    return currentUser;
 }
 
 // ===== CHARGEMENT DU PROFIL =====
 async function loadProfile() {
-    const { data, error } = await supabaseVideos
-        .from('player_profiles')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .single();
-    if (error) {
-        console.error('Erreur chargement profil:', error);
-        showToast('Erreur lors du chargement du profil', 'error');
+    try {
+        const { data, error } = await supabasePlayersSpacePrive
+            .from('player_profiles')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .single();
+
+        if (error) {
+            console.error('Erreur chargement profil:', error);
+            showToast('Erreur lors du chargement du profil', 'error');
+            return null;
+        }
+        currentProfile = data;
+        document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
+        document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
+        return currentProfile;
+    } catch (err) {
+        console.error('❌ Exception loadProfile:', err);
         return null;
     }
-    currentProfile = data;
-    document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
-    document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
-    return currentProfile;
 }
 
 // ===== CHARGEMENT DES MÉDIAS =====
 async function loadMedia() {
-    const { data, error } = await supabaseVideos
-        .from('player_media')
-        .select('*')
-        .eq('player_id', currentProfile.id)
-        .order('created_at', { ascending: false });
+    try {
+        const { data, error } = await supabasePlayersSpacePrive
+            .from('player_media')
+            .select('*')
+            .eq('player_id', currentProfile.id)
+            .order('created_at', { ascending: false });
 
-    if (error) {
-        console.error('Erreur chargement médias:', error);
-        showToast('Erreur lors du chargement des médias', 'error');
-        return;
+        if (error) {
+            console.error('Erreur chargement médias:', error);
+            showToast('Erreur lors du chargement des médias', 'error');
+            return;
+        }
+        mediaList = data || [];
+        renderMedia();
+    } catch (err) {
+        console.error('❌ Exception loadMedia:', err);
     }
-    mediaList = data || [];
-    renderMedia();
 }
 
 // ===== RENDU DES MÉDIAS =====
@@ -160,7 +176,7 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
     const filePath = `player_media/${fileName}`;
 
-    const { error: uploadError } = await supabaseVideos.storage
+    const { error: uploadError } = await supabasePlayersSpacePrive.storage
         .from('media')
         .upload(filePath, file);
 
@@ -170,7 +186,7 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
         return;
     }
 
-    const { data: urlData } = supabaseVideos.storage
+    const { data: urlData } = supabasePlayersSpacePrive.storage
         .from('media')
         .getPublicUrl(filePath);
     const mediaUrl = urlData.publicUrl;
@@ -179,7 +195,7 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     const thumbnailUrl = type === 'video' ? null : mediaUrl;
 
     // Insérer dans la table player_media
-    const { error: insertError } = await supabaseVideos
+    const { error: insertError } = await supabasePlayersSpacePrive
         .from('player_media')
         .insert([{
             player_id: currentProfile.id,
@@ -206,7 +222,7 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
 // ===== AFFICHAGE DU DÉTAIL AVEC COMMENTAIRES =====
 async function showMediaDetail(mediaId) {
     // Charger le média
-    const { data: media, error: mediaError } = await supabaseVideos
+    const { data: media, error: mediaError } = await supabasePlayersSpacePrive
         .from('player_media')
         .select('*')
         .eq('id', mediaId)
@@ -218,8 +234,8 @@ async function showMediaDetail(mediaId) {
         return;
     }
 
-    // Charger les commentaires
-    const { data: comments, error: commentsError } = await supabaseVideos
+    // Charger les commentaires avec les infos de l'auteur
+    const { data: comments, error: commentsError } = await supabasePlayersSpacePrive
         .from('media_comments')
         .select(`
             *,
@@ -284,7 +300,7 @@ async function addComment(mediaId) {
     const content = textarea.value.trim();
     if (!content) return;
 
-    const { error } = await supabaseVideos
+    const { error } = await supabasePlayersSpacePrive
         .from('media_comments')
         .insert([{
             media_id: mediaId,
@@ -315,59 +331,69 @@ function initUserMenu() {
     }
 }
 
+function addMenuHandle() {
+    if (document.getElementById('menuHandle')) return;
+    const handle = document.createElement('div');
+    handle.id = 'menuHandle';
+    handle.className = 'menu-handle';
+    handle.setAttribute('aria-label', 'Ouvrir le menu');
+    handle.innerHTML = '<span></span>';
+    document.body.appendChild(handle);
+}
+
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const menuHandle = document.getElementById('menuHandle');
 
     function openSidebar() {
-        sidebar?.classList.add('active');
-        overlay?.classList.add('active');
+        sidebar.classList.add('active');
+        if (overlay) overlay.classList.add('active');
     }
     function closeSidebarFunc() {
-        sidebar?.classList.remove('active');
-        overlay?.classList.remove('active');
+        sidebar.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
     }
 
-    menuBtn?.addEventListener('click', openSidebar);
-    closeBtn?.addEventListener('click', closeSidebarFunc);
-    overlay?.addEventListener('click', closeSidebarFunc);
-}
+    if (menuBtn) menuBtn.addEventListener('click', openSidebar);
+    if (menuHandle) menuHandle.addEventListener('click', openSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
+    if (overlay) overlay.addEventListener('click', closeSidebarFunc);
 
-// ===== GESTION DES SWIPES =====
-let touchStartX = 0;
-let touchEndX = 0;
-const swipeThreshold = 50;
+    // Swipe avec correction
+    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+    const swipeThreshold = 50;
 
-document.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-}, false);
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
 
-document.addEventListener('touchend', (e) => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-}, false);
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diffX = touchEndX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
 
-function handleSwipe() {
-    const leftSidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const diff = touchEndX - touchStartX;
-
-    if (diff > swipeThreshold && touchStartX < 50) {
-        leftSidebar?.classList.add('active');
-        overlay?.classList.add('active');
-    } else if (diff < -swipeThreshold && leftSidebar?.classList.contains('active')) {
-        leftSidebar?.classList.remove('active');
-        overlay?.classList.remove('active');
-    }
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+            if (e.cancelable) {
+                e.preventDefault();
+            }
+            if (diffX > 0 && touchStartX < 50) {
+                openSidebar();
+            } else if (diffX < 0 && sidebar.classList.contains('active')) {
+                closeSidebarFunc();
+            }
+        }
+    }, { passive: false });
 }
 
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabaseVideos.auth.signOut().then(() => {
+            supabasePlayersSpacePrive.auth.signOut().then(() => {
                 window.location.href = '../index.html';
             });
         });
@@ -390,15 +416,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadMedia();
 
     initFilters();
+    addMenuHandle();
     initUserMenu();
     initSidebar();
     initLogout();
 
     document.getElementById('openUploadModal').addEventListener('click', openUploadModal);
+    // Exposer les fonctions pour les attributs onclick dans le HTML
     window.closeUploadModal = closeUploadModal;
     window.closeDetailModal = closeDetailModal;
     window.showMediaDetail = showMediaDetail;
     window.addComment = addComment;
+
+    // Sélecteur de langue
+    document.getElementById('langSelect')?.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+        // Plus tard, implémenter la traduction
+    });
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
