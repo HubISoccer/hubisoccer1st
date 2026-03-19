@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Mes Messages | HubISoccer - Parrain</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/parrain-global.css">
+    <link rel="stylesheet" href="css/parrain-messages.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Espace Parrain</span>
+        </div>
+        <div class="nav-right">
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="dashboard.html">Mon profil</a>
+                    <a href="support.html">Paramètres</a>
+                    <a href="#" id="languageLink">Langue (Français)</a>
+                    <a href="#" id="logoutLink">Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Sidebar gauche -->
+    <div class="sidebar left-sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Menu Parrain</h3>
+            <button class="close-sidebar" id="closeSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+            <a href="feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
+            <a href="verification.html"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
+            <a href="edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV</a>
+            <a href="certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
+            <a href="tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournois</a>
+            <a href="revenue.html"><i class="fas fa-coins"></i> Mes Dons</a>
+            <hr>
+            <a href="messages.html" class="active"><i class="fas fa-envelope"></i> Messages</a>
+            <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Contenu principal -->
+    <main class="messages-main">
+        <div class="messages-container">
+            <div class="messages-header">
+                <h1><i class="fas fa-envelope"></i> Mes messages</h1>
+            </div>
+            <div class="messaging-area">
+                <!-- Liste des conversations -->
+                <div class="conversations-panel">
+                    <div class="conversations-header">
+                        <h2>Conversations</h2>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="search-box" style="flex: 1;">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="searchConv" placeholder="Rechercher...">
+                            </div>
+                            <button id="refreshBtn" class="refresh-btn" title="Rafraîchir">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                        <div class="action-buttons" style="margin-top: 10px;">
+                            <button id="archiveToggleBtn" class="archive-btn">
+                                <i class="fas fa-archive"></i> <span id="archiveToggleText">Archives</span>
+                            </button>
+                            <button id="blockedUsersBtn" class="blocked-users-btn">
+                                <i class="fas fa-ban"></i> <span>Bloqués</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="conversations-list" id="conversationsList"></div>
+                </div>
+                <!-- Zone de chat -->
+                <div class="chat-panel" id="chatPanel">
+                    <div class="chat-header" id="chatHeader"></div>
+                    <div class="chat-messages-area" id="chatMessagesArea"></div>
+                    <div class="chat-input-area" id="chatInputArea">
+                        <!-- La zone de saisie est générée dynamiquement -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Barre de progression pour upload (cachée par défaut) -->
+    <div id="uploadProgress" class="upload-progress" style="display: none;">
+        <div class="progress-bar" id="progressBar"></div>
+        <span id="progressPercent">0%</span>
+    </div>
+
+    <!-- Loader global -->
+    <div id="globalLoader" class="global-loader" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Modales -->
+
+    <!-- Modale de suppression de conversation -->
+    <div id="deleteConvModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Supprimer la conversation</h2>
+                <span class="close-modal" onclick="closeDeleteConvModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer cette conversation ? Tous les messages seront effacés définitivement.</p>
+                <div class="modal-actions">
+                    <button class="btn-cancel" onclick="closeDeleteConvModal()">Annuler</button>
+                    <button class="btn-confirm" onclick="confirmDeleteConversation()">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale des utilisateurs bloqués -->
+    <div id="blockedUsersModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Utilisateurs bloqués</h2>
+                <span class="close-modal" onclick="closeBlockedUsersModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="blockedUsersList" class="blocked-users-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale d'informations utilisateur -->
+    <div id="userInfoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Informations</h2>
+                <span class="close-modal" onclick="closeUserInfoModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="userInfoContent"></div>
+        </div>
+    </div>
+
+    <!-- Menu contextuel pour les messages -->
+    <div id="messageContextMenu" class="context-menu" style="display: none;">
+        <ul>
+            <li onclick="copyMessageFromMenu()"><i class="fas fa-copy"></i> Copier</li>
+            <li onclick="replyToMessageFromMenu()"><i class="fas fa-reply"></i> Répondre</li>
+            <li onclick="deleteForMe()"><i class="fas fa-user-slash"></i> Supprimer pour moi</li>
+            <li onclick="deleteForEveryone()" id="deleteForEveryoneOption"><i class="fas fa-trash-alt"></i> Supprimer pour tous</li>
+        </ul>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/parrain-messages.js"></script>
+</body>
+</html>
