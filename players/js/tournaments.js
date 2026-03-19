@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabasePlayerPrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -15,8 +15,13 @@ const profileCache = new Map();
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
-    const container = document.getElementById('toastContainer');
-    if (!container) return;
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.innerHTML = `
@@ -40,7 +45,7 @@ function showToast(message, type = 'info', duration = 3000) {
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
     try {
-        const { data: { session }, error } = await supabasePlayerPrive.auth.getSession();
+        const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
         if (error || !session) {
             window.location.href = '../public/auth/login.html';
             return null;
@@ -58,7 +63,7 @@ async function checkSession() {
 // ===== CHARGEMENT DU PROFIL JOUEUR (depuis profiles) =====
 async function loadPlayerProfile() {
     try {
-        const { data, error } = await supabasePlayerPrive
+        const { data, error } = await supabasePlayersSpacePrive
             .from('profiles')
             .select('*')
             .eq('id', currentUser.id)
@@ -80,7 +85,7 @@ async function loadPlayerProfile() {
 
 // ===== CHARGEMENT DES TOURNOIS =====
 async function loadTournaments() {
-    const { data, error } = await supabasePlayerPrive
+    const { data, error } = await supabasePlayersSpacePrive
         .from('tournaments')
         .select('*')
         .order('date', { ascending: true });
@@ -107,7 +112,7 @@ async function loadTournaments() {
 // ===== CHARGEMENT DES DÉTAILS D'UN TOURNOI (joueurs) =====
 async function loadTournamentDetails(tournamentId) {
     try {
-        const { data: playersData, error } = await supabasePlayerPrive
+        const { data: playersData, error } = await supabasePlayersSpacePrive
             .from('tournament_players')
             .select(`
                 id,
@@ -139,7 +144,7 @@ async function loadTournamentDetails(tournamentId) {
 
 // ===== CHARGEMENT DES ÉTOILES (favoris) =====
 async function loadStarredPlayers(tournamentId) {
-    const { data, error } = await supabasePlayerPrive
+    const { data, error } = await supabasePlayersSpacePrive
         .from('player_stars')
         .select('player_id')
         .eq('user_id', currentPlayer.id)
@@ -186,6 +191,7 @@ function renderLiveTournament() {
     
     let videoHtml = '';
     if (currentTournament.stream_url) {
+        // Pour les streams live, on peut utiliser une iframe, ou un player vidéo adapté
         videoHtml = `<iframe src="${currentTournament.stream_url}" frameborder="0" allowfullscreen></iframe>`;
     } else {
         videoHtml = '<div class="no-stream">Aucun stream disponible pour le moment</div>';
@@ -206,7 +212,7 @@ function renderLiveTournament() {
             <h3>Chat en direct</h3>
             <div class="chat-messages" id="chatMessages"></div>
             <div class="chat-input-area">
-                <input type="text" id="chatInput" placeholder="Votre message...">
+                <input type="text" id="chatInput" placeholder="Votre message..." onkeypress="if(event.key==='Enter') sendMessage()">
                 <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
@@ -218,7 +224,7 @@ function renderLiveTournament() {
 // ===== CHARGEMENT DES MESSAGES DU CHAT =====
 async function loadMessages(tournamentId) {
     try {
-        const { data, error } = await supabasePlayerPrive
+        const { data, error } = await supabasePlayersSpacePrive
             .from('tournament_messages')
             .select(`
                 id,
@@ -272,28 +278,45 @@ async function sendMessage() {
     const text = input.value.trim();
     if (!text || !currentTournament) return;
 
-    const { error } = await supabasePlayerPrive
-        .from('tournament_messages')
-        .insert([{
-            tournament_id: currentTournament.id,
-            user_id: currentPlayer.id,
-            message: text
-        }]);
+    // Désactiver l'input temporairement pour éviter les envois multiples
+    input.disabled = true;
+    const sendBtn = document.querySelector('.chat-input-area button');
+    const originalHtml = sendBtn.innerHTML;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    sendBtn.disabled = true;
 
-    if (error) {
-        console.error('Erreur envoi message:', error);
+    try {
+        const { error } = await supabasePlayersSpacePrive
+            .from('tournament_messages')
+            .insert([{
+                tournament_id: currentTournament.id,
+                user_id: currentPlayer.id,
+                message: text
+            }]);
+
+        if (error) {
+            console.error('Erreur envoi message:', error);
+            showToast('Erreur lors de l\'envoi du message', 'error');
+            return;
+        }
+
+        input.value = '';
+    } catch (err) {
+        console.error('Erreur inattendue:', err);
         showToast('Erreur lors de l\'envoi du message', 'error');
-        return;
+    } finally {
+        input.disabled = false;
+        sendBtn.innerHTML = originalHtml;
+        sendBtn.disabled = false;
+        input.focus();
     }
-
-    input.value = '';
 }
 
 // ===== SOUSCRIPTION AUX NOUVEAUX MESSAGES =====
 function subscribeToMessages(tournamentId) {
     if (messagesSubscription) messagesSubscription.unsubscribe();
 
-    messagesSubscription = supabasePlayerPrive
+    messagesSubscription = supabasePlayersSpacePrive
         .channel(`tournament_messages:${tournamentId}`)
         .on('postgres_changes', {
             event: 'INSERT',
@@ -303,7 +326,7 @@ function subscribeToMessages(tournamentId) {
         }, async (payload) => {
             let authorName = profileCache.get(payload.new.user_id);
             if (!authorName) {
-                const { data } = await supabasePlayerPrive
+                const { data } = await supabasePlayersSpacePrive
                     .from('profiles')
                     .select('full_name')
                     .eq('id', payload.new.user_id)
@@ -327,6 +350,10 @@ function subscribeToMessages(tournamentId) {
 
 // ===== SÉLECTION D'UN TOURNOI =====
 async function selectTournament(tournamentId) {
+    // Afficher un loader si nécessaire
+    const container = document.getElementById('liveTournament');
+    if (container) container.innerHTML = '<div class="spinner" style="margin:50px auto;"></div>';
+
     currentTournament = tournaments.find(t => t.id === tournamentId);
     await loadTournamentDetails(tournamentId);
     await loadStarredPlayers(tournamentId);
@@ -378,22 +405,32 @@ function renderPlayersList() {
 // ===== AJOUT/SUPPRESSION D'UNE ÉTOILE =====
 async function toggleStar(playerTournamentId) {
     if (starredPlayers.has(playerTournamentId)) {
-        const { error } = await supabasePlayerPrive
+        const { error } = await supabasePlayersSpacePrive
             .from('player_stars')
             .delete()
             .eq('user_id', currentPlayer.id)
             .eq('tournament_id', currentTournament.id)
             .eq('player_id', playerTournamentId);
-        if (!error) starredPlayers.delete(playerTournamentId);
+        if (error) {
+            showToast('Erreur lors de la suppression de l\'étoile', 'error');
+            console.error(error);
+            return;
+        }
+        starredPlayers.delete(playerTournamentId);
     } else {
-        const { error } = await supabasePlayerPrive
+        const { error } = await supabasePlayersSpacePrive
             .from('player_stars')
             .insert([{
                 user_id: currentPlayer.id,
                 tournament_id: currentTournament.id,
                 player_id: playerTournamentId
             }]);
-        if (!error) starredPlayers.add(playerTournamentId);
+        if (error) {
+            showToast('Erreur lors de l\'ajout de l\'étoile', 'error');
+            console.error(error);
+            return;
+        }
+        starredPlayers.add(playerTournamentId);
     }
     renderPlayersList();
 }
@@ -416,6 +453,7 @@ function initSidebar() {
     const sidebar = document.getElementById('leftSidebar');
     const closeBtn = document.getElementById('closeLeftSidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const menuHandle = document.getElementById('menuHandle'); // pour le swipe
 
     function openSidebar() {
         sidebar?.classList.add('active');
@@ -427,44 +465,47 @@ function initSidebar() {
     }
 
     menuBtn?.addEventListener('click', openSidebar);
+    if (menuHandle) menuHandle.addEventListener('click', openSidebar);
     closeBtn?.addEventListener('click', closeSidebarFunc);
     overlay?.addEventListener('click', closeSidebarFunc);
 }
 
 // ===== GESTION DES SWIPES =====
 let touchStartX = 0;
+let touchStartY = 0;
 let touchEndX = 0;
 const swipeThreshold = 50;
 
 document.addEventListener('touchstart', (e) => {
     touchStartX = e.changedTouches[0].screenX;
-}, false);
+    touchStartY = e.changedTouches[0].screenY;
+}, { passive: true });
 
 document.addEventListener('touchend', (e) => {
     touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-}, false);
+    const diffX = touchEndX - touchStartX;
+    const diffY = e.changedTouches[0].screenY - touchStartY;
 
-function handleSwipe() {
-    const leftSidebar = document.getElementById('leftSidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const diff = touchEndX - touchStartX;
-
-    if (diff > swipeThreshold && touchStartX < 50) {
-        leftSidebar?.classList.add('active');
-        overlay?.classList.add('active');
-    } else if (diff < -swipeThreshold && leftSidebar?.classList.contains('active')) {
-        leftSidebar?.classList.remove('active');
-        overlay?.classList.remove('active');
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+        if (e.cancelable) e.preventDefault();
+        const leftSidebar = document.getElementById('leftSidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (diffX > 0 && touchStartX < 50) {
+            leftSidebar?.classList.add('active');
+            overlay?.classList.add('active');
+        } else if (diffX < 0 && leftSidebar?.classList.contains('active')) {
+            leftSidebar?.classList.remove('active');
+            overlay?.classList.remove('active');
+        }
     }
-}
+}, { passive: false });
 
 // ===== DÉCONNEXION =====
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabasePlayerPrive.auth.signOut().then(() => {
+            supabasePlayersSpacePrive.auth.signOut().then(() => {
                 window.location.href = '../index.html';
             });
         });
@@ -490,6 +531,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('openTournamentModal').addEventListener('click', openTournamentModal);
 
+    // Exposer les fonctions globales
     window.closeTournamentModal = closeTournamentModal;
     window.closePlayersModal = closePlayersModal;
     window.openPlayersModal = openPlayersModal;
@@ -499,6 +541,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     initUserMenu();
     initSidebar();
     initLogout();
+
+    document.getElementById('langSelect')?.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+    });
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
