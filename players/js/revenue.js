@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseRevenue = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -10,121 +10,167 @@ let wallet = null;
 let transactions = [];
 let followersCount = 0;
 
+// ===== TOAST =====
+function showToast(message, type = 'info', duration = 3000) {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i></div>
+        <div class="toast-content">${message}</div>
+        <button class="toast-close"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(toast);
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.style.animation = 'fadeOut 0.3s forwards';
+        setTimeout(() => toast.remove(), 300);
+    });
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.animation = 'fadeOut 0.3s forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
+
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabaseRevenue.auth.getSession();
-    if (error || !session) {
-        console.log('Session invalide, redirection vers login');
+    try {
+        const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
+        if (error || !session) {
+            window.location.href = '../public/auth/login.html';
+            return null;
+        }
+        currentUser = session.user;
+        return currentUser;
+    } catch (err) {
+        console.error('❌ Erreur checkSession :', err);
         window.location.href = '../public/auth/login.html';
         return null;
     }
-    currentUser = session.user;
-    console.log('Utilisateur connecté:', currentUser.email);
-    return currentUser;
 }
 
 // ===== CHARGEMENT DU PROFIL =====
 async function loadProfile() {
     if (!currentUser) return null;
-    console.log('Chargement du profil pour user_id:', currentUser.id);
-    const { data, error } = await supabaseRevenue
-        .from('player_profiles')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .single();
-    if (error) {
-        console.error('Erreur chargement profil:', error);
+    try {
+        const { data, error } = await supabasePlayersSpacePrive
+            .from('player_profiles')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .single();
+        if (error) {
+            console.error('Erreur chargement profil:', error);
+            return null;
+        }
+        currentProfile = data;
+        document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
+        document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
+        return currentProfile;
+    } catch (err) {
+        console.error('❌ Exception loadProfile:', err);
         return null;
     }
-    currentProfile = data;
-    document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
-    document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
-    return currentProfile;
 }
 
 // ===== CHARGEMENT / CRÉATION DU PORTEFEUILLE AVEC BONUS =====
 async function loadOrCreateWallet() {
     if (!currentProfile) return null;
-    console.log('Chargement du portefeuille pour player_id:', currentProfile.id);
-    const { data: existing, error: selectError } = await supabaseRevenue
-        .from('player_wallets')
-        .select('*')
-        .eq('player_id', currentProfile.id)
-        .maybeSingle();
-
-    if (selectError) {
-        console.error('Erreur chargement portefeuille:', selectError);
-        return null;
-    }
-
-    if (existing) {
-        wallet = existing;
-        console.log('Portefeuille existant:', wallet);
-    } else {
-        console.log('Création nouveau portefeuille avec bonus');
-        const { data: newWallet, error: insertError } = await supabaseRevenue
+    try {
+        const { data: existing, error: selectError } = await supabasePlayersSpacePrive
             .from('player_wallets')
-            .insert([{
-                player_id: currentProfile.id,
-                balance: 0,
-                bonus_inscription: 5000
-            }])
-            .select()
-            .single();
+            .select('*')
+            .eq('player_id', currentProfile.id)
+            .maybeSingle();
 
-        if (insertError) {
-            console.error('Erreur création portefeuille:', insertError);
+        if (selectError) {
+            console.error('Erreur chargement portefeuille:', selectError);
             return null;
         }
-        wallet = newWallet;
-        console.log('Nouveau portefeuille créé:', wallet);
 
-        // Ajouter une transaction de bonus
-        const { error: transError } = await supabaseRevenue
-            .from('player_transactions')
-            .insert([{
-                player_id: currentProfile.id,
-                type: 'bonus',
-                amount: 5000,
-                status: 'completed',
-                description: 'Bonus d\'inscription'
-            }]);
-        if (transError) console.error('Erreur création transaction bonus:', transError);
+        if (existing) {
+            wallet = existing;
+        } else {
+            const { data: newWallet, error: insertError } = await supabasePlayersSpacePrive
+                .from('player_wallets')
+                .insert([{
+                    player_id: currentProfile.id,
+                    balance: 0,
+                    bonus_inscription: 5000
+                }])
+                .select()
+                .single();
+
+            if (insertError) {
+                console.error('Erreur création portefeuille:', insertError);
+                return null;
+            }
+            wallet = newWallet;
+
+            // Ajouter une transaction de bonus
+            const { error: transError } = await supabasePlayersSpacePrive
+                .from('player_transactions')
+                .insert([{
+                    player_id: currentProfile.id,
+                    type: 'bonus',
+                    amount: 5000,
+                    status: 'completed',
+                    description: 'Bonus d\'inscription'
+                }]);
+            if (transError) console.error('Erreur création transaction bonus:', transError);
+        }
+        return wallet;
+    } catch (err) {
+        console.error('❌ Exception loadOrCreateWallet:', err);
+        return null;
     }
-    return wallet;
 }
 
 // ===== CHARGEMENT DES TRANSACTIONS =====
 async function loadTransactions() {
     if (!currentProfile) return;
-    const { data, error } = await supabaseRevenue
-        .from('player_transactions')
-        .select('*')
-        .eq('player_id', currentProfile.id)
-        .order('created_at', { ascending: false });
+    try {
+        const { data, error } = await supabasePlayersSpacePrive
+            .from('player_transactions')
+            .select('*')
+            .eq('player_id', currentProfile.id)
+            .order('created_at', { ascending: false });
 
-    if (error) {
-        console.error('Erreur chargement transactions:', error);
-        return;
+        if (error) {
+            console.error('Erreur chargement transactions:', error);
+            return;
+        }
+        transactions = data || [];
+        renderTransactions();
+    } catch (err) {
+        console.error('❌ Exception loadTransactions:', err);
     }
-    transactions = data || [];
-    renderTransactions();
 }
 
 // ===== COMPTER LES ABONNÉS =====
 async function loadFollowersCount() {
     if (!currentProfile) return;
-    const { count, error } = await supabaseRevenue
-        .from('feed_follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('followed_id', currentProfile.id);
+    try {
+        const { count, error } = await supabasePlayersSpacePrive
+            .from('feed_follows')
+            .select('*', { count: 'exact', head: true })
+            .eq('followed_id', currentProfile.id);
 
-    if (error) {
-        console.error('Erreur comptage abonnés:', error);
-        return;
+        if (error) {
+            console.error('Erreur comptage abonnés:', error);
+            return;
+        }
+        followersCount = count || 0;
+        updateBonusStatus();
+    } catch (err) {
+        console.error('❌ Exception loadFollowersCount:', err);
     }
-    followersCount = count || 0;
-    updateBonusStatus();
 }
 
 // ===== MISE À JOUR DE L'INTERFACE =====
@@ -137,7 +183,7 @@ function updateBonusStatus() {
     if (withdrawBtn) {
         withdrawBtn.disabled = followersCount < 50 || wallet.bonus_inscription <= 0;
         withdrawBtn.title = withdrawBtn.disabled 
-            ? `Vous avez besoin de ${50 - followersCount} abonné(s) supplémentaire(s) pour retirer.` 
+            ? `Vous avez besoin de ${Math.max(0, 50 - followersCount)} abonné(s) supplémentaire(s) pour retirer.` 
             : 'Retirer le bonus';
     }
 }
@@ -153,6 +199,7 @@ function renderUI() {
     });
     document.getElementById('totalSpent').textContent = `${totalSpent} FCFA`;
 
+    // Bonus stats (à implémenter si données disponibles)
     document.getElementById('bonusButs').textContent = '0';
     document.getElementById('bonusPasses').textContent = '0';
     document.getElementById('bonusHomme').textContent = '0';
@@ -180,7 +227,7 @@ function renderTransactions() {
             </div>
         `;
     });
-    list.innerHTML = html;
+    list.innerHTML = html || '<p class="empty-message">Aucune transaction.</p>';
 }
 
 // ===== RETRAIT DU BONUS =====
@@ -194,7 +241,7 @@ async function withdrawBonus() {
         return;
     }
 
-    const { error } = await supabaseRevenue
+    const { error } = await supabasePlayersSpacePrive
         .from('player_transactions')
         .insert([{
             player_id: currentProfile.id,
@@ -209,7 +256,7 @@ async function withdrawBonus() {
         return;
     }
 
-    const { error: updateError } = await supabaseRevenue
+    const { error: updateError } = await supabasePlayersSpacePrive
         .from('player_wallets')
         .update({ bonus_inscription: 0 })
         .eq('id', wallet.id);
@@ -242,7 +289,7 @@ document.getElementById('depositForm')?.addEventListener('submit', async (e) => 
         return;
     }
 
-    const { error } = await supabaseRevenue
+    const { error } = await supabasePlayersSpacePrive
         .from('player_transactions')
         .insert([{
             player_id: currentProfile.id,
@@ -276,7 +323,7 @@ document.getElementById('withdrawForm')?.addEventListener('submit', async (e) =>
         return;
     }
 
-    const { error } = await supabaseRevenue
+    const { error } = await supabasePlayersSpacePrive
         .from('player_transactions')
         .insert([{
             player_id: currentProfile.id,
@@ -295,36 +342,7 @@ document.getElementById('withdrawForm')?.addEventListener('submit', async (e) =>
     }
 });
 
-// ===== TOAST =====
-function showToast(message, type = 'info', duration = 3000) {
-    let container = document.getElementById('toastContainer');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'toastContainer';
-        container.className = 'toast-container';
-        document.body.appendChild(container);
-    }
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `
-        <div class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i></div>
-        <div class="toast-content">${message}</div>
-        <button class="toast-close"><i class="fas fa-times"></i></button>
-    `;
-    container.appendChild(toast);
-    toast.querySelector('.toast-close').addEventListener('click', () => {
-        toast.style.animation = 'fadeOut 0.3s forwards';
-        setTimeout(() => toast.remove(), 300);
-    });
-    setTimeout(() => {
-        if (toast.parentNode) {
-            toast.style.animation = 'fadeOut 0.3s forwards';
-            setTimeout(() => toast.remove(), 300);
-        }
-    }, duration);
-}
-
-// ===== MENU UTILISATEUR =====
+// ===== FONCTIONS UI =====
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
@@ -337,61 +355,69 @@ function initUserMenu() {
     }
 }
 
-// ===== SIDEBAR =====
+function addMenuHandle() {
+    if (document.getElementById('menuHandle')) return;
+    const handle = document.createElement('div');
+    handle.id = 'menuHandle';
+    handle.className = 'menu-handle';
+    handle.setAttribute('aria-label', 'Ouvrir le menu');
+    handle.innerHTML = '<span></span>';
+    document.body.appendChild(handle);
+}
+
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const menuHandle = document.getElementById('menuHandle');
 
     function openSidebar() {
-        sidebar?.classList.add('active');
-        overlay?.classList.add('active');
+        sidebar.classList.add('active');
+        if (overlay) overlay.classList.add('active');
     }
     function closeSidebarFunc() {
-        sidebar?.classList.remove('active');
-        overlay?.classList.remove('active');
+        sidebar.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
     }
 
-    menuBtn?.addEventListener('click', openSidebar);
-    closeBtn?.addEventListener('click', closeSidebarFunc);
-    overlay?.addEventListener('click', closeSidebarFunc);
+    if (menuBtn) menuBtn.addEventListener('click', openSidebar);
+    if (menuHandle) menuHandle.addEventListener('click', openSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
+    if (overlay) overlay.addEventListener('click', closeSidebarFunc);
+
+    // Swipe avec correction
+    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+    const swipeThreshold = 50;
+
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diffX = touchEndX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
+
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+            if (e.cancelable) {
+                e.preventDefault();
+            }
+            if (diffX > 0 && touchStartX < 50) {
+                openSidebar();
+            } else if (diffX < 0 && sidebar.classList.contains('active')) {
+                closeSidebarFunc();
+            }
+        }
+    }, { passive: false });
 }
 
-// ===== GESTION DES SWIPES =====
-let touchStartX = 0;
-let touchEndX = 0;
-const swipeThreshold = 50;
-
-document.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-}, false);
-
-document.addEventListener('touchend', (e) => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-}, false);
-
-function handleSwipe() {
-    const leftSidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const diff = touchEndX - touchStartX;
-
-    if (diff > swipeThreshold && touchStartX < 50) {
-        leftSidebar?.classList.add('active');
-        overlay?.classList.add('active');
-    } else if (diff < -swipeThreshold && leftSidebar?.classList.contains('active')) {
-        leftSidebar?.classList.remove('active');
-        overlay?.classList.remove('active');
-    }
-}
-
-// ===== DÉCONNEXION =====
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabaseRevenue.auth.signOut().then(() => window.location.href = '../index.html');
+            supabasePlayersSpacePrive.auth.signOut().then(() => window.location.href = '../index.html');
         });
     });
 }
@@ -418,12 +444,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('withdrawBtn').addEventListener('click', openWithdrawModal);
     document.getElementById('withdrawBonusBtn')?.addEventListener('click', withdrawBonus);
 
+    // Exposer les fonctions pour les attributs onclick
     window.closeDepositModal = closeDepositModal;
     window.closeWithdrawModal = closeWithdrawModal;
+    window.openDepositModal = openDepositModal;
+    window.openWithdrawModal = openWithdrawModal;
+    window.withdrawBonus = withdrawBonus;
 
+    addMenuHandle();
     initUserMenu();
     initSidebar();
     initLogout();
+
+    document.getElementById('langSelect')?.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+    });
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
@@ -432,10 +468,3 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     console.log('✅ Initialisation terminée');
 });
-
-// ===== FONCTIONS GLOBALES =====
-window.openDepositModal = openDepositModal;
-window.openWithdrawModal = openWithdrawModal;
-window.closeDepositModal = closeDepositModal;
-window.closeWithdrawModal = closeWithdrawModal;
-window.withdrawBonus = withdrawBonus;
