@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseParrainPrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseParrainsSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -11,13 +11,17 @@ let currentTournament = null;
 let messages = [];
 let starredPlayers = new Set(); // IDs des joueurs (player_tournament_id)
 let messagesSubscription = null;
-// Cache pour les profils (évite les requêtes répétées)
 const profileCache = new Map();
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
-    const container = document.getElementById('toastContainer');
-    if (!container) return;
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.innerHTML = `
@@ -38,12 +42,18 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
+// ===== LOADER GLOBAL =====
+function showLoader(show = true) {
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.style.display = show ? 'flex' : 'none';
+}
+
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
     try {
-        const { data: { session }, error } = await supabaseParrainPrive.auth.getSession();
+        const { data: { session }, error } = await supabaseParrainsSpacePrive.auth.getSession();
         if (error || !session) {
-            window.location.href = 'auth/login.html';
+            window.location.href = '../public/auth/login.html';
             return null;
         }
         currentUser = session.user;
@@ -51,7 +61,7 @@ async function checkSession() {
         return currentUser;
     } catch (err) {
         console.error('❌ Erreur checkSession :', err);
-        window.location.href = 'auth/login.html';
+        window.location.href = '../public/auth/login.html';
         return null;
     }
 }
@@ -59,7 +69,7 @@ async function checkSession() {
 // ===== CHARGEMENT DU PROFIL PARRAIN (depuis profiles) =====
 async function loadParrainProfile() {
     try {
-        const { data, error } = await supabaseParrainPrive
+        const { data, error } = await supabaseParrainsSpacePrive
             .from('profiles')
             .select('*')
             .eq('id', currentUser.id)
@@ -81,7 +91,7 @@ async function loadParrainProfile() {
 
 // ===== CHARGEMENT DES TOURNOIS =====
 async function loadTournaments() {
-    const { data, error } = await supabaseParrainPrive
+    const { data, error } = await supabaseParrainsSpacePrive
         .from('tournaments')
         .select('*')
         .order('date', { ascending: true });
@@ -108,8 +118,7 @@ async function loadTournaments() {
 // ===== CHARGEMENT DES DÉTAILS D'UN TOURNOI (joueurs) =====
 async function loadTournamentDetails(tournamentId) {
     try {
-        // Récupérer tous les joueurs du tournoi avec leurs profils en une seule requête
-        const { data: playersData, error } = await supabaseParrainPrive
+        const { data: playersData, error } = await supabaseParrainsSpacePrive
             .from('tournament_players')
             .select(`
                 id,
@@ -141,7 +150,7 @@ async function loadTournamentDetails(tournamentId) {
 
 // ===== CHARGEMENT DES ÉTOILES (favoris) =====
 async function loadStarredPlayers(tournamentId) {
-    const { data, error } = await supabaseParrainPrive
+    const { data, error } = await supabaseParrainsSpacePrive
         .from('player_stars')
         .select('player_id')
         .eq('user_id', currentParrain.id)
@@ -180,13 +189,12 @@ function renderTournamentList() {
     });
 }
 
-// ===== RENDU DU TOURNOI EN DIRECT (corrigé pour éviter les erreurs YouTube) =====
+// ===== RENDU DU TOURNOI EN DIRECT =====
 function renderLiveTournament() {
     if (!currentTournament) return;
 
     const container = document.getElementById('liveTournament');
     
-    // Gestion de la vidéo : si pas de stream, afficher un placeholder
     let videoHtml = '';
     if (currentTournament.stream_url) {
         videoHtml = `<iframe src="${currentTournament.stream_url}" frameborder="0" allowfullscreen></iframe>`;
@@ -209,7 +217,7 @@ function renderLiveTournament() {
             <h3>Chat en direct</h3>
             <div class="chat-messages" id="chatMessages"></div>
             <div class="chat-input-area">
-                <input type="text" id="chatInput" placeholder="Votre message...">
+                <input type="text" id="chatInput" placeholder="Votre message..." onkeypress="if(event.key==='Enter') sendMessage()">
                 <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
@@ -218,10 +226,10 @@ function renderLiveTournament() {
     renderChatMessages();
 }
 
-// ===== CHARGEMENT DES MESSAGES DU CHAT (optimisé avec jointure) =====
+// ===== CHARGEMENT DES MESSAGES DU CHAT =====
 async function loadMessages(tournamentId) {
     try {
-        const { data, error } = await supabaseParrainPrive
+        const { data, error } = await supabaseParrainsSpacePrive
             .from('tournament_messages')
             .select(`
                 id,
@@ -275,29 +283,45 @@ async function sendMessage() {
     const text = input.value.trim();
     if (!text || !currentTournament) return;
 
-    const { error } = await supabaseParrainPrive
-        .from('tournament_messages')
-        .insert([{
-            tournament_id: currentTournament.id,
-            user_id: currentParrain.id,
-            message: text
-        }]);
+    // Désactiver l'input temporairement pour éviter les envois multiples
+    input.disabled = true;
+    const sendBtn = document.querySelector('.chat-input-area button');
+    const originalHtml = sendBtn.innerHTML;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    sendBtn.disabled = true;
 
-    if (error) {
-        console.error('Erreur envoi message:', error);
+    try {
+        const { error } = await supabaseParrainsSpacePrive
+            .from('tournament_messages')
+            .insert([{
+                tournament_id: currentTournament.id,
+                user_id: currentParrain.id,
+                message: text
+            }]);
+
+        if (error) {
+            console.error('Erreur envoi message:', error);
+            showToast('Erreur lors de l\'envoi du message', 'error');
+            return;
+        }
+
+        input.value = '';
+    } catch (err) {
+        console.error('Erreur inattendue:', err);
         showToast('Erreur lors de l\'envoi du message', 'error');
-        return;
+    } finally {
+        input.disabled = false;
+        sendBtn.innerHTML = originalHtml;
+        sendBtn.disabled = false;
+        input.focus();
     }
-
-    input.value = '';
-    // Le message sera ajouté via la subscription
 }
 
-// ===== SOUSCRIPTION AUX NOUVEAUX MESSAGES (optimisée) =====
+// ===== SOUSCRIPTION AUX NOUVEAUX MESSAGES =====
 function subscribeToMessages(tournamentId) {
     if (messagesSubscription) messagesSubscription.unsubscribe();
 
-    messagesSubscription = supabaseParrainPrive
+    messagesSubscription = supabaseParrainsSpacePrive
         .channel(`tournament_messages:${tournamentId}`)
         .on('postgres_changes', {
             event: 'INSERT',
@@ -305,10 +329,9 @@ function subscribeToMessages(tournamentId) {
             table: 'tournament_messages',
             filter: `tournament_id=eq.${tournamentId}`
         }, async (payload) => {
-            // Récupérer le profil de l'auteur (avec cache)
             let authorName = profileCache.get(payload.new.user_id);
             if (!authorName) {
-                const { data } = await supabaseParrainPrive
+                const { data } = await supabaseParrainsSpacePrive
                     .from('profiles')
                     .select('full_name')
                     .eq('id', payload.new.user_id)
@@ -332,6 +355,10 @@ function subscribeToMessages(tournamentId) {
 
 // ===== SÉLECTION D'UN TOURNOI =====
 async function selectTournament(tournamentId) {
+    // Afficher un loader si nécessaire
+    const container = document.getElementById('liveTournament');
+    if (container) container.innerHTML = '<div class="spinner" style="margin:50px auto;"></div>';
+
     currentTournament = tournaments.find(t => t.id === tournamentId);
     await loadTournamentDetails(tournamentId);
     await loadStarredPlayers(tournamentId);
@@ -383,22 +410,32 @@ function renderPlayersList() {
 // ===== AJOUT/SUPPRESSION D'UNE ÉTOILE =====
 async function toggleStar(playerTournamentId) {
     if (starredPlayers.has(playerTournamentId)) {
-        const { error } = await supabaseParrainPrive
+        const { error } = await supabaseParrainsSpacePrive
             .from('player_stars')
             .delete()
             .eq('user_id', currentParrain.id)
             .eq('tournament_id', currentTournament.id)
             .eq('player_id', playerTournamentId);
-        if (!error) starredPlayers.delete(playerTournamentId);
+        if (error) {
+            showToast('Erreur lors de la suppression de l\'étoile', 'error');
+            console.error(error);
+            return;
+        }
+        starredPlayers.delete(playerTournamentId);
     } else {
-        const { error } = await supabaseParrainPrive
+        const { error } = await supabaseParrainsSpacePrive
             .from('player_stars')
             .insert([{
                 user_id: currentParrain.id,
                 tournament_id: currentTournament.id,
                 player_id: playerTournamentId
             }]);
-        if (!error) starredPlayers.add(playerTournamentId);
+        if (error) {
+            showToast('Erreur lors de l\'ajout de l\'étoile', 'error');
+            console.error(error);
+            return;
+        }
+        starredPlayers.add(playerTournamentId);
     }
     renderPlayersList();
 }
@@ -416,11 +453,22 @@ function initUserMenu() {
     }
 }
 
+function addMenuHandle() {
+    if (document.getElementById('menuHandle')) return;
+    const handle = document.createElement('div');
+    handle.id = 'menuHandle';
+    handle.className = 'menu-handle';
+    handle.setAttribute('aria-label', 'Ouvrir le menu');
+    handle.innerHTML = '<span></span>';
+    document.body.appendChild(handle);
+}
+
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
     const sidebar = document.getElementById('leftSidebar');
     const closeBtn = document.getElementById('closeLeftSidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const menuHandle = document.getElementById('menuHandle');
 
     function openSidebar() {
         sidebar?.classList.add('active');
@@ -432,46 +480,41 @@ function initSidebar() {
     }
 
     menuBtn?.addEventListener('click', openSidebar);
+    if (menuHandle) menuHandle.addEventListener('click', openSidebar);
     closeBtn?.addEventListener('click', closeSidebarFunc);
     overlay?.addEventListener('click', closeSidebarFunc);
+
+    // Swipe avec correction
+    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+    const swipeThreshold = 50;
+
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diffX = touchEndX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
+
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+            if (e.cancelable) e.preventDefault();
+            if (diffX > 0 && touchStartX < 50) {
+                openSidebar();
+            } else if (diffX < 0 && sidebar?.classList.contains('active')) {
+                closeSidebarFunc();
+            }
+        }
+    }, { passive: false });
 }
 
-// ===== GESTION DES SWIPES =====
-let touchStartX = 0;
-let touchEndX = 0;
-const swipeThreshold = 50;
-
-document.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-}, false);
-
-document.addEventListener('touchend', (e) => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-}, false);
-
-function handleSwipe() {
-    const leftSidebar = document.getElementById('leftSidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const diff = touchEndX - touchStartX;
-
-    if (diff > swipeThreshold && touchStartX < 50) {
-        leftSidebar?.classList.add('active');
-        overlay?.classList.add('active');
-    } else if (diff < -swipeThreshold && leftSidebar?.classList.contains('active')) {
-        leftSidebar?.classList.remove('active');
-        overlay?.classList.remove('active');
-    }
-}
-
-// ===== DÉCONNEXION =====
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
-        link.addEventListener('click', (e) => {
+        link.addEventListener('click', async (e) => {
             e.preventDefault();
-            supabaseParrainPrive.auth.signOut().then(() => {
-                window.location.href = '../index.html';
-            });
+            await supabaseParrainsSpacePrive.auth.signOut();
+            window.location.href = '../index.html';
         });
     });
 }
@@ -495,15 +538,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('openTournamentModal').addEventListener('click', openTournamentModal);
 
+    // Exposer les fonctions globales
     window.closeTournamentModal = closeTournamentModal;
     window.closePlayersModal = closePlayersModal;
     window.openPlayersModal = openPlayersModal;
     window.toggleStar = toggleStar;
     window.sendMessage = sendMessage;
 
+    addMenuHandle();
     initUserMenu();
     initSidebar();
     initLogout();
+
+    document.getElementById('langSelect')?.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+    });
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
