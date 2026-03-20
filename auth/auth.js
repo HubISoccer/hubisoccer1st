@@ -33,7 +33,7 @@ async function redirectToDashboard() {
         parrain: '../parrainprive/dashboard.html',
         arbitre: '../arbitral/dashboard.html',
         staff: '../staff/dashboard.html',
-        tournoi: '../tournoi/dashboard.html'
+        tournoi: '../tournoi/dashboard.html',   // <-- virgule ajoutée ici
         admin: 'admin-dashboard.html'
     };
     const redirectUrl = roleMap[role] || '../index.html';
