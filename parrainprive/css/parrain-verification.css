@@ -3,7 +3,7 @@
     --primary: #551B8C;
     --primary-light: #7e3db0;
     --primary-dark: #3d1266;
-    --gold: #FFCC00;
+    --gold: #ffcc00;
     --gold-dark: #e6b800;
     --bg-light: #F0F8FF;
     --white: #ffffff;
@@ -18,18 +18,13 @@
     --transition: all 0.3s ease;
     --border-radius: 20px;
     --border-radius-sm: 12px;
-    --font-main: 'Poppins', sans-serif;
 }
 
-/* ===== RESET & BASE ===== */
-* {
+/* ===== POLICE GLOBALE ===== */
+body {
+    font-family: 'Poppins', sans-serif;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: var(--font-main);
     background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
     color: var(--dark);
     line-height: 1.6;
@@ -42,13 +37,14 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 5%;
-    background: var(--white);
-    box-shadow: var(--shadow);
+    padding: 10px 5%;
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 15px rgba(0,0,0,0.05);
     position: sticky;
     top: 0;
-    z-index: 1000;
-    border-bottom: 1px solid var(--light-gray);
+    z-index: 100;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
 }
 
 .nav-left {
@@ -58,7 +54,7 @@ body {
 }
 
 .logo-nav {
-    height: 45px;
+    height: 40px;
     cursor: pointer;
     transition: transform 0.2s;
 }
@@ -170,7 +166,6 @@ body {
 }
 
 .menu-toggle {
-    display: none;
     background: none;
     border: none;
     font-size: 1.3rem;
@@ -286,7 +281,44 @@ body {
     display: block;
 }
 
-/* ===== CONTENU PRINCIPAL DE LA PAGE VÉRIFICATION ===== */
+/* ===== POIGNÉE DE MENU ===== */
+.menu-handle {
+    position: fixed;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 80px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 0 8px 8px 0;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    cursor: pointer;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+.menu-handle:hover {
+    width: 12px;
+    background: white;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+}
+.menu-handle span {
+    display: block;
+    width: 4px;
+    height: 40px;
+    background: var(--primary);
+    border-radius: 4px;
+    opacity: 0.7;
+}
+@media (min-width: 901px) {
+    .menu-handle {
+        display: none;
+    }
+}
+
+/* ===== MAIN ===== */
 .verification-main {
     min-height: calc(100vh - 70px);
     padding: 40px 5%;
@@ -537,25 +569,53 @@ section h2 i {
     box-shadow: 0 10px 20px rgba(85,27,140,0.3);
 }
 
-/* ===== APERÇU DE LA CARTE ===== */
+/* ===== APERÇU DE LA CARTE (RECTO-VERSO) ===== */
 .license-preview h3 {
     font-size: 1.2rem;
     color: var(--primary);
     margin-bottom: 15px;
 }
-.card-preview {
+.card-flip-container {
     background: linear-gradient(145deg, #f8f9fa, #e9ecef);
     border-radius: 15px;
     padding: 20px;
     box-shadow: 0 10px 20px rgba(0,0,0,0.1);
     position: sticky;
     top: 100px;
+    perspective: 1000px;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.card-front, .card-back {
+    width: 100%;
+    max-width: 320px;
+    backface-visibility: hidden;
+    transition: transform 0.6s;
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.card-front {
+    transform: translateX(-50%) rotateY(0deg);
+}
+.card-back {
+    transform: translateX(-50%) rotateY(180deg);
+}
+.card-flip-container.flipped .card-front {
+    transform: translateX(-50%) rotateY(-180deg);
+}
+.card-flip-container.flipped .card-back {
+    transform: translateX(-50%) rotateY(0deg);
 }
 .card-template {
     background: white;
     border-radius: 15px;
     overflow: hidden;
     box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    width: 100%;
 }
 .card-header {
     background: var(--primary);
@@ -639,49 +699,20 @@ section h2 i {
     font-weight: 600;
     color: var(--primary);
 }
-
-/* ===== STATUT DE LA DEMANDE ===== */
-.status-section {
-    background: white;
-}
-.status-card {
-    background: var(--bg-light);
-    border-radius: 15px;
-    padding: 25px;
-    display: flex;
-    align-items: center;
-    gap: 30px;
-    flex-wrap: wrap;
-}
-.status-icon {
-    font-size: 3rem;
-    color: var(--gold);
-}
-.status-content {
-    flex: 1;
-}
-.status-content h3 {
-    color: var(--primary);
-    margin-bottom: 10px;
-}
-.status-content p {
-    margin: 5px 0;
-    color: var(--gray);
-}
-.status-content .btn-download {
-    display: inline-block;
-    margin-top: 15px;
-    padding: 10px 25px;
-    background: var(--success);
+.flip-btn {
+    margin-top: 300px;
+    padding: 8px 16px;
+    background: var(--primary);
     color: white;
-    text-decoration: none;
+    border: none;
     border-radius: 8px;
-    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
     transition: var(--transition);
+    z-index: 10;
 }
-.status-content .btn-download:hover {
-    background: #218838;
-    transform: translateY(-2px);
+.flip-btn:hover {
+    background: var(--primary-dark);
 }
 
 /* ===== MODALE DE SIGNATURE ===== */
@@ -783,6 +814,50 @@ section h2 i {
     font-size: 0.9rem;
     color: var(--gray);
     margin-top: 10px;
+}
+
+/* ===== STATUT ===== */
+.status-section {
+    background: white;
+}
+.status-card {
+    background: var(--bg-light);
+    border-radius: 15px;
+    padding: 25px;
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+.status-icon {
+    font-size: 3rem;
+    color: var(--gold);
+}
+.status-content {
+    flex: 1;
+}
+.status-content h3 {
+    color: var(--primary);
+    margin-bottom: 10px;
+}
+.status-content p {
+    margin: 5px 0;
+    color: var(--gray);
+}
+.status-content .btn-download {
+    display: inline-block;
+    margin-top: 15px;
+    padding: 10px 25px;
+    background: var(--success);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: var(--transition);
+}
+.status-content .btn-download:hover {
+    background: #218838;
+    transform: translateY(-2px);
 }
 
 /* ===== TOASTS ===== */
@@ -912,7 +987,7 @@ section h2 i {
     .license-layout {
         grid-template-columns: 1fr;
     }
-    .card-preview {
+    .card-flip-container {
         position: static;
         margin-top: 30px;
     }
@@ -933,5 +1008,11 @@ section h2 i {
     .signature-modal-content {
         width: 95%;
         margin: 10% auto;
+    }
+    .card-flip-container {
+        min-height: 450px;
+    }
+    .flip-btn {
+        margin-top: 350px;
     }
 }
