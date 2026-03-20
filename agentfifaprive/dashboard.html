@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Dashboard Agent | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Styles spécifiques (autonome) -->
+    <link rel="stylesheet" href="css/agent-dashboard.css">
+    <!-- Chart.js pour le graphique -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- NAVBAR -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Espace Agent</span>
+        </div>
+        <div class="nav-right">
+            <!-- Sélecteur de langue 24 langues -->
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+                <option value="lin">🇨🇬 Lingala</option>
+                <option value="wol">🇸🇳 Wolof</option>
+                <option value="diou">🇨🇮 Dioula</option>
+                <option value="ha">🇳🇬 Hausa</option>
+                <option value="sw">🇰🇪 Kiswahili</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="pt">🇵🇹 Português</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="ar">🇸🇦 العربية</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="ja">🇯🇵 日本語</option>
+                <option value="tr">🇹🇷 Türkçe</option>
+                <option value="ko">🇰🇷 한국어</option>
+                <option value="hi">🇮🇳 हिन्दी</option>
+                <option value="nl">🇳🇱 Nederlands</option>
+                <option value="pl">🇵🇱 Polski</option>
+                <option value="vi">🇻🇳 Tiếng Việt</option>
+            </select>
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="dashboard.html"><i class="fas fa-user"></i> Mon profil</a>
+                    <a href="settings.html"><i class="fas fa-cog"></i> Paramètres</a>
+                    <a href="#" id="languageLink">Langue (Français)</a>
+                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+        </div>
+    </nav>
+
+    <!-- SIDEBAR GAUCHE -->
+    <div class="sidebar left-sidebar" id="leftSidebar">
+        <div class="sidebar-header">
+            <h3>Menu Agent</h3>
+            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html" class="active"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+            <a href="feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
+            <a href="verification.html"><i class="fas fa-shield-alt"></i> Vérification</a>
+            <a href="edit-cv.html"><i class="fas fa-file-alt"></i> Mon CV</a>
+            <a href="certifications.html"><i class="fas fa-certificate"></i> Diplômes</a>
+            <a href="tournaments.html"><i class="fas fa-trophy"></i> Tournois</a>
+            <a href="clients.html"><i class="fas fa-users"></i> Mes Joueurs</a>
+            <a href="contracts.html"><i class="fas fa-file-signature"></i> Contrats</a>
+            <a href="revenue.html"><i class="fas fa-coins"></i> Revenus</a>
+            <hr>
+            <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
+            <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- CONTENU PRINCIPAL -->
+    <main class="dashboard-main">
+        <div class="dashboard-container">
+            <!-- Carte de profil à gauche -->
+            <aside class="profile-card glass-card">
+                <div class="avatar-upload" onclick="document.getElementById('fileInput').click()">
+                    <img src="img/user-default.jpg" id="profileDisplay" alt="Avatar">
+                    <div class="edit-badge"><i class="fas fa-camera"></i></div>
+                    <input type="file" id="fileInput" accept="image/*" style="display:none;">
+                </div>
+                <h2 id="dashboardName">-</h2>
+                <!-- Pseudo -->
+                <div class="player-pseudo">
+                    <i class="fas fa-user"></i> <span id="playerPseudo">-</span>
+                </div>
+                <!-- Contact : téléphone, email, drapeau -->
+                <div class="player-contact">
+                    <p><i class="fas fa-phone-alt"></i> <span id="playerPhone">-</span></p>
+                    <p><i class="fas fa-envelope"></i> <span id="playerEmail">-</span></p>
+                    <p><i class="fas fa-flag"></i> <span id="playerCountryFlag">🌍</span> <span id="playerCountryName">-</span></p>
+                </div>
+                <span class="role-badge">Agent FIFA</span>
+                <div class="id-copy-box" onclick="copyID()">
+                    <span id="agentID">ID: -</span>
+                    <i class="fas fa-copy"></i>
+                </div>
+                <div class="stats-mini">
+                    <div class="mini-stat">
+                        <span class="mini-icon">👥</span>
+                        <span><b id="nbJoueurs">0</b> joueurs</span>
+                    </div>
+                    <div class="mini-stat">
+                        <span class="mini-icon">📄</span>
+                        <span><b id="nbContrats">0</b> contrats</span>
+                    </div>
+                    <div class="mini-stat">
+                        <span class="mini-icon">💰</span>
+                        <span><b id="totalCommissions">0</b> FCFA</span>
+                    </div>
+                </div>
+                <a href="edit-cv.html" class="btn-download"><i class="fas fa-download"></i> Télécharger CV</a>
+            </aside>
+
+            <!-- Panneau principal à droite -->
+            <section class="main-panel">
+                <!-- En-tête -->
+                <div class="welcome-header">
+                    <div>
+                        <h1 id="agentFullName">-</h1>
+                        <p id="agentEmail">-</p>
+                    </div>
+                    <div class="quick-info">
+                        <span><i class="fas fa-calendar-alt"></i> Membre depuis <span id="memberSince">-</span></span>
+                        <span><i class="fas fa-phone"></i> <span id="agentPhone">-</span></span>
+                    </div>
+                </div>
+
+                <!-- Cartes statistiques -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Joueurs suivis</span>
+                        <span class="stat-value" id="statsJoueurs">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Contrats actifs</span>
+                        <span class="stat-value" id="statsContrats">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Commissions</span>
+                        <span class="stat-value" id="statsCommissions">0 FCFA</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Licence</span>
+                        <span class="stat-value" id="statsLicence">-</span>
+                    </div>
+                </div>
+
+                <!-- Graphique d'évolution -->
+                <div class="chart-card">
+                    <h3><i class="fas fa-chart-line"></i> Évolution des commissions</h3>
+                    <canvas id="commissionsChart" width="400" height="200"></canvas>
+                </div>
+
+                <!-- Listes récentes -->
+                <div class="recent-grid">
+                    <div class="recent-card">
+                        <h3><i class="fas fa-history"></i> Derniers contrats</h3>
+                        <div id="recentContractsList" class="recent-list"></div>
+                    </div>
+                    <div class="recent-card">
+                        <h3><i class="fas fa-user-plus"></i> Derniers joueurs</h3>
+                        <div id="recentClientsList" class="recent-list"></div>
+                    </div>
+                    <div class="recent-card">
+                        <h3><i class="fas fa-envelope"></i> Derniers messages</h3>
+                        <div id="recentMessagesList" class="recent-list"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Toast container -->
+    <div id="toastContainer" class="toast-container"></div>
+    <!-- Loader global -->
+    <div id="globalLoader" class="global-loader" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/agent-dashboard.js"></script>
+</body>
+</html>
