@@ -1064,8 +1064,6 @@ async function deletePost(postId) {
     }
 }
 
-// Supprimé l'ancien toggleSavePost car on utilise les collections
-
 async function hidePost(postId) {
     if (!confirm('Masquer ce post ? Il ne sera plus visible dans votre fil.')) return;
     const button = event.target.closest('button');
@@ -1660,6 +1658,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('schedulePostBtn').addEventListener('click', () => {
             showToast('Fonctionnalité de programmation bientôt disponible', 'info');
+        });
+
+        // Ajout du gestionnaire pour le bouton Événement
+        document.getElementById('eventBtn')?.addEventListener('click', () => {
+            showToast('Fonctionnalité d\'événement bientôt disponible', 'info');
         });
 
         document.getElementById('publishBtn').addEventListener('click', async () => {
