@@ -33,7 +33,7 @@ async function redirectToDashboard() {
         parrain: '../parrainprive/dashboard.html',
         arbitre: '../arbitral/dashboard.html',
         staff: '../staff/dashboard.html',
-        tournoi: '../tournoi/dashboard.html',   // <-- virgule ajoutée ici
+        tournoi: '../tournoi/dashboard.html',
         admin: 'admin-dashboard.html'
     };
     const redirectUrl = roleMap[role] || '../index.html';
@@ -48,11 +48,11 @@ async function checkSessionAndRedirect() {
 }
 
 function showToast(message, type = 'error') {
-    // Temporaire : à remplacer par le système de toast de HubISoccer
+    // À remplacer par le système de toast de HubISoccer
     alert(message);
 }
 
-// Exporter globalement pour les pages HTML
+// Exporter globalement
 window.supabaseAuthPrive = supabaseAuthPrive;
 window.redirectToDashboard = redirectToDashboard;
 window.checkSessionAndRedirect = checkSessionAndRedirect;
