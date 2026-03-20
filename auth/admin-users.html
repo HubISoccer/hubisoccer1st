@@ -97,6 +97,11 @@
             border: 1px solid #e9e9f0;
             box-shadow: 0 8px 20px rgba(0,0,0,0.02);
         }
+        .card h2 {
+            font-size: 1.6rem;
+            margin-bottom: 24px;
+            color: #1a1a2e;
+        }
         .tabs {
             display: flex;
             gap: 8px;
@@ -124,6 +129,8 @@
         table {
             width: 100%;
             border-collapse: collapse;
+            overflow-x: auto;
+            display: block;
         }
         th, td {
             text-align: left;
@@ -141,14 +148,41 @@
             font-size: 0.75rem;
             font-weight: 500;
         }
-        .status-active { background: #e0f2fe; color: #0369a1; }
         .status-banned { background: #fee2e2; color: #b91c1c; }
-        .action-icon {
+        .status-active { background: #e0f2fe; color: #0369a1; }
+        .btn {
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-weight: 500;
+            border: none;
             cursor: pointer;
-            margin-right: 12px;
-            font-size: 1.2rem;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
         }
-        .action-icon:hover { opacity: 0.7; }
+        .btn-primary {
+            background: #6b3ba4;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #552e84;
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid #6b3ba4;
+            color: #6b3ba4;
+        }
+        .btn-secondary:hover {
+            background: #6b3ba4;
+            color: white;
+        }
+        .btn-danger {
+            background: #e53e3e;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c53030;
+        }
         .modal {
             display: none;
             position: fixed;
@@ -169,19 +203,19 @@
             width: 90%;
         }
         .modal-content h3 {
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
         .modal-content .form-group {
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
         .modal-content label {
             display: block;
-            margin-bottom: 8px;
             font-weight: 500;
+            margin-bottom: 8px;
         }
         .modal-content input, .modal-content select, .modal-content textarea {
             width: 100%;
-            padding: 12px;
+            padding: 10px 16px;
             border: 1px solid #e2e2f0;
             border-radius: 28px;
         }
@@ -189,26 +223,7 @@
             display: flex;
             justify-content: flex-end;
             gap: 12px;
-            margin-top: 24px;
-        }
-        .btn {
-            padding: 10px 20px;
-            border-radius: 40px;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-        }
-        .btn-primary {
-            background: #6b3ba4;
-            color: white;
-        }
-        .btn-secondary {
-            background: #e2e2f0;
-            color: #1a1a2e;
-        }
-        .btn-danger {
-            background: #e53e3e;
-            color: white;
+            margin-top: 20px;
         }
         .footer {
             text-align: center;
@@ -222,6 +237,7 @@
             .navbar { padding: 16px 24px; }
             .container { padding: 24px 16px; }
             .card { padding: 24px; }
+            th, td { padding: 8px 12px; }
         }
     </style>
 </head>
@@ -229,7 +245,6 @@
     <div class="bg-shapes">
         <div class="shape shape-1"></div>
         <div class="shape shape-2"></div>
-        <div class="shape shape-3"></div>
     </div>
 
     <nav class="navbar">
@@ -249,54 +264,82 @@
         </div>
 
         <div class="card">
+            <h2>Utilisateurs</h2>
             <div class="tabs">
-                <div class="tab active" data-tab="active">Utilisateurs actifs</div>
-                <div class="tab" data-tab="banned">Bannis</div>
+                <div class="tab active" data-tab="users">Tous les utilisateurs</div>
+                <div class="tab" data-tab="bans">Bannissements actifs</div>
+                <div class="tab" data-tab="history">Historique des bans</div>
             </div>
-            <div id="activeTab" class="tab-content active">
-                <table>
-                    <thead>
-                        <tr><th>Email</th><th>Nom</th><th>Rôle</th><th>Statut</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody id="activeTable"></tbody>
-                </table>
+
+            <!-- Onglet : Tous les utilisateurs -->
+            <div id="usersTab" class="tab-content active">
+                <div style="margin-bottom: 20px;">
+                    <input type="text" id="searchUser" placeholder="Rechercher par email, nom ou rôle" style="padding: 10px 16px; border-radius: 40px; border: 1px solid #e2e2f0; width: 300px;">
+                </div>
+                <div style="overflow-x: auto;">
+                    <table id="usersTable">
+                        <thead>
+                            <tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="usersTableBody"></tbody>
+                    </table>
+                </div>
             </div>
-            <div id="bannedTab" class="tab-content">
-                <table>
-                    <thead>
-                        <tr><th>Email</th><th>Nom</th><th>Raison</th><th>Expire le</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody id="bannedTable"></tbody>
-                </table>
+
+            <!-- Onglet : Bannissements actifs -->
+            <div id="bansTab" class="tab-content">
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr><th>Utilisateur</th><th>Email</th><th>Raison</th><th>Expire le</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="activeBansBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Onglet : Historique des bans (expirés ou révoqués) -->
+            <div id="historyTab" class="tab-content">
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr><th>Utilisateur</th><th>Email</th><th>Raison</th><th>Expiration</th><th>Statut</th></tr>
+                        </thead>
+                        <tbody id="historyBansBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Modal pour bannir un utilisateur -->
     <div id="banModal" class="modal">
         <div class="modal-content">
-            <h3>Bannir l'utilisateur</h3>
-            <form id="banForm">
+            <h3>Bannir un utilisateur</h3>
+            <div class="form-group">
+                <label>Utilisateur</label>
+                <input type="text" id="banUserName" readonly>
                 <input type="hidden" id="banUserId">
-                <div class="form-group">
-                    <label>Raison (obligatoire)</label>
-                    <textarea id="banReason" rows="3" required></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Durée</label>
-                    <select id="banDuration">
-                        <option value="temporary">Temporaire (minutes)</option>
-                        <option value="permanent">Permanent</option>
-                    </select>
-                </div>
-                <div class="form-group" id="minutesGroup">
-                    <label>Minutes</label>
-                    <input type="number" id="banMinutes" value="5" min="1">
-                </div>
-                <div class="modal-buttons">
-                    <button type="button" class="btn btn-secondary" id="closeModalBtn">Annuler</button>
-                    <button type="submit" class="btn btn-danger">Bannir</button>
-                </div>
-            </form>
+            </div>
+            <div class="form-group">
+                <label>Durée</label>
+                <select id="banDuration">
+                    <option value="temporary">Temporaire</option>
+                    <option value="permanent">Permanent</option>
+                </select>
+            </div>
+            <div class="form-group" id="durationGroup">
+                <label>Durée (minutes)</label>
+                <input type="number" id="banMinutes" placeholder="ex: 30, 60, 1440" value="30">
+            </div>
+            <div class="form-group">
+                <label>Raison</label>
+                <textarea id="banReason" rows="3" placeholder="Motif du bannissement..."></textarea>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" id="cancelBanBtn">Annuler</button>
+                <button class="btn btn-danger" id="confirmBanBtn">Bannir</button>
+            </div>
         </div>
     </div>
 
@@ -307,9 +350,11 @@
     <script src="auth.js"></script>
     <script src="admin-auth.js"></script>
     <script>
-        // Charger les utilisateurs et bans
+        // Variables globales
+        let currentUserForBan = null;
+
+        // Charger les utilisateurs (profiles)
         async function loadUsers() {
-            // Récupérer tous les utilisateurs de profiles
             const { data: profiles, error } = await window.supabaseAuthPrive
                 .from('profiles')
                 .select('id, email, full_name, role');
@@ -317,126 +362,194 @@
                 console.error(error);
                 return;
             }
-
-            // Récupérer les bans actifs (non expirés ou permanents)
-            const { data: bans, error: bansError } = await window.supabaseAuthPrive
+            // Récupérer les bans actifs pour chaque utilisateur
+            const { data: bans, error: banError } = await window.supabaseAuthPrive
                 .from('bans')
-                .select('*')
+                .select('user_id, expires_at')
                 .or('expires_at.is.null,expires_at.gt.now()');
-            if (bansError) console.error(bansError);
-
-            const bannedIds = bans ? bans.map(b => b.user_id) : [];
-
-            // Séparer actifs et bannis
-            const activeUsers = profiles.filter(p => !bannedIds.includes(p.id));
-            const bannedUsers = bans.map(ban => {
-                const user = profiles.find(p => p.id === ban.user_id);
-                return { ...user, ban_reason: ban.reason, expires_at: ban.expires_at };
-            }).filter(u => u);
-
-            renderActive(activeUsers);
-            renderBanned(bannedUsers);
-        }
-
-        function renderActive(users) {
-            const tbody = document.getElementById('activeTable');
-            if (!users.length) {
-                tbody.innerHTML = '<tr><td colspan="5">Aucun utilisateur actif</td></tr>';
-                return;
+            const activeBanMap = {};
+            if (bans) {
+                bans.forEach(ban => { activeBanMap[ban.user_id] = ban.expires_at ? new Date(ban.expires_at) : null; });
             }
-            tbody.innerHTML = users.map(user => `
-                <tr>
-                    <td>${user.email}</td>
-                    <td>${user.full_name || '-'}</td>
-                    <td>${user.role}</td>
-                    <td><span class="status-badge status-active">Actif</span></td>
-                    <td>
-                        <i class="fas fa-ban action-icon" style="color:#e53e3e;" data-id="${user.id}" data-email="${user.email}" data-name="${user.full_name}" data-action="ban"></i>
-                    </td>
-                </tr>
-            `).join('');
-            // Attacher événements
-            document.querySelectorAll('[data-action="ban"]').forEach(el => {
-                el.addEventListener('click', () => openBanModal(el.dataset.id, el.dataset.email, el.dataset.name));
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '';
+            profiles.forEach(user => {
+                const isBanned = activeBanMap[user.id] !== undefined;
+                const statusHtml = isBanned ? '<span class="status-badge status-banned">Banni</span>' : '<span class="status-badge status-active">Actif</span>';
+                const actionsHtml = isBanned ?
+                    `<button class="btn btn-secondary unban-btn" data-id="${user.id}" data-name="${user.full_name || user.email}">Lever le ban</button>` :
+                    `<button class="btn btn-danger ban-btn" data-id="${user.id}" data-name="${user.full_name || user.email}" data-email="${user.email}">Bannir</button>`;
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${user.full_name || '-'}</td>
+                        <td>${user.email}</td>
+                        <td>${user.role}</td>
+                        <td>${statusHtml}</td>
+                        <td>${actionsHtml}</td>
+                    </tr>
+                `;
             });
-        }
-
-        function renderBanned(users) {
-            const tbody = document.getElementById('bannedTable');
-            if (!users.length) {
-                tbody.innerHTML = '<tr><td colspan="5">Aucun utilisateur banni</td></tr>';
-                return;
-            }
-            tbody.innerHTML = users.map(user => `
-                <tr>
-                    <td>${user.email}</td>
-                    <td>${user.full_name || '-'}</td>
-                    <td>${user.ban_reason || '-'}</td>
-                    <td>${user.expires_at ? new Date(user.expires_at).toLocaleString() : 'Permanent'}</td>
-                    <td>
-                        <i class="fas fa-check-circle action-icon" style="color:#10b981;" data-id="${user.id}" data-action="unban"></i>
-                    </td>
-                </tr>
-            `).join('');
-            // Attacher événements
-            document.querySelectorAll('[data-action="unban"]').forEach(el => {
-                el.addEventListener('click', async () => {
-                    const userId = el.dataset.id;
-                    if (confirm('Débannir cet utilisateur ?')) {
+            // Attacher les événements après rendu
+            document.querySelectorAll('.ban-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const userId = btn.getAttribute('data-id');
+                    const userName = btn.getAttribute('data-name');
+                    const userEmail = btn.getAttribute('data-email');
+                    openBanModal(userId, userName, userEmail);
+                });
+            });
+            document.querySelectorAll('.unban-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const userId = btn.getAttribute('data-id');
+                    if (confirm('Lever le bannissement de cet utilisateur ?')) {
                         const { error } = await window.supabaseAuthPrive
                             .from('bans')
                             .delete()
                             .eq('user_id', userId);
                         if (error) window.showToast('Erreur : ' + error.message, 'error');
                         else {
-                            window.showToast('Utilisateur débanni', 'success');
+                            window.showToast('Bannissement levé', 'success');
                             loadUsers();
+                            loadBans();
                         }
                     }
                 });
             });
         }
 
-        let currentBanUserId = null;
-        function openBanModal(userId, email, name) {
-            currentBanUserId = userId;
+        function openBanModal(userId, userName, userEmail) {
+            currentUserForBan = { id: userId, name: userName, email: userEmail };
+            document.getElementById('banUserName').value = userName + ' (' + userEmail + ')';
             document.getElementById('banUserId').value = userId;
-            document.getElementById('banReason').value = '';
             document.getElementById('banDuration').value = 'temporary';
-            document.getElementById('minutesGroup').style.display = 'block';
+            document.getElementById('durationGroup').style.display = 'block';
+            document.getElementById('banMinutes').value = '30';
+            document.getElementById('banReason').value = '';
             document.getElementById('banModal').style.display = 'flex';
         }
 
         document.getElementById('banDuration').addEventListener('change', (e) => {
-            const minutesGroup = document.getElementById('minutesGroup');
-            if (e.target.value === 'temporary') minutesGroup.style.display = 'block';
-            else minutesGroup.style.display = 'none';
+            const durationGroup = document.getElementById('durationGroup');
+            if (e.target.value === 'permanent') {
+                durationGroup.style.display = 'none';
+            } else {
+                durationGroup.style.display = 'block';
+            }
         });
 
-        document.getElementById('closeModalBtn').addEventListener('click', () => {
-            document.getElementById('banModal').style.display = 'none';
-        });
-
-        document.getElementById('banForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const userId = currentBanUserId;
-            const reason = document.getElementById('banReason').value.trim();
-            const duration = document.getElementById('banDuration').value;
+        document.getElementById('confirmBanBtn').addEventListener('click', async () => {
+            const userId = document.getElementById('banUserId').value;
+            const durationType = document.getElementById('banDuration').value;
+            const reason = document.getElementById('banReason').value.trim() || 'Bannissement administratif';
             let expires_at = null;
-            if (duration === 'temporary') {
+            if (durationType === 'temporary') {
                 const minutes = parseInt(document.getElementById('banMinutes').value, 10);
+                if (isNaN(minutes) || minutes <= 0) {
+                    window.showToast('Durée invalide', 'error');
+                    return;
+                }
                 expires_at = new Date(Date.now() + minutes * 60 * 1000).toISOString();
             }
             const { error } = await window.supabaseAuthPrive
                 .from('bans')
-                .insert([{ user_id: userId, reason, expires_at, created_by: window.adminUser?.id || null }]);
-            if (error) window.showToast('Erreur : ' + error.message, 'error');
-            else {
-                window.showToast('Utilisateur banni', 'success');
-                document.getElementById('banModal').style.display = 'none';
+                .insert([{
+                    user_id: userId,
+                    reason: reason,
+                    expires_at: expires_at,
+                    created_by: window.adminUser?.id || null
+                }]);
+            if (error) {
+                window.showToast('Erreur : ' + error.message, 'error');
+            } else {
+                window.showToast('Utilisateur banni avec succès', 'success');
+                closeModal();
                 loadUsers();
+                loadBans();
             }
         });
+
+        function closeModal() {
+            document.getElementById('banModal').style.display = 'none';
+            currentUserForBan = null;
+        }
+        document.getElementById('cancelBanBtn').addEventListener('click', closeModal);
+        window.onclick = (event) => {
+            if (event.target === document.getElementById('banModal')) closeModal();
+        };
+
+        // Charger les bannissements actifs
+        async function loadActiveBans() {
+            const { data: bans, error } = await window.supabaseAuthPrive
+                .from('bans')
+                .select('*, profiles(id, email, full_name)')
+                .or('expires_at.is.null,expires_at.gt.now()');
+            if (error) return;
+            const tbody = document.getElementById('activeBansBody');
+            tbody.innerHTML = '';
+            if (!bans || bans.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5">Aucun bannissement actif</td></tr>';
+                return;
+            }
+            bans.forEach(ban => {
+                const user = ban.profiles;
+                const expires = ban.expires_at ? new Date(ban.expires_at).toLocaleString() : 'Permanent';
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${user?.full_name || '-'}</td>
+                        <td>${user?.email || '-'}</td>
+                        <td>${ban.reason || '-'}</td>
+                        <td>${expires}</td>
+                        <td><button class="btn btn-secondary unban-btn" data-id="${ban.user_id}">Lever le ban</button></td>
+                    </tr>
+                `;
+            });
+            document.querySelectorAll('#activeBansBody .unban-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const userId = btn.getAttribute('data-id');
+                    if (confirm('Lever le bannissement ?')) {
+                        const { error } = await window.supabaseAuthPrive
+                            .from('bans')
+                            .delete()
+                            .eq('user_id', userId);
+                        if (error) window.showToast('Erreur : ' + error.message, 'error');
+                        else {
+                            window.showToast('Ban levé', 'success');
+                            loadUsers();
+                            loadActiveBans();
+                            loadBanHistory();
+                        }
+                    }
+                });
+            });
+        }
+
+        // Charger l'historique des bans (expirés)
+        async function loadBanHistory() {
+            const { data: bans, error } = await window.supabaseAuthPrive
+                .from('bans')
+                .select('*, profiles(id, email, full_name)')
+                .lt('expires_at', new Date().toISOString());
+            if (error) return;
+            const tbody = document.getElementById('historyBansBody');
+            tbody.innerHTML = '';
+            if (!bans || bans.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5">Aucun historique</td></tr>';
+                return;
+            }
+            bans.forEach(ban => {
+                const user = ban.profiles;
+                const expires = ban.expires_at ? new Date(ban.expires_at).toLocaleString() : 'Permanent';
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${user?.full_name || '-'}</td>
+                        <td>${user?.email || '-'}</td>
+                        <td>${ban.reason || '-'}</td>
+                        <td>${expires}</td>
+                        <td>Expiré</td>
+                    </tr>
+                `;
+            });
+        }
 
         // Gestion des onglets
         document.querySelectorAll('.tab').forEach(tab => {
@@ -446,10 +559,27 @@
                 const target = tab.getAttribute('data-tab');
                 document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
                 document.getElementById(`${target}Tab`).classList.add('active');
+                if (target === 'users') loadUsers();
+                if (target === 'bans') loadActiveBans();
+                if (target === 'history') loadBanHistory();
             });
         });
 
+        // Recherche utilisateur
+        const searchInput = document.getElementById('searchUser');
+        searchInput.addEventListener('input', () => {
+            const filter = searchInput.value.toLowerCase();
+            const rows = document.querySelectorAll('#usersTableBody tr');
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(filter) ? '' : 'none';
+            });
+        });
+
+        // Chargement initial
         loadUsers();
+        loadActiveBans();
+        loadBanHistory();
     </script>
 </body>
 </html>
