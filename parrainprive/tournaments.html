@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Suivi Tournoi (Live) | HubISoccer - Parrain</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -19,7 +19,7 @@
             <span class="dashboard-title">Espace Parrain</span>
         </div>
         <div class="nav-right">
-            <!-- Sélecteur de langue 24 langues -->
+            <!-- Sélecteur de langue -->
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
@@ -90,7 +90,6 @@
     <!-- CONTENU PRINCIPAL -->
     <main class="tournaments-main">
         <div class="tournaments-container">
-            <!-- En-tête avec bouton de sélection -->
             <div class="tournament-header">
                 <h1 class="page-title"><i class="fas fa-trophy"></i> Suivi Tournoi (Live)</h1>
                 <button class="btn-select-tournament" id="openTournamentModal">
@@ -99,9 +98,7 @@
             </div>
 
             <!-- Zone du tournoi en cours -->
-            <div class="live-tournament" id="liveTournament">
-                <!-- Rempli dynamiquement -->
-            </div>
+            <div class="live-tournament" id="liveTournament"></div>
         </div>
     </main>
 
@@ -113,9 +110,7 @@
                 <span class="close-modal" onclick="closeTournamentModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <div class="tournament-list" id="tournamentList">
-                    <!-- Liste dynamique -->
-                </div>
+                <div class="tournament-list" id="tournamentList"></div>
             </div>
         </div>
     </div>
@@ -128,15 +123,18 @@
                 <span class="close-modal" onclick="closePlayersModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <div class="players-list" id="playersList">
-                    <!-- Liste dynamique -->
-                </div>
+                <div class="players-list" id="playersList"></div>
             </div>
         </div>
     </div>
 
     <!-- Toast container -->
     <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Loader global -->
+    <div id="globalLoader" class="global-loader" style="display: none;">
+        <div class="spinner"></div>
+    </div>
 
     <!-- FOOTER -->
     <footer class="dashboard-footer">
