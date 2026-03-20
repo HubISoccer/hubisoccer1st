@@ -8,7 +8,7 @@ let currentUser = null;
 let currentCoach = null;
 let privacyLevel = 'public';
 
-// ===== TOAST =====
+// ===== TOAST ERREUR =====
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
     if (!container) {
