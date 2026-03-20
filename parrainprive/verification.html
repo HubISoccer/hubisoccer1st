@@ -180,11 +180,48 @@
                         </form>
                     </div>
 
-                    <!-- Aperçu de la carte -->
+                    <!-- Aperçu de la carte (recto-verso) -->
                     <div class="license-preview">
                         <h3>Aperçu de votre carte</h3>
-                        <div class="card-preview" id="cardPreview">
-                            <!-- Généré dynamiquement -->
+                        <div class="card-flip-container" id="cardPreview">
+                            <!-- Face avant -->
+                            <div class="card-front">
+                                <div class="card-template">
+                                    <div class="card-header">
+                                        <h4>LICENCE PARRAIN HUBISOCCER</h4>
+                                        <p>Parrain officiel</p>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="card-photo">
+                                            <i class="fas fa-user-tie"></i>
+                                        </div>
+                                        <div class="card-info" id="cardFrontInfo">
+                                            <!-- Dynamique -->
+                                        </div>
+                                    </div>
+                                    <div class="card-footer" id="cardFrontFooter">
+                                        <!-- Dynamique -->
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Face arrière -->
+                            <div class="card-back">
+                                <div class="card-template">
+                                    <div class="card-header">
+                                        <h4>INFORMATIONS COMPLÉMENTAIRES</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="card-info" id="cardBackInfo">
+                                            <!-- Dynamique -->
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <div class="stamp"><i class="fas fa-stamp"></i> Cachet officiel</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Bouton de retournement -->
+                            <button class="flip-btn" id="flipPreviewBtn"><i class="fas fa-sync-alt"></i> Retourner</button>
                         </div>
                     </div>
                 </div>
