@@ -34,6 +34,7 @@ async function redirectToDashboard() {
         arbitre: '../arbitral/dashboard.html',
         staff: '../staff/dashboard.html',
         tournoi: '../tournoi/dashboard.html'
+        admin: 'admin-dashboard.html'
     };
     const redirectUrl = roleMap[role] || '../index.html';
     window.location.href = redirectUrl;
