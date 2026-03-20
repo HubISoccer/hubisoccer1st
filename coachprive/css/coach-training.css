@@ -1,0 +1,261 @@
+/* ===== SPÉCIFIQUE TRAINING ===== */
+.training-main {
+    min-height: calc(100vh - 70px);
+    padding: 40px 5%;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+}
+.training-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+.page-header h1 {
+    font-size: 2rem;
+    color: var(--primary-dark);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.page-header h1 i {
+    color: var(--gold);
+    font-size: 2.2rem;
+}
+.btn-add-session {
+    background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 30px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition);
+}
+.btn-add-session:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(85,27,140,0.3);
+}
+
+.filter-bar {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+.filter-bar select, .filter-bar input {
+    padding: 10px 15px;
+    border: 1px solid var(--light-gray);
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    background: white;
+}
+.filter-bar input {
+    flex: 1;
+    min-width: 200px;
+}
+
+.sessions-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 25px;
+}
+.session-card {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    transition: var(--transition);
+}
+.session-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-hover);
+}
+.session-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+.session-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--primary);
+}
+.session-date {
+    font-size: 0.8rem;
+    color: var(--gray);
+}
+.session-info {
+    margin-bottom: 15px;
+}
+.session-location {
+    font-size: 0.85rem;
+    color: var(--gray);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.session-location i {
+    color: var(--gold);
+    width: 16px;
+}
+.session-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+.session-action-btn {
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.session-action-btn:hover {
+    background: var(--primary);
+    color: white;
+}
+.session-action-btn.delete {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+.session-action-btn.delete:hover {
+    background: var(--danger);
+    color: white;
+}
+
+/* MODALE ATTENDANCE */
+.attendance-info {
+    background: var(--bg-light);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+.attendance-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+.attendance-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px;
+    border-bottom: 1px solid var(--light-gray);
+}
+.attendance-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.attendance-name {
+    flex: 1;
+    font-weight: 500;
+}
+.attendance-status select {
+    padding: 6px 10px;
+    border: 1px solid var(--light-gray);
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+}
+.attendance-notes input {
+    padding: 6px 10px;
+    border: 1px solid var(--light-gray);
+    border-radius: 8px;
+    width: 150px;
+}
+.attendance-actions {
+    text-align: right;
+}
+.btn-save-attendance {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+.btn-save-attendance:hover {
+    background: var(--primary-dark);
+}
+
+/* AJOUT JOUEURS */
+.players-list-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+.player-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    background: var(--bg-light);
+    border-radius: 8px;
+    cursor: pointer;
+}
+.player-checkbox-item input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+.player-avatar-small {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.already-added {
+    color: var(--gray);
+    font-size: 0.8rem;
+    margin-left: auto;
+}
+.btn-add-players {
+    width: 100%;
+    padding: 10px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+.btn-add-players:hover {
+    background: var(--primary-dark);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .attendance-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .attendance-status select, .attendance-notes input {
+        width: 100%;
+    }
+    .sessions-list {
+        grid-template-columns: 1fr;
+    }
+}
