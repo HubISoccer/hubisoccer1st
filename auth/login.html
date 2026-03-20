@@ -235,6 +235,52 @@
                 window.showToast(err.message || 'Erreur de connexion', 'error');
             }
         });
+
+// Vérification des bans
+async function isUserBanned(email) {
+    // Récupérer l'utilisateur par email (profiles)
+    const { data: profile, error } = await window.supabaseAuthPrive
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .single();
+
+    if (error || !profile) return false; // pas d'utilisateur, pas de ban
+
+    // Vérifier s'il y a un ban actif
+    const { data: ban, error: banError } = await window.supabaseAuthPrive
+        .from('bans')
+        .select('expires_at, reason')
+        .eq('user_id', profile.id)
+        .or('expires_at.is.null,expires_at.gt.now()')
+        .maybeSingle();
+
+    if (ban) {
+        return { banned: true, reason: ban.reason, expires_at: ban.expires_at };
+    }
+    return { banned: false };
+}
+
+// Enregistrement d'une tentative
+async function recordAttempt(email, success) {
+    await window.supabaseAuthPrive
+        .from('login_attempts')
+        .insert([{ email, success }]);
+}
+
+// Vérification du seuil d'échecs
+async function checkFailureThreshold(email) {
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { count, error } = await window.supabaseAuthPrive
+        .from('login_attempts')
+        .select('*', { count: 'exact', head: true })
+        .eq('email', email)
+        .eq('success', false)
+        .gte('attempted_at', tenMinutesAgo);
+    if (error) return false;
+    return count >= 6; // seuil de 6 échecs
+}
+
     </script>
 </body>
 </html>
