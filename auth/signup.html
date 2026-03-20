@@ -8,18 +8,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* (garde le style que tu avais, ou remets le design précédent) */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Inter', sans-serif;
             background: #ffffff;
             color: #1a1a2e;
             overflow-x: hidden;
         }
-        /* fond abstrait */
         .bg-shapes {
             position: fixed;
             top: 0;
@@ -31,13 +27,12 @@
         }
         .bg-shapes .shape {
             position: absolute;
-            background: rgba(107, 59, 164, 0.03);
+            background: rgba(107, 59, 164, 0.05);
             border-radius: 50%;
             filter: blur(80px);
         }
         .shape-1 { width: 500px; height: 500px; top: -200px; left: -200px; }
-        .shape-2 { width: 600px; height: 600px; bottom: -200px; right: -200px; background: rgba(107, 59, 164, 0.05); }
-        .shape-3 { width: 300px; height: 300px; top: 40%; left: 10%; background: rgba(0, 200, 150, 0.02); }
+        .shape-2 { width: 600px; height: 600px; bottom: -200px; right: -200px; background: rgba(107, 59, 164, 0.08); }
         .navbar {
             display: flex;
             justify-content: space-between;
@@ -53,6 +48,10 @@
         .logo { display: flex; align-items: center; gap: 12px; cursor: pointer; }
         .logo img { height: 42px; }
         .logo span { font-size: 1.4rem; font-weight: 700; color: #6b3ba4; }
+        .nav-buttons {
+            display: flex;
+            gap: 16px;
+        }
         .nav-btn-outline {
             padding: 8px 24px;
             border-radius: 40px;
@@ -346,7 +345,7 @@
                 { name: 'nom_officiel', label: 'Nom officiel de l\'académie *', type: 'text', required: true },
                 { name: 'responsable_nom', label: 'Responsable (nom complet) *', type: 'text', required: true }
             ],
-            parrain: [], // aucun champ supplémentaire
+            parrain: [],
             arbitre: [
                 { name: 'license_number', label: 'Numéro de licence d\'arbitre *', type: 'text', required: true }
             ],
@@ -400,6 +399,26 @@
             });
         });
 
+        // Validation de l'ID HubISoccer (vérifie dans la base)
+        async function validateHubId(hubId, expectedRole) {
+            const { data, error } = await window.supabaseAuthPrive
+                .from('hubisoccer_ids')
+                .select('id, role, status')
+                .eq('id', hubId)
+                .single();
+
+            if (error || !data) {
+                return { valid: false, reason: "ID HubISoccer invalide." };
+            }
+            if (data.status !== 'pending') {
+                return { valid: false, reason: "Cet ID a déjà été utilisé." };
+            }
+            if (data.role !== expectedRole) {
+                return { valid: false, reason: "Cet ID ne correspond pas au rôle sélectionné." };
+            }
+            return { valid: true, data: data };
+        }
+
         // Soumission
         const form = document.getElementById('signupForm');
         form.addEventListener('submit', async (e) => {
@@ -428,6 +447,13 @@
                 return;
             }
 
+            // 1. Valider l'ID HubISoccer
+            const validation = await validateHubId(hubId, role);
+            if (!validation.valid) {
+                window.showToast(validation.reason, 'error');
+                return;
+            }
+
             // Collecte des champs spécifiques
             let roleData = {};
             const fields = roleFields[role] || [];
@@ -441,7 +467,7 @@
             }
 
             try {
-                // 1. Inscription via Supabase Auth
+                // 2. Inscription via Supabase Auth
                 const { data: signUpData, error: signUpError } = await window.supabaseAuthPrive.auth.signUp({
                     email,
                     password,
@@ -451,7 +477,7 @@
 
                 const userId = signUpData.user.id;
 
-                // 2. Insertion dans la table profiles
+                // 3. Insertion dans la table profiles
                 const profileData = {
                     id: userId,
                     email: email,
@@ -463,7 +489,6 @@
                     hubisoccer_id: hubId,
                     created_at: new Date().toISOString()
                 };
-                // Ajout de date_naissance pour joueur
                 if (role === 'joueur' && roleData.date_naissance) {
                     profileData.date_of_birth = roleData.date_naissance;
                 }
@@ -473,13 +498,15 @@
                     .insert([profileData]);
 
                 if (profileError) {
-                    // Si échec insertion, on peut supprimer l'utilisateur (optionnel)
                     console.error('Erreur insertion profile', profileError);
                     throw new Error('Erreur lors de la création du profil');
                 }
 
-                // 3. Insertion dans les tables spécifiques si nécessaire (optionnel)
-                // Pour simplifier, on ne crée pas de tables spécifiques ici. L'utilisateur pourra compléter plus tard via son espace.
+                // 4. Mettre à jour le statut de l'ID
+                await window.supabaseAuthPrive
+                    .from('hubisoccer_ids')
+                    .update({ status: 'used', assigned_to: userId })
+                    .eq('id', hubId);
 
                 window.showToast('Inscription réussie ! Vérifiez votre email pour confirmer votre compte', 'success');
                 setTimeout(() => {
@@ -490,56 +517,6 @@
                 window.showToast(err.message || 'Erreur lors de l\'inscription', 'error');
             }
         });
-
-// Avant signInWithPassword
-const banStatus = await isUserBanned(email);
-if (banStatus.banned) {
-    let message = `Compte bloqué : ${banStatus.reason}`;
-    if (banStatus.expires_at) {
-        message += ` jusqu'au ${new Date(banStatus.expires_at).toLocaleString()}`;
-    }
-    window.showToast(message, 'error');
-    return;
-}
-
-// Tenter la connexion
-try {
-    const { data, error } = await window.supabaseAuthPrive.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    // succès : enregistrer tentative réussie
-    await recordAttempt(email, true);
-    window.showToast('Connexion réussie', 'success');
-    await window.redirectToDashboard();
-} catch (err) {
-    // échec : enregistrer
-    await recordAttempt(email, false);
-    // Vérifier si seuil atteint pour bloquer
-    const thresholdReached = await checkFailureThreshold(email);
-    if (thresholdReached) {
-        // Créer un ban temporaire de 3 minutes
-        const expires = new Date(Date.now() + 3 * 60 * 1000).toISOString();
-        // Il faut d'abord récupérer l'user_id (si le compte existe)
-        const { data: profile } = await window.supabaseAuthPrive
-            .from('profiles')
-            .select('id')
-            .eq('email', email)
-            .single();
-        if (profile) {
-            await window.supabaseAuthPrive
-                .from('bans')
-                .insert([{
-                    user_id: profile.id,
-                    reason: 'Trop de tentatives échouées',
-                    expires_at: expires,
-                    created_by: null // admin automatique
-                }]);
-        }
-        window.showToast('Trop de tentatives échouées. Compte bloqué 3 minutes.', 'error');
-    } else {
-        window.showToast(err.message || 'Erreur de connexion', 'error');
-    }
-}
-
     </script>
 </body>
 </html>
