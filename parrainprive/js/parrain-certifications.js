@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseParrainPrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseParrainsSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -10,12 +10,12 @@ let certificates = [];
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
-    const container = document.getElementById('toastContainer');
+    let container = document.getElementById('toastContainer');
     if (!container) {
-        const newContainer = document.createElement('div');
-        newContainer.id = 'toastContainer';
-        newContainer.className = 'toast-container';
-        document.body.appendChild(newContainer);
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
     }
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -24,7 +24,7 @@ function showToast(message, type = 'info', duration = 3000) {
         <div class="toast-content">${message}</div>
         <button class="toast-close"><i class="fas fa-times"></i></button>
     `;
-    document.getElementById('toastContainer').appendChild(toast);
+    container.appendChild(toast);
     toast.querySelector('.toast-close').addEventListener('click', () => {
         toast.style.animation = 'fadeOut 0.3s forwards';
         setTimeout(() => toast.remove(), 300);
@@ -40,9 +40,9 @@ function showToast(message, type = 'info', duration = 3000) {
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
     try {
-        const { data: { session }, error } = await supabaseParrainPrive.auth.getSession();
+        const { data: { session }, error } = await supabaseParrainsSpacePrive.auth.getSession();
         if (error || !session) {
-            window.location.href = 'auth/login.html';
+            window.location.href = '../public/auth/login.html';
             return null;
         }
         currentUser = session.user;
@@ -50,30 +50,38 @@ async function checkSession() {
         return currentUser;
     } catch (err) {
         console.error('❌ Erreur checkSession :', err);
-        window.location.href = 'auth/login.html';
+        window.location.href = '../public/auth/login.html';
         return null;
     }
 }
 
-// ===== CHARGEMENT DU PROFIL PARRAIN =====
+// ===== CHARGEMENT DU PROFIL (table unifiée profiles) =====
 async function loadParrainProfile() {
     try {
-        const { data, error } = await supabaseParrainPrive
-            .from('parrain_profiles')
+        const { data, error } = await supabaseParrainsSpacePrive
+            .from('profiles')
             .select('*')
-            .eq('user_id', currentUser.id)
+            .eq('id', currentUser.id)
             .single();
 
         if (error) {
             console.error('Erreur chargement profil:', error);
+            showToast('Erreur lors du chargement du profil', 'error');
+            return null;
+        }
+        // Vérifier que le rôle est bien 'parrain' (optionnel)
+        if (data.role !== 'parrain') {
+            showToast('Accès non autorisé', 'error');
+            setTimeout(() => { window.location.href = '../index.html'; }, 2000);
             return null;
         }
         currentParrain = data;
-        document.getElementById('userName').textContent = `${data.first_name} ${data.last_name}`;
+        document.getElementById('userName').textContent = data.full_name || 'Parrain';
         document.getElementById('userAvatar').src = data.avatar_url || 'img/user-default.jpg';
         return currentParrain;
     } catch (err) {
         console.error('❌ Exception loadParrainProfile:', err);
+        showToast('Erreur lors du chargement du profil', 'error');
         return null;
     }
 }
@@ -82,10 +90,10 @@ async function loadParrainProfile() {
 async function loadCertificates() {
     if (!currentParrain) return;
     try {
-        const { data, error } = await supabaseParrainPrive
+        const { data, error } = await supabaseParrainsSpacePrive
             .from('parrain_certifications')
             .select('*')
-            .eq('parrain_id', currentParrain.id)
+            .eq('user_id', currentParrain.id) // après migration
             .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -114,7 +122,6 @@ function renderCertificates() {
             rejected: 'Rejeté'
         }[cert.statut] || 'En attente';
 
-        // Formatage de la date (optionnel)
         let dateStr = '';
         if (cert.date_obtention) {
             const d = new Date(cert.date_obtention);
@@ -136,17 +143,22 @@ function renderCertificates() {
 
 // ===== UPLOAD DE FICHIER =====
 async function uploadFile(file) {
+    // Vérification de la taille (max 5 Mo)
+    if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Le fichier ne doit pas dépasser 5 Mo');
+    }
+
     const fileExt = file.name.split('.').pop();
     const fileName = `${currentParrain.id}_${Date.now()}.${fileExt}`;
     const filePath = `certifications/${fileName}`;
 
-    const { error } = await supabaseParrainPrive.storage
-        .from('parrain-documents')
+    const { error } = await supabaseParrainsSpacePrive.storage
+        .from('documents') // bucket unifié
         .upload(filePath, file);
     if (error) throw error;
 
-    const { data: urlData } = supabaseParrainPrive.storage
-        .from('parrain-documents')
+    const { data: urlData } = supabaseParrainsSpacePrive.storage
+        .from('documents')
         .getPublicUrl(filePath);
     return urlData.publicUrl;
 }
@@ -184,7 +196,7 @@ function initUploadForm() {
 
         const titre = document.getElementById('certTitle').value.trim();
         const organisme = document.getElementById('certOrganisme').value.trim();
-        const dateObtention = document.getElementById('certDate').value; // au format YYYY-MM-DD
+        const dateObtention = document.getElementById('certDate').value;
         const file = fileInput.files[0];
 
         if (!titre || !dateObtention || !file) {
@@ -192,20 +204,17 @@ function initUploadForm() {
             return;
         }
 
-        // Désactiver le bouton pour éviter double soumission
         const submitBtn = document.getElementById('submitCertBtn');
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="button-spinner"></span> Envoi...';
 
         try {
-            // Upload du fichier
             const fileUrl = await uploadFile(file);
 
-            // Insertion dans la base
-            const { error } = await supabaseParrainPrive
+            const { error } = await supabaseParrainsSpacePrive
                 .from('parrain_certifications')
                 .insert([{
-                    parrain_id: currentParrain.id,
+                    user_id: currentParrain.id,
                     titre: titre,
                     organisme: organisme || null,
                     date_obtention: dateObtention,
@@ -241,11 +250,22 @@ function initUserMenu() {
     document.addEventListener('click', () => dropdown.classList.remove('show'));
 }
 
+function addMenuHandle() {
+    if (document.getElementById('menuHandle')) return;
+    const handle = document.createElement('div');
+    handle.id = 'menuHandle';
+    handle.className = 'menu-handle';
+    handle.setAttribute('aria-label', 'Ouvrir le menu');
+    handle.innerHTML = '<span></span>';
+    document.body.appendChild(handle);
+}
+
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
     const sidebar = document.getElementById('leftSidebar');
     const closeBtn = document.getElementById('closeLeftSidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const menuHandle = document.getElementById('menuHandle');
 
     if (!menuBtn || !sidebar || !closeBtn || !overlay) return;
 
@@ -257,16 +277,44 @@ function initSidebar() {
         sidebar.classList.remove('active');
         overlay.classList.remove('active');
     }
+
     menuBtn.addEventListener('click', openSidebar);
+    if (menuHandle) menuHandle.addEventListener('click', openSidebar);
     closeBtn.addEventListener('click', closeSidebarFunc);
     overlay.addEventListener('click', closeSidebarFunc);
+
+    // Swipe avec correction
+    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+    const swipeThreshold = 50;
+
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diffX = touchEndX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
+
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+            if (e.cancelable) {
+                e.preventDefault();
+            }
+            if (diffX > 0 && touchStartX < 50) {
+                openSidebar();
+            } else if (diffX < 0 && sidebar.classList.contains('active')) {
+                closeSidebarFunc();
+            }
+        }
+    }, { passive: false });
 }
 
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabaseParrainPrive.auth.signOut().then(() => {
+            supabaseParrainsSpacePrive.auth.signOut().then(() => {
                 window.location.href = '../index.html';
             });
         });
@@ -286,9 +334,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadCertificates();
 
     initUploadForm();
+    addMenuHandle();
     initUserMenu();
     initSidebar();
     initLogout();
+
+    document.getElementById('langSelect')?.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+    });
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
