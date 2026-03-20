@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* mêmes styles de base que admin-users.html */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Inter', sans-serif;
@@ -98,11 +97,17 @@
             border: 1px solid #e9e9f0;
             box-shadow: 0 8px 20px rgba(0,0,0,0.02);
         }
+        .card h2 {
+            font-size: 1.6rem;
+            margin-bottom: 24px;
+            color: #1a1a2e;
+        }
         .filters {
             display: flex;
             flex-wrap: wrap;
             gap: 16px;
             margin-bottom: 24px;
+            align-items: flex-end;
         }
         .filter-group {
             flex: 1;
@@ -111,17 +116,48 @@
         .filter-group label {
             display: block;
             font-weight: 500;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
         }
         .filter-group input, .filter-group select {
             width: 100%;
-            padding: 10px 12px;
+            padding: 10px 16px;
             border: 1px solid #e2e2f0;
             border-radius: 28px;
+            background: white;
+            font-family: 'Inter', sans-serif;
+        }
+        .btn {
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .btn-primary {
+            background: #6b3ba4;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #552e84;
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid #6b3ba4;
+            color: #6b3ba4;
+        }
+        .btn-secondary:hover {
+            background: #6b3ba4;
+            color: white;
         }
         table {
             width: 100%;
             border-collapse: collapse;
+            overflow-x: auto;
+            display: block;
         }
         th, td {
             text-align: left;
@@ -150,17 +186,6 @@
             font-weight: 500;
             display: inline-block;
         }
-        .btn {
-            padding: 10px 20px;
-            border-radius: 40px;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-        }
-        .btn-primary {
-            background: #6b3ba4;
-            color: white;
-        }
         .footer {
             text-align: center;
             padding: 32px;
@@ -173,6 +198,8 @@
             .navbar { padding: 16px 24px; }
             .container { padding: 24px 16px; }
             .card { padding: 24px; }
+            th, td { padding: 8px 12px; }
+            .filters { flex-direction: column; align-items: stretch; }
         }
     </style>
 </head>
@@ -180,7 +207,6 @@
     <div class="bg-shapes">
         <div class="shape shape-1"></div>
         <div class="shape shape-2"></div>
-        <div class="shape shape-3"></div>
     </div>
 
     <nav class="navbar">
@@ -200,6 +226,7 @@
         </div>
 
         <div class="card">
+            <h2>Tentatives de connexion</h2>
             <div class="filters">
                 <div class="filter-group">
                     <label>Email</label>
@@ -209,28 +236,34 @@
                     <label>Statut</label>
                     <select id="filterStatus">
                         <option value="">Tous</option>
-                        <option value="success">Succès</option>
-                        <option value="failure">Échec</option>
+                        <option value="true">Succès</option>
+                        <option value="false">Échec</option>
                     </select>
                 </div>
                 <div class="filter-group">
                     <label>Date début</label>
-                    <input type="datetime-local" id="filterStart">
+                    <input type="date" id="filterDateStart">
                 </div>
                 <div class="filter-group">
                     <label>Date fin</label>
-                    <input type="datetime-local" id="filterEnd">
+                    <input type="date" id="filterDateEnd">
                 </div>
                 <div class="filter-group">
                     <button class="btn btn-primary" id="applyFilters">Appliquer</button>
+                    <button class="btn btn-secondary" id="resetFilters">Réinitialiser</button>
                 </div>
             </div>
-            <table>
-                <thead>
-                    <tr><th>Email</th><th>Date</th><th>Statut</th><th>Adresse IP</th><th>User Agent</th></tr>
-                </thead>
-                <tbody id="logsTable"></tbody>
-            </table>
+            <div style="overflow-x: auto;">
+                <table id="logsTable">
+                    <thead>
+                        <tr><th>Email</th><th>Statut</th><th>Date & heure</th><th>Adresse IP</th><th>User Agent</th></tr>
+                    </thead>
+                    <tbody id="logsTableBody"></tbody>
+                </table>
+            </div>
+            <div style="margin-top: 20px; text-align: center;">
+                <button class="btn btn-secondary" id="loadMoreBtn">Charger plus</button>
+            </div>
         </div>
     </div>
 
@@ -241,48 +274,110 @@
     <script src="auth.js"></script>
     <script src="admin-auth.js"></script>
     <script>
-        async function loadLogs() {
+        let currentPage = 0;
+        const pageSize = 50;
+        let currentFilters = {
+            email: '',
+            success: null,
+            dateStart: null,
+            dateEnd: null
+        };
+
+        async function loadLogs(reset = true) {
+            if (reset) {
+                currentPage = 0;
+                document.getElementById('logsTableBody').innerHTML = '<tr><td colspan="5">Chargement...</td></tr>';
+            }
             let query = window.supabaseAuthPrive
                 .from('login_attempts')
                 .select('*')
-                .order('attempted_at', { ascending: false });
+                .order('attempted_at', { ascending: false })
+                .range(currentPage * pageSize, (currentPage + 1) * pageSize - 1);
 
-            const email = document.getElementById('filterEmail').value.trim();
-            if (email) query = query.ilike('email', `%${email}%`);
-
-            const status = document.getElementById('filterStatus').value;
-            if (status === 'success') query = query.eq('success', true);
-            if (status === 'failure') query = query.eq('success', false);
-
-            const start = document.getElementById('filterStart').value;
-            if (start) query = query.gte('attempted_at', new Date(start).toISOString());
-
-            const end = document.getElementById('filterEnd').value;
-            if (end) query = query.lte('attempted_at', new Date(end).toISOString());
+            if (currentFilters.email) {
+                query = query.ilike('email', `%${currentFilters.email}%`);
+            }
+            if (currentFilters.success !== null) {
+                query = query.eq('success', currentFilters.success);
+            }
+            if (currentFilters.dateStart) {
+                query = query.gte('attempted_at', currentFilters.dateStart + 'T00:00:00');
+            }
+            if (currentFilters.dateEnd) {
+                query = query.lte('attempted_at', currentFilters.dateEnd + 'T23:59:59');
+            }
 
             const { data, error } = await query;
             if (error) {
                 console.error(error);
+                document.getElementById('logsTableBody').innerHTML = '<tr><td colspan="5">Erreur de chargement</td></tr>';
                 return;
             }
-            const tbody = document.getElementById('logsTable');
+            if (reset) {
+                document.getElementById('logsTableBody').innerHTML = '';
+            }
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5">Aucune tentative trouvée</td></tr>';
+                if (reset) document.getElementById('logsTableBody').innerHTML = '<tr><td colspan="5">Aucune tentative trouvée</td></tr>';
+                document.getElementById('loadMoreBtn').style.display = 'none';
                 return;
             }
-            tbody.innerHTML = data.map(log => `
-                <tr>
-                    <td>${log.email}</td>
-                    <td>${new Date(log.attempted_at).toLocaleString()}</td>
-                    <td>${log.success ? '<span class="success-badge">Succès</span>' : '<span class="failure-badge">Échec</span>'}</td>
-                    <td>${log.ip_address || '-'}</td>
-                    <td>${log.user_agent ? log.user_agent.substring(0, 50) + (log.user_agent.length > 50 ? '…' : '') : '-'}</td>
-                </tr>
-            `).join('');
+            data.forEach(log => {
+                const statusHtml = log.success ? '<span class="success-badge">Succès</span>' : '<span class="failure-badge">Échec</span>';
+                const row = `
+                    <tr>
+                        <td>${escapeHtml(log.email)}</td>
+                        <td>${statusHtml}</td>
+                        <td>${new Date(log.attempted_at).toLocaleString()}</td>
+                        <td>${log.ip_address || '-'}</td>
+                        <td>${log.user_agent ? escapeHtml(log.user_agent).substring(0, 80) : '-'}</td>
+                    </tr>
+                `;
+                document.getElementById('logsTableBody').insertAdjacentHTML('beforeend', row);
+            });
+            if (data.length < pageSize) {
+                document.getElementById('loadMoreBtn').style.display = 'none';
+            } else {
+                document.getElementById('loadMoreBtn').style.display = 'inline-block';
+            }
         }
 
-        document.getElementById('applyFilters').addEventListener('click', loadLogs);
-        loadLogs();
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        function applyFilters() {
+            currentFilters.email = document.getElementById('filterEmail').value.trim();
+            const statusVal = document.getElementById('filterStatus').value;
+            currentFilters.success = statusVal === '' ? null : (statusVal === 'true');
+            currentFilters.dateStart = document.getElementById('filterDateStart').value;
+            currentFilters.dateEnd = document.getElementById('filterDateEnd').value;
+            loadLogs(true);
+        }
+
+        function resetFilters() {
+            document.getElementById('filterEmail').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterDateStart').value = '';
+            document.getElementById('filterDateEnd').value = '';
+            currentFilters = { email: '', success: null, dateStart: null, dateEnd: null };
+            loadLogs(true);
+        }
+
+        document.getElementById('applyFilters').addEventListener('click', applyFilters);
+        document.getElementById('resetFilters').addEventListener('click', resetFilters);
+        document.getElementById('loadMoreBtn').addEventListener('click', () => {
+            currentPage++;
+            loadLogs(false);
+        });
+
+        // Chargement initial
+        loadLogs(true);
     </script>
 </body>
 </html>
