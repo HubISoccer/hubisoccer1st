@@ -129,7 +129,7 @@ async function loadAgentData() {
     showLoader(true);
     try {
         await Promise.all([loadClients(), loadContracts(), loadLicenseStatus()]);
-        updateStatsAndLists();
+        await updateStatsAndLists(); // attendre la mise à jour des listes (y compris messages)
         initCommissionsChart();
     } catch (err) {
         console.error('Erreur chargement données:', err);
@@ -200,7 +200,7 @@ async function loadLicenseStatus() {
     document.getElementById('statsLicence').textContent = statusText;
 }
 
-function updateStatsAndLists() {
+async function updateStatsAndLists() {
     // Derniers contrats
     const recentContracts = contracts.slice(0, 5);
     const contractsHtml = recentContracts.map(c => `
@@ -222,8 +222,8 @@ function updateStatsAndLists() {
     `).join('');
     document.getElementById('recentClientsList').innerHTML = clientsHtml || '<p>Aucun joueur récent</p>';
 
-    // Derniers messages (conversations)
-    loadRecentMessages();
+    // Derniers messages (attendre le chargement)
+    await loadRecentMessages();
 }
 
 async function loadRecentMessages() {
@@ -263,6 +263,26 @@ async function loadRecentMessages() {
 function initCommissionsChart() {
     const ctx = document.getElementById('commissionsChart').getContext('2d');
     if (commissionsChart) commissionsChart.destroy();
+
+    // Si aucun contrat, afficher un message dans le canvas
+    if (contracts.length === 0) {
+        const container = document.querySelector('.chart-card');
+        const existingMsg = container.querySelector('.chart-empty');
+        if (!existingMsg) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'chart-empty';
+            msgDiv.textContent = 'Aucune commission pour le moment';
+            container.appendChild(msgDiv);
+            // Cacher le canvas
+            ctx.canvas.style.display = 'none';
+        }
+        return;
+    } else {
+        const container = document.querySelector('.chart-card');
+        const msgDiv = container.querySelector('.chart-empty');
+        if (msgDiv) msgDiv.remove();
+        ctx.canvas.style.display = 'block';
+    }
 
     const monthly = {};
     contracts.forEach(c => {
