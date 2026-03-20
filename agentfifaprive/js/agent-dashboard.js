@@ -8,7 +8,6 @@ let currentUser = null;
 let currentAgent = null;
 let clients = [];
 let contracts = [];
-let recentMessages = [];
 let commissionsChart = null;
 
 // ===== TOAST =====
@@ -40,7 +39,7 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
-// ===== LOADER GLOBAL =====
+// ===== LOADER =====
 function showLoader(show = true) {
     const loader = document.getElementById('globalLoader');
     if (loader) loader.style.display = show ? 'flex' : 'none';
@@ -63,7 +62,7 @@ async function checkSession() {
     }
 }
 
-// ===== CHARGEMENT DU PROFIL AGENT (depuis profiles) =====
+// ===== CHARGEMENT DU PROFIL AGENT =====
 async function loadAgentProfile() {
     try {
         const { data, error } = await supabaseAgentPrive
@@ -77,7 +76,6 @@ async function loadAgentProfile() {
             showToast('Erreur chargement profil', 'error');
             return null;
         }
-        // Vérifier que le rôle est bien 'agent' (optionnel)
         if (data.role !== 'agent') {
             showToast('Accès non autorisé', 'error');
             setTimeout(() => { window.location.href = '../index.html'; }, 2000);
@@ -95,7 +93,6 @@ async function loadAgentProfile() {
 
 function updateProfileUI() {
     if (!currentAgent) return;
-
     const fullName = currentAgent.full_name || 'Agent';
     document.getElementById('userName').textContent = fullName;
     document.getElementById('dashboardName').textContent = fullName;
@@ -110,11 +107,7 @@ function updateProfileUI() {
 
     const country = contact.country || currentAgent.country || '';
     document.getElementById('playerCountryName').textContent = country || '-';
-    const flagMap = {
-        'Bénin': '🇧🇯', 'France': '🇫🇷', 'Côte d\'Ivoire': '🇨🇮', 'Sénégal': '🇸🇳',
-        'Cameroun': '🇨🇲', 'Maroc': '🇲🇦', 'Tunisie': '🇹🇳', 'Algérie': '🇩🇿',
-        'Nigeria': '🇳🇬', 'Ghana': '🇬🇭'
-    };
+    const flagMap = { 'Bénin': '🇧🇯', 'France': '🇫🇷', 'Côte d\'Ivoire': '🇨🇮', 'Sénégal': '🇸🇳', 'Cameroun': '🇨🇲', 'Maroc': '🇲🇦', 'Tunisie': '🇹🇳', 'Algérie': '🇩🇿', 'Nigeria': '🇳🇬', 'Ghana': '🇬🇭' };
     document.getElementById('playerCountryFlag').textContent = flagMap[country] || '🌍';
 
     if (currentAgent.avatar_url) {
@@ -128,20 +121,14 @@ function updateProfileUI() {
     } else {
         document.getElementById('memberSince').textContent = '-';
     }
-
     document.getElementById('agentID').textContent = `ID: ${currentAgent.hub_id || currentAgent.id}`;
 }
 
-// ===== CHARGEMENT DES DONNÉES SPÉCIFIQUES =====
+// ===== CHARGEMENT DES DONNÉES =====
 async function loadAgentData() {
     showLoader(true);
     try {
-        await Promise.all([
-            loadClients(),
-            loadContracts(),
-            loadRecentMessages(),
-            loadLicenseStatus()
-        ]);
+        await Promise.all([loadClients(), loadContracts(), loadLicenseStatus()]);
         updateStatsAndLists();
         initCommissionsChart();
     } catch (err) {
@@ -158,7 +145,6 @@ async function loadClients() {
         .select('*, player:player_id (full_name, avatar_url)')
         .eq('agent_id', currentAgent.id)
         .order('created_at', { ascending: false });
-
     if (error) {
         console.error('Erreur chargement clients:', error);
         showToast('Erreur chargement joueurs', 'error');
@@ -166,6 +152,7 @@ async function loadClients() {
     }
     clients = data || [];
     document.getElementById('nbJoueurs').textContent = clients.length;
+    document.getElementById('statsJoueurs').textContent = clients.length;
 }
 
 async function loadContracts() {
@@ -174,7 +161,6 @@ async function loadContracts() {
         .select('*')
         .eq('agent_id', currentAgent.id)
         .order('created_at', { ascending: false });
-
     if (error) {
         console.error('Erreur chargement contrats:', error);
         showToast('Erreur chargement contrats', 'error');
@@ -184,56 +170,9 @@ async function loadContracts() {
     const activeCount = contracts.filter(c => c.status === 'active').length;
     document.getElementById('nbContrats').textContent = contracts.length;
     document.getElementById('statsContrats').textContent = activeCount;
-
     const totalCommissions = contracts.reduce((sum, c) => sum + (c.commission || 0), 0);
     document.getElementById('totalCommissions').textContent = totalCommissions.toLocaleString();
     document.getElementById('statsCommissions').textContent = totalCommissions.toLocaleString() + ' FCFA';
-}
-
-async function loadRecentMessages() {
-    // Récupérer les dernières conversations de l'agent
-    const { data: conversations, error: convError } = await supabaseAgentPrive
-        .from('conversations')
-        .select('id')
-        .or(`participant1_id.eq.${currentAgent.id},participant2_id.eq.${currentAgent.id}`);
-
-    if (convError || !conversations || conversations.length === 0) {
-        document.getElementById('recentMessagesList').innerHTML = '<p class="no-data">Aucun message</p>';
-        return;
-    }
-
-    const convIds = conversations.map(c => c.id);
-
-    const { data: messages, error: msgError } = await supabaseAgentPrive
-        .from('messages')
-        .select(`
-            id,
-            content,
-            created_at,
-            sender_id,
-            profiles!sender_id (full_name, avatar_url)
-        `)
-        .in('conversation_id', convIds)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-    if (msgError) {
-        console.error('Erreur chargement messages:', msgError);
-        document.getElementById('recentMessagesList').innerHTML = '<p class="no-data">Erreur</p>';
-        return;
-    }
-
-    if (messages.length === 0) {
-        document.getElementById('recentMessagesList').innerHTML = '<p class="no-data">Aucun message récent</p>';
-    } else {
-        document.getElementById('recentMessagesList').innerHTML = messages.map(m => `
-            <div class="recent-item">
-                <div class="date">${new Date(m.created_at).toLocaleString('fr-FR')}</div>
-                <div class="main">${m.profiles?.full_name || 'Inconnu'}</div>
-                <div class="sub">${m.content.substring(0, 50)}...</div>
-            </div>
-        `).join('');
-    }
 }
 
 async function loadLicenseStatus() {
@@ -244,12 +183,10 @@ async function loadLicenseStatus() {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-
     if (error) {
         console.error('Erreur chargement statut licence:', error);
         return;
     }
-
     let statusText = 'Non demandée';
     if (data) {
         switch (data.status) {
@@ -264,9 +201,6 @@ async function loadLicenseStatus() {
 }
 
 function updateStatsAndLists() {
-    // Stats déjà mises à jour dans les fonctions de chargement
-    document.getElementById('statsJoueurs').textContent = clients.length;
-
     // Derniers contrats
     const recentContracts = contracts.slice(0, 5);
     const contractsHtml = recentContracts.map(c => `
@@ -287,14 +221,49 @@ function updateStatsAndLists() {
         </div>
     `).join('');
     document.getElementById('recentClientsList').innerHTML = clientsHtml || '<p>Aucun joueur récent</p>';
+
+    // Derniers messages (conversations)
+    loadRecentMessages();
 }
 
-// ===== GRAPHIQUE =====
+async function loadRecentMessages() {
+    const { data: conversations, error: convError } = await supabaseAgentPrive
+        .from('conversations')
+        .select('id')
+        .or(`participant1_id.eq.${currentAgent.id},participant2_id.eq.${currentAgent.id}`);
+    if (convError || !conversations || conversations.length === 0) {
+        document.getElementById('recentMessagesList').innerHTML = '<p class="no-data">Aucun message</p>';
+        return;
+    }
+    const convIds = conversations.map(c => c.id);
+    const { data: messages, error: msgError } = await supabaseAgentPrive
+        .from('messages')
+        .select(`id, content, created_at, sender_id, profiles!sender_id (full_name, avatar_url)`)
+        .in('conversation_id', convIds)
+        .order('created_at', { ascending: false })
+        .limit(5);
+    if (msgError) {
+        console.error('Erreur chargement messages:', msgError);
+        document.getElementById('recentMessagesList').innerHTML = '<p class="no-data">Erreur</p>';
+        return;
+    }
+    if (messages.length === 0) {
+        document.getElementById('recentMessagesList').innerHTML = '<p class="no-data">Aucun message récent</p>';
+    } else {
+        document.getElementById('recentMessagesList').innerHTML = messages.map(m => `
+            <div class="recent-item">
+                <div class="date">${new Date(m.created_at).toLocaleString('fr-FR')}</div>
+                <div class="main">${m.profiles?.full_name || 'Inconnu'}</div>
+                <div class="sub">${m.content.substring(0, 50)}...</div>
+            </div>
+        `).join('');
+    }
+}
+
 function initCommissionsChart() {
     const ctx = document.getElementById('commissionsChart').getContext('2d');
     if (commissionsChart) commissionsChart.destroy();
 
-    // Grouper les commissions par mois
     const monthly = {};
     contracts.forEach(c => {
         if (c.created_at) {
@@ -303,12 +272,8 @@ function initCommissionsChart() {
             monthly[key] = (monthly[key] || 0) + (c.commission || 0);
         }
     });
-
     const sortedKeys = Object.keys(monthly).sort();
-    const labels = sortedKeys.map(k => {
-        const [y, m] = k.split('-');
-        return `${m}/${y}`;
-    });
+    const labels = sortedKeys.map(k => { const [y, m] = k.split('-'); return `${m}/${y}`; });
     const data = sortedKeys.map(k => monthly[k]);
 
     commissionsChart = new Chart(ctx, {
@@ -324,16 +289,7 @@ function initCommissionsChart() {
                 pointBackgroundColor: '#FFCC00'
             }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: { beginAtZero: true }
-            }
-        }
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
     });
 }
 
@@ -341,43 +297,26 @@ function initCommissionsChart() {
 document.getElementById('fileInput').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file || !currentAgent) return;
-
     if (file.size > 2 * 1024 * 1024) {
         showToast('L\'image ne doit pas dépasser 2 Mo', 'warning');
         return;
     }
-
     showLoader(true);
     try {
         const fileExt = file.name.split('.').pop();
         const fileName = `avatar_${currentAgent.id}_${Date.now()}.${fileExt}`;
-
         const { error: uploadError } = await supabaseAgentPrive.storage
             .from('avatars')
             .upload(fileName, file);
-
         if (uploadError) throw uploadError;
-
-        const { data } = supabaseAgentPrive.storage
-            .from('avatars')
-            .getPublicUrl(fileName);
-
+        const { data } = supabaseAgentPrive.storage.from('avatars').getPublicUrl(fileName);
         if (!data || !data.publicUrl) throw new Error('URL publique non générée');
-
         const publicURL = data.publicUrl;
-
-        const { error: updateError } = await supabaseAgentPrive
-            .from('profiles')
-            .update({ avatar_url: publicURL })
-            .eq('id', currentAgent.id);
-
-        if (updateError) throw updateError;
-
+        await supabaseAgentPrive.from('profiles').update({ avatar_url: publicURL }).eq('id', currentAgent.id);
         currentAgent.avatar_url = publicURL;
         const avatarWithTimestamp = `${publicURL}?t=${new Date().getTime()}`;
         document.getElementById('userAvatar').src = avatarWithTimestamp;
         document.getElementById('profileDisplay').src = avatarWithTimestamp;
-
         showToast('Avatar mis à jour avec succès', 'success');
     } catch (err) {
         console.error('Erreur upload avatar:', err);
@@ -423,44 +362,26 @@ function initSidebar() {
     const closeBtn = document.getElementById('closeLeftSidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const menuHandle = document.getElementById('menuHandle');
-
-    function openSidebar() {
-        sidebar.classList.add('active');
-        overlay.classList.add('active');
-    }
-    function closeSidebarFunc() {
-        sidebar.classList.remove('active');
-        overlay.classList.remove('active');
-    }
-
+    function openSidebar() { sidebar.classList.add('active'); overlay.classList.add('active'); }
+    function closeSidebarFunc() { sidebar.classList.remove('active'); overlay.classList.remove('active'); }
     if (menuBtn) menuBtn.addEventListener('click', openSidebar);
     if (menuHandle) menuHandle.addEventListener('click', openSidebar);
     if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
     if (overlay) overlay.addEventListener('click', closeSidebarFunc);
-
-    // Swipe avec correction
     let touchStartX = 0, touchStartY = 0, touchEndX = 0;
     const swipeThreshold = 50;
-
     document.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
     }, { passive: true });
-
     document.addEventListener('touchend', (e) => {
         touchEndX = e.changedTouches[0].screenX;
         const diffX = touchEndX - touchStartX;
         const diffY = e.changedTouches[0].screenY - touchStartY;
-
         if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
-            if (e.cancelable) {
-                e.preventDefault();
-            }
-            if (diffX > 0 && touchStartX < 50) {
-                openSidebar();
-            } else if (diffX < 0 && sidebar.classList.contains('active')) {
-                closeSidebarFunc();
-            }
+            if (e.cancelable) e.preventDefault();
+            if (diffX > 0 && touchStartX < 50) openSidebar();
+            else if (diffX < 0 && sidebar.classList.contains('active')) closeSidebarFunc();
         }
     }, { passive: false });
 }
@@ -478,31 +399,25 @@ function initLogout() {
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Initialisation du dashboard agent');
-
     const user = await checkSession();
     if (!user) return;
-
     showLoader(true);
     try {
         await loadAgentProfile();
         if (!currentAgent) return;
         await loadAgentData();
-
         addMenuHandle();
         initUserMenu();
         initSidebar();
         initLogout();
-
         document.getElementById('langSelect')?.addEventListener('change', (e) => {
             const lang = e.target.value;
             showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
         });
-
         document.getElementById('languageLink')?.addEventListener('click', (e) => {
             e.preventDefault();
             showToast('Changement de langue bientôt disponible', 'info');
         });
-
         console.log('✅ Initialisation terminée');
     } catch (err) {
         console.error('Erreur lors de l\'initialisation:', err);
