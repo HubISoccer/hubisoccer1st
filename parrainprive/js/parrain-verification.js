@@ -436,13 +436,16 @@ async function checkLicenseStatus() {
     }
 }
 
-// ===== MISE À JOUR DE L'APERÇU DE LA CARTE =====
+// ===== MISE À JOUR DE L'APERÇU DE LA CARTE (RECTO-VERSO) =====
 function updateCardPreview() {
     const nom = document.getElementById('nom')?.value || '---';
     const prenom = document.getElementById('prenom')?.value || '---';
     const dateNaissance = document.getElementById('dateNaissance')?.value || '---';
     const nationalite = document.getElementById('nationalite')?.value || '---';
     const pays = document.getElementById('pays')?.value || '---';
+    const adresse = document.getElementById('adresse')?.value || '---';
+    const telephone = document.getElementById('telephone')?.value || '---';
+    const email = document.getElementById('email')?.value || '---';
 
     let dateFormatted = dateNaissance;
     if (dateNaissance && dateNaissance !== '---') {
@@ -450,41 +453,54 @@ function updateCardPreview() {
         dateFormatted = d.toLocaleDateString('fr-FR');
     }
 
-    const preview = document.getElementById('cardPreview');
-    if (!preview) return;
+    // Face avant
+    const frontInfo = document.getElementById('cardFrontInfo');
+    if (frontInfo) {
+        frontInfo.innerHTML = `
+            <p><span class="label">Nom :</span> <span class="value">${nom.toUpperCase()}</span></p>
+            <p><span class="label">Prénom :</span> <span class="value">${prenom}</span></p>
+            <p><span class="label">Né(e) le :</span> <span class="value">${dateFormatted}</span></p>
+            <p><span class="label">Nationalité :</span> <span class="value">${nationalite}</span></p>
+            <p><span class="label">Pays :</span> <span class="value">${pays}</span></p>
+        `;
+    }
+    const frontFooter = document.getElementById('cardFrontFooter');
+    if (frontFooter) {
+        frontFooter.innerHTML = `
+            <div class="signatures">
+                <div class="signature-box">
+                    <span class="signature-label">Signature parrain</span>
+                </div>
+                <div class="signature-box">
+                    <span class="stamp"><i class="fas fa-stamp"></i></span>
+                    <span class="signature-label">Cachet officiel</span>
+                </div>
+            </div>
+            <div class="id-number">ID: ${currentParrain?.hub_id || currentParrain?.id || '---'}</div>
+        `;
+    }
 
-    preview.innerHTML = `
-        <div class="card-template">
-            <div class="card-header">
-                <h4>LICENCE PARRAIN HUBISOCCER</h4>
-                <p>Parrain officiel</p>
-            </div>
-            <div class="card-body">
-                <div class="card-photo">
-                    <i class="fas fa-user-tie"></i>
-                </div>
-                <div class="card-info">
-                    <p><span class="label">Nom :</span> <span class="value">${nom.toUpperCase()}</span></p>
-                    <p><span class="label">Prénom :</span> <span class="value">${prenom}</span></p>
-                    <p><span class="label">Né(e) le :</span> <span class="value">${dateFormatted}</span></p>
-                    <p><span class="label">Nationalité :</span> <span class="value">${nationalite}</span></p>
-                    <p><span class="label">Pays :</span> <span class="value">${pays}</span></p>
-                </div>
-            </div>
-            <div class="card-footer">
-                <div class="signatures">
-                    <div class="signature-box">
-                        <span class="signature-label">Signature parrain</span>
-                    </div>
-                    <div class="signature-box">
-                        <span class="stamp"><i class="fas fa-stamp"></i></span>
-                        <span class="signature-label">Cachet officiel</span>
-                    </div>
-                </div>
-                <div class="id-number">ID: ${currentParrain?.hub_id || currentParrain?.id || '---'}</div>
-            </div>
-        </div>
-    `;
+    // Face arrière
+    const backInfo = document.getElementById('cardBackInfo');
+    if (backInfo) {
+        backInfo.innerHTML = `
+            <p><span class="label">Adresse :</span> <span class="value">${adresse}</span></p>
+            <p><span class="label">Téléphone :</span> <span class="value">${telephone}</span></p>
+            <p><span class="label">Email :</span> <span class="value">${email}</span></p>
+            <p><span class="label">N° licence :</span> <span class="value">${licenseRequest?.id || '---'}</span></p>
+        `;
+    }
+}
+
+// ===== GESTION DU FLIP DE L'APERÇU =====
+function initPreviewFlip() {
+    const container = document.querySelector('.card-flip-container');
+    const btn = document.getElementById('flipPreviewBtn');
+    if (container && btn) {
+        btn.addEventListener('click', () => {
+            container.classList.toggle('flipped');
+        });
+    }
 }
 
 // ===== SAUVEGARDE / RESTAURATION DU FORMULAIRE =====
@@ -627,6 +643,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         restoreFormFromSession();
         updateCardPreview();
+        initPreviewFlip();
 
         addMenuHandle();
         initUserMenu();
