@@ -9,6 +9,7 @@ let currentAgent = null;
 let clients = [];
 let contracts = [];
 let recentMessages = [];
+let commissionsChart = null;
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -142,6 +143,7 @@ async function loadAgentData() {
             loadLicenseStatus()
         ]);
         updateStatsAndLists();
+        initCommissionsChart();
     } catch (err) {
         console.error('Erreur chargement données:', err);
         showToast('Erreur lors du chargement des données', 'error');
@@ -287,6 +289,54 @@ function updateStatsAndLists() {
     document.getElementById('recentClientsList').innerHTML = clientsHtml || '<p>Aucun joueur récent</p>';
 }
 
+// ===== GRAPHIQUE =====
+function initCommissionsChart() {
+    const ctx = document.getElementById('commissionsChart').getContext('2d');
+    if (commissionsChart) commissionsChart.destroy();
+
+    // Grouper les commissions par mois
+    const monthly = {};
+    contracts.forEach(c => {
+        if (c.created_at) {
+            const date = new Date(c.created_at);
+            const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
+            monthly[key] = (monthly[key] || 0) + (c.commission || 0);
+        }
+    });
+
+    const sortedKeys = Object.keys(monthly).sort();
+    const labels = sortedKeys.map(k => {
+        const [y, m] = k.split('-');
+        return `${m}/${y}`;
+    });
+    const data = sortedKeys.map(k => monthly[k]);
+
+    commissionsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Commissions (FCFA)',
+                data: data,
+                borderColor: '#551B8C',
+                backgroundColor: 'rgba(85,27,140,0.1)',
+                tension: 0.4,
+                pointBackgroundColor: '#FFCC00'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}
+
 // ===== UPLOAD AVATAR =====
 document.getElementById('fileInput').addEventListener('change', async (e) => {
     const file = e.target.files[0];
@@ -374,8 +424,6 @@ function initSidebar() {
     const overlay = document.getElementById('sidebarOverlay');
     const menuHandle = document.getElementById('menuHandle');
 
-    if (!menuBtn || !sidebar || !closeBtn || !overlay) return;
-
     function openSidebar() {
         sidebar.classList.add('active');
         overlay.classList.add('active');
@@ -385,10 +433,10 @@ function initSidebar() {
         overlay.classList.remove('active');
     }
 
-    menuBtn.addEventListener('click', openSidebar);
+    if (menuBtn) menuBtn.addEventListener('click', openSidebar);
     if (menuHandle) menuHandle.addEventListener('click', openSidebar);
-    closeBtn.addEventListener('click', closeSidebarFunc);
-    overlay.addEventListener('click', closeSidebarFunc);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
+    if (overlay) overlay.addEventListener('click', closeSidebarFunc);
 
     // Swipe avec correction
     let touchStartX = 0, touchStartY = 0, touchEndX = 0;
