@@ -135,7 +135,9 @@ body {
 .chart-card h3 i { color: var(--gold); }
 .recent-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .recent-card { background: white; border-radius: var(--border-radius); padding: 20px; box-shadow: var(--shadow); border: 1px solid var(--light-gray); }
-.recent-card h3 { color: var(--primary); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; font-size: 1.1rem; }
+.recen
+
+t-card h3 { color: var(--primary); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; font-size: 1.1rem; }
 .recent-card h3 i { color: var(--gold); }
 .recent-list { max-height: 250px; overflow-y: auto; padding-right: 5px; }
 .recent-list::-webkit-scrollbar { width: 5px; }
@@ -184,3 +186,16 @@ body {
 @media (max-width: 1200px) { .dashboard-container { grid-template-columns: 240px 1fr; } .stats-grid { grid-template-columns: repeat(2, 1fr); } .recent-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 900px) { .dashboard-container { grid-template-columns: 1fr; } .profile-card { position: static; } .menu-toggle { display: block; } .user-name { display: none; } .stats-grid { grid-template-columns: repeat(2, 1fr); } .recent-grid { grid-template-columns: 1fr; } .welcome-header { flex-direction: column; align-items: flex-start; } }
 @media (max-width: 600px) { .stats-grid { grid-template-columns: 1fr; } .quick-info { flex-direction: column; gap: 10px; } }
+
+
+/* Ajout pour l'état vide du graphique */
+.chart-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    background: var(--bg-light);
+    border-radius: 10px;
+    color: var(--gray);
+    font-style: italic;
+}
