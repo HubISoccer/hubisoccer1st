@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseMessages = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseParrainsSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -20,6 +20,8 @@ let archivedConversationIds = new Set();
 let blockedUserIds = new Set();
 let isUploading = false;
 let showArchived = false;
+let selectedMessages = new Set();
+let selectionMode = false;
 
 // Variables pour l'enregistrement audio
 let mediaRecorder = null;
@@ -65,9 +67,22 @@ function showLoader(show = true) {
     if (loader) loader.style.display = show ? 'flex' : 'none';
 }
 
+// ===== SPINNER UTILITY =====
+async function withButtonSpinner(button, asyncFn) {
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="button-spinner"></span>';
+    try {
+        await asyncFn();
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalText;
+    }
+}
+
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabaseMessages.auth.getSession();
+    const { data: { session }, error } = await supabaseParrainsSpacePrive.auth.getSession();
     if (error || !session) {
         window.location.href = '../public/auth/login.html';
         return null;
@@ -79,7 +94,7 @@ async function checkSession() {
 
 // ===== CHARGEMENT DU PROFIL (depuis profiles) =====
 async function loadProfile() {
-    const { data, error } = await supabaseMessages
+    const { data, error } = await supabaseParrainsSpacePrive
         .from('profiles')
         .select('*')
         .eq('id', currentUser.id)
@@ -100,7 +115,7 @@ let presenceInterval = null;
 
 async function updatePresence() {
     if (!currentProfile) return;
-    const { error } = await supabaseMessages
+    const { error } = await supabaseParrainsSpacePrive
         .from('user_presence')
         .upsert({
             user_id: currentProfile.id,
@@ -121,7 +136,7 @@ function stopPresenceTracking() {
 
 async function setOffline() {
     if (!currentProfile) return;
-    await supabaseMessages
+    await supabaseParrainsSpacePrive
         .from('user_presence')
         .upsert({
             user_id: currentProfile.id,
@@ -136,20 +151,20 @@ async function loadConversations() {
     showLoader(true);
 
     // Récupérer les IDs des conversations archivées
-    const { data: archivedData } = await supabaseMessages
+    const { data: archivedData } = await supabaseParrainsSpacePrive
         .from('archived_conversations')
         .select('conversation_id')
         .eq('user_id', currentProfile.id);
     archivedConversationIds = new Set(archivedData?.map(a => a.conversation_id) || []);
 
     // Récupérer les IDs des utilisateurs bloqués
-    const { data: blockedData } = await supabaseMessages
+    const { data: blockedData } = await supabaseParrainsSpacePrive
         .from('blocked_users')
         .select('blocked_id')
         .eq('blocker_id', currentProfile.id);
     blockedUserIds = new Set(blockedData?.map(b => b.blocked_id) || []);
 
-    const { data, error } = await supabaseMessages
+    const { data, error } = await supabaseParrainsSpacePrive
         .from('conversations')
         .select(`
             id,
@@ -198,7 +213,7 @@ async function loadConversations() {
     // Charger les statuts en ligne des contacts
     const contactIds = conversations.map(c => c.contactId).filter(Boolean);
     if (contactIds.length > 0) {
-        const { data: presenceData } = await supabaseMessages
+        const { data: presenceData } = await supabaseParrainsSpacePrive
             .from('user_presence')
             .select('user_id, online')
             .in('user_id', contactIds);
@@ -264,7 +279,7 @@ function renderConversations() {
 async function findOrCreateConversationWithUser(userId) {
     console.log('Recherche/création conversation avec utilisateur', userId);
 
-    const { data: existingConv, error: searchError } = await supabaseMessages
+    const { data: existingConv, error: searchError } = await supabaseParrainsSpacePrive
         .from('conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${userId}),and(participant1_id.eq.${userId},participant2_id.eq.${currentProfile.id})`)
@@ -280,7 +295,7 @@ async function findOrCreateConversationWithUser(userId) {
         return existingConv.id;
     }
 
-    const { data: newConv, error: createError } = await supabaseMessages
+    const { data: newConv, error: createError } = await supabaseParrainsSpacePrive
         .from('conversations')
         .insert([{
             participant1_id: currentProfile.id,
@@ -306,7 +321,7 @@ async function selectConversation(convId) {
 
     const conv = conversations.find(c => c.id === convId);
     if (conv) {
-        const { data: contactProfile } = await supabaseMessages
+        const { data: contactProfile } = await supabaseParrainsSpacePrive
             .from('profiles')
             .select('*')
             .eq('id', conv.contactId)
@@ -319,7 +334,7 @@ async function selectConversation(convId) {
     renderChatHeader();
     renderChatInput();
 
-    messagesSubscription = supabaseMessages
+    messagesSubscription = supabaseParrainsSpacePrive
         .channel(`messages:${convId}`)
         .on('postgres_changes', {
             event: 'INSERT',
@@ -345,7 +360,7 @@ async function selectConversation(convId) {
 async function loadMessages(convId) {
     console.log('Chargement des messages pour conversation', convId);
     showLoader(true);
-    const { data, error } = await supabaseMessages
+    const { data, error } = await supabaseParrainsSpacePrive
         .from('messages')
         .select(`
             id,
@@ -355,7 +370,7 @@ async function loadMessages(convId) {
             attachment_path,
             reply_to_id,
             created_at,
-            reply:reply_to_id (content, attachment_url)
+            is_read
         `)
         .eq('conversation_id', convId)
         .order('created_at', { ascending: true });
@@ -366,7 +381,20 @@ async function loadMessages(convId) {
         return;
     }
 
-    renderMessages(data);
+    // Charger les messages cités séparément
+    const replyIds = data.filter(m => m.reply_to_id).map(m => m.reply_to_id);
+    let repliesMap = new Map();
+    if (replyIds.length > 0) {
+        const { data: replies, error: replyError } = await supabaseParrainsSpacePrive
+            .from('messages')
+            .select('id, content, attachment_url')
+            .in('id', replyIds);
+        if (!replyError) {
+            replies.forEach(r => repliesMap.set(r.id, r));
+        }
+    }
+
+    renderMessages(data, repliesMap);
     showLoader(false);
 }
 
@@ -401,7 +429,7 @@ async function getSignedUrl(path, expiresIn = 3600) {
     const parts = path.split('/');
     const bucket = parts[0];
     const fileName = parts.slice(1).join('/');
-    const { data, error } = await supabaseMessages.storage
+    const { data, error } = await supabaseParrainsSpacePrive.storage
         .from(bucket)
         .createSignedUrl(fileName, expiresIn);
     if (error) {
@@ -412,7 +440,7 @@ async function getSignedUrl(path, expiresIn = 3600) {
 }
 
 // ===== RENDU DES MESSAGES =====
-function renderMessages(messages) {
+function renderMessages(messages, repliesMap = new Map()) {
     const area = document.getElementById('chatMessagesArea');
     if (!area) return;
     let html = '';
@@ -420,10 +448,13 @@ function renderMessages(messages) {
         const isMe = msg.sender_id === currentProfile.id;
         const time = formatMessageDate(msg.created_at);
         let replyHtml = '';
-        if (msg.reply) {
-            const replyContent = msg.reply.content ? `<span>${msg.reply.content}</span>` : '';
-            const replyAttachment = msg.reply.attachment_url ? `<i class="fas fa-image"></i> Image` : '';
-            replyHtml = `<div class="reply-quote">${replyContent} ${replyAttachment}</div>`;
+        if (msg.reply_to_id) {
+            const replied = repliesMap.get(msg.reply_to_id);
+            if (replied) {
+                const replyContent = replied.content ? `<span>${replied.content}</span>` : '';
+                const replyAttachment = replied.attachment_url ? `<i class="fas fa-image"></i> Image` : '';
+                replyHtml = `<div class="reply-quote">${replyContent} ${replyAttachment}</div>`;
+            }
         }
         let attachmentHtml = '';
         let fileType = null;
@@ -442,14 +473,18 @@ function renderMessages(messages) {
                 attachmentHtml = `<div class="message-attachment"><a href="${msg.attachment_url}" target="_blank">Fichier joint</a></div>`;
             }
         }
+        const selectedClass = selectedMessages.has(msg.id) ? 'selected' : '';
         html += `
-            <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}">
+            <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'} ${selectedClass}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}" onclick="handleMessageClick(event, ${msg.id})">
                 ${replyHtml}
                 ${attachmentHtml}
                 <div class="message-content">${msg.content || ''}</div>
                 <span class="message-time">${time}</span>
                 <div class="message-actions">
                     <button class="message-action" onclick="event.stopPropagation(); showContextMenu(event, ${msg.id})"><i class="fas fa-ellipsis-v"></i></button>
+                </div>
+                <div class="read-status">
+                    ${isMe && msg.is_read ? '<i class="fas fa-check-double" style="color:var(--gold);" title="Lu"></i>' : isMe && !msg.is_read ? '<i class="fas fa-check" title="Délivré"></i>' : ''}
                 </div>
             </div>
         `;
@@ -474,6 +509,14 @@ function renderMessages(messages) {
                 container.innerHTML = `<a href="${signedUrl}" target="_blank">Fichier joint</a>`;
             }
         }
+    });
+
+    // Marquer les messages comme lus si la conversation est ouverte
+    messages.filter(m => !m.is_read && m.sender_id !== currentProfile.id).forEach(async m => {
+        await supabaseParrainsSpacePrive
+            .from('messages')
+            .update({ is_read: true })
+            .eq('id', m.id);
     });
 }
 
@@ -507,13 +550,16 @@ function appendMessage(msg) {
     }
 
     const msgHtml = `
-        <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}">
+        <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}" onclick="handleMessageClick(event, ${msg.id})">
             ${replyHtml}
             ${attachmentHtml}
             <div class="message-content">${msg.content || ''}</div>
             <span class="message-time">${time}</span>
             <div class="message-actions">
                 <button class="message-action" onclick="event.stopPropagation(); showContextMenu(event, ${msg.id})"><i class="fas fa-ellipsis-v"></i></button>
+            </div>
+            <div class="read-status">
+                ${isMe && msg.is_read ? '<i class="fas fa-check-double" style="color:var(--gold);" title="Lu"></i>' : isMe && !msg.is_read ? '<i class="fas fa-check" title="Délivré"></i>' : ''}
             </div>
         </div>
     `;
@@ -545,6 +591,71 @@ function updateConversationLastMessage(convId, msg) {
         conv.lastTime = msg.created_at;
         renderConversations();
     }
+}
+
+// ===== GESTION DE LA SÉLECTION MULTIPLE =====
+function handleMessageClick(event, msgId) {
+    if (selectionMode) {
+        event.preventDefault();
+        event.stopPropagation();
+        const msgElement = document.querySelector(`[data-msg-id="${msgId}"]`);
+        if (selectedMessages.has(msgId)) {
+            selectedMessages.delete(msgId);
+            msgElement.classList.remove('selected');
+        } else {
+            selectedMessages.add(msgId);
+            msgElement.classList.add('selected');
+        }
+        updateSelectionBar();
+    }
+}
+
+function updateSelectionBar() {
+    let selectionBar = document.getElementById('selectionBar');
+    if (!selectionBar) {
+        selectionBar = document.createElement('div');
+        selectionBar.id = 'selectionBar';
+        selectionBar.className = 'selection-bar';
+        selectionBar.innerHTML = `
+            <span id="selectedCount">0</span> message(s) sélectionné(s)
+            <button onclick="deleteSelectedMessages()"><i class="fas fa-trash-alt"></i> Supprimer</button>
+            <button onclick="cancelSelection()">Annuler</button>
+        `;
+        document.body.appendChild(selectionBar);
+    }
+    const count = selectedMessages.size;
+    selectionBar.style.display = count > 0 ? 'flex' : 'none';
+    document.getElementById('selectedCount').textContent = count;
+}
+
+function cancelSelection() {
+    selectionMode = false;
+    selectedMessages.clear();
+    document.querySelectorAll('.message-bubble.selected').forEach(el => el.classList.remove('selected'));
+    document.getElementById('selectionBar')?.remove();
+}
+
+async function deleteSelectedMessages() {
+    if (selectedMessages.size === 0) return;
+    if (!confirm(`Supprimer définitivement ${selectedMessages.size} message(s) ?`)) return;
+    const forEveryone = confirm('Supprimer pour tous les participants ? (Annuler pour ne supprimer que pour vous)');
+    if (forEveryone) {
+        for (let msgId of selectedMessages) {
+            await supabaseParrainsSpacePrive
+                .from('messages')
+                .delete()
+                .eq('id', msgId);
+        }
+        showToast('Messages supprimés pour tous', 'success');
+        await loadMessages(currentConversationId);
+    } else {
+        // Suppression locale uniquement (pas de persistance)
+        selectedMessages.forEach(msgId => {
+            document.querySelector(`[data-msg-id="${msgId}"]`)?.remove();
+        });
+        showToast('Messages supprimés localement', 'success');
+    }
+    cancelSelection();
 }
 
 // ===== GESTION DES FICHIERS AVEC PRÉVISUALISATION =====
@@ -738,12 +849,13 @@ async function insertMessage(conversationId, content, attachmentUrl, attachmentP
         conversation_id: conversationId,
         sender_id: currentProfile.id,
         content: content,
-        reply_to_id: replyingTo ? replyingTo.id : null
+        reply_to_id: replyingTo ? replyingTo.id : null,
+        is_read: false
     };
     if (attachmentUrl) insertData.attachment_url = attachmentUrl;
     if (attachmentPath) insertData.attachment_path = attachmentPath;
 
-    const { data: newMsg, error: msgError } = await supabaseMessages
+    const { data: newMsg, error: msgError } = await supabaseParrainsSpacePrive
         .from('messages')
         .insert(insertData)
         .select()
@@ -756,7 +868,7 @@ async function insertMessage(conversationId, content, attachmentUrl, attachmentP
     }
 
     const lastContent = attachmentUrl || attachmentPath ? '📎 Fichier' : content;
-    await supabaseMessages
+    await supabaseParrainsSpacePrive
         .from('conversations')
         .update({
             last_message_content: lastContent,
@@ -895,6 +1007,12 @@ async function sendRecordedAudio() {
         return;
     }
 
+    // Limite de durée : 10 minutes
+    if (recordingSeconds > 600) {
+        showToast('L\'enregistrement ne doit pas dépasser 10 minutes', 'warning');
+        return;
+    }
+
     isUploading = true;
     const sendBtn = document.querySelector('.send-btn');
     sendBtn.classList.add('loading');
@@ -934,7 +1052,7 @@ async function sendRecordedAudio() {
 async function deleteMessage(msgId, forEveryone = false) {
     if (!confirm('Supprimer ce message ?')) return;
     if (forEveryone) {
-        const { error } = await supabaseMessages
+        const { error } = await supabaseParrainsSpacePrive
             .from('messages')
             .delete()
             .eq('id', msgId);
@@ -945,8 +1063,8 @@ async function deleteMessage(msgId, forEveryone = false) {
             await loadMessages(currentConversationId);
         }
     } else {
-        const msgElement = document.querySelector(`[data-msg-id="${msgId}"]`);
-        if (msgElement) msgElement.remove();
+        // Suppression locale uniquement
+        document.querySelector(`[data-msg-id="${msgId}"]`)?.remove();
         showToast('Message supprimé (visible seulement pour vous)', 'success');
     }
 }
@@ -973,15 +1091,18 @@ function showContextMenu(event, msgId) {
     const menu = document.getElementById('messageContextMenu');
     const msgElement = document.querySelector(`[data-msg-id="${msgId}"]`);
     const senderId = msgElement?.dataset.sender;
-    const isMe = senderId == currentProfile.id;
+    const isMe = senderId === currentProfile.id;
 
     const deleteForEveryoneOption = document.getElementById('deleteForEveryoneOption');
     if (deleteForEveryoneOption) {
         deleteForEveryoneOption.style.display = isMe ? 'block' : 'none';
     }
 
-    menu.style.left = event.pageX + 'px';
-    menu.style.top = event.pageY + 'px';
+    // Ajuster la position pour ne pas sortir de l'écran
+    const x = Math.min(event.pageX, window.innerWidth - menu.offsetWidth - 10);
+    const y = Math.min(event.pageY, window.innerHeight - menu.offsetHeight - 10);
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
     menu.style.display = 'block';
 
     document.addEventListener('click', function closeMenu(e) {
@@ -1019,7 +1140,7 @@ function deleteForEveryone() {
 // ===== ACTIONS SUR LA CONVERSATION =====
 async function archiveConversation() {
     if (!currentConversationId || !currentProfile) return;
-    const { data: existing, error: checkError } = await supabaseMessages
+    const { data: existing, error: checkError } = await supabaseParrainsSpacePrive
         .from('archived_conversations')
         .select('id')
         .eq('user_id', currentProfile.id)
@@ -1034,7 +1155,7 @@ async function archiveConversation() {
         showToast('Conversation déjà archivée', 'info');
         return;
     }
-    const { error } = await supabaseMessages
+    const { error } = await supabaseParrainsSpacePrive
         .from('archived_conversations')
         .insert([{
             user_id: currentProfile.id,
@@ -1053,7 +1174,7 @@ async function archiveConversation() {
 async function blockUser() {
     if (!currentContact || !currentProfile) return;
     if (!confirm(`Bloquer ${currentContact.full_name} ? Vous ne recevrez plus de messages de sa part.`)) return;
-    const { data: existing, error: checkError } = await supabaseMessages
+    const { data: existing, error: checkError } = await supabaseParrainsSpacePrive
         .from('blocked_users')
         .select('id')
         .eq('blocker_id', currentProfile.id)
@@ -1068,7 +1189,7 @@ async function blockUser() {
         showToast('Cet utilisateur est déjà bloqué', 'info');
         return;
     }
-    const { error } = await supabaseMessages
+    const { error } = await supabaseParrainsSpacePrive
         .from('blocked_users')
         .insert([{
             blocker_id: currentProfile.id,
@@ -1092,7 +1213,7 @@ function closeDeleteConvModal() {
 }
 async function confirmDeleteConversation() {
     if (!currentConversationId) return;
-    const { error: msgError } = await supabaseMessages
+    const { error: msgError } = await supabaseParrainsSpacePrive
         .from('messages')
         .delete()
         .eq('conversation_id', currentConversationId);
@@ -1100,7 +1221,7 @@ async function confirmDeleteConversation() {
         showToast('Erreur lors de la suppression des messages', 'error');
         return;
     }
-    const { error: convError } = await supabaseMessages
+    const { error: convError } = await supabaseParrainsSpacePrive
         .from('conversations')
         .delete()
         .eq('id', currentConversationId);
@@ -1295,7 +1416,7 @@ function openStickerPicker() {
 // ===== GESTION DES UTILISATEURS BLOQUÉS =====
 async function loadBlockedUsers() {
     if (!currentProfile) return [];
-    const { data, error } = await supabaseMessages
+    const { data, error } = await supabaseParrainsSpacePrive
         .from('blocked_users')
         .select('blocked_id')
         .eq('blocker_id', currentProfile.id);
@@ -1307,7 +1428,7 @@ async function loadBlockedUsers() {
     const blockedIds = data.map(b => b.blocked_id);
     if (blockedIds.length === 0) return [];
 
-    const { data: profiles, error: profilesError } = await supabaseMessages
+    const { data: profiles, error: profilesError } = await supabaseParrainsSpacePrive
         .from('profiles')
         .select('id, full_name, avatar_url')
         .in('id', blockedIds);
@@ -1348,7 +1469,7 @@ function closeBlockedUsersModal() {
 
 async function unblockUser(userId) {
     if (!currentProfile || !userId) return;
-    const { error } = await supabaseMessages
+    const { error } = await supabaseParrainsSpacePrive
         .from('blocked_users')
         .delete()
         .eq('blocker_id', currentProfile.id)
@@ -1368,7 +1489,7 @@ async function ensureSupportConversation() {
     console.log('Création conversation support...');
     let supportProfileId;
 
-    const { data: supportData, error: searchError } = await supabaseMessages
+    const { data: supportData, error: searchError } = await supabaseParrainsSpacePrive
         .from('profiles')
         .select('id')
         .eq('username', 'SUPPORT')
@@ -1380,11 +1501,11 @@ async function ensureSupportConversation() {
     }
 
     if (!supportData) {
-        // Créer un profil support (UUID fixe ou auto-généré)
-        const { data: newSupport, error: insertError } = await supabaseMessages
+        // Créer un profil support
+        const { data: newSupport, error: insertError } = await supabaseParrainsSpacePrive
             .from('profiles')
             .insert([{
-                id: '00000000-0000-0000-0000-000000000001', // UUID fixe, ou laisser auto-généré
+                id: crypto.randomUUID(), // générer un UUID
                 username: 'SUPPORT',
                 full_name: 'Support HubISoccer',
                 avatar_url: 'img/user-default.jpg'
@@ -1401,7 +1522,7 @@ async function ensureSupportConversation() {
         supportProfileId = supportData.id;
     }
 
-    const { data: existingConv, error: convCheckError } = await supabaseMessages
+    const { data: existingConv, error: convCheckError } = await supabaseParrainsSpacePrive
         .from('conversations')
         .select('id')
         .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${supportProfileId}),and(participant1_id.eq.${supportProfileId},participant2_id.eq.${currentProfile.id})`)
@@ -1417,7 +1538,7 @@ async function ensureSupportConversation() {
         return;
     }
 
-    const { data: newConv, error: convError } = await supabaseMessages
+    const { data: newConv, error: convError } = await supabaseParrainsSpacePrive
         .from('conversations')
         .insert([{
             participant1_id: currentProfile.id,
@@ -1431,7 +1552,7 @@ async function ensureSupportConversation() {
         return;
     }
 
-    const { error: msgError } = await supabaseMessages
+    const { error: msgError } = await supabaseParrainsSpacePrive
         .from('messages')
         .insert([{
             conversation_id: newConv.id,
@@ -1460,7 +1581,7 @@ function initSearch() {
 
 // ===== SOUSCRIPTION AUX NOUVELLES CONVERSATIONS =====
 function subscribeToNewConversations() {
-    conversationsSubscription = supabaseMessages
+    conversationsSubscription = supabaseParrainsSpacePrive
         .channel('conversations_changes')
         .on('postgres_changes', {
             event: 'INSERT',
@@ -1485,10 +1606,10 @@ document.addEventListener('touchstart', (e) => {
 
 document.addEventListener('touchend', (e) => {
     touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
+    handleSwipe(e);
 }, false);
 
-function handleSwipe() {
+function handleSwipe(e) {
     const leftSidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const diff = touchEndX - touchStartX;
@@ -1497,6 +1618,7 @@ function handleSwipe() {
         leftSidebar?.classList.add('active');
         overlay?.classList.add('active');
     } else if (diff < -swipeThreshold && leftSidebar?.classList.contains('active')) {
+        if (e.cancelable) e.preventDefault();
         leftSidebar?.classList.remove('active');
         overlay?.classList.remove('active');
     }
@@ -1521,6 +1643,7 @@ function initSidebar() {
     const sidebar = document.getElementById('sidebar');
     const closeBtn = document.getElementById('closeSidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const menuHandle = document.getElementById('menuHandle'); // pour le swipe
 
     function openSidebar() {
         sidebar?.classList.add('active');
@@ -1532,6 +1655,7 @@ function initSidebar() {
     }
 
     menuBtn?.addEventListener('click', openSidebar);
+    if (menuHandle) menuHandle.addEventListener('click', openSidebar);
     closeBtn?.addEventListener('click', closeSidebarFunc);
     overlay?.addEventListener('click', closeSidebarFunc);
 }
@@ -1542,7 +1666,7 @@ function initLogout() {
         link.addEventListener('click', async (e) => {
             e.preventDefault();
             await setOffline();
-            await supabaseMessages.auth.signOut();
+            await supabaseParrainsSpacePrive.auth.signOut();
             window.location.href = '../index.html';
         });
     });
@@ -1552,12 +1676,12 @@ function initLogout() {
 function getTargetUserIdFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
     const to = urlParams.get('to');
-    return to;
+    return to; // c'est un UUID
 }
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation messages (unifié)');
+    console.log('🚀 Initialisation messages (parrain)');
 
     const user = await checkSession();
     if (!user) return;
@@ -1572,17 +1696,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     subscribeToNewConversations();
 
-    if (targetUserId) {
-        // Le paramètre to est un UUID (provenant de profiles.id)
-        const actualId = targetUserId; // c'est déjà un UUID
-        if (actualId && actualId !== currentProfile.id) {
-            const convId = await findOrCreateConversationWithUser(actualId);
-            if (convId) {
-                await loadConversations();
-                await selectConversation(convId);
-            } else {
-                showToast('Impossible de créer la conversation', 'error');
-            }
+    if (targetUserId && targetUserId !== currentProfile.id) {
+        const convId = await findOrCreateConversationWithUser(targetUserId);
+        if (convId) {
+            await loadConversations();
+            await selectConversation(convId);
+        } else {
+            showToast('Impossible de créer la conversation', 'error');
         }
     }
 
@@ -1612,6 +1732,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     initUserMenu();
     initSidebar();
     initLogout();
+
+    document.getElementById('langSelect')?.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+    });
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
@@ -1657,7 +1782,7 @@ function toggleArchive() {
 }
 
 async function unarchiveConversation(convId) {
-    const { error } = await supabaseMessages
+    const { error } = await supabaseParrainsSpacePrive
         .from('archived_conversations')
         .delete()
         .eq('user_id', currentProfile.id)
