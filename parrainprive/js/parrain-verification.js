@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseParrainPrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseParrainsSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
@@ -14,8 +14,13 @@ let signatureDataURL = null;
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
-    const container = document.getElementById('toastContainer');
-    if (!container) return;
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.innerHTML = `
@@ -45,16 +50,16 @@ function showLoader(show = true) {
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
     try {
-        const { data: { session }, error } = await supabaseParrainPrive.auth.getSession();
+        const { data: { session }, error } = await supabaseParrainsSpacePrive.auth.getSession();
         if (error || !session) {
-            window.location.href = 'auth/login.html';
+            window.location.href = '../public/auth/login.html';
             return null;
         }
         currentUser = session.user;
         return currentUser;
     } catch (err) {
         console.error('❌ Erreur checkSession :', err);
-        window.location.href = 'auth/login.html';
+        window.location.href = '../public/auth/login.html';
         return null;
     }
 }
@@ -66,7 +71,7 @@ async function loadParrainProfile() {
         return;
     }
     try {
-        const { data, error } = await supabaseParrainPrive
+        const { data, error } = await supabaseParrainsSpacePrive
             .from('parrain_profiles')
             .select('*')
             .eq('user_id', currentUser.id)
@@ -80,6 +85,7 @@ async function loadParrainProfile() {
             currentParrain = data;
         }
         document.getElementById('userName').textContent = currentParrain ? `${currentParrain.first_name} ${currentParrain.last_name}` : 'Parrain';
+        document.getElementById('userAvatar').src = currentParrain?.avatar_url || 'img/user-default.jpg';
         console.log('✅ Profil utilisé :', currentParrain);
     } catch (err) {
         console.error('❌ Exception loadParrainProfile :', err);
@@ -98,7 +104,7 @@ async function loadDocuments() {
         ];
 
         if (currentParrain?.id) {
-            const { data: existingDocs, error } = await supabaseParrainPrive
+            const { data: existingDocs, error } = await supabaseParrainsSpacePrive
                 .from('parrain_documents')
                 .select('*')
                 .eq('parrain_id', currentParrain.id);
@@ -177,13 +183,19 @@ async function uploadDocument(docId) {
         const file = e.target.files[0];
         if (!file) return;
 
+        // Limite de taille : 5 Mo
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Le fichier ne doit pas dépasser 5 Mo', 'warning');
+            return;
+        }
+
         showLoader(true);
         try {
             const fileExt = file.name.split('.').pop();
             const fileName = `${currentUser.id}_${docId}_${Date.now()}.${fileExt}`;
             const filePath = `parrain_docs/${fileName}`;
 
-            const { error: uploadError } = await supabaseParrainPrive.storage
+            const { error: uploadError } = await supabaseParrainsSpacePrive.storage
                 .from('parrain-documents')
                 .upload(filePath, file);
 
@@ -192,22 +204,21 @@ async function uploadDocument(docId) {
                 return;
             }
 
-            // Récupération correcte de l'URL publique
-            const { data: urlData } = supabaseParrainPrive.storage
+            const { data: urlData } = supabaseParrainsSpacePrive.storage
                 .from('parrain-documents')
                 .getPublicUrl(filePath);
-            const publicUrl = urlData.publicUrl;  // Note: c'est data.publicUrl
+            const publicUrl = urlData.publicUrl;
             if (!publicUrl) throw new Error('URL publique non générée');
 
             const doc = documentsList.find(d => d.id === docId);
             if (doc.request_id) {
-                const { error: updateError } = await supabaseParrainPrive
+                const { error: updateError } = await supabaseParrainsSpacePrive
                     .from('parrain_documents')
                     .update({ url: publicUrl, file_name: file.name, statut: 'pending' })
                     .eq('id', doc.request_id);
                 if (updateError) throw updateError;
             } else {
-                const { error: insertError } = await supabaseParrainPrive
+                const { error: insertError } = await supabaseParrainsSpacePrive
                     .from('parrain_documents')
                     .insert([{
                         parrain_id: currentParrain.id,
@@ -332,18 +343,18 @@ async function submitLicense(e) {
         const signatureFileName = `${currentUser.id}_signature_${Date.now()}.png`;
         const signaturePath = `signatures/${signatureFileName}`;
 
-        const { error: uploadError } = await supabaseParrainPrive.storage
+        const { error: uploadError } = await supabaseParrainsSpacePrive.storage
             .from('parrain-documents')
             .upload(signaturePath, signatureBlob);
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabaseParrainPrive.storage
+        const { data: urlData } = supabaseParrainsSpacePrive.storage
             .from('parrain-documents')
             .getPublicUrl(signaturePath);
         const signatureUrl = urlData.publicUrl;
         if (!signatureUrl) throw new Error('URL de signature non générée');
 
-        const { data, error } = await supabaseParrainPrive
+        const { data, error } = await supabaseParrainsSpacePrive
             .from('parrain_license_requests')
             .insert([{
                 parrain_id: currentParrain.id,
@@ -377,7 +388,7 @@ async function submitLicense(e) {
 async function checkLicenseStatus() {
     if (!currentParrain || !currentParrain.id) return;
     try {
-        const { data, error } = await supabaseParrainPrive
+        const { data, error } = await supabaseParrainsSpacePrive
             .from('parrain_license_requests')
             .select('*')
             .eq('parrain_id', currentParrain.id)
@@ -470,7 +481,7 @@ function updateCardPreview() {
                         <span class="signature-label">Cachet officiel</span>
                     </div>
                 </div>
-                <div class="id-number">ID: ${currentParrain?.id || '---'}</div>
+                <div class="id-number">ID: ${currentParrain?.hub_id || currentParrain?.id || '---'}</div>
             </div>
         </div>
     `;
@@ -513,33 +524,71 @@ function initUserMenu() {
     document.addEventListener('click', () => dropdown.classList.remove('show'));
 }
 
+function addMenuHandle() {
+    if (document.getElementById('menuHandle')) return;
+    const handle = document.createElement('div');
+    handle.id = 'menuHandle';
+    handle.className = 'menu-handle';
+    handle.setAttribute('aria-label', 'Ouvrir le menu');
+    handle.innerHTML = '<span></span>';
+    document.body.appendChild(handle);
+}
+
 function initSidebar() {
     const menuBtn = document.getElementById('menuToggle');
     const sidebar = document.getElementById('leftSidebar');
     const closeBtn = document.getElementById('closeLeftSidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const menuHandle = document.getElementById('menuHandle');
 
     if (!menuBtn || !sidebar || !closeBtn || !overlay) return;
 
-    menuBtn.addEventListener('click', () => {
+    function openSidebar() {
         sidebar.classList.add('active');
         overlay.classList.add('active');
-    });
-    closeBtn.addEventListener('click', () => {
+    }
+    function closeSidebarFunc() {
         sidebar.classList.remove('active');
         overlay.classList.remove('active');
-    });
-    overlay.addEventListener('click', () => {
-        sidebar.classList.remove('active');
-        overlay.classList.remove('active');
-    });
+    }
+
+    menuBtn.addEventListener('click', openSidebar);
+    if (menuHandle) menuHandle.addEventListener('click', openSidebar);
+    closeBtn.addEventListener('click', closeSidebarFunc);
+    overlay.addEventListener('click', closeSidebarFunc);
+
+    // Swipe avec correction
+    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+    const swipeThreshold = 50;
+
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diffX = touchEndX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
+
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+            if (e.cancelable) {
+                e.preventDefault();
+            }
+            if (diffX > 0 && touchStartX < 50) {
+                openSidebar();
+            } else if (diffX < 0 && sidebar.classList.contains('active')) {
+                closeSidebarFunc();
+            }
+        }
+    }, { passive: false });
 }
 
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabaseParrainPrive.auth.signOut().then(() => {
+            supabaseParrainsSpacePrive.auth.signOut().then(() => {
                 window.location.href = '../index.html';
             });
         });
@@ -579,9 +628,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         restoreFormFromSession();
         updateCardPreview();
 
+        addMenuHandle();
         initUserMenu();
         initSidebar();
         initLogout();
+
+        document.getElementById('langSelect')?.addEventListener('change', (e) => {
+            const lang = e.target.value;
+            showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+        });
 
         document.getElementById('languageLink')?.addEventListener('click', (e) => {
             e.preventDefault();
