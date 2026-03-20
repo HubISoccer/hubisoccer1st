@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Suivi Tournoi (Live) | HubISoccer - Coach</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/coach-tournaments.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar et sidebar identiques -->
+    <main class="tournaments-main">
+        <div class="tournaments-container">
+            <div class="tournament-header">
+                <h1 class="page-title"><i class="fas fa-trophy"></i> Suivi Tournoi (Live)</h1>
+                <button class="btn-select-tournament" id="openTournamentModal">
+                    <i class="fas fa-chevron-down"></i> Changer de tournoi
+                </button>
+            </div>
+            <div class="live-tournament" id="liveTournament"></div>
+        </div>
+    </main>
+
+    <!-- Modales -->
+    <div id="tournamentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Tournois en cours</h2>
+                <span class="close-modal" onclick="closeTournamentModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="tournament-list" id="tournamentList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="playersModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Joueurs sur le terrain</h2>
+                <span class="close-modal" onclick="closePlayersModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="players-list" id="playersList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+</body>
+</html>
