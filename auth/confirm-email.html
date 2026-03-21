@@ -7,15 +7,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Inter', sans-serif;
             background: #ffffff;
-            color: #1a1a2e;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -31,20 +26,9 @@
             box-shadow: 0 30px 60px rgba(0,0,0,0.05);
             border: 1px solid rgba(107,59,164,0.15);
         }
-        .icon {
-            font-size: 64px;
-            color: #6b3ba4;
-            margin-bottom: 24px;
-        }
-        h2 {
-            font-size: 1.8rem;
-            margin-bottom: 16px;
-            color: #1e1e2a;
-        }
-        p {
-            color: #5a5a72;
-            margin-bottom: 24px;
-        }
+        .icon { font-size: 64px; color: #6b3ba4; margin-bottom: 24px; }
+        h2 { font-size: 1.8rem; margin-bottom: 16px; color: #1e1e2a; }
+        p { color: #5a5a72; margin-bottom: 24px; }
         .btn {
             display: inline-block;
             padding: 12px 28px;
@@ -56,10 +40,7 @@
             transition: all 0.3s;
             margin-top: 16px;
         }
-        .btn:hover {
-            background: #552e84;
-            transform: translateY(-2px);
-        }
+        .btn:hover { background: #552e84; transform: translateY(-2px); }
         .loader {
             border: 3px solid #f3f3f3;
             border-top: 3px solid #6b3ba4;
@@ -69,9 +50,15 @@
             animation: spin 1s linear infinite;
             margin: 20px auto;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .error-details {
+            font-size: 0.8rem;
+            color: #e53e3e;
+            background: #fff5f5;
+            padding: 12px;
+            border-radius: 16px;
+            margin-top: 20px;
+            word-break: break-all;
         }
     </style>
 </head>
@@ -105,20 +92,32 @@
                 type = queryParams.get('type');
             }
 
+            // Debug : afficher ce qu'on a trouvé
+            console.log('Token trouvé :', token);
+            console.log('Type trouvé :', type);
+            console.log('URL complète :', window.location.href);
+
             if (!token) {
-                showError('Lien de confirmation invalide ou expiré.');
+                showError('Lien de confirmation invalide : aucun token détecté.');
                 return;
             }
 
+            // Timeout de 15 secondes pour éviter le blocage
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Délai dépassé (15s)')), 15000);
+            });
+
             try {
-                const { error } = await supabase.auth.verifyOtp({
+                const verificationPromise = supabase.auth.verifyOtp({
                     token_hash: token,
                     type: type === 'recovery' ? 'recovery' : 'signup'
                 });
+                const { error } = await Promise.race([verificationPromise, timeoutPromise]);
                 if (error) throw error;
                 showSuccess();
             } catch (err) {
-                showError(err.message);
+                console.error('Erreur confirmation :', err);
+                showError(err.message || 'Erreur inconnue lors de la confirmation');
             }
         }
 
@@ -134,7 +133,12 @@
             document.querySelector('.loader').style.display = 'none';
             document.querySelector('.icon').innerHTML = '<i class="fas fa-times-circle" style="color: #e53e3e;"></i>';
             document.querySelector('h2').innerText = 'Erreur de confirmation';
-            document.querySelector('p').innerText = msg || 'Une erreur est survenue. Veuillez contacter l\'administrateur.';
+            document.querySelector('p').innerText = msg || 'Une erreur est survenue.';
+            // Ajoute des détails techniques si disponible
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-details';
+            errorDiv.innerText = `Détail technique : ${msg}`;
+            document.getElementById('message').appendChild(errorDiv);
             document.getElementById('linkContainer').style.display = 'block';
         }
 
