@@ -5,7 +5,7 @@ const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUP
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
-let currentProfile = null;
+let currentProfile = null;   // ici, currentProfile contiendra les infos de profiles
 let mediaList = [];
 let currentFilter = 'all';
 
@@ -43,25 +43,25 @@ async function checkSession() {
     try {
         const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
         if (error || !session) {
-            window.location.href = '../public/auth/login.html';
+            window.location.href = '../auth/login.html';
             return null;
         }
         currentUser = session.user;
         return currentUser;
     } catch (err) {
         console.error('❌ Erreur checkSession:', err);
-        window.location.href = '../public/auth/login.html';
+        window.location.href = '../auth/login.html';
         return null;
     }
 }
 
-// ===== CHARGEMENT DU PROFIL =====
+// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
 async function loadProfile() {
     try {
         const { data, error } = await supabasePlayersSpacePrive
-            .from('player_profiles')
-            .select('*')
-            .eq('user_id', currentUser.id)
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .eq('id', currentUser.id)
             .single();
 
         if (error) {
@@ -70,7 +70,7 @@ async function loadProfile() {
             return null;
         }
         currentProfile = data;
-        document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
+        document.getElementById('userName').textContent = currentProfile.full_name || 'Joueur';
         document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
         return currentProfile;
     } catch (err) {
@@ -81,6 +81,7 @@ async function loadProfile() {
 
 // ===== CHARGEMENT DES MÉDIAS =====
 async function loadMedia() {
+    if (!currentProfile) return;
     try {
         const { data, error } = await supabasePlayersSpacePrive
             .from('player_media')
@@ -234,12 +235,12 @@ async function showMediaDetail(mediaId) {
         return;
     }
 
-    // Charger les commentaires avec les infos de l'auteur
+    // Charger les commentaires avec les infos de l'auteur (depuis profiles)
     const { data: comments, error: commentsError } = await supabasePlayersSpacePrive
         .from('media_comments')
         .select(`
             *,
-            author:player_profiles!author_id (nom_complet, avatar_url)
+            author:profiles!author_id (full_name, avatar_url)
         `)
         .eq('media_id', mediaId)
         .order('created_at', { ascending: true });
@@ -264,8 +265,8 @@ async function showMediaDetail(mediaId) {
     const commentsHtml = (comments || []).map(c => `
         <div class="comment">
             <div class="comment-author">
-                <img src="${c.author?.avatar_url || 'img/user-default.jpg'}" alt="${c.author?.nom_complet}">
-                <span>${c.author?.nom_complet || 'Anonyme'}</span>
+                <img src="${c.author?.avatar_url || 'img/user-default.jpg'}" alt="${c.author?.full_name}">
+                <span>${c.author?.full_name || 'Anonyme'}</span>
             </div>
             <div class="comment-text">${c.content}</div>
             <div class="comment-date">${new Date(c.created_at).toLocaleString('fr-FR')}</div>
