@@ -42,19 +42,19 @@ function showToast(message, type = 'info', duration = 3000) {
 async function checkSession() {
     const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
     if (error || !session) {
-        window.location.href = '../public/auth/login.html';
+        window.location.href = '../auth/login.html';
         return null;
     }
     currentUser = session.user;
     return currentUser;
 }
 
-// ===== CHARGEMENT DU PROFIL =====
+// ===== CHARGEMENT DU PROFIL (corrigé vers la table profiles) =====
 async function loadPlayerProfile() {
     const { data, error } = await supabasePlayersSpacePrive
-        .from('player_profiles')
+        .from('profiles')
         .select('*')
-        .eq('user_id', currentUser.id)
+        .eq('id', currentUser.id)
         .single();
 
     if (error) {
@@ -63,7 +63,7 @@ async function loadPlayerProfile() {
         return null;
     }
     playerProfile = data;
-    document.getElementById('userName').textContent = playerProfile.nom_complet || 'Joueur';
+    document.getElementById('userName').textContent = playerProfile.full_name || 'Joueur';
     document.getElementById('userAvatar').src = playerProfile.avatar_url || 'img/user-default.jpg';
     return playerProfile;
 }
@@ -92,7 +92,6 @@ async function loadScoutingData() {
             .from('player_scouting')
             .insert([{
                 player_id: playerProfile.id
-                // Tous les autres champs auront leur valeur par défaut (0 ou NULL)
             }])
             .select()
             .single();
@@ -105,7 +104,7 @@ async function loadScoutingData() {
         scoutingData = newData;
     }
 
-    updateUIWithProfile(); // Met à jour les infos de base depuis player_profiles
+    updateUIWithProfile(); // Met à jour les infos de base depuis profiles
     updateScoutingUI();    // Met à jour tous les attributs
 }
 
@@ -138,12 +137,12 @@ const flagMap = {
     'BF': '🇧🇫', 'TG': '🇹🇬', 'NE': '🇳🇪', 'ML': '🇲🇱', 'GN': '🇬🇳'
 };
 
-// ===== MISE À JOUR DE L'INTERFACE (infos personnelles) =====
+// ===== MISE À JOUR DE L'INTERFACE (infos personnelles depuis profiles) =====
 function updateUIWithProfile() {
     if (!playerProfile) return;
 
     // Nom complet et poste
-    const fullName = playerProfile.nom_complet || '-';
+    const fullName = playerProfile.full_name || '-';
     document.getElementById('playerFullName').textContent = fullName;
     document.getElementById('playerPosition').textContent = playerProfile.position || 'Poste non renseigné';
 
@@ -153,21 +152,21 @@ function updateUIWithProfile() {
     // Téléphone, email, drapeau
     setText('playerPhone', playerProfile.phone || '-');
     setText('playerEmail', playerProfile.email || '-');
-    const countryCode = playerProfile.nationalite || playerProfile.country || '';
+    const countryCode = playerProfile.country || '';
     const flag = flagMap[countryCode] || '🌍';
     document.getElementById('playerCountryFlag').textContent = flag;
     document.getElementById('playerCountryName').textContent = countryCode || '-';
 
-    // Informations de base
-    setText('playerAge', calculateAge(playerProfile.date_naissance));
-    setText('playerHeight', playerProfile.height || playerProfile.taille_cm || '0');
-    setText('playerWeight', playerProfile.poids_kg || '0');
-    setText('playerNationality', playerProfile.nationalite || '-');
-    setText('playerFoot', playerProfile.preferred_foot || playerProfile.pied_fort || '-');
+    // Informations de base (certaines colonnes ne sont pas dans profiles, on les laisse vides)
+    setText('playerAge', calculateAge(playerProfile.date_of_birth));
+    setText('playerHeight', playerProfile.height || '0');
+    setText('playerWeight', playerProfile.weight || '0');
+    setText('playerNationality', playerProfile.nationality || '-');
+    setText('playerFoot', playerProfile.preferred_foot || '-');
     setText('playerClub', playerProfile.club || '-');
 
     // ID HubISoccer (sur la carte de gauche)
-    setText('playerID', `ID: ${playerProfile.hub_id || '-'}`);
+    setText('playerID', `ID: ${playerProfile.hubisoccer_id || '-'}`);
 
     // Avatar
     if (playerProfile.avatar_url) {
@@ -251,7 +250,6 @@ function updateScoutingUI() {
 function updateMainSkills() {
     if (!scoutingData) return;
 
-    // Calcul des moyennes (valeurs sur 100)
     const defense = average([
         scoutingData.technique_marquage,
         scoutingData.mental_agressivite,
@@ -326,7 +324,6 @@ function updateMainSkills() {
         scoutingData.technique_tirs_de_loin
     ]);
 
-    // Mettre à jour les barres et les valeurs
     setSkill('skill_defense', defense);
     setSkill('skill_mental', mental);
     setSkill('skill_physique', physique);
@@ -337,7 +334,6 @@ function updateMainSkills() {
     setSkill('skill_attaque', attaque);
 }
 
-// Fonction utilitaire pour calculer la moyenne (ignore les null/undefined)
 function average(arr) {
     const valid = arr.filter(v => v != null && !isNaN(v));
     if (valid.length === 0) return 0;
@@ -345,12 +341,11 @@ function average(arr) {
     return Math.round(sum / valid.length);
 }
 
-// Met à jour la barre et la valeur (les notes sont sur 100)
 function setSkill(elementId, value) {
     const bar = document.getElementById(elementId);
     const valueSpan = document.getElementById(elementId + '_value');
     if (bar) {
-        bar.style.width = value + '%'; // value est déjà sur 100
+        bar.style.width = value + '%';
     }
     if (valueSpan) valueSpan.textContent = value;
 }
@@ -359,7 +354,6 @@ function setSkill(elementId, value) {
 async function uploadAvatar(file) {
     if (!currentUser || !playerProfile) return;
 
-    // Limite de taille (exemple : 2 Mo)
     if (file.size > 2 * 1024 * 1024) {
         showToast('L\'image ne doit pas dépasser 2 Mo', 'error');
         return;
@@ -385,7 +379,7 @@ async function uploadAvatar(file) {
     const publicUrl = urlData.publicUrl;
 
     const { error: updateError } = await supabasePlayersSpacePrive
-        .from('player_profiles')
+        .from('profiles')
         .update({ avatar_url: publicUrl })
         .eq('id', playerProfile.id);
 
@@ -406,9 +400,9 @@ function triggerUpload() {
 
 // ===== COPIER ID =====
 async function copyID() {
-    if (!playerProfile?.hub_id) return;
+    if (!playerProfile?.hubisoccer_id) return;
     try {
-        await navigator.clipboard.writeText(playerProfile.hub_id);
+        await navigator.clipboard.writeText(playerProfile.hubisoccer_id);
         const span = document.getElementById('playerID');
         const oldText = span.innerText;
         span.innerText = "Copié ! ✅";
@@ -466,7 +460,6 @@ function initSidebar() {
     if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
     if (overlay) overlay.addEventListener('click', closeSidebarFunc);
 
-    // Swipe
     let touchStartX = 0, touchStartY = 0, touchEndX = 0;
     const swipeThreshold = 50;
 
@@ -476,21 +469,21 @@ function initSidebar() {
     }, { passive: true });
 
     document.addEventListener('touchend', (e) => {
-    touchEndX = e.changedTouches[0].screenX;
-    const diffX = touchEndX - touchStartX;
-    const diffY = e.changedTouches[0].screenY - touchStartY;
+        touchEndX = e.changedTouches[0].screenX;
+        const diffX = touchEndX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
 
-    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
-        if (e.cancelable) {
-            e.preventDefault(); // Empêche le scroll seulement si possible
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+            if (e.cancelable) {
+                e.preventDefault();
+            }
+            if (diffX > 0 && touchStartX < 50) {
+                openSidebar();
+            } else if (diffX < 0) {
+                closeSidebarFunc();
+            }
         }
-        if (diffX > 0 && touchStartX < 50) {
-            openSidebar();
-        } else if (diffX < 0) {
-            closeSidebarFunc();
-        }
-    }
-}, { passive: false });
+    }, { passive: false });
 }
 
 function addMenuHandle() {
@@ -525,7 +518,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSidebar();
     initAttrTabs();
 
-    // Écouteur direct pour l'upload
     document.getElementById('fileInput')?.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) uploadAvatar(file);
@@ -543,14 +535,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast('Changement de langue bientôt disponible', 'info');
     });
 
-    // Gestion du sélecteur de langue
     document.getElementById('langSelect')?.addEventListener('change', (e) => {
         const lang = e.target.value;
         showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
-        // Plus tard, on implémentera le chargement des traductions
     });
 
-    // Exposer les fonctions globales nécessaires
     window.triggerUpload = triggerUpload;
     window.copyID = copyID;
 });
