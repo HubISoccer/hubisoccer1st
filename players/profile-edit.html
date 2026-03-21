@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="css/dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* Styles supplémentaires spécifiques à la page profil */
+        /* Styles spécifiques à la page profil */
         .profile-edit-container {
             max-width: 800px;
             margin: 0 auto;
@@ -121,8 +121,7 @@
                 <option value="hi">🇮🇳 हिन्दी</option>
                 <option value="nl">🇳🇱 Nederlands</option>
                 <option value="pl">🇵🇱 Polski</option>
-                <option value="vi">🇻🇳 Tiếng Việt</option>
-            </select>
+                <option value="vi">🇻🇳 Tiếng Việt</option>            </select>
             <div class="notif-icon" id="notifIcon">
                 <i class="fas fa-bell"></i>
                 <span class="notif-badge" id="notifBadge">0</span>
@@ -236,26 +235,98 @@
         </div>
     </footer>
 
-    <script src="js/dashboard.js"></script>
     <script>
-        // Chargement des données existantes
+        // Configuration Supabase
+        const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = null;
+
+        // ===== FONCTIONS UI (menu, sidebar) =====
+        function initUserMenu() {
+            const userMenu = document.getElementById('userMenu');
+            const dropdown = document.getElementById('userDropdown');
+            if (!userMenu || !dropdown) return;
+            userMenu.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdown.classList.toggle('show');
+            });
+            document.addEventListener('click', () => dropdown.classList.remove('show'));
+        }
+
+        function initSidebar() {
+            const menuBtn = document.getElementById('menuToggle');
+            const sidebar = document.getElementById('sidebar');
+            const closeBtn = document.getElementById('closeSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const menuHandle = document.getElementById('menuHandle');
+
+            function openSidebar() {
+                sidebar.classList.add('active');
+                if (overlay) overlay.classList.add('active');
+            }
+            function closeSidebarFunc() {
+                sidebar.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
+            }
+
+            if (menuBtn) menuBtn.addEventListener('click', openSidebar);
+            if (menuHandle) menuHandle.addEventListener('click', openSidebar);
+            if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
+            if (overlay) overlay.addEventListener('click', closeSidebarFunc);
+
+            let touchStartX = 0, touchStartY = 0;
+            const swipeThreshold = 50;
+            document.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }, { passive: true });
+            document.addEventListener('touchend', (e) => {
+                const diffX = e.changedTouches[0].screenX - touchStartX;
+                const diffY = e.changedTouches[0].screenY - touchStartY;
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+                    if (e.cancelable) e.preventDefault();
+                    if (diffX > 0 && touchStartX < 50) openSidebar();
+                    else if (diffX < 0) closeSidebarFunc();
+                }
+            }, { passive: false });
+        }
+
+        function addMenuHandle() {
+            if (document.getElementById('menuHandle')) return;
+            const handle = document.createElement('div');
+            handle.id = 'menuHandle';
+            handle.className = 'menu-handle';
+            handle.setAttribute('aria-label', 'Ouvrir le menu');
+            handle.innerHTML = '<span></span>';
+            document.body.appendChild(handle);
+        }
+
+        // ===== CHARGEMENT DES DONNÉES =====
         async function loadProfileData() {
-            const user = await window.supabasePlayersSpacePrive.auth.getUser();
-            if (!user) return;
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) {
+                window.location.href = '../auth/login.html';
+                return;
+            }
+            currentUser = user;
+            document.getElementById('userName').textContent = user.email;
+            document.getElementById('userAvatar').src = 'img/user-default.jpg'; // ou avatar si existant
 
             // Récupérer les données de profiles
-            const { data: profile, error: profileError } = await window.supabasePlayersSpacePrive
+            const { data: profile, error: profileError } = await supabase
                 .from('profiles')
                 .select('bio, country')
-                .eq('id', user.data.user.id)
+                .eq('id', user.id)
                 .single();
             if (profileError) console.error(profileError);
 
             // Récupérer les données de player_cv
-            const { data: cv, error: cvError } = await window.supabasePlayersSpacePrive
+            const { data: cv, error: cvError } = await supabase
                 .from('player_cv')
                 .select('data')
-                .eq('player_id', user.data.user.id)
+                .eq('player_id', user.id)
                 .maybeSingle();
             if (cvError) console.error(cvError);
 
@@ -272,22 +343,13 @@
             document.getElementById('licenseNumber').value = cvData.license_number || '';
         }
 
-        // Sauvegarde des modifications
+        // ===== SAUVEGARDE =====
         async function saveProfile(e) {
             e.preventDefault();
+            if (!currentUser) return;
 
-            const user = await window.supabasePlayersSpacePrive.auth.getUser();
-            if (!user) {
-                showMessage('Veuillez vous reconnecter', 'error');
-                return;
-            }
-
-            const userId = user.data.user.id;
-
-            // Récupérer les valeurs du formulaire
             const bio = document.getElementById('bio').value.trim();
             const nationality = document.getElementById('nationality').value.trim();
-
             const position = document.getElementById('position').value.trim();
             const height = parseInt(document.getElementById('height').value, 10) || null;
             const weight = parseInt(document.getElementById('weight').value, 10) || null;
@@ -296,23 +358,23 @@
             const licenseNumber = document.getElementById('licenseNumber').value.trim();
 
             // Mettre à jour profiles
-            const { error: profileError } = await window.supabasePlayersSpacePrive
+            const { error: profileError } = await supabase
                 .from('profiles')
                 .update({
                     bio: bio || null,
                     country: nationality || null
                 })
-                .eq('id', userId);
+                .eq('id', currentUser.id);
             if (profileError) {
-                showMessage('Erreur lors de la mise à jour du profil : ' + profileError.message, 'error');
+                showMessage('Erreur mise à jour profil : ' + profileError.message, 'error');
                 return;
             }
 
             // Récupérer ou créer l'entrée player_cv
-            const { data: existing, error: selectError } = await window.supabasePlayersSpacePrive
+            const { data: existing, error: selectError } = await supabase
                 .from('player_cv')
                 .select('id, data')
-                .eq('player_id', userId)
+                .eq('player_id', currentUser.id)
                 .maybeSingle();
 
             let cvData = existing?.data || {};
@@ -327,20 +389,20 @@
             };
 
             if (existing) {
-                const { error: updateError } = await window.supabasePlayersSpacePrive
+                const { error: updateError } = await supabase
                     .from('player_cv')
                     .update({ data: cvData })
                     .eq('id', existing.id);
                 if (updateError) {
-                    showMessage('Erreur lors de la mise à jour du CV : ' + updateError.message, 'error');
+                    showMessage('Erreur mise à jour CV : ' + updateError.message, 'error');
                     return;
                 }
             } else {
-                const { error: insertError } = await window.supabasePlayersSpacePrive
+                const { error: insertError } = await supabase
                     .from('player_cv')
-                    .insert([{ player_id: userId, data: cvData }]);
+                    .insert([{ player_id: currentUser.id, data: cvData }]);
                 if (insertError) {
-                    showMessage('Erreur lors de la création du CV : ' + insertError.message, 'error');
+                    showMessage('Erreur création CV : ' + insertError.message, 'error');
                     return;
                 }
             }
@@ -361,18 +423,29 @@
             }, 5000);
         }
 
-        // Initialisation
+        // ===== DÉCONNEXION =====
+        async function logout() {
+            await supabase.auth.signOut();
+            window.location.href = '../index.html';
+        }
+
+        // ===== INITIALISATION =====
         document.addEventListener('DOMContentLoaded', async () => {
             await loadProfileData();
             const form = document.getElementById('profileForm');
             form.addEventListener('submit', saveProfile);
-        });
 
-        // Fonctions UI (menu, etc.) déjà définies dans dashboard.js
-        // On s'assure que les événements du menu sont bien initialisés
-        if (window.initUserMenu) window.initUserMenu();
-        if (window.initSidebar) window.initSidebar();
-        if (window.addMenuHandle) window.addMenuHandle();
+            addMenuHandle();
+            initUserMenu();
+            initSidebar();
+
+            document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    logout();
+                });
+            });
+        });
     </script>
 </body>
 </html>
