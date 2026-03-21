@@ -5,7 +5,8 @@ const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUP
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
-let playerProfile = null;
+let playerProfile = null;     // données de profiles
+let playerCV = null;          // données de player_cv
 let scoutingData = null;
 let radarChart = null;
 
@@ -43,25 +44,25 @@ async function checkSession() {
     try {
         const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
         if (error || !session) {
-            window.location.href = '../public/auth/login.html';
+            window.location.href = '../auth/login.html';
             return null;
         }
         currentUser = session.user;
         return currentUser;
     } catch (err) {
         console.error('❌ Erreur checkSession :', err);
-        window.location.href = '../public/auth/login.html';
+        window.location.href = '../auth/login.html';
         return null;
     }
 }
 
-// ===== CHARGEMENT DU PROFIL =====
+// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
 async function loadPlayerProfile() {
     try {
         const { data, error } = await supabasePlayersSpacePrive
-            .from('player_profiles')
-            .select('*')
-            .eq('user_id', currentUser.id)
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .eq('id', currentUser.id)
             .single();
         if (error) {
             console.error('Erreur chargement profil:', error);
@@ -69,12 +70,30 @@ async function loadPlayerProfile() {
             return null;
         }
         playerProfile = data;
-        document.getElementById('userName').textContent = playerProfile.nom_complet || 'Joueur';
+        document.getElementById('userName').textContent = playerProfile.full_name || 'Joueur';
         document.getElementById('userAvatar').src = playerProfile.avatar_url || 'img/user-default.jpg';
         return playerProfile;
     } catch (err) {
         console.error('❌ Exception loadPlayerProfile:', err);
         return null;
+    }
+}
+
+// ===== CHARGEMENT DES DONNÉES SPORTIVES (player_cv) =====
+async function loadPlayerCV() {
+    try {
+        const { data, error } = await supabasePlayersSpacePrive
+            .from('player_cv')
+            .select('data')
+            .eq('player_id', currentUser.id)
+            .maybeSingle();
+        if (error) {
+            console.error('Erreur chargement player_cv:', error);
+            return;
+        }
+        playerCV = data?.data || {};
+    } catch (err) {
+        console.error('❌ Exception loadPlayerCV:', err);
     }
 }
 
@@ -84,7 +103,7 @@ async function loadScoutingData() {
         const { data, error } = await supabasePlayersSpacePrive
             .from('player_scouting')
             .select('*')
-            .eq('player_id', playerProfile.id)
+            .eq('player_id', currentUser.id)
             .maybeSingle();
         if (error) {
             console.error('Erreur chargement scouting:', error);
@@ -95,7 +114,7 @@ async function loadScoutingData() {
             // Créer une ligne par défaut
             const { data: newData, error: insertError } = await supabasePlayersSpacePrive
                 .from('player_scouting')
-                .insert([{ player_id: playerProfile.id }])
+                .insert([{ player_id: currentUser.id }])
                 .select()
                 .single();
             if (insertError) {
@@ -204,16 +223,17 @@ function average(arr) {
 function updateUI() {
     if (!playerProfile || !scoutingData) return;
 
-    // Postes
-    document.getElementById('primaryPosition').textContent = playerProfile.position || 'ST';
-    document.getElementById('secondaryPositions').textContent = scoutingData.secondary_positions || 'MD, M(C)';
+    // Postes (depuis player_cv)
+    const position = playerCV.position || 'Non renseigné';
+    document.getElementById('primaryPosition').textContent = position;
+    document.getElementById('secondaryPositions').textContent = scoutingData.secondary_positions || 'Non renseigné';
 
     // Pieds
     let leftRating = scoutingData.left_foot_rating || 0;
     let rightRating = scoutingData.right_foot_rating || 0;
     if (leftRating === 0 && rightRating === 0) {
-        // Valeurs par défaut basées sur le pied fort
-        const foot = playerProfile.preferred_foot || 'Droitier';
+        // Valeurs par défaut basées sur le pied fort (depuis player_cv)
+        const foot = playerCV.piedFort || 'Droitier';
         if (foot.includes('Gauche')) {
             leftRating = 85;
             rightRating = 30;
@@ -287,9 +307,9 @@ function updateRadar(skills) {
             scales: {
                 r: {
                     beginAtZero: true,
-                    max: 20,
+                    max: 100,
                     ticks: {
-                        stepSize: 5
+                        stepSize: 20
                     }
                 }
             },
@@ -390,6 +410,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadPlayerProfile();
     if (!playerProfile) return;
 
+    await loadPlayerCV();
     await loadScoutingData();
 
     addMenuHandle();
