@@ -5,7 +5,7 @@ const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUP
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
-let currentProfile = null;
+let currentProfile = null;   // ici, currentProfile contiendra les infos de profiles
 let transfers = [];
 let offers = [];
 
@@ -43,25 +43,25 @@ async function checkSession() {
     try {
         const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
         if (error || !session) {
-            window.location.href = '../public/auth/login.html';
+            window.location.href = '../auth/login.html';
             return null;
         }
         currentUser = session.user;
         return currentUser;
     } catch (err) {
         console.error('❌ Erreur checkSession :', err);
-        window.location.href = '../public/auth/login.html';
+        window.location.href = '../auth/login.html';
         return null;
     }
 }
 
-// ===== CHARGEMENT DU PROFIL =====
+// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
 async function loadProfile() {
     try {
         const { data, error } = await supabasePlayersSpacePrive
-            .from('player_profiles')
-            .select('*')
-            .eq('user_id', currentUser.id)
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .eq('id', currentUser.id)
             .single();
 
         if (error) {
@@ -69,7 +69,7 @@ async function loadProfile() {
             return null;
         }
         currentProfile = data;
-        document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
+        document.getElementById('userName').textContent = currentProfile.full_name || 'Joueur';
         document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
         return currentProfile;
     } catch (err) {
@@ -78,13 +78,14 @@ async function loadProfile() {
     }
 }
 
-// ===== CHARGEMENT DES TRANSFERTS =====
+// ===== CHARGEMENT DES TRANSFERTS (table player_transfers) =====
 async function loadTransfers() {
+    if (!currentProfile) return;
     try {
         const { data, error } = await supabasePlayersSpacePrive
             .from('player_transfers')
             .select('*')
-            .eq('user_id', currentProfile.id)  // Attention: colonne user_id (bigint) correspond à l'ID de player_profiles
+            .eq('user_id', currentProfile.id)   // user_id fait référence à profiles.id (uuid)
             .order('date_transfert', { ascending: false });
 
         if (error) {
@@ -98,13 +99,14 @@ async function loadTransfers() {
     }
 }
 
-// ===== CHARGEMENT DES OFFRES =====
+// ===== CHARGEMENT DES OFFRES (table player_offers) =====
 async function loadOffers() {
+    if (!currentProfile) return;
     try {
         const { data, error } = await supabasePlayersSpacePrive
             .from('player_offers')
             .select('*')
-            .eq('user_id', currentProfile.id)
+            .eq('user_id', currentProfile.id)   // user_id fait référence à profiles.id
             .order('date_offre', { ascending: false });
 
         if (error) {
@@ -118,7 +120,7 @@ async function loadOffers() {
     }
 }
 
-// ===== RENDU DES TRANSFERTS =====
+// ===== RENDU DES TRANSFERTS (inchangé) =====
 function renderTransfers() {
     const list = document.getElementById('transfersList');
     if (!list) return;
@@ -162,7 +164,7 @@ function renderTransfers() {
     }).join('');
 }
 
-// ===== RENDU DES OFFRES =====
+// ===== RENDU DES OFFRES (inchangé) =====
 function renderOffers() {
     const list = document.getElementById('offersList');
     if (!list) return;
@@ -258,7 +260,6 @@ function initSidebar() {
     if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
     if (overlay) overlay.addEventListener('click', closeSidebarFunc);
 
-    // Swipe avec correction
     let touchStartX = 0, touchStartY = 0, touchEndX = 0;
     const swipeThreshold = 50;
 
@@ -322,7 +323,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('langSelect')?.addEventListener('change', (e) => {
         const lang = e.target.value;
         showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
-        // Plus tard, implémenter la traduction
     });
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
