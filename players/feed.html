@@ -6,22 +6,17 @@
     <title>Ma Communauté | HubISoccer - Joueur</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles spécifiques à la page -->
     <link rel="stylesheet" href="css/feed.css">
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- NAVBAR -->
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="dashboard-title">Espace Joueur</span>
         </div>
         <div class="nav-right">
-            <button class="sidebar-toggle" id="rightSidebarToggle" title="Communauté">
-                <i class="fas fa-users"></i>
-            </button>
+            <button class="sidebar-toggle" id="rightSidebarToggle" title="Communauté"><i class="fas fa-users"></i></button>
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
@@ -48,39 +43,28 @@
                 <option value="pl">🇵🇱 Polski</option>
                 <option value="vi">🇻🇳 Tiếng Việt</option>
             </select>
-            <!-- Notifications -->
-            <div class="notif-icon" id="notifIcon">
-                <i class="fas fa-bell"></i>
-                <span class="notif-badge" id="notifBadge">0</span>
-            </div>
-            <!-- Menu utilisateur -->
+            <div class="notif-icon" id="notifIcon"><i class="fas fa-bell"></i><span class="notif-badge" id="notifBadge">0</span></div>
             <div class="user-menu" id="userMenu">
                 <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
-                    <a href="dashboard.html"><i class="fas fa-user"></i> Mon profil</a>
+                    <a href="profile-edit.html"><i class="fas fa-user"></i> Mon profil</a>
                     <a href="#" id="historyBtn"><i class="fas fa-history"></i> Mon historique</a>
                     <a href="support.html"><i class="fas fa-cog"></i> Paramètres</a>
                     <a href="#" id="languageLink">Langue (Français)</a>
                     <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                 </div>
             </div>
-            <button class="menu-toggle" id="menuToggle" title="Menu">
-                <i class="fas fa-bars"></i>
-            </button>
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
         </div>
     </nav>
 
-    <!-- Overlay pour mobile -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- SIDEBAR GAUCHE (menu joueur) -->
+    <!-- Sidebar gauche (menu joueur) -->
     <div class="sidebar left-sidebar" id="leftSidebar">
-        <div class="sidebar-header">
-            <h3>Menu Joueur</h3>
-            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
-        </div>
+        <div class="sidebar-header"><h3>Menu Joueur</h3><button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button></div>
         <nav class="sidebar-nav">
             <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
             <a href="feed.html" class="active"><i class="fas fa-users"></i> Ma Communauté</a>
@@ -99,127 +83,42 @@
         </nav>
     </div>
 
-    <!-- SIDEBAR DROITE (communauté) -->
+    <!-- Sidebar droite (communauté) -->
     <div class="sidebar right-sidebar" id="rightSidebar">
-        <div class="sidebar-header">
-            <h3>Communauté</h3>
-            <button class="close-sidebar" id="closeRightSidebar"><i class="fas fa-times"></i></button>
-        </div>
+        <div class="sidebar-header"><h3>Communauté</h3><button class="close-sidebar" id="closeRightSidebar"><i class="fas fa-times"></i></button></div>
         <div class="sidebar-content">
-            <!-- Abonnés -->
-            <div class="community-section">
-                <h4><i class="fas fa-users"></i> Abonnés</h4>
-                <ul class="followers-list" id="followersList"></ul>
-                <a href="#" class="view-all">Voir tous</a>
+            <div class="community-section"><h4><i class="fas fa-users"></i> Abonnés</h4><ul class="followers-list" id="followersList"></ul><a href="#" class="view-all">Voir tous</a></div>
+            <div class="community-section"><h4><i class="fas fa-user-friends"></i> Abonnements</h4><ul class="following-list" id="followingList"></ul><a href="#" class="view-all">Voir tous</a></div>
+            <div class="community-section"><h4><i class="fas fa-chart-line"></i> Insights</h4><div class="insights" id="insights"><p>Portée cette semaine : <strong id="insightReach">0</strong></p><p>Engagement : <strong id="insightEngagement">0%</strong></p><p>Nouveaux abonnés : <strong id="insightNewFollowers">+0</strong></p></div></div>
+            <div class="community-section"><h4><i class="fas fa-user-plus"></i> Suggestions</h4><ul class="suggestions-list" id="suggestionsList"></ul><a href="#" class="view-all">Voir plus</a></div>
+            <div class="community-section"><h4><i class="fas fa-fire"></i> Tendances</h4><ul class="trends-list" id="trendsList"></ul><a href="#" class="view-all">Voir plus</a></div>
+            <div class="community-section"><h4><i class="fas fa-folder"></i> Mes collections</h4><ul class="collections-list" id="collectionsList"></ul><button id="createCollectionBtn" class="btn-create-collection"><i class="fas fa-plus"></i> Créer une collection</button></div>
+            <div class="community-section"><h4><i class="fas fa-sliders-h"></i> Filtres avancés</h4>
+                <div class="filter-group"><label>Date</label><select id="dateFilter"><option value="all">Toutes</option><option value="today">Aujourd'hui</option><option value="week">Cette semaine</option><option value="month">Ce mois</option></select></div>
+                <div class="filter-group"><label>Popularité</label><select id="popularityFilter"><option value="all">Tous</option><option value="most_liked">Les + aimés</option><option value="most_commented">Les + commentés</option></select></div>
+                <div class="filter-group"><label>Type de contenu</label><select id="contentTypeFilter"><option value="all">Tous</option><option value="text">Texte</option><option value="image">Image</option><option value="video">Vidéo</option></select></div>
             </div>
-            <!-- Abonnements -->
-            <div class="community-section">
-                <h4><i class="fas fa-user-friends"></i> Abonnements</h4>
-                <ul class="following-list" id="followingList"></ul>
-                <a href="#" class="view-all">Voir tous</a>
-            </div>
-            <!-- Insights -->
-            <div class="community-section">
-                <h4><i class="fas fa-chart-line"></i> Insights</h4>
-                <div class="insights" id="insights">
-                    <p>Portée cette semaine : <strong id="insightReach">0</strong></p>
-                    <p>Engagement : <strong id="insightEngagement">0%</strong></p>
-                    <p>Nouveaux abonnés : <strong id="insightNewFollowers">+0</strong></p>
-                </div>
-            </div>
-            <!-- Suggestions -->
-            <div class="community-section">
-                <h4><i class="fas fa-user-plus"></i> Suggestions</h4>
-                <ul class="suggestions-list" id="suggestionsList"></ul>
-                <a href="#" class="view-all">Voir plus</a>
-            </div>
-            <!-- Tendances -->
-            <div class="community-section">
-                <h4><i class="fas fa-fire"></i> Tendances</h4>
-                <ul class="trends-list" id="trendsList"></ul>
-                <a href="#" class="view-all">Voir plus</a>
-            </div>
-            <!-- Collections -->
-            <div class="community-section">
-                <h4><i class="fas fa-folder"></i> Mes collections</h4>
-                <ul class="collections-list" id="collectionsList"></ul>
-                <button id="createCollectionBtn" class="btn-create-collection" onclick="createCollection()"><i class="fas fa-plus"></i> Créer une collection</button>
-            </div>
-            <!-- Filtres avancés -->
-            <div class="community-section">
-                <h4><i class="fas fa-sliders-h"></i> Filtres avancés</h4>
-                <div class="filter-group">
-                    <label>Date</label>
-                    <select id="dateFilter">
-                        <option value="all">Toutes</option>
-                        <option value="today">Aujourd'hui</option>
-                        <option value="week">Cette semaine</option>
-                        <option value="month">Ce mois</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label>Popularité</label>
-                    <select id="popularityFilter">
-                        <option value="all">Tous</option>
-                        <option value="most_liked">Les + aimés</option>
-                        <option value="most_commented">Les + commentés</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label>Type de contenu</label>
-                    <select id="contentTypeFilter">
-                        <option value="all">Tous</option>
-                        <option value="text">Texte</option>
-                        <option value="image">Image</option>
-                        <option value="video">Vidéo</option>
-                    </select>
-                </div>
-            </div>
-            <!-- Gestionnaire de profil -->
-            <div class="community-section">
-                <h4><i class="fas fa-cog"></i> Gestionnaire</h4>
-                <button class="btn-edit-profile" onclick="openEditProfileModal()"><i class="fas fa-pen"></i> Modifier mon profil</button>
-                <button id="privacyBtn" class="btn-privacy" onclick="openPrivacyModal()"><i class="fas fa-lock"></i> Confidentialité</button>
-                <button id="inviteBtn" class="btn-invite" onclick="openInviteModal()"><i class="fas fa-user-plus"></i> Inviter des amis</button>
-            </div>
-            <!-- Recherche -->
-            <div class="community-section">
-                <h4><i class="fas fa-search"></i> Recherche</h4>
-                <input type="text" id="communitySearch" placeholder="Rechercher un membre...">
-                <div class="filter-buttons">
-                    <button class="filter-btn" data-filter="all">Tous</button>
-                    <button class="filter-btn" data-filter="following">Abonnements</button>
-                    <button class="filter-btn" data-filter="saved">Épinglés</button>
-                </div>
-            </div>
-            <!-- Filtres par rôle -->
-            <div class="community-section">
-                <h4><i class="fas fa-filter"></i> Filtres par rôle</h4>
-                <div class="filter-buttons role-filters">
-                    <button class="filter-btn" data-role="all">Tous</button>
-                    <button class="filter-btn" data-role="joueur">Joueurs</button>
-                    <button class="filter-btn" data-role="parrain">Parrains</button>
-                    <button class="filter-btn" data-role="agent">Agents</button>
-                    <button class="filter-btn" data-role="coach">Coachs</button>
-                    <button class="filter-btn" data-role="academie">Académies</button>
-                    <button class="filter-btn" data-role="staff">Staff médical</button>
-                </div>
-            </div>
+            <div class="community-section"><h4><i class="fas fa-cog"></i> Gestionnaire</h4><button class="btn-edit-profile" onclick="openEditProfileModal()"><i class="fas fa-pen"></i> Modifier mon profil</button><button id="privacyBtn" class="btn-privacy"><i class="fas fa-lock"></i> Confidentialité</button><button id="inviteBtn" class="btn-invite"><i class="fas fa-user-plus"></i> Inviter des amis</button></div>
+            <div class="community-section"><h4><i class="fas fa-search"></i> Recherche</h4><input type="text" id="communitySearch" placeholder="Rechercher un membre..."><div class="filter-buttons"><button class="filter-btn" data-filter="all">Tous</button><button class="filter-btn" data-filter="following">Abonnements</button><button class="filter-btn" data-filter="saved">Épinglés</button></div></div>
+            <div class="community-section"><h4><i class="fas fa-filter"></i> Filtres par rôle</h4><div class="filter-buttons role-filters"><button class="filter-btn" data-role="all">Tous</button><button class="filter-btn" data-role="joueur">Joueurs</button><button class="filter-btn" data-role="parrain">Parrains</button><button class="filter-btn" data-role="agent">Agents</button><button class="filter-btn" data-role="coach">Coachs</button><button class="filter-btn" data-role="academie">Académies</button><button class="filter-btn" data-role="staff">Staff médical</button></div></div>
         </div>
     </div>
 
-    <!-- CONTENU PRINCIPAL -->
+    <!-- Contenu principal -->
     <main class="dashboard-main">
         <div class="feed-container">
             <h1>Ma Communauté</h1>
             <p>Partagez et interagissez avec les joueurs et acteurs du football.</p>
 
+            <!-- SECTION STORIES -->
+            <div class="stories-container" id="storiesContainer">
+                <div class="story-add" onclick="openStoryUploadModal()"><div class="story-ring"><i class="fas fa-plus-circle"></i></div><span>Ajouter une story</span></div>
+                <div class="stories-list" id="storiesList"></div>
+            </div>
+
             <!-- ZONE DE PUBLICATION -->
-            <div class="publish-box" id="publishBox">
-                <div class="publish-top">
-                    <img src="img/user-default.jpg" alt="Avatar" id="publishAvatar">
-                    <textarea id="postContent" placeholder="Quoi de neuf ?" rows="2"></textarea>
-                </div>
+            <div class="publish-box">
+                <div class="publish-top"><img src="img/user-default.jpg" alt="Avatar" id="publishAvatar"><textarea id="postContent" placeholder="Quoi de neuf ?" rows="2"></textarea></div>
                 <div class="publish-media" id="publishMediaPreview"></div>
                 <div class="publish-actions">
                     <input type="file" id="mediaInput" accept="image/*,video/*" style="display: none;">
@@ -230,268 +129,62 @@
                     <button class="action-btn" id="schedulePostBtn"><i class="fas fa-clock"></i> Prog.</button>
                     <button class="action-btn publish-main" id="publishBtn"><i class="fas fa-paper-plane"></i> Publier</button>
                 </div>
-                <div class="media-cancel" id="mediaCancel" style="display: none;">
-                    <span>Fichier sélectionné : <span id="mediaFileName"></span></span>
-                    <button class="btn-cancel-media" onclick="cancelMedia()"><i class="fas fa-times"></i> Annuler</button>
-                </div>
+                <div class="media-cancel" id="mediaCancel" style="display: none;"><span>Fichier sélectionné : <span id="mediaFileName"></span></span><button class="btn-cancel-media" onclick="cancelMedia()"><i class="fas fa-times"></i> Annuler</button></div>
             </div>
 
-            <!-- INDICATEUR DE NOUVEAUX POSTS -->
-            <div id="newPostsIndicator" class="new-posts-indicator" style="display: none;">
-                <span>⬆️</span> <span id="newPostsCount">0</span> nouveau(x) post(s)
-            </div>
+            <!-- INDICATEUR NOUVEAUX POSTS -->
+            <div id="newPostsIndicator" class="new-posts-indicator" style="display: none;"><span>⬆️</span> <span id="newPostsCount">0</span> nouveau(x) post(s)</div>
 
             <!-- FIL D'ACTUALITÉ -->
-            <div id="postsFeed" class="posts-feed">
-                <div id="feedLoader" class="feed-loader" style="display: none;">
-                    <div class="spinner"></div>
-                </div>
-            </div>
+            <div id="postsFeed" class="posts-feed"><div id="feedLoader" class="feed-loader" style="display: none;"><div class="spinner"></div></div></div>
 
-            <!-- BOUTON POUR REVENIR AU FIL NORMAL -->
-            <div id="backToFeedBtn" class="back-to-feed" style="display: none;">
-                <button onclick="loadPosts()"><i class="fas fa-arrow-left"></i> Retour au fil d'actualité</button>
-            </div>
+            <!-- BOUTON CHARGER PLUS -->
+            <div id="loadMoreBtn" class="load-more-btn" style="display: none;"><button onclick="loadMorePosts()"><i class="fas fa-arrow-down"></i> Charger plus</button></div>
+            <div id="backToFeedBtn" class="back-to-feed" style="display: none;"><button onclick="loadPosts()"><i class="fas fa-arrow-left"></i> Retour au fil d'actualité</button></div>
         </div>
     </main>
 
-    <!-- MODALE D'APERÇU -->
-    <div id="previewModal" class="preview-modal">
-        <div class="preview-content">
-            <div class="preview-header">
-                <h3>Aperçu de votre publication</h3>
-                <button class="close-preview" onclick="closePreview()"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="preview-body">
-                <div class="preview-author">
-                    <img id="previewAuthorAvatar" src="">
-                    <span id="previewAuthorName"></span>
-                </div>
-                <div class="preview-text" id="previewText"></div>
-                <div class="preview-media" id="previewMedia"></div>
-            </div>
-            <div class="preview-actions">
-                <button class="btn-preview-close" onclick="closePreview()">Retour</button>
-                <button class="btn-preview-publish" onclick="publishFromPreview()">Publier</button>
-            </div>
-        </div>
-    </div>
+    <!-- MODALES -->
+    <div id="previewModal" class="preview-modal"><div class="preview-content"><div class="preview-header"><h3>Aperçu de votre publication</h3><button class="close-preview" onclick="closePreview()"><i class="fas fa-times"></i></button></div><div class="preview-body"><div class="preview-author"><img id="previewAuthorAvatar" src=""><span id="previewAuthorName"></span></div><div class="preview-text" id="previewText"></div><div class="preview-media" id="previewMedia"></div></div><div class="preview-actions"><button class="btn-preview-close" onclick="closePreview()">Retour</button><button class="btn-preview-publish" onclick="publishFromPreview()">Publier</button></div></div></div>
 
-    <!-- MODALE D'ÉDITION DU PROFIL -->
-    <div id="editProfileModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Modifier mon profil</h2>
-                <span class="close-modal" onclick="closeEditProfileModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <form id="editProfileForm">
-                    <div class="form-group">
-                        <label>Bio</label>
-                        <textarea id="editBio" rows="4" placeholder="Parlez de vous..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Téléphone (WhatsApp)</label>
-                        <input type="tel" id="editPhone" placeholder="+229 ...">
-                    </div>
-                    <div class="form-group">
-                        <label>Email professionnel</label>
-                        <input type="email" id="editEmail" placeholder="contact@exemple.com">
-                    </div>
-                    <div class="form-group">
-                        <label>Pays de résidence</label>
-                        <select id="editCountry">
-                            <option value="">Sélectionner votre pays</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Adresse complète</label>
-                        <textarea id="editAddress" rows="2" placeholder="Numéro, rue, quartier, ville..."></textarea>
-                    </div>
-                    <button type="submit" class="btn-save-profile">Enregistrer</button>
-                </form>
-            </div>
-        </div>
-    </div>
+    <div id="editProfileModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Modifier mon profil</h2><span class="close-modal" onclick="closeEditProfileModal()">×</span></div><div class="modal-body"><form id="editProfileForm"><div class="form-group"><label>Bio</label><textarea id="editBio" rows="4"></textarea></div><div class="form-group"><label>Téléphone (WhatsApp)</label><input type="tel" id="editPhone"></div><div class="form-group"><label>Email professionnel</label><input type="email" id="editEmail"></div><div class="form-group"><label>Pays de résidence</label><select id="editCountry"><option value="">Sélectionner votre pays</option></select></div><div class="form-group"><label>Adresse complète</label><textarea id="editAddress" rows="2"></textarea></div><button type="submit" class="btn-save-profile">Enregistrer</button></form></div></div></div>
 
-    <!-- MODALE DE LISTE DES LIKES -->
-    <div id="likesModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Personnes qui aiment ce post</h2>
-                <span class="close-modal" onclick="closeLikesModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <ul id="likesList" class="likes-list"></ul>
-            </div>
-        </div>
-    </div>
+    <div id="likesModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Personnes qui aiment ce post</h2><span class="close-modal" onclick="closeLikesModal()">×</span></div><div class="modal-body"><ul id="likesList" class="likes-list"></ul></div></div></div>
 
-    <!-- MODALE DE PROFIL UTILISATEUR (avec badges) -->
-    <div id="userProfileModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Profil</h2>
-                <span class="close-modal" onclick="closeUserProfileModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="user-profile">
-                    <div class="profile-avatar">
-                        <img id="profileAvatar" src="img/user-default.jpg" alt="Avatar">
-                    </div>
-                    <h3 id="profileName">Nom de l'utilisateur</h3>
-                    <p id="profileHubId">@hub_id</p>
-                    <div id="profileBadges" class="profile-badges"></div>
-                    <p id="profileBio" class="profile-bio"></p>
-                    <button class="btn-send-message" onclick="sendMessageToUser()"><i class="fas fa-envelope"></i> Envoyer un message</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div id="userProfileModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Profil</h2><span class="close-modal" onclick="closeUserProfileModal()">×</span></div><div class="modal-body"><div class="user-profile"><div class="profile-avatar"><img id="profileAvatar" src="img/user-default.jpg"></div><h3 id="profileName"></h3><p id="profileHubId"></p><div id="profileBadges" class="profile-badges"></div><p id="profileBio" class="profile-bio"></p><button class="btn-send-message" onclick="sendMessageToUser()"><i class="fas fa-envelope"></i> Envoyer un message</button></div></div></div></div>
 
-    <!-- MODALE DE RÉPONSE À UN COMMENTAIRE -->
-    <div id="replyModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Répondre au commentaire</h2>
-                <span class="close-modal" onclick="closeReplyModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="original-comment" id="originalComment"></div>
-                <textarea id="replyContent" rows="3" placeholder="Votre réponse..."></textarea>
-                <button class="btn-send-reply" onclick="sendReply()">Envoyer</button>
-            </div>
-        </div>
-    </div>
+    <div id="replyModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Répondre au commentaire</h2><span class="close-modal" onclick="closeReplyModal()">×</span></div><div class="modal-body"><div class="original-comment" id="originalComment"></div><textarea id="replyContent" rows="3" placeholder="Votre réponse..."></textarea><button class="btn-send-reply" onclick="sendReply()">Envoyer</button></div></div></div>
 
-    <!-- MODALE DE NOTIFICATIONS -->
-    <div id="notificationsModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Notifications</h2>
-                <span class="close-modal" onclick="closeNotificationsModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <button id="markAllRead" class="btn-mark-all-read" onclick="markAllNotificationsAsRead()">Tout marquer comme lu</button>
-                <ul id="notificationsList" class="notifications-list"></ul>
-            </div>
-        </div>
-    </div>
+    <div id="notificationsModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Notifications</h2><span class="close-modal" onclick="closeNotificationsModal()">×</span></div><div class="modal-body"><button id="markAllRead" class="btn-mark-all-read" onclick="markAllNotificationsAsRead()">Tout marquer comme lu</button><ul id="notificationsList" class="notifications-list"></ul></div></div></div>
 
-    <!-- MODALE DE COLLECTIONS -->
-    <div id="collectionsModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Ajouter à une collection</h2>
-                <span class="close-modal" onclick="closeCollectionsModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <ul id="collectionsModalList" class="collections-modal-list"></ul>
-            </div>
-        </div>
-    </div>
+    <div id="collectionsModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Ajouter à une collection</h2><span class="close-modal" onclick="closeCollectionsModal()">×</span></div><div class="modal-body"><ul id="collectionsModalList" class="collections-modal-list"></ul></div></div></div>
 
-    <!-- MODALE DE SONDAGE -->
-    <div id="pollModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Créer un sondage</h2>
-                <span class="close-modal" onclick="closePollModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Question</label>
-                    <input type="text" id="pollQuestion" placeholder="Votre question...">
-                </div>
-                <div class="form-group">
-                    <label>Options (une par ligne)</label>
-                    <textarea id="pollOptions" rows="4" placeholder="Option 1\nOption 2\nOption 3"></textarea>
-                </div>
-                <button id="submitPoll" class="btn-create-poll" onclick="createPoll()">Publier le sondage</button>
-            </div>
-        </div>
-    </div>
+    <div id="pollModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Créer un sondage</h2><span class="close-modal" onclick="closePollModal()">×</span></div><div class="modal-body"><div class="form-group"><label>Question</label><input type="text" id="pollQuestion"></div><div class="form-group"><label>Options (une par ligne)</label><textarea id="pollOptions" rows="4"></textarea></div><button id="submitPoll" class="btn-create-poll" onclick="createPoll()">Publier le sondage</button></div></div></div>
 
-    <!-- MODALE DE PARTAGE EXTERNE -->
-    <div id="shareModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Partager sur</h2>
-                <span class="close-modal" onclick="closeShareModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="share-options">
-                    <button onclick="shareOn('facebook')" class="share-btn facebook"><i class="fab fa-facebook-f"></i> Facebook</button>
-                    <button onclick="shareOn('twitter')" class="share-btn twitter"><i class="fab fa-twitter"></i> Twitter</button>
-                    <button onclick="shareOn('whatsapp')" class="share-btn whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</button>
-                    <button onclick="shareOn('email')" class="share-btn email"><i class="fas fa-envelope"></i> Email</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div id="shareModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Partager sur</h2><span class="close-modal" onclick="closeShareModal()">×</span></div><div class="modal-body"><div class="share-options"><button onclick="shareOn('facebook')" class="share-btn facebook"><i class="fab fa-facebook-f"></i> Facebook</button><button onclick="shareOn('twitter')" class="share-btn twitter"><i class="fab fa-twitter"></i> Twitter</button><button onclick="shareOn('whatsapp')" class="share-btn whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</button><button onclick="shareOn('email')" class="share-btn email"><i class="fas fa-envelope"></i> Email</button></div></div></div></div>
 
-    <!-- MODALE DE CONFIDENTIALITÉ -->
-    <div id="privacyModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Confidentialité du profil</h2>
-                <span class="close-modal" onclick="closePrivacyModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="radio-group">
-                    <label><input type="radio" name="privacy" value="public"> Public (tout le monde peut voir vos posts)</label>
-                    <label><input type="radio" name="privacy" value="followers"> Abonnés uniquement</label>
-                    <label><input type="radio" name="privacy" value="private"> Privé (personne ne voit vos posts)</label>
-                </div>
-                <button id="savePrivacy" class="btn-save-privacy" onclick="savePrivacy()">Enregistrer</button>
-            </div>
-        </div>
-    </div>
+    <div id="privacyModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Confidentialité du profil</h2><span class="close-modal" onclick="closePrivacyModal()">×</span></div><div class="modal-body"><div class="radio-group"><label><input type="radio" name="privacy" value="public"> Public (tout le monde peut voir vos posts)</label><label><input type="radio" name="privacy" value="followers"> Abonnés uniquement</label><label><input type="radio" name="privacy" value="private"> Privé (personne ne voit vos posts)</label></div><button id="savePrivacy" class="btn-save-privacy" onclick="savePrivacy()">Enregistrer</button></div></div></div>
 
-    <!-- MODALE D'INVITATION -->
-    <div id="inviteModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Inviter des amis</h2>
-                <span class="close-modal" onclick="closeInviteModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Email de l'ami</label>
-                    <input type="email" id="inviteEmail" placeholder="ami@exemple.com">
-                </div>
-                <button id="sendInvite" class="btn-send-invite" onclick="sendInvite()">Envoyer l'invitation</button>
-            </div>
-        </div>
-    </div>
+    <div id="inviteModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Inviter des amis</h2><span class="close-modal" onclick="closeInviteModal()">×</span></div><div class="modal-body"><div class="form-group"><label>Email de l'ami</label><input type="email" id="inviteEmail"></div><button id="sendInvite" class="btn-send-invite" onclick="sendInvite()">Envoyer l'invitation</button></div></div></div>
 
-    <!-- CONTENEUR POUR LES TOASTS -->
+    <div id="mediaZoomModal" class="modal media-modal"><div class="modal-content media-modal-content"><span class="close-modal" onclick="closeMediaZoom()">×</span><div class="media-viewer" id="mediaViewer"></div></div></div>
+
+    <div id="storyModal" class="story-modal"><div class="story-viewer" id="storyViewer"><div class="story-progress"><div class="story-progress-bar" id="storyProgressBar"></div></div><button class="story-close" onclick="closeStoryModal()">×</button><button class="story-prev" onclick="prevStory()"><i class="fas fa-chevron-left"></i></button><button class="story-next" onclick="nextStory()"><i class="fas fa-chevron-right"></i></button></div></div>
+
+    <div id="createEventModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Créer un événement</h2><span class="close-modal" onclick="closeEventModal()">×</span></div><div class="modal-body"><div class="form-group"><label>Titre</label><input type="text" id="eventTitle"></div><div class="form-group"><label>Date et heure</label><input type="datetime-local" id="eventDate"></div><div class="form-group"><label>Lieu</label><input type="text" id="eventLocation"></div><div class="form-group"><label>Description</label><textarea id="eventDesc" rows="3"></textarea></div><button class="btn-create-event" onclick="createEvent()">Créer l'événement</button></div></div></div>
+
+    <div id="schedulePostModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Programmer une publication</h2><span class="close-modal" onclick="closeScheduleModal()">×</span></div><div class="modal-body"><div class="form-group"><label>Date et heure de publication</label><input type="datetime-local" id="scheduleDateTime"></div><button class="btn-schedule" onclick="schedulePost()">Programmer</button></div></div></div>
+
+    <div id="reportModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Signaler</h2><span class="close-modal" onclick="closeReportModal()">×</span></div><div class="modal-body"><div class="form-group"><label>Raison</label><textarea id="reportReason" rows="3" placeholder="Pourquoi signalez-vous ce contenu ?"></textarea></div><button class="btn-report" onclick="submitReport()">Envoyer le signalement</button></div></div></div>
+
+    <div id="audioCommentModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Commentaire audio</h2><span class="close-modal" onclick="closeAudioModal()">×</span></div><div class="modal-body"><div class="form-group"><label>Sélectionner un fichier audio (mp3, m4a, ogg)</label><input type="file" id="audioFileInput" accept="audio/*"></div><button class="btn-upload-audio" onclick="uploadAudioComment()">Envoyer</button></div></div></div>
+
+    <div id="createCollectionModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Créer une collection</h2><span class="close-modal" onclick="closeCreateCollectionModal()">×</span></div><div class="modal-body"><div class="form-group"><label>Nom de la collection</label><input type="text" id="newCollectionName"></div><button class="btn-create-collection" onclick="createNewCollection()">Créer</button></div></div></div>
+
     <div id="toastContainer" class="toast-container"></div>
+    <div id="globalLoader" class="global-loader" style="display: none;"><div class="spinner"></div></div>
 
-    <!-- LOADER GLOBAL -->
-    <div id="globalLoader" class="global-loader" style="display: none;">
-        <div class="spinner"></div>
-    </div>
-
-    <!-- FOOTER -->
-    <footer class="dashboard-footer">
-        <div class="footer-content">
-            <div class="compliance-badges">
-                <span class="badge">Conformité APDP Bénin</span>
-                <span class="badge">Règlementation FIFA</span>
-                <span class="badge">Double Projet Sport-Études</span>
-            </div>
-            <div class="contact-info">
-                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
-                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
-            </div>
-            <div class="legal">
-                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
-                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
-                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
-            </div>
-        </div>
-    </footer>
+    <footer class="dashboard-footer"><div class="footer-content"><div class="compliance-badges"><span class="badge">Conformité APDP Bénin</span><span class="badge">Règlementation FIFA</span><span class="badge">Double Projet Sport-Études</span></div><div class="contact-info"><a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a><a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a></div><div class="legal"><p>HubISoccer - The Hub of Inspiration of Soccer</p><p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p><p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p></div></div></footer>
 
     <script src="js/feed.js"></script>
 </body>
