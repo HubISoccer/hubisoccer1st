@@ -1,14 +1,16 @@
 // ===== CONFIGURATION SUPABASE =====
-const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Utilisation de l'instance globale définie dans auth.js
+const supabase = window.supabaseAuthPrive;
+if (!supabase) {
+    console.error('❌ supabaseAuthPrive non défini. Vérifiez que auth.js est chargé.');
+}
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
 let playerProfile = null;
 let cvData = null;
 let cvValidationStatus = 'pending';
-let signatureDataURL = null; // Peut être une dataURL ou une URL stockée
+let signatureDataURL = null;
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -42,9 +44,9 @@ function showToast(message, type = 'info', duration = 3000) {
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
     try {
-        const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
         if (error || !session) {
-            window.location.href = '../public/auth/login.html';
+            window.location.href = '../auth/login.html';
             return null;
         }
         currentUser = session.user;
@@ -52,12 +54,12 @@ async function checkSession() {
         return currentUser;
     } catch (err) {
         console.error('❌ Erreur checkSession :', err);
-        window.location.href = '../public/auth/login.html';
+        window.location.href = '../auth/login.html';
         return null;
     }
 }
 
-// ===== CHARGEMENT DU PROFIL =====
+// ===== CHARGEMENT DU PROFIL DEPUIS LA TABLE `profiles` =====
 async function loadPlayerProfile() {
     if (!currentUser?.id) {
         console.error('currentUser.id manquant');
@@ -65,10 +67,10 @@ async function loadPlayerProfile() {
         return;
     }
     try {
-        const { data, error } = await supabasePlayersSpacePrive
-            .from('player_profiles')
+        const { data, error } = await supabase
+            .from('profiles')
             .select('*')
-            .eq('user_id', currentUser.id)
+            .eq('id', currentUser.id)
             .maybeSingle();
 
         if (error) {
@@ -77,7 +79,8 @@ async function loadPlayerProfile() {
             playerProfile = null;
         } else {
             playerProfile = data;
-            document.getElementById('userName').textContent = playerProfile?.nom_complet || 'Joueur';
+            // Mise à jour de la navbar
+            document.getElementById('userName').textContent = playerProfile?.full_name || 'Joueur';
             document.getElementById('userAvatar').src = playerProfile?.avatar_url || 'img/user-default.jpg';
         }
         console.log('✅ Profil utilisé :', playerProfile);
@@ -92,7 +95,7 @@ async function loadPlayerProfile() {
 async function loadCV() {
     if (!playerProfile?.id) return;
     try {
-        const { data, error } = await supabasePlayersSpacePrive
+        const { data, error } = await supabase
             .from('player_cv')
             .select('*')
             .eq('player_id', playerProfile.id)
@@ -128,11 +131,11 @@ function updateValidationStatus() {
     }
 }
 
-// ===== PRÉ-REMPLISSAGE AVEC LE PROFIL =====
+// ===== PRÉ-REMPLISSAGE AVEC LE PROFIL (DEPUIS `profiles`) =====
 function populateFromProfile() {
     if (!playerProfile) return;
-    // Décomposer nom_complet (supposé "Prénom Nom")
-    const nameParts = (playerProfile.nom_complet || '').split(' ');
+    // Décomposer full_name (supposé "Prénom Nom")
+    const nameParts = (playerProfile.full_name || '').split(' ');
     const prenom = nameParts[0] || '';
     const nom = nameParts.slice(1).join(' ') || '';
 
@@ -140,11 +143,12 @@ function populateFromProfile() {
     document.getElementById('prenom').value = prenom;
     document.getElementById('telephone').value = playerProfile.phone || '';
     document.getElementById('email').value = playerProfile.email || '';
-    document.getElementById('ville').value = playerProfile.ville || ''; // À ajouter dans player_profiles si besoin
-    document.getElementById('taille').value = playerProfile.taille_cm || '';
-    document.getElementById('poids').value = playerProfile.poids_kg || '';
-    document.getElementById('piedFort').value = playerProfile.pied_fort || playerProfile.preferred_foot || '';
-    document.getElementById('club').value = playerProfile.club || '';
+    // Les champs suivants ne sont pas dans profiles, ils seront remplis par le CV si existant
+    // document.getElementById('ville').value = playerProfile.city || '';
+    // document.getElementById('taille').value = playerProfile.height || '';
+    // document.getElementById('poids').value = playerProfile.weight || '';
+    // document.getElementById('piedFort').value = playerProfile.preferred_foot || '';
+    // document.getElementById('club').value = playerProfile.club || '';
 }
 
 // ===== REMPLIR LE FORMULAIRE AVEC LES DONNÉES EXISTANTES =====
@@ -203,7 +207,7 @@ function populateForm(data) {
     }
 }
 
-// ===== GESTION DES ÉLÉMENTS DYNAMIQUES =====
+// ===== GESTION DES ÉLÉMENTS DYNAMIQUES (inchangée) =====
 function addExperienceItem(data = {}) {
     const container = document.getElementById('experiences-container');
     const item = document.createElement('div');
@@ -213,26 +217,26 @@ function addExperienceItem(data = {}) {
         <div class="form-row">
             <div class="form-group">
                 <label>Poste / Titre</label>
-                <input type="text" class="exp-poste" value="${data.poste || ''}" placeholder="Ex: Joueur, Coach, Stagiaire">
+                <input type="text" class="exp-poste" value="${escapeHtml(data.poste || '')}" placeholder="Ex: Joueur, Coach, Stagiaire">
             </div>
             <div class="form-group">
                 <label>Employeur / Club</label>
-                <input type="text" class="exp-employeur" value="${data.employeur || ''}" placeholder="Nom du club ou entreprise">
+                <input type="text" class="exp-employeur" value="${escapeHtml(data.employeur || '')}" placeholder="Nom du club ou entreprise">
             </div>
         </div>
         <div class="form-row">
             <div class="form-group">
                 <label>Date début</label>
-                <input type="month" class="exp-debut" value="${data.debut || ''}">
+                <input type="month" class="exp-debut" value="${escapeHtml(data.debut || '')}">
             </div>
             <div class="form-group">
                 <label>Date fin</label>
-                <input type="month" class="exp-fin" value="${data.fin || ''}">
+                <input type="month" class="exp-fin" value="${escapeHtml(data.fin || '')}">
             </div>
         </div>
         <div class="form-group full-width">
             <label>Description (missions, réalisations)</label>
-            <textarea class="exp-description" rows="2">${data.description || ''}</textarea>
+            <textarea class="exp-description" rows="2">${escapeHtml(data.description || '')}</textarea>
         </div>
     `;
     container.appendChild(item);
@@ -247,17 +251,17 @@ function addFormationItem(data = {}) {
         <div class="form-row">
             <div class="form-group">
                 <label>Diplôme / Certification</label>
-                <input type="text" class="formation-diplome" value="${data.diplome || ''}" placeholder="Ex: Bac S, Licence STAPS">
+                <input type="text" class="formation-diplome" value="${escapeHtml(data.diplome || '')}" placeholder="Ex: Bac S, Licence STAPS">
             </div>
             <div class="form-group">
                 <label>Établissement</label>
-                <input type="text" class="formation-etablissement" value="${data.etablissement || ''}" placeholder="Nom de l'école ou université">
+                <input type="text" class="formation-etablissement" value="${escapeHtml(data.etablissement || '')}" placeholder="Nom de l'école ou université">
             </div>
         </div>
         <div class="form-row">
             <div class="form-group">
                 <label>Date d'obtention</label>
-                <input type="month" class="formation-date" value="${data.date || ''}">
+                <input type="month" class="formation-date" value="${escapeHtml(data.date || '')}">
             </div>
         </div>
     `;
@@ -273,11 +277,11 @@ function addLangueItem(data = {}) {
         <div class="form-row">
             <div class="form-group">
                 <label>Langue</label>
-                <input type="text" class="langue-nom" value="${data.nom || ''}" placeholder="Ex: Français">
+                <input type="text" class="langue-nom" value="${escapeHtml(data.nom || '')}" placeholder="Ex: Français">
             </div>
             <div class="form-group">
                 <label>Niveau (compréhension écrite/orale)</label>
-                <input type="text" class="langue-niveau" value="${data.niveau || ''}" placeholder="Ex: Courant, Intermédiaire">
+                <input type="text" class="langue-niveau" value="${escapeHtml(data.niveau || '')}" placeholder="Ex: Courant, Intermédiaire">
             </div>
         </div>
     `;
@@ -338,13 +342,12 @@ function collectFormData() {
         });
     });
 
-    // signature_url sera gérée lors de la sauvegarde
     return data;
 }
 
-// ===== UPLOAD DE LA SIGNATURE SI C'EST UNE DATAURL =====
+// ===== UPLOAD DE LA SIGNATURE =====
 async function uploadSignatureIfNeeded(dataURL) {
-    if (!dataURL || dataURL.startsWith('http')) return dataURL; // déjà une URL
+    if (!dataURL || dataURL.startsWith('http')) return dataURL;
     if (!dataURL.startsWith('data:image')) return null;
 
     try {
@@ -352,12 +355,12 @@ async function uploadSignatureIfNeeded(dataURL) {
         const fileName = `${currentUser.id}_signature_${Date.now()}.png`;
         const filePath = `signatures/${fileName}`;
 
-        const { error: uploadError } = await supabasePlayersSpacePrive.storage
+        const { error: uploadError } = await supabase.storage
             .from('documents')
             .upload(filePath, blob);
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabasePlayersSpacePrive.storage
+        const { data: urlData } = supabase.storage
             .from('documents')
             .getPublicUrl(filePath);
         return urlData.publicUrl;
@@ -377,16 +380,15 @@ async function saveCV() {
 
     const formData = collectFormData();
 
-    // Gestion de la signature
     let signatureUrl = signatureDataURL;
     if (signatureDataURL && signatureDataURL.startsWith('data:')) {
         signatureUrl = await uploadSignatureIfNeeded(signatureDataURL);
-        if (!signatureUrl) return; // erreur déjà toastée
+        if (!signatureUrl) return;
     }
     formData.signature_url = signatureUrl || null;
 
     try {
-        const { data: existing, error: selectError } = await supabasePlayersSpacePrive
+        const { data: existing, error: selectError } = await supabase
             .from('player_cv')
             .select('id')
             .eq('player_id', playerProfile.id)
@@ -395,7 +397,7 @@ async function saveCV() {
         if (selectError) throw selectError;
 
         if (existing) {
-            const result = await supabasePlayersSpacePrive
+            const result = await supabase
                 .from('player_cv')
                 .update({
                     data: formData,
@@ -405,7 +407,7 @@ async function saveCV() {
                 .eq('player_id', playerProfile.id);
             if (result.error) throw result.error;
         } else {
-            const result = await supabasePlayersSpacePrive
+            const result = await supabase
                 .from('player_cv')
                 .insert([{
                     player_id: playerProfile.id,
@@ -425,79 +427,78 @@ async function saveCV() {
     }
 }
 
-// ===== GÉNÉRATION DE L'APERÇU (DEUX COLONNES) =====
+// ===== APERÇU ET EXPORT (inchangés) =====
 function generatePreview() {
     const data = collectFormData();
     const previewDiv = document.getElementById('previewContent');
     const fullName = `${data.prenom} ${data.nom}`.trim() || 'Nom Prénom';
     const avatarUrl = playerProfile?.avatar_url || 'img/user-default.jpg';
 
-    // Compétences (fusion)
+    // Compétences
     const skillsTech = data.skillsTech ? data.skillsTech.split(',').map(s => s.trim()).filter(s => s) : [];
     const skillsSoft = data.skillsSoft ? data.skillsSoft.split(',').map(s => s.trim()).filter(s => s) : [];
     const allSkills = [...skillsTech, ...skillsSoft];
 
-    // Formations HTML
+    // Formations
     const formationsHtml = data.formations.map(f => `
         <div class="cv-item">
-            <div class="cv-item-date">${f.date || ''}</div>
-            <div class="cv-item-title">${f.diplome || ''}</div>
-            <div class="cv-item-subtitle">${f.etablissement || ''}</div>
+            <div class="cv-item-date">${escapeHtml(f.date || '')}</div>
+            <div class="cv-item-title">${escapeHtml(f.diplome || '')}</div>
+            <div class="cv-item-subtitle">${escapeHtml(f.etablissement || '')}</div>
         </div>
     `).join('');
 
-    // Expériences HTML
+    // Expériences
     const experiencesHtml = data.experiences.map(e => `
         <div class="cv-item">
-            <div class="cv-item-date">${e.debut || ''} – ${e.fin || ''}</div>
-            <div class="cv-item-title">${e.poste || ''}</div>
-            <div class="cv-item-subtitle">${e.employeur || ''}</div>
-            <div class="cv-item-description">${e.description || ''}</div>
+            <div class="cv-item-date">${escapeHtml(e.debut || '')} – ${escapeHtml(e.fin || '')}</div>
+            <div class="cv-item-title">${escapeHtml(e.poste || '')}</div>
+            <div class="cv-item-subtitle">${escapeHtml(e.employeur || '')}</div>
+            <div class="cv-item-description">${escapeHtml(e.description || '')}</div>
         </div>
     `).join('');
 
-    // Langues HTML
+    // Langues
     const languesHtml = data.langues.map(l => `
         <div class="cv-lang-item">
-            <span class="cv-lang-name">${l.nom || ''}</span>
-            <span class="cv-lang-level">${l.niveau || ''}</span>
+            <span class="cv-lang-name">${escapeHtml(l.nom || '')}</span>
+            <span class="cv-lang-level">${escapeHtml(l.niveau || '')}</span>
         </div>
     `).join('');
 
     // Compétences liste
-    const skillsListHtml = allSkills.map(skill => `<li>${skill}</li>`).join('');
+    const skillsListHtml = allSkills.map(skill => `<li>${escapeHtml(skill)}</li>`).join('');
 
     // Coordonnées
     const contactHtml = `
-        ${data.telephone ? `<div class="cv-contact-item"><i class="fas fa-phone"></i> ${data.telephone}</div>` : ''}
-        ${data.email ? `<div class="cv-contact-item"><i class="fas fa-envelope"></i> ${data.email}</div>` : ''}
-        ${data.ville ? `<div class="cv-contact-item"><i class="fas fa-map-marker-alt"></i> ${data.ville}</div>` : ''}
-        ${data.social ? `<div class="cv-contact-item"><i class="fas fa-link"></i> ${data.social}</div>` : ''}
+        ${data.telephone ? `<div class="cv-contact-item"><i class="fas fa-phone"></i> ${escapeHtml(data.telephone)}</div>` : ''}
+        ${data.email ? `<div class="cv-contact-item"><i class="fas fa-envelope"></i> ${escapeHtml(data.email)}</div>` : ''}
+        ${data.ville ? `<div class="cv-contact-item"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(data.ville)}</div>` : ''}
+        ${data.social ? `<div class="cv-contact-item"><i class="fas fa-link"></i> ${escapeHtml(data.social)}</div>` : ''}
     `;
 
     // Informations sportives
     const sportInfoHtml = `
         <div class="cv-sport-info">
-            ${data.taille ? `<span><i class="fas fa-ruler"></i> ${data.taille} cm</span>` : ''}
-            ${data.poids ? `<span><i class="fas fa-weight-scale"></i> ${data.poids} kg</span>` : ''}
-            ${data.piedFort ? `<span><i class="fas fa-shoe-prints"></i> ${data.piedFort}</span>` : ''}
-            ${data.club ? `<span><i class="fas fa-futbol"></i> ${data.club}</span>` : ''}
+            ${data.taille ? `<span><i class="fas fa-ruler"></i> ${escapeHtml(data.taille)} cm</span>` : ''}
+            ${data.poids ? `<span><i class="fas fa-weight-scale"></i> ${escapeHtml(data.poids)} kg</span>` : ''}
+            ${data.piedFort ? `<span><i class="fas fa-shoe-prints"></i> ${escapeHtml(data.piedFort)}</span>` : ''}
+            ${data.club ? `<span><i class="fas fa-futbol"></i> ${escapeHtml(data.club)}</span>` : ''}
         </div>
         <div class="cv-sport-info">
-            ${data.matchs ? `<span><i class="fas fa-chart-line"></i> Matchs: ${data.matchs}</span>` : ''}
-            ${data.buts ? `<span><i class="fas fa-futbol"></i> Buts: ${data.buts}</span>` : ''}
-            ${data.passes ? `<span><i class="fas fa-person-running"></i> Passes: ${data.passes}</span>` : ''}
-            ${data.valeur ? `<span><i class="fas fa-coins"></i> ${data.valeur} FCFA</span>` : ''}
+            ${data.matchs ? `<span><i class="fas fa-chart-line"></i> Matchs: ${escapeHtml(data.matchs)}</span>` : ''}
+            ${data.buts ? `<span><i class="fas fa-futbol"></i> Buts: ${escapeHtml(data.buts)}</span>` : ''}
+            ${data.passes ? `<span><i class="fas fa-person-running"></i> Passes: ${escapeHtml(data.passes)}</span>` : ''}
+            ${data.valeur ? `<span><i class="fas fa-coins"></i> ${escapeHtml(data.valeur)} FCFA</span>` : ''}
         </div>
     `;
 
     // Assemblage final
     const html = `
         <div class="cv-two-columns">
-            <!-- Colonne gauche (violet) -->
             <div class="cv-left">
                 <div class="cv-photo">
-                    <img src="${avatarUrl}" alt="Photo">
+                    <img src="${escapeHtml(avatarUrl)}" alt="Photo">
                 </div>
                 <div class="cv-section">
                     <div class="cv-section-title"><i class="fas fa-graduation-cap"></i> Formation</div>
@@ -518,12 +519,10 @@ function generatePreview() {
                 ${data.interets ? `
                 <div class="cv-section">
                     <div class="cv-section-title"><i class="fas fa-heart"></i> Centres d'intérêt</div>
-                    <p class="cv-interets">${data.interets}</p>
+                    <p class="cv-interets">${escapeHtml(data.interets)}</p>
                 </div>
                 ` : ''}
             </div>
-
-            <!-- Colonne droite (blanche) -->
             <div class="cv-right">
                 <div class="cv-section">
                     <div class="cv-section-title"><i class="fas fa-address-card"></i> Coordonnées</div>
@@ -535,11 +534,11 @@ function generatePreview() {
                 </div>
                 <div class="cv-section">
                     <div class="cv-section-title"><i class="fas fa-user-tag"></i> Profil professionnel</div>
-                    <p>${data.profil || 'Non renseigné'}</p>
+                    <p>${escapeHtml(data.profil || 'Non renseigné')}</p>
                 </div>
                 <div class="cv-section">
                     <div class="cv-section-title"><i class="fas fa-pencil-alt"></i> Biographie</div>
-                    <p class="cv-bio">${data.bio || 'Non renseigné'}</p>
+                    <p class="cv-bio">${escapeHtml(data.bio || 'Non renseigné')}</p>
                 </div>
                 <div class="cv-section">
                     <div class="cv-section-title"><i class="fas fa-briefcase"></i> Expériences professionnelles</div>
@@ -547,12 +546,11 @@ function generatePreview() {
                 </div>
             </div>
         </div>
-        <!-- Pied de page (signature) -->
         <div class="cv-footer">
             <div class="signature-info">
-                Fait le ${data.dateSignature || '...'} à ${data.lieuSignature || '...'}
+                Fait le ${escapeHtml(data.dateSignature || '...')} à ${escapeHtml(data.lieuSignature || '...')}
             </div>
-            ${signatureDataURL ? `<img src="${signatureDataURL}" alt="Signature">` : ''}
+            ${signatureDataURL ? `<img src="${escapeHtml(signatureDataURL)}" alt="Signature">` : ''}
         </div>
     `;
 
@@ -560,12 +558,11 @@ function generatePreview() {
     document.getElementById('cvPreview').style.display = 'block';
 }
 
-// ===== EXPORT PDF =====
 function exportPDF() {
     const element = document.getElementById('previewContent');
     const opt = {
         margin:       0.5,
-        filename:     `CV_${playerProfile?.nom_complet || 'joueur'}.pdf`,
+        filename:     `CV_${playerProfile?.full_name || 'joueur'}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2 },
         jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
@@ -573,7 +570,7 @@ function exportPDF() {
     html2pdf().set(opt).from(element).save();
 }
 
-// ===== MODALE DE SIGNATURE =====
+// ===== MODALE DE SIGNATURE (inchangée) =====
 let signaturePadModal = null;
 let signatureLocked = false;
 
@@ -644,7 +641,7 @@ function closeSignatureModal() {
 window.openSignatureModal = openSignatureModal;
 window.closeSignatureModal = closeSignatureModal;
 
-// ===== FONCTIONS UI =====
+// ===== FONCTIONS UI (inchangées) =====
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
@@ -677,7 +674,6 @@ function initSidebar() {
     if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
     if (overlay) overlay.addEventListener('click', closeSidebarFunc);
 
-    // Swipe
     let touchStartX = 0, touchStartY = 0, touchEndX = 0;
     const swipeThreshold = 50;
 
@@ -687,21 +683,21 @@ function initSidebar() {
     }, { passive: true });
 
     document.addEventListener('touchend', (e) => {
-    touchEndX = e.changedTouches[0].screenX;
-    const diffX = touchEndX - touchStartX;
-    const diffY = e.changedTouches[0].screenY - touchStartY;
+        touchEndX = e.changedTouches[0].screenX;
+        const diffX = touchEndX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
 
-    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
-        if (e.cancelable) {
-            e.preventDefault();
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+            if (e.cancelable) {
+                e.preventDefault();
+            }
+            if (diffX > 0 && touchStartX < 50) {
+                openSidebar();
+            } else if (diffX < 0) {
+                closeSidebarFunc();
+            }
         }
-        if (diffX > 0 && touchStartX < 50) {
-            openSidebar();
-        } else if (diffX < 0) {
-            closeSidebarFunc();
-        }
-    }
-}, { passive: false });
+    }, { passive: false });
 }
 
 function addMenuHandle() {
@@ -718,7 +714,7 @@ function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabasePlayersSpacePrive.auth.signOut().then(() => {
+            supabase.auth.signOut().then(() => {
                 window.location.href = '../index.html';
             });
         });
@@ -735,6 +731,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadPlayerProfile();
     if (!playerProfile) {
         showToast('Profil non trouvé. Veuillez compléter votre inscription.', 'error');
+        // On continue quand même pour permettre de remplir le formulaire ? Non, on ne peut pas.
         return;
     }
 
@@ -765,7 +762,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('langSelect')?.addEventListener('change', (e) => {
         const lang = e.target.value;
         showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
-        // Plus tard, implémenter la traduction
     });
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
@@ -775,3 +771,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     console.log('✅ Initialisation terminée');
 });
+
+// ===== UTILITAIRE =====
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
