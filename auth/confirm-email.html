@@ -81,7 +81,6 @@
         const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
         (async () => {
-            // Récupérer le token depuis l'URL (hash ou query)
             const hashParams = new URLSearchParams(window.location.hash.substring(1));
             let token = hashParams.get('access_token');
             let type = hashParams.get('type');
@@ -106,7 +105,6 @@
                 });
                 if (error) throw error;
 
-                // Succès
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('title').innerText = 'Email confirmé !';
                 document.getElementById('message').innerHTML = 'Votre adresse email a été validée avec succès.';
