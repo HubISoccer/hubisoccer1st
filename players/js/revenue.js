@@ -5,7 +5,7 @@ const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUP
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
-let currentProfile = null;   // contiendra les données de profiles
+let currentProfile = null;
 let wallet = null;
 let transactions = [];
 let followersCount = 0;
@@ -79,24 +79,27 @@ async function loadProfile() {
     }
 }
 
-// ===== CHARGEMENT / CRÉATION DU PORTEFEUILLE =====
+// ===== CHARGEMENT / CRÉATION DU PORTEFEUILLE (avec gestion des doublons) =====
 async function loadOrCreateWallet() {
     if (!currentProfile) return null;
     try {
-        const { data: existing, error: selectError } = await supabasePlayersSpacePrive
+        // Récupérer le portefeuille le plus récent (en cas de doublon)
+        const { data: wallets, error: selectError } = await supabasePlayersSpacePrive
             .from('player_wallets')
             .select('*')
             .eq('player_id', currentProfile.id)
-            .maybeSingle();
+            .order('created_at', { ascending: false })
+            .limit(1);
 
         if (selectError) {
             console.error('Erreur chargement portefeuille:', selectError);
             return null;
         }
 
-        if (existing) {
-            wallet = existing;
+        if (wallets && wallets.length > 0) {
+            wallet = wallets[0];
         } else {
+            // Créer un nouveau portefeuille
             const { data: newWallet, error: insertError } = await supabasePlayersSpacePrive
                 .from('player_wallets')
                 .insert([{
@@ -166,7 +169,7 @@ async function loadFollowersCount() {
             return;
         }
         followersCount = count || 0;
-        updateBonusStatus();
+        if (wallet) updateBonusStatus();
     } catch (err) {
         console.error('❌ Exception loadFollowersCount:', err);
     }
@@ -174,6 +177,7 @@ async function loadFollowersCount() {
 
 // ===== MISE À JOUR DE L'INTERFACE =====
 function updateBonusStatus() {
+    if (!wallet) return;
     const bonusElement = document.getElementById('bonusInscription');
     const withdrawBtn = document.getElementById('withdrawBonusBtn');
     if (bonusElement) {
@@ -188,6 +192,7 @@ function updateBonusStatus() {
 }
 
 function renderUI() {
+    if (!wallet) return;
     document.getElementById('walletBalance').textContent = `${wallet.balance} FCFA`;
     document.getElementById('bonusInscription').textContent = `${wallet.bonus_inscription} FCFA (${followersCount}/50 abonnés)`;
     document.getElementById('totalEarned').textContent = `${wallet.balance + wallet.bonus_inscription} FCFA`;
@@ -231,6 +236,7 @@ function renderTransactions() {
 
 // ===== RETRAIT DU BONUS =====
 async function withdrawBonus() {
+    if (!wallet) return;
     if (followersCount < 50) {
         showToast(`Vous devez avoir au moins 50 abonnés (actuellement ${followersCount})`, 'warning');
         return;
@@ -317,7 +323,7 @@ document.getElementById('withdrawForm')?.addEventListener('submit', async (e) =>
         showToast('Le montant minimum est de 100 FCFA', 'warning');
         return;
     }
-    if (amount > wallet.balance) {
+    if (!wallet || amount > wallet.balance) {
         showToast('Solde insuffisant', 'warning');
         return;
     }
@@ -436,7 +442,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadTransactions();
     await loadFollowersCount();
 
-    renderUI();
+    if (wallet) {
+        renderUI();
+    } else {
+        console.error('Wallet non chargé');
+    }
 
     document.getElementById('depositBtn').addEventListener('click', openDepositModal);
     document.getElementById('withdrawBtn').addEventListener('click', openWithdrawModal);
