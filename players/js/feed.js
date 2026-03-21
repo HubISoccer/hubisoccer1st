@@ -1,24 +1,24 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
 let currentProfile = null;
-let posts = [];                 // tous les posts (avec toutes les données)
+let posts = [];
 let followers = [];
 let following = [];
-let savedPosts = new Set();     // IDs des posts dans la collection "Favoris"
+let savedPosts = new Set();
 let hiddenPosts = new Set();
 let likedPosts = new Set();
-let dislikedPosts = new Set();  // IDs des posts dislikés
+let dislikedPosts = new Set();
 let currentFilter = 'all';
 let searchTerm = '';
 let newPostsCount = 0;
 let selectedUserId = null;
 let showingHidden = false;
-let collections = [];           // collections de l'utilisateur
+let collections = [];
 let currentCollection = 'default';
 let privacyLevel = 'public';
 let notificationsList = [];
@@ -93,7 +93,7 @@ function withButtonSpinner(button, asyncFn) {
 
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const { data: { session }, error } = await supabaseClient.auth.getSession();
     if (error || !session) {
         window.location.href = '../auth/login.html';
         return null;
@@ -104,7 +104,7 @@ async function checkSession() {
 
 // ===== CHARGEMENT DU PROFIL =====
 async function loadProfile() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('profiles')
         .select('*')
         .eq('id', currentUser.id)
@@ -123,7 +123,7 @@ async function loadProfile() {
 
 // ===== CHARGEMENT DE LA CONFIGURATION (audio comments) =====
 async function loadSiteConfig() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('site_config')
         .select('value')
         .eq('key', 'audio_comments')
@@ -136,7 +136,7 @@ async function loadSiteConfig() {
 // ===== CHARGEMENT DES NOTIFICATIONS =====
 async function loadNotifications() {
     if (!currentProfile) return;
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('notifications')
         .select('*')
         .eq('user_id', currentProfile.id)
@@ -158,7 +158,6 @@ async function loadNotifications() {
     }
 }
 
-// ===== RENDU DES NOTIFICATIONS =====
 function renderNotificationsModal() {
     const list = document.getElementById('notificationsList');
     if (!list) return;
@@ -191,7 +190,7 @@ function renderNotificationsModal() {
 }
 
 async function markNotificationAsRead(notificationId) {
-    await supabase
+    await supabaseClient
         .from('notifications')
         .update({ is_read: true })
         .eq('id', notificationId);
@@ -199,7 +198,7 @@ async function markNotificationAsRead(notificationId) {
 }
 
 async function markAllNotificationsAsRead() {
-    await supabase
+    await supabaseClient
         .from('notifications')
         .update({ is_read: true })
         .eq('user_id', currentProfile.id)
@@ -219,7 +218,7 @@ function closeNotificationsModal() {
 
 // ===== COLLECTIONS =====
 async function loadCollections() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('collections')
         .select('*')
         .eq('user_id', currentProfile.id)
@@ -265,7 +264,7 @@ async function createNewCollection() {
         showToast('Veuillez saisir un nom', 'warning');
         return;
     }
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('collections')
         .insert({ user_id: currentProfile.id, name });
     if (error) {
@@ -279,7 +278,7 @@ async function createNewCollection() {
 }
 
 async function addPostToCollection(postId, collectionId) {
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('collection_items')
         .insert({ collection_id: collectionId, post_id: postId });
     if (error) {
@@ -287,14 +286,13 @@ async function addPostToCollection(postId, collectionId) {
     } else {
         showToast('Post ajouté à la collection', 'success');
         if (collectionId === currentCollection) {
-            // Recharger uniquement la collection
             await loadPosts();
         }
     }
 }
 
 async function removePostFromCollection(postId, collectionId) {
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('collection_items')
         .delete()
         .eq('collection_id', collectionId)
@@ -340,7 +338,6 @@ async function togglePostInCollection(postId, collectionId, currentlyIn) {
         await addPostToCollection(postId, collectionId);
     }
     closeCollectionsModal();
-    // Mettre à jour l'icône de collection dans le post (si visible)
     const postCard = document.querySelector(`.post-card[data-post-id="${postId}"]`);
     if (postCard) {
         const icon = postCard.querySelector('.collection-icon');
@@ -349,37 +346,36 @@ async function togglePostInCollection(postId, collectionId, currentlyIn) {
             else icon.style.display = 'none';
         }
     }
-    await loadPosts(); // pour actualiser les compteurs de collection
+    await loadPosts();
 }
 
 // ===== CHARGEMENT DES DONNÉES UTILISATEUR =====
 async function loadUserMetadata() {
-    const { data: likesData } = await supabase
+    const { data: likesData } = await supabaseClient
         .from('unified_likes')
         .select('post_id')
         .eq('user_id', currentProfile.id);
     likedPosts = new Set(likesData?.map(l => l.post_id) || []);
 
-    const { data: dislikesData } = await supabase
+    const { data: dislikesData } = await supabaseClient
         .from('unified_dislikes')
         .select('post_id')
         .eq('user_id', currentProfile.id);
     dislikedPosts = new Set(dislikesData?.map(d => d.post_id) || []);
 
-    const { data: savedData } = await supabase
+    const { data: savedData } = await supabaseClient
         .from('collection_items')
         .select('post_id, collections!inner(name)')
         .eq('collections.user_id', currentProfile.id)
         .eq('collections.name', 'Favoris');
     savedPosts = new Set(savedData?.map(s => s.post_id) || []);
 
-    const { data: hiddenData } = await supabase
+    const { data: hiddenData } = await supabaseClient
         .from('unified_hidden')
         .select('post_id')
         .eq('user_id', currentProfile.id);
     hiddenPosts = new Set(hiddenData?.map(h => h.post_id) || []);
 }
-
 // ===== CHARGEMENT DES POSTS (avec pagination) =====
 async function loadPosts(reset = true) {
     if (reset) {
@@ -395,7 +391,7 @@ async function loadPosts(reset = true) {
     if (feedLoader && reset) feedLoader.style.display = 'flex';
 
     try {
-        let query = supabase
+        let query = supabaseClient
             .from('unified_posts')
             .select('*')
             .order('created_at', { ascending: false })
@@ -414,14 +410,13 @@ async function loadPosts(reset = true) {
         }
 
         const authorIds = [...new Set(postsData.map(p => p.user_id))];
-        const { data: profilesData, error: profilesError } = await supabase
+        const { data: profilesData, error: profilesError } = await supabaseClient
             .from('profiles')
             .select('id, full_name, avatar_url, username, role, badges, privacy')
             .in('id', authorIds);
         if (profilesError) throw profilesError;
         const profilesMap = Object.fromEntries((profilesData || []).map(p => [p.id, p]));
 
-        // Récupérer les compteurs de likes, commentaires, partages
         const postIds = postsData.map(p => p.id);
         const likesCounts = await getCounts('unified_likes', 'post_id', postIds);
         const commentsCounts = await getCounts('unified_comments', 'post_id', postIds);
@@ -467,7 +462,6 @@ async function loadPosts(reset = true) {
 
         applyAdvancedFilters();
         renderPosts();
-        // Charger les commentaires pour chaque post (uniquement pour ceux visibles)
         posts.forEach(post => loadComments(post.id));
     } catch (error) {
         console.error('Erreur chargement posts:', error);
@@ -480,7 +474,7 @@ async function loadPosts(reset = true) {
 
 async function getCounts(table, column, ids) {
     if (!ids.length) return {};
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from(table)
         .select(`${column}, count`)
         .in(column, ids);
@@ -542,7 +536,7 @@ async function loadHiddenPosts() {
             document.getElementById('postsFeed').innerHTML = '<p class="no-data">Aucun post masqué.</p>';
             return;
         }
-        const { data: postsData, error } = await supabase
+        const { data: postsData, error } = await supabaseClient
             .from('unified_posts')
             .select('*')
             .in('id', hiddenIds)
@@ -550,7 +544,7 @@ async function loadHiddenPosts() {
         if (error) throw error;
 
         const authorIds = postsData.map(p => p.user_id).filter(Boolean);
-        const { data: profilesData } = await supabase
+        const { data: profilesData } = await supabaseClient
             .from('profiles')
             .select('id, full_name, avatar_url, username, role, badges')
             .in('id', authorIds);
@@ -558,11 +552,11 @@ async function loadHiddenPosts() {
 
         const hiddenPostsList = await Promise.all(postsData.map(async post => {
             const author = profilesMap[post.user_id];
-            const { count: likesCount } = await supabase
+            const { count: likesCount } = await supabaseClient
                 .from('unified_likes')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
-            const { count: commentsCount } = await supabase
+            const { count: commentsCount } = await supabaseClient
                 .from('unified_comments')
                 .select('*', { count: 'exact', head: true })
                 .eq('post_id', post.id);
@@ -662,9 +656,7 @@ function renderPostCard(post, isHidden = false) {
 
 function formatPostContent(text) {
     if (!text) return '';
-    // Mentions
     text = text.replace(/@(\w+)/g, '<a href="#" onclick="openUserProfileByUsername(\'$1\')">@$1</a>');
-    // Hashtags
     text = text.replace(/#(\w+)/g, '<a href="#" onclick="searchHashtag(\'$1\')">#$1</a>');
     return text;
 }
@@ -705,13 +697,12 @@ function renderPosts() {
         html += renderPostCard(post);
     });
     feed.innerHTML = html;
-    // Observer les vues
     observePostsForViews();
 }
 
 // ===== COMMENTAIRES =====
 async function loadComments(postId) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('unified_comments')
         .select(`
             *,
@@ -748,7 +739,7 @@ async function loadComments(postId) {
 async function renderComment(comment, postId) {
     const authorName = comment.author?.full_name || 'Anonyme';
     const timeAgo = timeSince(new Date(comment.created_at));
-    const { data: replies, error } = await supabase
+    const { data: replies, error } = await supabaseClient
         .from('unified_comments')
         .select(`
             *,
@@ -795,7 +786,7 @@ async function addComment(postId) {
     if (!content) return;
     const button = input.nextElementSibling;
     withButtonSpinner(button, async () => {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('unified_comments')
             .insert({
                 user_id: currentProfile.id,
@@ -809,7 +800,6 @@ async function addComment(postId) {
             input.value = '';
             replyParentId = null;
             await loadComments(postId);
-            // Mettre à jour le compteur de commentaires dans le DOM localement
             const postCard = document.querySelector(`.post-card[data-post-id="${postId}"]`);
             if (postCard) {
                 const commentSpan = postCard.querySelector('.post-stats span:nth-child(2)');
@@ -848,7 +838,7 @@ async function sendReply() {
     if (!content) return;
     const button = document.querySelector('#replyModal .btn-send-reply');
     withButtonSpinner(button, async () => {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('unified_comments')
             .insert({
                 user_id: currentProfile.id,
@@ -870,7 +860,7 @@ async function sendReply() {
 async function editComment(commentId, postId) {
     const newContent = prompt('Modifier votre commentaire :');
     if (!newContent) return;
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('unified_comments')
         .update({ content: newContent })
         .eq('id', commentId);
@@ -884,7 +874,7 @@ async function editComment(commentId, postId) {
 
 async function deleteComment(commentId, postId) {
     if (!confirm('Supprimer ce commentaire ?')) return;
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('unified_comments')
         .delete()
         .eq('id', commentId);
@@ -893,7 +883,6 @@ async function deleteComment(commentId, postId) {
     } else {
         showToast('Commentaire supprimé', 'success');
         loadComments(postId);
-        // Décrémenter compteur
         const postCard = document.querySelector(`.post-card[data-post-id="${postId}"]`);
         if (postCard) {
             const commentSpan = postCard.querySelector('.post-stats span:nth-child(2)');
@@ -907,7 +896,7 @@ async function deleteComment(commentId, postId) {
 
 async function reportComment(commentId, postId) {
     const reason = prompt('Pourquoi signalez-vous ce commentaire ? (optionnel)');
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('comment_reports')
         .insert({ user_id: currentProfile.id, comment_id: commentId, reason: reason || null });
     if (error) {
@@ -924,8 +913,7 @@ async function likePost(postId) {
     const likeCountSpan = postCard?.querySelector('.post-stats span:first-child');
     let currentCount = parseInt(likeCountSpan?.innerHTML.match(/\d+/) || 0);
     if (likedPosts.has(postId)) {
-        // unlike
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('unified_likes')
             .delete()
             .eq('user_id', currentProfile.id)
@@ -938,8 +926,7 @@ async function likePost(postId) {
         if (likeBtn) likeBtn.classList.remove('liked');
         if (likeCountSpan) likeCountSpan.innerHTML = `<i class="fas fa-heart"></i> ${currentCount-1}`;
     } else {
-        // like
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('unified_likes')
             .insert({ user_id: currentProfile.id, post_id: postId });
         if (error) {
@@ -950,7 +937,6 @@ async function likePost(postId) {
         if (likeBtn) likeBtn.classList.add('liked');
         if (likeCountSpan) likeCountSpan.innerHTML = `<i class="fas fa-heart"></i> ${currentCount+1}`;
     }
-    // Mettre à jour l'objet posts
     const postIndex = posts.findIndex(p => p.id == postId);
     if (postIndex !== -1) {
         posts[postIndex].isLiked = likedPosts.has(postId);
@@ -964,8 +950,7 @@ async function dislikePost(postId) {
     const likeCountSpan = postCard?.querySelector('.post-stats span:first-child');
     let currentLikes = parseInt(likeCountSpan?.innerHTML.match(/\d+/) || 0);
     if (dislikedPosts.has(postId)) {
-        // remove dislike
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('unified_dislikes')
             .delete()
             .eq('user_id', currentProfile.id)
@@ -977,8 +962,7 @@ async function dislikePost(postId) {
         dislikedPosts.delete(postId);
         if (dislikeBtn) dislikeBtn.classList.remove('disliked');
     } else {
-        // dislike
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('unified_dislikes')
             .insert({ user_id: currentProfile.id, post_id: postId });
         if (error) {
@@ -987,9 +971,8 @@ async function dislikePost(postId) {
         }
         dislikedPosts.add(postId);
         if (dislikeBtn) dislikeBtn.classList.add('disliked');
-        // Optionnel : décrémenter les likes si le post était aimé
         if (likedPosts.has(postId)) {
-            await likePost(postId); // enlève le like
+            await likePost(postId);
         }
     }
 }
@@ -999,7 +982,7 @@ async function repost(originalPostId) {
     const originalPost = posts.find(p => p.id == originalPostId);
     if (!originalPost) return;
     const content = prompt(`Republier "${originalPost.content?.substring(0,50)}..." ? (ajoutez un commentaire si vous le souhaitez)`);
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('unified_posts')
         .insert({
             user_id: currentProfile.id,
@@ -1011,8 +994,6 @@ async function repost(originalPostId) {
         showToast('Erreur : ' + error.message, 'error');
     } else {
         showToast('Repost effectué', 'success');
-        // Ajouter le nouveau post en haut du fil sans recharger tout
-        // On peut le faire en rechargeant seulement le premier post
         loadPosts(true);
     }
 }
@@ -1042,7 +1023,7 @@ function shareOn(platform) {
 
 // ===== STORIES =====
 async function loadStories() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('user_stories')
         .select('*, profiles:user_id (full_name, avatar_url)')
         .gte('expires_at', new Date().toISOString())
@@ -1091,18 +1072,18 @@ async function uploadStory() {
         const file = fileInput.files[0];
         const fileExt = file.name.split('.').pop();
         const fileName = `${currentProfile.id}_story_${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabaseClient.storage
             .from('player-posts')
             .upload(fileName, file);
         if (uploadError) {
             showToast('Erreur upload : ' + uploadError.message, 'error');
             return;
         }
-        const { data: urlData } = supabase.storage.from('player-posts').getPublicUrl(fileName);
+        const { data: urlData } = supabaseClient.storage.from('player-posts').getPublicUrl(fileName);
         mediaUrl = urlData.publicUrl;
     }
     const content = type === 'text' ? text : null;
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('user_stories')
         .insert({
             user_id: currentProfile.id,
@@ -1177,7 +1158,7 @@ function searchHashtag(tag) {
     renderPosts();
 }
 async function openUserProfileByUsername(username) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('profiles')
         .select('id')
         .eq('username', username)
@@ -1214,7 +1195,7 @@ async function createEvent() {
         showToast('Titre et date obligatoires', 'warning');
         return;
     }
-    const { data: event, error } = await supabase
+    const { data: event, error } = await supabaseClient
         .from('events')
         .insert({
             user_id: currentProfile.id,
@@ -1229,9 +1210,8 @@ async function createEvent() {
         showToast('Erreur : ' + error.message, 'error');
         return;
     }
-    // Créer un post associé
     const content = `📅 Événement : ${title}\n📍 ${location}\n📆 ${new Date(date).toLocaleString()}\n\n${desc}`;
-    const { error: postError } = await supabase
+    const { error: postError } = await supabaseClient
         .from('unified_posts')
         .insert({
             user_id: currentProfile.id,
@@ -1267,18 +1247,18 @@ async function schedulePost() {
     if (file) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabaseClient.storage
             .from('player-posts')
             .upload(fileName, file);
         if (uploadError) {
             showToast('Erreur upload : ' + uploadError.message, 'error');
             return;
         }
-        const { data: urlData } = supabase.storage.from('player-posts').getPublicUrl(fileName);
+        const { data: urlData } = supabaseClient.storage.from('player-posts').getPublicUrl(fileName);
         mediaUrl = urlData.publicUrl;
         mediaType = file.type.startsWith('image/') ? 'image' : 'video';
     }
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('scheduled_posts')
         .insert({
             user_id: currentProfile.id,
@@ -1334,18 +1314,18 @@ async function createPost(content, file) {
     if (file) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabaseClient.storage
             .from('player-posts')
             .upload(fileName, file);
         if (uploadError) {
             showToast('Erreur upload : ' + uploadError.message, 'error');
             return;
         }
-        const { data: urlData } = supabase.storage.from('player-posts').getPublicUrl(fileName);
+        const { data: urlData } = supabaseClient.storage.from('player-posts').getPublicUrl(fileName);
         mediaUrl = urlData.publicUrl;
         mediaType = file.type.startsWith('image/') ? 'image' : 'video';
     }
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('unified_posts')
         .insert({
             user_id: currentProfile.id,
@@ -1386,7 +1366,7 @@ async function createPoll() {
         return;
     }
     const content = `📊 Sondage : ${question}\n\n${options.map((o,i)=>`${i+1}. ${o}`).join('\n')}`;
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('unified_posts')
         .insert({
             user_id: currentProfile.id,
@@ -1433,7 +1413,7 @@ async function saveProfileChanges(e) {
     updates.contact_info = contactInfo;
     const btn = e.target.querySelector('button[type="submit"]');
     withButtonSpinner(btn, async () => {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('profiles')
             .update(updates)
             .eq('id', currentProfile.id);
@@ -1455,7 +1435,7 @@ function closePrivacyModal() {
 }
 async function savePrivacy() {
     const selected = document.querySelector('input[name="privacy"]:checked').value;
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('profiles')
         .update({ privacy: selected })
         .eq('id', currentProfile.id);
@@ -1496,7 +1476,7 @@ function closeReportModal() {
 }
 async function submitReport() {
     const reason = document.getElementById('reportReason').value.trim();
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('unified_reports')
         .insert({
             user_id: currentProfile.id,
@@ -1531,22 +1511,22 @@ async function uploadAudioComment() {
     }
     const fileExt = file.name.split('.').pop();
     const fileName = `${currentProfile.id}_audio_${Date.now()}.${fileExt}`;
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabaseClient.storage
         .from('audio_comments')
         .upload(fileName, file);
     if (uploadError) {
         showToast('Erreur upload : ' + uploadError.message, 'error');
         return;
     }
-    const { data: urlData } = supabase.storage.from('audio_comments').getPublicUrl(fileName);
+    const { data: urlData } = supabaseClient.storage.from('audio_comments').getPublicUrl(fileName);
     const audioUrl = urlData.publicUrl;
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('unified_comments')
         .insert({
             user_id: currentProfile.id,
             post_id: audioCommentPostId,
             audio_url: audioUrl,
-            audio_duration: 0, // on pourrait calculer mais optionnel
+            audio_duration: 0,
             content: ''
         });
     if (error) {
@@ -1576,7 +1556,7 @@ function observePostsForViews() {
     postsElements.forEach(el => observer.observe(el));
 }
 async function recordView(postId) {
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('post_views')
         .insert({
             post_id: postId,
@@ -1618,7 +1598,7 @@ async function toggleFollow(button) {
     const isFollowing = button.classList.contains('following');
     withButtonSpinner(button, async () => {
         if (isFollowing) {
-            await supabase
+            await supabaseClient
                 .from('unified_follows')
                 .delete()
                 .eq('follower_id', currentProfile.id)
@@ -1626,7 +1606,7 @@ async function toggleFollow(button) {
             button.classList.remove('following');
             button.textContent = 'Suivre';
         } else {
-            await supabase
+            await supabaseClient
                 .from('unified_follows')
                 .insert({ follower_id: currentProfile.id, following_id: followedId });
             button.classList.add('following');
@@ -1638,7 +1618,7 @@ async function toggleFollow(button) {
 }
 
 async function loadFollowers() {
-    const { data: followersData } = await supabase
+    const { data: followersData } = await supabaseClient
         .from('unified_follows')
         .select('follower_id, follower:profiles!follower_id (id, full_name, avatar_url, username)')
         .eq('following_id', currentProfile.id);
@@ -1653,7 +1633,7 @@ async function loadFollowers() {
             </li>
         `).join('');
     }
-    const { data: followingData } = await supabase
+    const { data: followingData } = await supabaseClient
         .from('unified_follows')
         .select('following_id, followed:profiles!following_id (id, full_name, avatar_url, username)')
         .eq('follower_id', currentProfile.id);
@@ -1671,7 +1651,7 @@ async function loadFollowers() {
     document.getElementById('insightReach').textContent = (followers.length * 10).toLocaleString();
     document.getElementById('insightEngagement').textContent = '12%';
     document.getElementById('insightNewFollowers').textContent = `+${Math.floor(Math.random() * 10)}`;
-    const { data: suggestionsData } = await supabase
+    const { data: suggestionsData } = await supabaseClient
         .from('profiles')
         .select('id, full_name, avatar_url, username')
         .neq('id', currentProfile.id)
@@ -1686,7 +1666,7 @@ async function loadFollowers() {
             </li>
         `).join('');
     }
-    const { data: trendsData } = await supabase
+    const { data: trendsData } = await supabaseClient
         .from('unified_posts')
         .select('id, content')
         .order('created_at', { ascending: false })
@@ -1709,7 +1689,7 @@ function scrollToPost(postId) {
 
 async function openUserProfile(userId) {
     selectedUserId = userId;
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('profiles')
         .select('full_name, avatar_url, username, bio, badges, privacy')
         .eq('id', userId)
@@ -1740,7 +1720,7 @@ function sendMessageToUser() {
 }
 
 async function showLikes(postId) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('unified_likes')
         .select('user_id, author:profiles!user_id (id, full_name, avatar_url, username)')
         .eq('post_id', postId);
@@ -1766,7 +1746,7 @@ async function editPost(postId) {
     const post = posts.find(p => p.id == postId);
     const newContent = prompt('Modifier votre message :', post.content);
     if (newContent === null) return;
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('unified_posts')
         .update({ content: newContent })
         .eq('id', postId);
@@ -1779,7 +1759,7 @@ async function editPost(postId) {
 }
 async function deletePost(postId) {
     if (!confirm('Supprimer ce post définitivement ?')) return;
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('unified_posts')
         .delete()
         .eq('id', postId);
@@ -1792,7 +1772,7 @@ async function deletePost(postId) {
 }
 async function hidePost(postId) {
     if (!confirm('Masquer ce post ?')) return;
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('unified_hidden')
         .insert({ user_id: currentProfile.id, post_id: postId });
     if (error) {
@@ -1805,7 +1785,7 @@ async function hidePost(postId) {
 }
 async function unhidePost(postId) {
     if (!confirm('Réafficher ce post ?')) return;
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('unified_hidden')
         .delete()
         .eq('user_id', currentProfile.id)
@@ -1862,7 +1842,7 @@ function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', async (e) => {
             e.preventDefault();
-            await supabase.auth.signOut();
+            await supabaseClient.auth.signOut();
             window.location.href = '../index.html';
         });
     });
@@ -1914,7 +1894,7 @@ function initSidebars() {
 
 // ===== NOUVEAUX POSTS (Realtime) =====
 function subscribeToNewPosts() {
-    supabase
+    supabaseClient
         .channel('unified_posts_changes_player')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'unified_posts' }, payload => {
             newPostsCount++;
@@ -1953,7 +1933,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSidebars();
     subscribeToNewPosts();
 
-    // Boutons
+    // Boutons de la zone de publication
     document.getElementById('attachMediaBtn').addEventListener('click', () => document.getElementById('mediaInput').click());
     document.getElementById('mediaInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -1977,6 +1957,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         await withButtonSpinner(document.getElementById('publishBtn'), () => createPost(content, file));
     });
     document.getElementById('mediaCancel').addEventListener('click', cancelMedia);
+
+    // Posts masqués
     document.getElementById('showHiddenPosts').addEventListener('click', (e) => {
         e.preventDefault();
         loadHiddenPosts();
@@ -1986,22 +1968,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('backToFeedBtn').style.display = 'none';
         loadPosts(true);
     });
+
+    // Édition du profil
     document.getElementById('editProfileForm').addEventListener('submit', saveProfileChanges);
+
+    // Notifications
     document.getElementById('notifIcon').addEventListener('click', openNotificationsModal);
     document.getElementById('markAllRead').addEventListener('click', markAllNotificationsAsRead);
+
+    // Collections
     document.getElementById('createCollectionBtn').addEventListener('click', openCreateCollectionModal);
+
+    // Sondage
     document.getElementById('pollBtn').addEventListener('click', openPollModal);
     document.getElementById('submitPoll').addEventListener('click', createPoll);
+
+    // Confidentialité
     document.getElementById('privacyBtn').addEventListener('click', openPrivacyModal);
     document.getElementById('savePrivacy').addEventListener('click', savePrivacy);
+
+    // Invitations
     document.getElementById('inviteBtn').addEventListener('click', openInviteModal);
     document.getElementById('sendInvite').addEventListener('click', sendInvite);
-    document.getElementById('historyBtn').addEventListener('click', showPersonalHistory);
-    document.getElementById('eventBtn').addEventListener('click', openEventModal);
-    document.getElementById('loadMoreBtn').addEventListener('click', loadMorePosts);
-    document.getElementById('closeModal').addEventListener('click', closeMediaZoom);
 
-    // Exposer globalement les fonctions nécessaires
+    // Historique
+    document.getElementById('historyBtn').addEventListener('click', showPersonalHistory);
+
+    // Événement
+    document.getElementById('eventBtn').addEventListener('click', openEventModal);
+    document.getElementById('createEventBtn')?.addEventListener('click', createEvent); // à vérifier si le bouton existe
+
+    // Charger plus
+    document.getElementById('loadMoreBtn').addEventListener('click', loadMorePosts);
+
+    // Modale de zoom média
+    const closeZoom = document.querySelector('#mediaZoomModal .close-modal');
+    if (closeZoom) closeZoom.addEventListener('click', closeMediaZoom);
+
+    // Exposer les fonctions globales pour les appels inline (onclick)
     window.closePreview = closePreview;
     window.publishFromPreview = publishFromPreview;
     window.openUserProfile = openUserProfile;
@@ -2060,6 +2064,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.closeEditProfileModal = closeEditProfileModal;
     window.createNewCollection = createNewCollection;
     window.closeCreateCollectionModal = closeCreateCollectionModal;
+    window.setCurrentCollection = setCurrentCollection;
+    window.searchHashtag = searchHashtag;
+    window.openUserProfileByUsername = openUserProfileByUsername;
+    window.cancelMedia = cancelMedia;
+
+    // Gestion de la langue (placeholder)
+    document.getElementById('langSelect')?.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+    });
+    document.getElementById('languageLink')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        showToast('Changement de langue bientôt disponible', 'info');
+    });
 
     console.log('✅ Initialisation terminée');
 });
+
+
