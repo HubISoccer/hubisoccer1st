@@ -329,38 +329,57 @@ async function sendMessage() {
 
 // ===== SOUSCRIPTION AUX NOUVEAUX MESSAGES =====
 function subscribeToMessages(tournamentId) {
-    if (messagesSubscription) messagesSubscription.unsubscribe();
+    if (messagesSubscription) {
+        messagesSubscription.unsubscribe();
+        messagesSubscription = null;
+    }
+
+    console.log('🚀 Tentative de souscription au canal pour tournament_id:', tournamentId);
 
     messagesSubscription = supabasePlayersSpacePrive
-        .channel(`tournament_messages:${tournamentId}`)
-        .on('postgres_changes', {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'tournament_messages',
-            filter: `tournament_id=eq.${tournamentId}`
-        }, async (payload) => {
-            let authorName = profileCache.get(payload.new.user_id);
-            if (!authorName) {
-                const { data } = await supabasePlayersSpacePrive
-                    .from('profiles')
-                    .select('full_name')
-                    .eq('id', payload.new.user_id)
-                    .single();
-                authorName = data?.full_name || 'Inconnu';
-                profileCache.set(payload.new.user_id, authorName);
-            }
+        .channel(`tournament_messages_${tournamentId}`)
+        .on(
+            'postgres_changes',
+            {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'tournament_messages',
+                filter: `tournament_id=eq.${tournamentId}`
+            },
+            async (payload) => {
+                console.log('📨 Nouveau message reçu en temps réel :', payload);
+                let authorName = profileCache.get(payload.new.user_id);
+                if (!authorName) {
+                    const { data } = await supabasePlayersSpacePrive
+                        .from('profiles')
+                        .select('full_name')
+                        .eq('id', payload.new.user_id)
+                        .single();
+                    authorName = data?.full_name || 'Inconnu';
+                    profileCache.set(payload.new.user_id, authorName);
+                }
 
-            const newMsg = {
-                id: payload.new.id,
-                userId: payload.new.user_id,
-                author: authorName,
-                text: payload.new.message,
-                time: new Date(payload.new.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-            };
-            messages.push(newMsg);
-            renderChatMessages();
-        })
-        .subscribe();
+                const newMsg = {
+                    id: payload.new.id,
+                    userId: payload.new.user_id,
+                    author: authorName,
+                    text: payload.new.message,
+                    time: new Date(payload.new.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                };
+                messages.push(newMsg);
+                renderChatMessages();
+            }
+        )
+        .subscribe((status, err) => {
+            if (status === 'SUBSCRIBED') {
+                console.log('✅ Souscription Realtime établie pour le tournoi', tournamentId);
+            } else if (status === 'CHANNEL_ERROR') {
+                console.error('❌ Erreur de canal Realtime :', err);
+            } else if (status === 'TIMED_OUT') {
+                console.warn('⚠️ Timeout de la souscription, tentative de reconnexion...');
+                setTimeout(() => subscribeToMessages(tournamentId), 3000);
+            }
+        });
 }
 
 // ===== SÉLECTION D'UN TOURNOI =====
@@ -541,7 +560,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.getElementById('openTournamentModal').addEventListener('click', openTournamentModal);
-    document.getElementById('refreshChatBtn').addEventListener('click', refreshMessages);
+    const refreshBtn = document.getElementById('refreshChatBtn');
+    if (refreshBtn) refreshBtn.addEventListener('click', refreshMessages);
 
     window.closeTournamentModal = closeTournamentModal;
     window.closePlayersModal = closePlayersModal;
