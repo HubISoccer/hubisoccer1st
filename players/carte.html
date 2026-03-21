@@ -6,9 +6,7 @@
     <title>Ma Licence | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles spécifiques (autonome) -->
     <link rel="stylesheet" href="css/carte.css">
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -16,15 +14,15 @@
         <div class="card">
             <div class="card-header">
                 <h2>Licence HubISoccer</h2>
-                <button class="btn-print" onclick="window.print()">🖨️ Imprimer / PDF</button>
+                <button class="btn-print" id="printBtn">🖨️ Imprimer / PDF</button>
             </div>
             <div class="card-body">
                 <div id="recto" class="card-face recto active"></div>
                 <div id="verso" class="card-face verso"></div>
             </div>
             <div class="card-footer">
-                <button id="btnRecto" class="active" onclick="showFace('recto')">Recto</button>
-                <button id="btnVerso" onclick="showFace('verso')">Verso</button>
+                <button id="btnRecto" class="active">Recto</button>
+                <button id="btnVerso">Verso</button>
             </div>
         </div>
     </div>
