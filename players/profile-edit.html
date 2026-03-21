@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modifier mon profil | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar identique au dashboard -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Espace Joueur</span>
+        </div>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+                <option value="lin">🇨🇬 Lingala</option>
+                <option value="wol">🇸🇳 Wolof</option>
+                <option value="diou">🇨🇮 Dioula</option>
+                <option value="ha">🇳🇬 Hausa</option>
+                <option value="sw">🇰🇪 Kiswahili</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="pt">🇵🇹 Português</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="ar">🇸🇦 العربية</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="ja">🇯🇵 日本語</option>
+                <option value="tr">🇹🇷 Türkçe</option>
+                <option value="ko">🇰🇷 한국어</option>
+                <option value="hi">🇮🇳 हिन्दी</option>
+                <option value="nl">🇳🇱 Nederlands</option>
+                <option value="pl">🇵🇱 Polski</option>
+                <option value="vi">🇻🇳 Tiếng Việt</option>
+            </select>
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="profile-edit.html">Mon profil</a>
+                    <a href="support.html">Paramètres</a>
+                    <a href="#" id="languageLink">Langue (Français)</a>
+                    <a href="#" id="logoutLink">Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Sidebar (identique) -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Menu Joueur</h3>
+            <button class="close-sidebar" id="closeSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+            <a href="feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
+            <a href="verification.html"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
+            <a href="edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV Pro</a>
+            <a href="certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
+            <a href="tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournoi (Live)</a>
+            <a href="transfers.html"><i class="fas fa-exchange-alt"></i> Historique Transferts</a>
+            <hr>
+            <a href="videos.html"><i class="fas fa-video"></i> Mes Vidéos</a>
+            <a href="revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
+            <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
+            <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Contenu principal -->
+    <main class="dashboard-main">
+        <div class="dashboard-container" style="grid-template-columns: 1fr; max-width: 800px; margin: 0 auto;">
+            <div class="main-panel" style="padding: 30px;">
+                <div class="player-header">
+                    <div class="player-header-left">
+                        <h1>Modifier mon profil</h1>
+                        <p>Mettez à jour vos informations personnelles</p>
+                    </div>
+                </div>
+
+                <form id="profileForm">
+                    <div class="form-group">
+                        <label>Poste de jeu</label>
+                        <input type="text" id="position" placeholder="Ex: Attaquant, Milieu">
+                    </div>
+                    <div class="form-row" style="display: flex; gap: 20px; flex-wrap: wrap;">
+                        <div class="form-group" style="flex:1;">
+                            <label>Taille (cm)</label>
+                            <input type="number" id="height" placeholder="175">
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label>Poids (kg)</label>
+                            <input type="number" id="weight" placeholder="70">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Pied fort</label>
+                        <select id="preferredFoot">
+                            <option value="">Sélectionnez</option>
+                            <option>Droitier</option>
+                            <option>Gaucher</option>
+                            <option>Ambidextre</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Club actuel</label>
+                        <input type="text" id="club" placeholder="Nom du club ou 'Joueur libre'">
+                    </div>
+                    <div class="form-group">
+                        <label>Nationalité</label>
+                        <input type="text" id="nationality" placeholder="Ex: Bénin">
+                    </div>
+                    <div class="form-group">
+                        <label>Biographie</label>
+                        <textarea id="bio" rows="3" placeholder="Courte biographie..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Numéro de licence</label>
+                        <input type="text" id="licenseNumber" placeholder="Ex: 12345">
+                    </div>
+                    <div class="form-actions" style="margin-top: 30px; text-align: right;">
+                        <button type="submit" class="btn-save" style="background: var(--primary); color: white; padding: 12px 28px; border-radius: 40px; border: none; cursor: pointer;">Enregistrer les modifications</button>
+                        <a href="dashboard.html" class="btn-cancel" style="margin-left: 15px; color: var(--gray); text-decoration: none;">Annuler</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/dashboard.js"></script>
+    <script>
+        // Ce script utilise l'instance supabasePlayersSpacePrive définie dans dashboard.js
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Vérifier la session
+            const { data: { session } } = await supabasePlayersSpacePrive.auth.getSession();
+            if (!session) {
+                window.location.href = '../auth/login.html';
+                return;
+            }
+            const userId = session.user.id;
+
+            // Charger le profil depuis profiles
+            const { data: profile, error: profileError } = await supabasePlayersSpacePrive
+                .from('profiles')
+                .select('bio, country')
+                .eq('id', userId)
+                .single();
+            if (!profileError && profile) {
+                document.getElementById('bio').value = profile.bio || '';
+                document.getElementById('nationality').value = profile.country || '';
+            }
+
+            // Charger les données depuis player_cv
+            const { data: cv, error: cvError } = await supabasePlayersSpacePrive
+                .from('player_cv')
+                .select('data')
+                .eq('player_id', userId)
+                .maybeSingle();
+            let cvData = cv?.data || {};
+            document.getElementById('position').value = cvData.position || '';
+            document.getElementById('height').value = cvData.taille || '';
+            document.getElementById('weight').value = cvData.poids || '';
+            document.getElementById('preferredFoot').value = cvData.piedFort || '';
+            document.getElementById('club').value = cvData.club || '';
+            document.getElementById('licenseNumber').value = cvData.license_number || '';
+
+            // Soumission du formulaire
+            const form = document.getElementById('profileForm');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const bio = document.getElementById('bio').value.trim();
+                const nationality = document.getElementById('nationality').value.trim();
+                const position = document.getElementById('position').value.trim();
+                const height = parseInt(document.getElementById('height').value, 10);
+                const weight = parseInt(document.getElementById('weight').value, 10);
+                const preferredFoot = document.getElementById('preferredFoot').value;
+                const club = document.getElementById('club').value.trim();
+                const licenseNumber = document.getElementById('licenseNumber').value.trim();
+
+                // Mise à jour de profiles
+                const { error: updateProfileError } = await supabasePlayersSpacePrive
+                    .from('profiles')
+                    .update({
+                        bio: bio || null,
+                        country: nationality || null
+                    })
+                    .eq('id', userId);
+                if (updateProfileError) {
+                    alert('Erreur mise à jour profil : ' + updateProfileError.message);
+                    return;
+                }
+
+                // Mise à jour de player_cv
+                // Récupérer l'id de player_cv ou créer
+                const { data: existing, error: selectError } = await supabasePlayersSpacePrive
+                    .from('player_cv')
+                    .select('id, data')
+                    .eq('player_id', userId)
+                    .maybeSingle();
+
+                let newData = existing?.data || {};
+                newData = {
+                    ...newData,
+                    position,
+                    taille: height,
+                    poids: weight,
+                    piedFort: preferredFoot,
+                    club,
+                    license_number: licenseNumber
+                };
+
+                if (existing) {
+                    const { error: updateError } = await supabasePlayersSpacePrive
+                        .from('player_cv')
+                        .update({ data: newData })
+                        .eq('id', existing.id);
+                    if (updateError) {
+                        alert('Erreur mise à jour CV : ' + updateError.message);
+                        return;
+                    }
+                } else {
+                    const { error: insertError } = await supabasePlayersSpacePrive
+                        .from('player_cv')
+                        .insert([{ player_id: userId, data: newData }]);
+                    if (insertError) {
+                        alert('Erreur création CV : ' + insertError.message);
+                        return;
+                    }
+                }
+
+                alert('Profil mis à jour avec succès !');
+                window.location.href = 'dashboard.html';
+            });
+
+            // Initialiser les menus (copié depuis dashboard.js)
+            function initUserMenu() {
+                const userMenu = document.getElementById('userMenu');
+                const dropdown = document.getElementById('userDropdown');
+                if (!userMenu || !dropdown) return;
+                userMenu.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdown.classList.toggle('show');
+                });
+                document.addEventListener('click', () => dropdown.classList.remove('show'));
+            }
+
+            function initSidebar() {
+                const menuBtn = document.getElementById('menuToggle');
+                const sidebar = document.getElementById('sidebar');
+                const closeBtn = document.getElementById('closeSidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+                const menuHandle = document.getElementById('menuHandle');
+
+                function openSidebar() {
+                    sidebar.classList.add('active');
+                    if (overlay) overlay.classList.add('active');
+                }
+                function closeSidebarFunc() {
+                    sidebar.classList.remove('active');
+                    if (overlay) overlay.classList.remove('active');
+                }
+
+                if (menuBtn) menuBtn.addEventListener('click', openSidebar);
+                if (menuHandle) menuHandle.addEventListener('click', openSidebar);
+                if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
+                if (overlay) overlay.addEventListener('click', closeSidebarFunc);
+
+                let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+                const swipeThreshold = 50;
+                document.addEventListener('touchstart', (e) => {
+                    touchStartX = e.changedTouches[0].screenX;
+                    touchStartY = e.changedTouches[0].screenY;
+                }, { passive: true });
+                document.addEventListener('touchend', (e) => {
+                    touchEndX = e.changedTouches[0].screenX;
+                    const diffX = touchEndX - touchStartX;
+                    const diffY = e.changedTouches[0].screenY - touchStartY;
+                    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+                        if (e.cancelable) e.preventDefault();
+                        if (diffX > 0 && touchStartX < 50) openSidebar();
+                        else if (diffX < 0) closeSidebarFunc();
+                    }
+                }, { passive: false });
+            }
+
+            function addMenuHandle() {
+                if (document.getElementById('menuHandle')) return;
+                const handle = document.createElement('div');
+                handle.id = 'menuHandle';
+                handle.className = 'menu-handle';
+                handle.setAttribute('aria-label', 'Ouvrir le menu');
+                handle.innerHTML = '<span></span>';
+                document.body.appendChild(handle);
+            }
+
+            function initLogout() {
+                document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        supabasePlayersSpacePrive.auth.signOut().then(() => {
+                            window.location.href = '../index.html';
+                        });
+                    });
+                });
+            }
+
+            addMenuHandle();
+            initUserMenu();
+            initSidebar();
+            initLogout();
+
+            // Gestion du sélecteur de langue (simple toast)
+            document.getElementById('langSelect')?.addEventListener('change', (e) => {
+                alert(`Langue changée en ${e.target.options[e.target.selectedIndex].text} (démonstration)`);
+            });
+            document.getElementById('languageLink')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                alert('Changement de langue bientôt disponible');
+            });
+
+            // Mettre à jour le nom de l'utilisateur dans la navbar
+            const { data: { user } } = await supabasePlayersSpacePrive.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabasePlayersSpacePrive
+                    .from('profiles')
+                    .select('full_name, avatar_url')
+                    .eq('id', user.id)
+                    .single();
+                if (profile) {
+                    document.getElementById('userName').textContent = profile.full_name || 'Joueur';
+                    document.getElementById('userAvatar').src = profile.avatar_url || 'img/user-default.jpg';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
