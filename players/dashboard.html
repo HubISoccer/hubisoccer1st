@@ -341,5 +341,67 @@
     </footer>
 
     <script src="js/dashboard.js"></script>
+    <!-- MODALE PROFIL -->
+<div id="profileModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Modifier mon profil</h2>
+        <form id="profileForm">
+            <div class="form-group">
+                <label>Poste de jeu</label>
+                <input type="text" id="modalPosition" placeholder="Ex: Attaquant, Milieu">
+            </div>
+            <div class="form-group">
+                <label>Taille (cm)</label>
+                <input type="number" id="modalHeight" placeholder="175">
+            </div>
+            <div class="form-group">
+                <label>Poids (kg)</label>
+                <input type="number" id="modalWeight" placeholder="70">
+            </div>
+            <div class="form-group">
+                <label>Pied fort</label>
+                <select id="modalPreferredFoot">
+                    <option value="">Sélectionnez</option>
+                    <option>Droitier</option>
+                    <option>Gaucher</option>
+                    <option>Ambidextre</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Club actuel</label>
+                <input type="text" id="modalClub" placeholder="Nom du club ou 'Joueur libre'">
+            </div>
+            <div class="form-group">
+                <label>Nationalité</label>
+                <input type="text" id="modalNationality" placeholder="Ex: Bénin">
+            </div>
+            <div class="form-group">
+                <label>Biographie</label>
+                <textarea id="modalBio" rows="3" placeholder="Courte biographie..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Numéro de licence</label>
+                <input type="text" id="modalLicenseNumber" placeholder="Ex: 12345">
+            </div>
+            <div class="modal-buttons">
+                <button type="button" class="btn-save" id="saveProfileBtn">Enregistrer</button>
+                <button type="button" class="btn-cancel" onclick="closeProfileModal()">Annuler</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="js/profile-modal.js"></script>
+<script>
+    // Initialiser la modale
+    initProfileModal();
+    // Remplacer le lien "Mon profil" dans le menu déroulant
+    const profileLink = document.querySelector('#userDropdown a[href="edit-cv.html"]');
+    if (profileLink) {
+        profileLink.href = 'javascript:void(0)';
+        profileLink.onclick = openProfileModal;
+    }
+</script>
 </body>
 </html>
