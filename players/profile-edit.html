@@ -90,7 +90,7 @@
     </style>
 </head>
 <body>
-    <!-- Navbar (identique au dashboard) -->
+    <!-- Navbar -->
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
@@ -121,7 +121,8 @@
                 <option value="hi">🇮🇳 हिन्दी</option>
                 <option value="nl">🇳🇱 Nederlands</option>
                 <option value="pl">🇵🇱 Polski</option>
-                <option value="vi">🇻🇳 Tiếng Việt</option>            </select>
+                <option value="vi">🇻🇳 Tiếng Việt</option>
+            </select>
             <div class="notif-icon" id="notifIcon">
                 <i class="fas fa-bell"></i>
                 <span class="notif-badge" id="notifBadge">0</span>
@@ -239,7 +240,7 @@
         // Configuration Supabase
         const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null;
 
@@ -305,17 +306,17 @@
 
         // ===== CHARGEMENT DES DONNÉES =====
         async function loadProfileData() {
-            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
             if (userError || !user) {
                 window.location.href = '../auth/login.html';
                 return;
             }
             currentUser = user;
             document.getElementById('userName').textContent = user.email;
-            document.getElementById('userAvatar').src = 'img/user-default.jpg'; // ou avatar si existant
+            document.getElementById('userAvatar').src = 'img/user-default.jpg';
 
             // Récupérer les données de profiles
-            const { data: profile, error: profileError } = await supabase
+            const { data: profile, error: profileError } = await supabaseClient
                 .from('profiles')
                 .select('bio, country')
                 .eq('id', user.id)
@@ -323,7 +324,7 @@
             if (profileError) console.error(profileError);
 
             // Récupérer les données de player_cv
-            const { data: cv, error: cvError } = await supabase
+            const { data: cv, error: cvError } = await supabaseClient
                 .from('player_cv')
                 .select('data')
                 .eq('player_id', user.id)
@@ -358,7 +359,7 @@
             const licenseNumber = document.getElementById('licenseNumber').value.trim();
 
             // Mettre à jour profiles
-            const { error: profileError } = await supabase
+            const { error: profileError } = await supabaseClient
                 .from('profiles')
                 .update({
                     bio: bio || null,
@@ -371,7 +372,7 @@
             }
 
             // Récupérer ou créer l'entrée player_cv
-            const { data: existing, error: selectError } = await supabase
+            const { data: existing, error: selectError } = await supabaseClient
                 .from('player_cv')
                 .select('id, data')
                 .eq('player_id', currentUser.id)
@@ -389,7 +390,7 @@
             };
 
             if (existing) {
-                const { error: updateError } = await supabase
+                const { error: updateError } = await supabaseClient
                     .from('player_cv')
                     .update({ data: cvData })
                     .eq('id', existing.id);
@@ -398,7 +399,7 @@
                     return;
                 }
             } else {
-                const { error: insertError } = await supabase
+                const { error: insertError } = await supabaseClient
                     .from('player_cv')
                     .insert([{ player_id: currentUser.id, data: cvData }]);
                 if (insertError) {
@@ -425,7 +426,7 @@
 
         // ===== DÉCONNEXION =====
         async function logout() {
-            await supabase.auth.signOut();
+            await supabaseClient.auth.signOut();
             window.location.href = '../index.html';
         }
 
