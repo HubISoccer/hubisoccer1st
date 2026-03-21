@@ -542,4 +542,5 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.triggerUpload = triggerUpload;
     window.copyID = copyID;
+    window.supabasePlayersSpacePrive = supabasePlayersSpacePrive;
 });
