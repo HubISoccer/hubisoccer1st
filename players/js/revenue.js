@@ -5,7 +5,7 @@ const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUP
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
-let currentProfile = null;
+let currentProfile = null;   // contiendra les données de profiles
 let wallet = null;
 let transactions = [];
 let followersCount = 0;
@@ -44,33 +44,33 @@ async function checkSession() {
     try {
         const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
         if (error || !session) {
-            window.location.href = '../public/auth/login.html';
+            window.location.href = '../auth/login.html';
             return null;
         }
         currentUser = session.user;
         return currentUser;
     } catch (err) {
         console.error('❌ Erreur checkSession :', err);
-        window.location.href = '../public/auth/login.html';
+        window.location.href = '../auth/login.html';
         return null;
     }
 }
 
-// ===== CHARGEMENT DU PROFIL =====
+// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
 async function loadProfile() {
     if (!currentUser) return null;
     try {
         const { data, error } = await supabasePlayersSpacePrive
-            .from('player_profiles')
-            .select('*')
-            .eq('user_id', currentUser.id)
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .eq('id', currentUser.id)
             .single();
         if (error) {
             console.error('Erreur chargement profil:', error);
             return null;
         }
         currentProfile = data;
-        document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
+        document.getElementById('userName').textContent = currentProfile.full_name || 'Joueur';
         document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
         return currentProfile;
     } catch (err) {
@@ -79,7 +79,7 @@ async function loadProfile() {
     }
 }
 
-// ===== CHARGEMENT / CRÉATION DU PORTEFEUILLE AVEC BONUS =====
+// ===== CHARGEMENT / CRÉATION DU PORTEFEUILLE =====
 async function loadOrCreateWallet() {
     if (!currentProfile) return null;
     try {
@@ -113,7 +113,6 @@ async function loadOrCreateWallet() {
             }
             wallet = newWallet;
 
-            // Ajouter une transaction de bonus
             const { error: transError } = await supabasePlayersSpacePrive
                 .from('player_transactions')
                 .insert([{
@@ -386,7 +385,6 @@ function initSidebar() {
     if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
     if (overlay) overlay.addEventListener('click', closeSidebarFunc);
 
-    // Swipe avec correction
     let touchStartX = 0, touchStartY = 0, touchEndX = 0;
     const swipeThreshold = 50;
 
@@ -444,7 +442,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('withdrawBtn').addEventListener('click', openWithdrawModal);
     document.getElementById('withdrawBonusBtn')?.addEventListener('click', withdrawBonus);
 
-    // Exposer les fonctions pour les attributs onclick
     window.closeDepositModal = closeDepositModal;
     window.closeWithdrawModal = closeWithdrawModal;
     window.openDepositModal = openDepositModal;
