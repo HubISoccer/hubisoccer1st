@@ -9,7 +9,7 @@ let currentPlayer = null;
 let tournaments = [];
 let currentTournament = null;
 let messages = [];
-let starredPlayers = new Set(); // IDs des joueurs (player_tournament_id)
+let starredPlayers = new Set();
 let messagesSubscription = null;
 const profileCache = new Map();
 
@@ -47,7 +47,7 @@ async function checkSession() {
     try {
         const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
         if (error || !session) {
-            window.location.href = '../public/auth/login.html';
+            window.location.href = '../auth/login.html';
             return null;
         }
         currentUser = session.user;
@@ -55,7 +55,7 @@ async function checkSession() {
         return currentUser;
     } catch (err) {
         console.error('❌ Erreur checkSession :', err);
-        window.location.href = '../public/auth/login.html';
+        window.location.href = '../auth/login.html';
         return null;
     }
 }
@@ -188,10 +188,9 @@ function renderLiveTournament() {
     if (!currentTournament) return;
 
     const container = document.getElementById('liveTournament');
-    
+
     let videoHtml = '';
     if (currentTournament.stream_url) {
-        // Pour les streams live, on peut utiliser une iframe, ou un player vidéo adapté
         videoHtml = `<iframe src="${currentTournament.stream_url}" frameborder="0" allowfullscreen></iframe>`;
     } else {
         videoHtml = '<div class="no-stream">Aucun stream disponible pour le moment</div>';
@@ -214,6 +213,7 @@ function renderLiveTournament() {
             <div class="chat-input-area">
                 <input type="text" id="chatInput" placeholder="Votre message..." onkeypress="if(event.key==='Enter') sendMessage()">
                 <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+                <button id="refreshChatBtn" class="btn-refresh" style="margin-left: 5px;"><i class="fas fa-sync-alt"></i> Rafraîchir</button>
             </div>
         </div>
     `;
@@ -253,6 +253,22 @@ async function loadMessages(tournamentId) {
     }
 }
 
+// ===== RAFRAÎCHISSEMENT MANUEL DES MESSAGES =====
+async function refreshMessages() {
+    if (!currentTournament) return;
+    const refreshBtn = document.getElementById('refreshChatBtn');
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        const originalIcon = refreshBtn.innerHTML;
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rafraîchir';
+        await loadMessages(currentTournament.id);
+        refreshBtn.innerHTML = originalIcon;
+        refreshBtn.disabled = false;
+    } else {
+        await loadMessages(currentTournament.id);
+    }
+}
+
 // ===== RENDU DES MESSAGES DU CHAT =====
 function renderChatMessages() {
     const chatDiv = document.getElementById('chatMessages');
@@ -278,9 +294,8 @@ async function sendMessage() {
     const text = input.value.trim();
     if (!text || !currentTournament) return;
 
-    // Désactiver l'input temporairement pour éviter les envois multiples
     input.disabled = true;
-    const sendBtn = document.querySelector('.chat-input-area button');
+    const sendBtn = document.querySelector('.chat-input-area button:first-of-type');
     const originalHtml = sendBtn.innerHTML;
     sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     sendBtn.disabled = true;
@@ -350,7 +365,6 @@ function subscribeToMessages(tournamentId) {
 
 // ===== SÉLECTION D'UN TOURNOI =====
 async function selectTournament(tournamentId) {
-    // Afficher un loader si nécessaire
     const container = document.getElementById('liveTournament');
     if (container) container.innerHTML = '<div class="spinner" style="margin:50px auto;"></div>';
 
@@ -453,7 +467,6 @@ function initSidebar() {
     const sidebar = document.getElementById('leftSidebar');
     const closeBtn = document.getElementById('closeLeftSidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    const menuHandle = document.getElementById('menuHandle'); // pour le swipe
 
     function openSidebar() {
         sidebar?.classList.add('active');
@@ -465,7 +478,6 @@ function initSidebar() {
     }
 
     menuBtn?.addEventListener('click', openSidebar);
-    if (menuHandle) menuHandle.addEventListener('click', openSidebar);
     closeBtn?.addEventListener('click', closeSidebarFunc);
     overlay?.addEventListener('click', closeSidebarFunc);
 }
@@ -530,6 +542,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.getElementById('openTournamentModal').addEventListener('click', openTournamentModal);
+    const refreshBtn = document.getElementById('refreshChatBtn');
+    if (refreshBtn) refreshBtn.addEventListener('click', refreshMessages);
 
     // Exposer les fonctions globales
     window.closeTournamentModal = closeTournamentModal;
@@ -537,6 +551,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.openPlayersModal = openPlayersModal;
     window.toggleStar = toggleStar;
     window.sendMessage = sendMessage;
+    window.refreshMessages = refreshMessages;
 
     initUserMenu();
     initSidebar();
