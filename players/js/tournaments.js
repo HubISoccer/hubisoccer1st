@@ -60,7 +60,7 @@ async function checkSession() {
     }
 }
 
-// ===== CHARGEMENT DU PROFIL JOUEUR (depuis profiles) =====
+// ===== CHARGEMENT DU PROFIL JOUEUR =====
 async function loadPlayerProfile() {
     try {
         const { data, error } = await supabasePlayersSpacePrive
@@ -142,7 +142,7 @@ async function loadTournamentDetails(tournamentId) {
     }
 }
 
-// ===== CHARGEMENT DES ÉTOILES (favoris) =====
+// ===== CHARGEMENT DES ÉTOILES =====
 async function loadStarredPlayers(tournamentId) {
     const { data, error } = await supabasePlayersSpacePrive
         .from('player_stars')
@@ -158,7 +158,7 @@ async function loadStarredPlayers(tournamentId) {
     starredPlayers = new Set(data.map(s => s.player_id));
 }
 
-// ===== RENDU DE LA LISTE DES TOURNOIS (modale) =====
+// ===== RENDU DE LA LISTE DES TOURNOIS =====
 function renderTournamentList() {
     const list = document.getElementById('tournamentList');
     if (!list) return;
@@ -213,7 +213,7 @@ function renderLiveTournament() {
             <div class="chat-input-area">
                 <input type="text" id="chatInput" placeholder="Votre message..." onkeypress="if(event.key==='Enter') sendMessage()">
                 <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
-                <button id="refreshChatBtn" class="btn-refresh" style="margin-left: 5px;"><i class="fas fa-sync-alt"></i> Rafraîchir</button>
+                <button id="refreshChatBtn" class="btn-refresh" style="margin-left: 5px;"><i class="fas fa-sync-alt"></i></button>
             </div>
         </div>
     `;
@@ -221,7 +221,7 @@ function renderLiveTournament() {
     renderChatMessages();
 }
 
-// ===== CHARGEMENT DES MESSAGES DU CHAT =====
+// ===== CHARGEMENT DES MESSAGES =====
 async function loadMessages(tournamentId) {
     try {
         const { data, error } = await supabasePlayersSpacePrive
@@ -253,23 +253,7 @@ async function loadMessages(tournamentId) {
     }
 }
 
-// ===== RAFRAÎCHISSEMENT MANUEL DES MESSAGES =====
-async function refreshMessages() {
-    if (!currentTournament) return;
-    const refreshBtn = document.getElementById('refreshChatBtn');
-    if (refreshBtn) {
-        refreshBtn.disabled = true;
-        const originalIcon = refreshBtn.innerHTML;
-        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rafraîchir';
-        await loadMessages(currentTournament.id);
-        refreshBtn.innerHTML = originalIcon;
-        refreshBtn.disabled = false;
-    } else {
-        await loadMessages(currentTournament.id);
-    }
-}
-
-// ===== RENDU DES MESSAGES DU CHAT =====
+// ===== RENDU DES MESSAGES =====
 function renderChatMessages() {
     const chatDiv = document.getElementById('chatMessages');
     if (!chatDiv) return;
@@ -288,6 +272,22 @@ function renderChatMessages() {
     chatDiv.scrollTop = chatDiv.scrollHeight;
 }
 
+// ===== RAFRAÎCHISSEMENT MANUEL DES MESSAGES =====
+async function refreshMessages() {
+    if (!currentTournament) return;
+    const refreshBtn = document.getElementById('refreshChatBtn');
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        const originalIcon = refreshBtn.innerHTML;
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        await loadMessages(currentTournament.id);
+        refreshBtn.innerHTML = originalIcon;
+        refreshBtn.disabled = false;
+    } else {
+        await loadMessages(currentTournament.id);
+    }
+}
+
 // ===== ENVOI D'UN MESSAGE =====
 async function sendMessage() {
     const input = document.getElementById('chatInput');
@@ -295,7 +295,7 @@ async function sendMessage() {
     if (!text || !currentTournament) return;
 
     input.disabled = true;
-    const sendBtn = document.querySelector('.chat-input-area button:first-of-type');
+    const sendBtn = document.querySelector('.chat-input-area button');
     const originalHtml = sendBtn.innerHTML;
     sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     sendBtn.disabled = true;
@@ -416,7 +416,7 @@ function renderPlayersList() {
     }).join('');
 }
 
-// ===== AJOUT/SUPPRESSION D'UNE ÉTOILE =====
+// ===== AJOUT/SUPPRESSION D'ÉTOILE =====
 async function toggleStar(playerTournamentId) {
     if (starredPlayers.has(playerTournamentId)) {
         const { error } = await supabasePlayersSpacePrive
@@ -482,6 +482,17 @@ function initSidebar() {
     overlay?.addEventListener('click', closeSidebarFunc);
 }
 
+function initLogout() {
+    document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            supabasePlayersSpacePrive.auth.signOut().then(() => {
+                window.location.href = '../index.html';
+            });
+        });
+    });
+}
+
 // ===== GESTION DES SWIPES =====
 let touchStartX = 0;
 let touchStartY = 0;
@@ -512,18 +523,6 @@ document.addEventListener('touchend', (e) => {
     }
 }, { passive: false });
 
-// ===== DÉCONNEXION =====
-function initLogout() {
-    document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            supabasePlayersSpacePrive.auth.signOut().then(() => {
-                window.location.href = '../index.html';
-            });
-        });
-    });
-}
-
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Initialisation de la page tournois (joueur)');
@@ -542,10 +541,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.getElementById('openTournamentModal').addEventListener('click', openTournamentModal);
-    const refreshBtn = document.getElementById('refreshChatBtn');
-    if (refreshBtn) refreshBtn.addEventListener('click', refreshMessages);
+    document.getElementById('refreshChatBtn').addEventListener('click', refreshMessages);
 
-    // Exposer les fonctions globales
     window.closeTournamentModal = closeTournamentModal;
     window.closePlayersModal = closePlayersModal;
     window.openPlayersModal = openPlayersModal;
