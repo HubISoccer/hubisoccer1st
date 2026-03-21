@@ -79,7 +79,6 @@ async function loadPlayerProfile() {
             playerProfile = null;
         } else {
             playerProfile = data;
-            // Mise à jour de la navbar
             document.getElementById('userName').textContent = playerProfile?.full_name || 'Joueur';
             document.getElementById('userAvatar').src = playerProfile?.avatar_url || 'img/user-default.jpg';
         }
@@ -131,10 +130,9 @@ function updateValidationStatus() {
     }
 }
 
-// ===== PRÉ-REMPLISSAGE AVEC LE PROFIL (DEPUIS `profiles`) =====
+// ===== PRÉ-REMPLISSAGE AVEC LE PROFIL =====
 function populateFromProfile() {
     if (!playerProfile) return;
-    // Décomposer full_name (supposé "Prénom Nom")
     const nameParts = (playerProfile.full_name || '').split(' ');
     const prenom = nameParts[0] || '';
     const nom = nameParts.slice(1).join(' ') || '';
@@ -143,12 +141,6 @@ function populateFromProfile() {
     document.getElementById('prenom').value = prenom;
     document.getElementById('telephone').value = playerProfile.phone || '';
     document.getElementById('email').value = playerProfile.email || '';
-    // Les champs suivants ne sont pas dans profiles, ils seront remplis par le CV si existant
-    // document.getElementById('ville').value = playerProfile.city || '';
-    // document.getElementById('taille').value = playerProfile.height || '';
-    // document.getElementById('poids').value = playerProfile.weight || '';
-    // document.getElementById('piedFort').value = playerProfile.preferred_foot || '';
-    // document.getElementById('club').value = playerProfile.club || '';
 }
 
 // ===== REMPLIR LE FORMULAIRE AVEC LES DONNÉES EXISTANTES =====
@@ -207,7 +199,7 @@ function populateForm(data) {
     }
 }
 
-// ===== GESTION DES ÉLÉMENTS DYNAMIQUES (inchangée) =====
+// ===== GESTION DES ÉLÉMENTS DYNAMIQUES =====
 function addExperienceItem(data = {}) {
     const container = document.getElementById('experiences-container');
     const item = document.createElement('div');
@@ -427,11 +419,10 @@ async function saveCV() {
     }
 }
 
-// ===== APERÇU ET EXPORT (inchangés) =====
+// ===== APERÇU ET EXPORT =====
 function generatePreview() {
     const data = collectFormData();
     const previewDiv = document.getElementById('previewContent');
-    const fullName = `${data.prenom} ${data.nom}`.trim() || 'Nom Prénom';
     const avatarUrl = playerProfile?.avatar_url || 'img/user-default.jpg';
 
     // Compétences
@@ -493,7 +484,6 @@ function generatePreview() {
         </div>
     `;
 
-    // Assemblage final
     const html = `
         <div class="cv-two-columns">
             <div class="cv-left">
@@ -570,7 +560,7 @@ function exportPDF() {
     html2pdf().set(opt).from(element).save();
 }
 
-// ===== MODALE DE SIGNATURE (inchangée) =====
+// ===== MODALE DE SIGNATURE =====
 let signaturePadModal = null;
 let signatureLocked = false;
 
@@ -641,7 +631,7 @@ function closeSignatureModal() {
 window.openSignatureModal = openSignatureModal;
 window.closeSignatureModal = closeSignatureModal;
 
-// ===== FONCTIONS UI (inchangées) =====
+// ===== FONCTIONS UI =====
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
@@ -731,13 +721,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadPlayerProfile();
     if (!playerProfile) {
         showToast('Profil non trouvé. Veuillez compléter votre inscription.', 'error');
-        // On continue quand même pour permettre de remplir le formulaire ? Non, on ne peut pas.
         return;
     }
 
     await loadCV();
 
-    // Pré-remplir avec le profil si aucun CV n'existe
     if (!cvData) {
         populateFromProfile();
     }
