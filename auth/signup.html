@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* (garde le style que tu avais, ou remets le design précédent) */
+        /* (garde ton style existant ici) */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Inter', sans-serif;
@@ -155,12 +155,6 @@
             display: inline-block;
             margin-bottom: 16px;
         }
-        .error-text {
-            color: #e53e3e;
-            font-size: 0.75rem;
-            margin-top: 5px;
-            margin-left: 18px;
-        }
         @media (max-width: 640px) {
             .navbar { padding: 16px 24px; }
             .signup-card { padding: 32px 24px; margin: 0 16px; }
@@ -194,7 +188,6 @@
             </div>
 
             <form id="signupForm">
-                <!-- Rôle affiché (readonly) -->
                 <div class="form-group">
                     <label>Espace</label>
                     <div class="input-wrapper">
@@ -202,7 +195,6 @@
                     </div>
                 </div>
 
-                <!-- Champ obligatoire ID HubISoccer -->
                 <div class="form-group">
                     <label>ID HubISoccer *</label>
                     <div class="input-wrapper">
@@ -210,7 +202,6 @@
                     </div>
                 </div>
 
-                <!-- Email -->
                 <div class="form-group">
                     <label>Email *</label>
                     <div class="input-wrapper">
@@ -218,7 +209,6 @@
                     </div>
                 </div>
 
-                <!-- Mot de passe et confirmation -->
                 <div class="inline-group">
                     <div class="form-group">
                         <label>Mot de passe *</label>
@@ -236,7 +226,6 @@
                     </div>
                 </div>
 
-                <!-- Nom complet -->
                 <div class="form-group">
                     <label>Nom complet (comme sur pièce d'identité) *</label>
                     <div class="input-wrapper">
@@ -244,7 +233,6 @@
                     </div>
                 </div>
 
-                <!-- Pays (sélecteur) -->
                 <div class="form-group">
                     <label>Pays *</label>
                     <div class="input-wrapper">
@@ -252,7 +240,6 @@
                     </div>
                 </div>
 
-                <!-- Téléphone -->
                 <div class="form-group">
                     <label>Téléphone (WhatsApp/Telegram) *</label>
                     <div class="input-wrapper">
@@ -260,7 +247,6 @@
                     </div>
                 </div>
 
-                <!-- Champs spécifiques au rôle (conteneur dynamique) -->
                 <div id="roleSpecificFields"></div>
 
                 <button type="submit" class="btn-signup">S'inscrire</button>
@@ -285,7 +271,6 @@
             window.location.href = 'role-select.html?action=signup';
         }
 
-        // Affichage du rôle
         const roleDisplay = document.getElementById('roleDisplay');
         const roleNames = {
             joueur: 'Joueur',
@@ -299,7 +284,6 @@
         };
         roleDisplay.value = roleNames[role] || role;
 
-        // Liste des pays (tous les pays du monde)
         const countries = [
             "Afghanistan", "Afrique du Sud", "Albanie", "Algérie", "Allemagne", "Andorre", "Angola", "Antigua-et-Barbuda", "Arabie saoudite", "Argentine",
             "Arménie", "Australie", "Autriche", "Azerbaïdjan", "Bahamas", "Bahreïn", "Bangladesh", "Barbade", "Belgique", "Belize", "Bénin", "Bhoutan",
@@ -328,7 +312,6 @@
             countrySelect.appendChild(option);
         });
 
-        // Définition des champs spécifiques par rôle
         const roleFields = {
             joueur: [
                 { name: 'pseudo', label: 'Pseudo *', type: 'text', required: true },
@@ -376,7 +359,6 @@
         }
         buildRoleFields();
 
-        // Validation mot de passe
         function validatePassword(pw) {
             const minLength = 8;
             const hasUpper = /[A-Z]/.test(pw);
@@ -386,7 +368,6 @@
             return pw.length >= minLength && hasUpper && hasLower && hasDigit && hasSymbol;
         }
 
-        // Afficher/masquer mot de passe
         document.querySelectorAll('.toggle-password').forEach(icon => {
             icon.addEventListener('click', function() {
                 const targetId = this.getAttribute('data-target');
@@ -399,7 +380,6 @@
             });
         });
 
-        // Validation de l'ID HubISoccer (vérifie dans la base)
         async function validateHubId(hubId, expectedRole) {
             const { data, error } = await window.supabaseAuthPrive
                 .from('hubisoccer_ids')
@@ -419,7 +399,6 @@
             return { valid: true, data: data };
         }
 
-        // Soumission
         const form = document.getElementById('signupForm');
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -447,14 +426,12 @@
                 return;
             }
 
-            // 1. Valider l'ID HubISoccer
             const validation = await validateHubId(hubId, role);
             if (!validation.valid) {
                 window.showToast(validation.reason, 'error');
                 return;
             }
 
-            // Collecte des champs spécifiques
             let roleData = {};
             const fields = roleFields[role] || [];
             for (let field of fields) {
@@ -467,7 +444,7 @@
             }
 
             try {
-                // 2. Inscription via Supabase Auth
+                // Création du compte Supabase
                 const { data: signUpData, error: signUpError } = await window.supabaseAuthPrive.auth.signUp({
                     email,
                     password,
@@ -477,21 +454,32 @@
 
                 const userId = signUpData.user.id;
 
-                // 3. Insertion dans la table profiles
+                // Construction de l'objet pour profiles (colonnes exactes)
                 const profileData = {
                     id: userId,
                     email: email,
                     full_name: fullName,
-                    pseudo: role === 'joueur' ? roleData.pseudo : null,
                     phone: phone,
                     country: country,
                     role: role,
                     hubisoccer_id: hubId,
-                    created_at: new Date().toISOString()
+                    created_at: new Date().toISOString(),
+                    // Champs supplémentaires selon le rôle
+                    pseudo: role === 'joueur' ? roleData.pseudo : null,
+                    date_of_birth: role === 'joueur' ? roleData.date_naissance : null,
+                    // Les colonnes suivantes existent dans votre table mais ne sont pas utilisées ici
+                    // username: null, // pas utilisé
+                    // avatar_url: null,
+                    // bio: null,
+                    // contact_info: null,
+                    // old_player_id: null,
+                    // old_parrain_id: null,
+                    // badges: null,
+                    // privacy: null
                 };
-                if (role === 'joueur' && roleData.date_naissance) {
-                    profileData.date_of_birth = roleData.date_naissance;
-                }
+
+                // Supprimer les clés qui ont une valeur null pour éviter d'éventuelles erreurs de colonnes non nullables (mais toutes sont nullable ici)
+                // On laisse tel quel.
 
                 const { error: profileError } = await window.supabaseAuthPrive
                     .from('profiles')
@@ -499,10 +487,14 @@
 
                 if (profileError) {
                     console.error('Erreur insertion profile', profileError);
-                    throw new Error('Erreur lors de la création du profil');
+                    // Pour déboguer, afficher l'erreur complète
+                    window.showToast('Erreur lors de la création du profil : ' + profileError.message, 'error');
+                    // On peut aussi supprimer l'utilisateur auth pour ne pas laisser de compte orphelin
+                    await window.supabaseAuthPrive.auth.admin.deleteUser(userId);
+                    throw new Error('Erreur insertion profile');
                 }
 
-                // 4. Mettre à jour le statut de l'ID
+                // Mettre à jour le statut de l'ID
                 await window.supabaseAuthPrive
                     .from('hubisoccer_ids')
                     .update({ status: 'used', assigned_to: userId })
