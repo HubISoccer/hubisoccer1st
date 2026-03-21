@@ -14,7 +14,7 @@ async function loadData() {
         return;
     }
 
-    // Charger la demande de licence avec les infos du joueur (depuis profiles)
+    // 1. Charger la demande de licence avec la relation vers profiles
     const { data: license, error } = await supabase
         .from('license_requests')
         .select(`
@@ -23,7 +23,10 @@ async function loadData() {
                 id,
                 full_name,
                 avatar_url,
-                hubisoccer_id
+                hubisoccer_id,
+                date_of_birth,
+                phone,
+                country
             )
         `)
         .eq('id', licenseId)
@@ -35,7 +38,7 @@ async function loadData() {
         return;
     }
 
-    // Charger les données sportives depuis player_cv
+    // 2. Charger les données sportives depuis player_cv
     let cvData = {};
     if (license.player?.id) {
         const { data: cv, error: cvError } = await supabase
@@ -48,7 +51,7 @@ async function loadData() {
         }
     }
 
-    // Charger la configuration
+    // 3. Charger la configuration de la carte (table license_config)
     const { data: config } = await supabase
         .from('license_config')
         .select('*')
@@ -63,19 +66,23 @@ function renderCard(license, config, cvData) {
     const rectoDiv = document.getElementById('recto');
     const versoDiv = document.getElementById('verso');
 
-    // Utiliser les données du profil (full_name) plutôt que nom/prenom de license_requests si disponibles
+    // Données du joueur depuis profiles (priorité sur les champs de license_requests)
     const fullName = license.player?.full_name || `${license.prenom || ''} ${license.nom || ''}`.trim() || 'Nom non renseigné';
-    const dateNaissance = license.date_naissance ? new Date(license.date_naissance).toLocaleDateString('fr-FR') : '-';
+    const dateNaissance = license.player?.date_of_birth 
+        ? new Date(license.player.date_of_birth).toLocaleDateString('fr-FR') 
+        : (license.date_naissance ? new Date(license.date_naissance).toLocaleDateString('fr-FR') : '-');
     const avatarUrl = license.player?.avatar_url || 'img/user-default.jpg';
     const hubId = license.player?.hubisoccer_id || license.id;
+    const telephone = license.player?.phone || license.telephone || '-';
+    const nationalite = license.player?.country || license.nationalite || '-';
 
-    // Données sportives depuis player_cv (ou fallback sur les champs de license_requests)
+    // Données sportives depuis player_cv (ou fallback sur license_requests)
     const taille = cvData.taille || license.taille || '-';
     const poids = cvData.poids || license.poids || '-';
     const piedFort = cvData.piedFort || license.pied_fort || '-';
     const club = cvData.club || license.club || '-';
 
-    // QR code URL
+    // QR code
     const verifyUrl = `https://hubisoccer.github.io/hubisoccer1st/verify.html?id=${hubId}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(verifyUrl)}`;
 
@@ -96,9 +103,9 @@ function renderCard(license, config, cvData) {
             <div class="info-item"><strong>Nom complet</strong><span>${fullName}</span></div>
             <div class="info-item"><strong>Date de naissance</strong><span>${dateNaissance}</span></div>
             <div class="info-item"><strong>Lieu de naissance</strong><span>${license.lieu_naissance || '-'}</span></div>
-            <div class="info-item"><strong>Nationalité</strong><span>${license.nationalite || '-'}</span></div>
+            <div class="info-item"><strong>Nationalité</strong><span>${nationalite}</span></div>
             <div class="info-item"><strong>Pays</strong><span>${license.pays || '-'}</span></div>
-            <div class="info-item"><strong>Téléphone</strong><span>${license.telephone || '-'}</span></div>
+            <div class="info-item"><strong>Téléphone</strong><span>${telephone}</span></div>
             <div class="info-item"><strong>Taille</strong><span>${taille} cm</span></div>
             <div class="info-item"><strong>Poids</strong><span>${poids} kg</span></div>
             <div class="info-item"><strong>Pied fort</strong><span>${piedFort}</span></div>
@@ -135,13 +142,21 @@ function renderCard(license, config, cvData) {
 }
 
 // ===== CHANGEMENT DE FACE =====
-window.showFace = function(face) {
+function showFace(face) {
     document.querySelectorAll('.card-face').forEach(el => el.classList.remove('active'));
     document.getElementById(face).classList.add('active');
     document.querySelectorAll('.card-footer button').forEach(btn => btn.classList.remove('active'));
     document.getElementById('btnRecto').classList.toggle('active', face === 'recto');
     document.getElementById('btnVerso').classList.toggle('active', face === 'verso');
-};
+}
+window.showFace = showFace;
 
 // ===== INITIALISATION =====
-document.addEventListener('DOMContentLoaded', loadData);
+document.addEventListener('DOMContentLoaded', () => {
+    loadData();
+
+    // Attacher les écouteurs d'événements
+    document.getElementById('btnRecto').addEventListener('click', () => showFace('recto'));
+    document.getElementById('btnVerso').addEventListener('click', () => showFace('verso'));
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+});
