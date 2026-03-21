@@ -48,7 +48,6 @@ async function checkSessionAndRedirect() {
 }
 
 function showToast(message, type = 'error') {
-    // À remplacer par le système de toast de HubISoccer
     alert(message);
 }
 
