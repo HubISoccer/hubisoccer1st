@@ -6,9 +6,7 @@
     <title>Suivi Tournoi (Live) | HubISoccer - Joueur</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles spécifiques -->
     <link rel="stylesheet" href="css/tournaments.css">
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -19,7 +17,6 @@
             <span class="dashboard-title">Espace Joueur</span>
         </div>
         <div class="nav-right">
-            <!-- Sélecteur de langue 24 langues -->
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
@@ -55,7 +52,7 @@
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
-                    <a href="dashboard.html">Mon profil</a>
+                    <a href="profile-edit.html">Mon profil</a>
                     <a href="support.html">Paramètres</a>
                     <a href="#" id="languageLink">Langue (Français)</a>
                     <a href="#" id="logoutLink">Déconnexion</a>
@@ -92,7 +89,6 @@
     <!-- CONTENU PRINCIPAL -->
     <main class="tournaments-main">
         <div class="tournaments-container">
-            <!-- En-tête avec bouton de sélection -->
             <div class="tournament-header">
                 <h1 class="page-title"><i class="fas fa-trophy"></i> Suivi Tournoi (Live)</h1>
                 <button class="btn-select-tournament" id="openTournamentModal">
@@ -100,7 +96,6 @@
                 </button>
             </div>
 
-            <!-- Zone du tournoi en cours -->
             <div class="live-tournament" id="liveTournament">
                 <!-- Rempli dynamiquement -->
             </div>
@@ -112,12 +107,10 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Tournois en cours</h2>
-                <span class="close-modal" onclick="closeTournamentModal()">&times;</span>
+                <span class="close-modal" onclick="closeTournamentModal()">×</span>
             </div>
             <div class="modal-body">
-                <div class="tournament-list" id="tournamentList">
-                    <!-- Liste dynamique -->
-                </div>
+                <div class="tournament-list" id="tournamentList"></div>
             </div>
         </div>
     </div>
@@ -127,17 +120,14 @@
         <div class="modal-content large">
             <div class="modal-header">
                 <h2>Joueurs sur le terrain</h2>
-                <span class="close-modal" onclick="closePlayersModal()">&times;</span>
+                <span class="close-modal" onclick="closePlayersModal()">×</span>
             </div>
             <div class="modal-body">
-                <div class="players-list" id="playersList">
-                    <!-- Liste dynamique -->
-                </div>
+                <div class="players-list" id="playersList"></div>
             </div>
         </div>
     </div>
 
-    <!-- Toast container -->
     <div id="toastContainer" class="toast-container"></div>
 
     <!-- FOOTER -->
@@ -155,7 +145,7 @@
             <div class="legal">
                 <p>HubISoccer - The Hub of Inspiration of Soccer</p>
                 <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
-                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
             </div>
         </div>
     </footer>
