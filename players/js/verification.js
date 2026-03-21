@@ -6,13 +6,14 @@ const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUP
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
 let playerProfile = null;
+let playerCV = null;           // données de player_cv
 let documentsList = [];
 let licenseRequest = null;
 let signaturePadModal = null;
 let signatureLocked = false;
 let signatureDataURL = null;
 
-// ===== TOAST =====
+// ===== TOAST (inchangé) =====
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -46,7 +47,7 @@ async function checkSession() {
     try {
         const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
         if (error || !session) {
-            window.location.href = '../public/auth/login.html';
+            window.location.href = '../auth/login.html';
             return null;
         }
         currentUser = session.user;
@@ -54,12 +55,12 @@ async function checkSession() {
         return currentUser;
     } catch (err) {
         console.error('❌ Erreur checkSession :', err);
-        window.location.href = '../public/auth/login.html';
+        window.location.href = '../auth/login.html';
         return null;
     }
 }
 
-// ===== CHARGEMENT DU PROFIL =====
+// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
 async function loadPlayerProfile() {
     if (!currentUser?.id) {
         console.error('currentUser.id manquant');
@@ -67,23 +68,37 @@ async function loadPlayerProfile() {
         return;
     }
     try {
-        console.log('Tentative de chargement du profil pour user_id:', currentUser.id);
-        const { data, error } = await supabasePlayersSpacePrive
-            .from('player_profiles')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .maybeSingle();
+        // 1. Charger les infos de base depuis profiles
+        const { data: profile, error: profileError } = await supabasePlayersSpacePrive
+            .from('profiles')
+            .select('id, full_name, email, phone, date_of_birth, country, avatar_url')
+            .eq('id', currentUser.id)
+            .single();
 
-        if (error) {
-            console.error('Erreur chargement profil:', error);
+        if (profileError) {
+            console.error('Erreur chargement profil:', profileError);
             showToast('Erreur lors du chargement du profil', 'error');
             playerProfile = null;
-        } else {
-            playerProfile = data;
-            document.getElementById('userName').textContent = playerProfile?.nom_complet || 'Joueur';
-            document.getElementById('userAvatar').src = playerProfile?.avatar_url || 'img/user-default.jpg';
+            return;
         }
-        console.log('✅ Profil utilisé :', playerProfile);
+        playerProfile = profile;
+
+        // 2. Charger les données sportives depuis player_cv
+        const { data: cv, error: cvError } = await supabasePlayersSpacePrive
+            .from('player_cv')
+            .select('data')
+            .eq('player_id', currentUser.id)
+            .maybeSingle();
+        if (cvError) {
+            console.error('Erreur chargement player_cv:', cvError);
+        }
+        playerCV = cv?.data || {};
+
+        // Mettre à jour la navbar
+        document.getElementById('userName').textContent = playerProfile.full_name || 'Joueur';
+        document.getElementById('userAvatar').src = playerProfile.avatar_url || 'img/user-default.jpg';
+        console.log('✅ Profil chargé :', playerProfile);
+        console.log('✅ Données sportives :', playerCV);
     } catch (err) {
         console.error('❌ Exception loadPlayerProfile :', err);
         showToast('Erreur lors du chargement du profil', 'error');
@@ -303,22 +318,25 @@ window.closeSignatureModal = closeSignatureModal;
 // ===== PRÉ-REMPLISSAGE DU FORMULAIRE AVEC LE PROFIL =====
 function populateFormFromProfile() {
     if (!playerProfile) return;
-    const fields = {
-        'nom': playerProfile.nom_complet?.split(' ')[1] || '',
-        'prenom': playerProfile.nom_complet?.split(' ')[0] || '',
-        'dateNaissance': playerProfile.date_naissance || '',
-        'nationalite': playerProfile.nationalite || '',
-        'telephone': playerProfile.phone || '',
-        'taille': playerProfile.taille_cm || '',
-        'poids': playerProfile.poids_kg || '',
-        'piedFort': playerProfile.pied_fort || playerProfile.preferred_foot || '',
-        'club': playerProfile.club || '',
-        'email': playerProfile.email || '', // pour info, pas dans le formulaire
-    };
-    for (const [id, value] of Object.entries(fields)) {
-        const input = document.getElementById(id);
-        if (input && value) input.value = value;
+
+    // Extraire nom et prénom depuis full_name
+    const nameParts = (playerProfile.full_name || '').split(' ');
+    const prenom = nameParts[0] || '';
+    const nom = nameParts.slice(1).join(' ') || '';
+
+    document.getElementById('nom').value = nom;
+    document.getElementById('prenom').value = prenom;
+    document.getElementById('dateNaissance').value = playerProfile.date_of_birth || '';
+    document.getElementById('nationalite').value = playerProfile.country || '';
+    document.getElementById('telephone').value = playerProfile.phone || '';
+    // Champs provenant de player_cv
+    if (playerCV) {
+        document.getElementById('taille').value = playerCV.taille || '';
+        document.getElementById('poids').value = playerCV.poids || '';
+        document.getElementById('piedFort').value = playerCV.piedFort || '';
+        document.getElementById('club').value = playerCV.club || '';
     }
+    // L'email n'est pas dans le formulaire, mais on peut l'utiliser ailleurs si besoin
 }
 
 // ===== SOUMISSION DE LA DEMANDE DE LICENCE =====
@@ -491,7 +509,7 @@ function updateCardPreview() {
                     <span class="signature-label">Cachet officiel</span>
                 </div>
             </div>
-            <div class="id-number">ID: ${playerProfile?.hub_id || '---'}</div>
+            <div class="id-number">ID: ${playerProfile?.hubisoccer_id || '---'}</div>
         `;
     }
 
@@ -552,31 +570,21 @@ function initSidebar() {
     if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
     if (overlay) overlay.addEventListener('click', closeSidebarFunc);
 
-    // Swipe
-    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+    let touchStartX = 0, touchStartY = 0;
     const swipeThreshold = 50;
-
     document.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
     }, { passive: true });
-
     document.addEventListener('touchend', (e) => {
-  touchEndX = e.changedTouches[0].screenX;
-  const diffX = touchEndX - touchStartX;
-  const diffY = e.changedTouches[0].screenY - touchStartY;
-  
-  if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
-    if (e.cancelable) {
-      e.preventDefault();
-    }
-    if (diffX > 0 && touchStartX < 50) {
-      openSidebar();
-    } else if (diffX < 0) {
-      closeSidebarFunc();
-    }
-  }
-}, { passive: false });
+        const diffX = e.changedTouches[0].screenX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+            if (e.cancelable) e.preventDefault();
+            if (diffX > 0 && touchStartX < 50) openSidebar();
+            else if (diffX < 0) closeSidebarFunc();
+        }
+    }, { passive: false });
 }
 
 function addMenuHandle() {
@@ -635,6 +643,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadPlayerProfile();
     if (!playerProfile) {
         showToast('Profil non trouvé. Veuillez compléter votre inscription.', 'error');
+        // On ne retourne pas tout de suite car le formulaire peut encore être utilisé ?
         return;
     }
 
@@ -671,7 +680,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('langSelect')?.addEventListener('change', (e) => {
         const lang = e.target.value;
         showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
-        // Plus tard, implémenter la traduction
     });
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
