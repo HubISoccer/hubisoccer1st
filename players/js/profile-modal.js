@@ -2,11 +2,11 @@
 let currentModalData = null;
 
 async function loadProfileModalData() {
-    const user = (await window.supabaseAuthPrive.auth.getUser()).data.user;
+    const user = (await window.supabasePlayersSpacePrive.auth.getUser()).data.user;
     if (!user) return null;
 
     // Charger les données de base depuis profiles
-    const { data: profile, error: profileError } = await window.supabaseAuthPrive
+    const { data: profile, error: profileError } = await window.supabasePlayersSpacePrive
         .from('profiles')
         .select('full_name, bio, country, phone, email')
         .eq('id', user.id)
@@ -14,7 +14,7 @@ async function loadProfileModalData() {
     if (profileError) console.error(profileError);
 
     // Charger les données spécifiques depuis player_cv
-    const { data: cv, error: cvError } = await window.supabaseAuthPrive
+    const { data: cv, error: cvError } = await window.supabasePlayersSpacePrive
         .from('player_cv')
         .select('data')
         .eq('player_id', user.id)
@@ -34,15 +34,12 @@ function openProfileModal() {
     modal.style.display = 'block';
     document.body.style.overflow = 'hidden';
 
-    // Remplir les champs
     loadProfileModalData().then(({ profile, cvData }) => {
         currentModalData = { profile, cvData };
 
-        // Champs communs
         document.getElementById('modalBio').value = profile?.bio || '';
         document.getElementById('modalNationality').value = profile?.country || '';
 
-        // Champs du CV
         document.getElementById('modalPosition').value = cvData.position || '';
         document.getElementById('modalHeight').value = cvData.taille || '';
         document.getElementById('modalWeight').value = cvData.poids || '';
@@ -61,10 +58,9 @@ function closeProfileModal() {
 }
 
 async function saveProfileModal() {
-    const user = (await window.supabaseAuthPrive.auth.getUser()).data.user;
+    const user = (await window.supabasePlayersSpacePrive.auth.getUser()).data.user;
     if (!user) return;
 
-    // Récupérer les valeurs
     const bio = document.getElementById('modalBio').value.trim();
     const nationality = document.getElementById('modalNationality').value.trim();
 
@@ -75,8 +71,7 @@ async function saveProfileModal() {
     const club = document.getElementById('modalClub').value.trim();
     const licenseNumber = document.getElementById('modalLicenseNumber').value.trim();
 
-    // 1. Mettre à jour profiles (bio, country)
-    const { error: profileError } = await window.supabaseAuthPrive
+    const { error: profileError } = await window.supabasePlayersSpacePrive
         .from('profiles')
         .update({
             bio: bio || null,
@@ -88,8 +83,7 @@ async function saveProfileModal() {
         return;
     }
 
-    // 2. Récupérer ou créer l'entrée player_cv
-    const { data: existing, error: selectError } = await window.supabaseAuthPrive
+    const { data: existing, error: selectError } = await window.supabasePlayersSpacePrive
         .from('player_cv')
         .select('id, data')
         .eq('player_id', user.id)
@@ -107,7 +101,7 @@ async function saveProfileModal() {
     };
 
     if (existing) {
-        const { error: updateError } = await window.supabaseAuthPrive
+        const { error: updateError } = await window.supabasePlayersSpacePrive
             .from('player_cv')
             .update({ data: cvData })
             .eq('id', existing.id);
@@ -116,7 +110,7 @@ async function saveProfileModal() {
             return;
         }
     } else {
-        const { error: insertError } = await window.supabaseAuthPrive
+        const { error: insertError } = await window.supabasePlayersSpacePrive
             .from('player_cv')
             .insert([{ player_id: user.id, data: cvData }]);
         if (insertError) {
@@ -127,16 +121,13 @@ async function saveProfileModal() {
 
     alert('Informations mises à jour !');
     closeProfileModal();
-    // Optionnel : recharger la page pour voir les changements
     location.reload();
 }
 
-// Attacher les événements (à appeler après le chargement du DOM)
 function initProfileModal() {
     const modal = document.getElementById('profileModal');
     if (!modal) return;
 
-    // Fermeture en cliquant sur le bouton X ou en dehors
     const closeBtn = modal.querySelector('.close-modal');
     if (closeBtn) closeBtn.addEventListener('click', closeProfileModal);
     window.addEventListener('click', (e) => {
