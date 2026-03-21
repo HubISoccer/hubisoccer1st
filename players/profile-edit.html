@@ -3,14 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modifier mon profil | HubISoccer</title>
+    <title>Mon profil | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Styles supplémentaires spécifiques à la page profil */
+        .profile-edit-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+        }
+        .profile-edit-container h1 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--dark);
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--light-gray);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(85,27,140,0.1);
+        }
+        .btn-save {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            width: 100%;
+            font-size: 1rem;
+        }
+        .btn-save:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        .message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            display: none;
+        }
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        @media (max-width: 768px) {
+            .profile-edit-container {
+                padding: 20px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <!-- Navbar identique au dashboard -->
+    <!-- Navbar (identique au dashboard) -->
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
@@ -52,7 +132,7 @@
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
-                    <a href="profile-edit.html">Mon profil</a>
+                    <a href="profile-edit.html" class="active">Mon profil</a>
                     <a href="support.html">Paramètres</a>
                     <a href="#" id="languageLink">Langue (Français)</a>
                     <a href="#" id="logoutLink">Déconnexion</a>
@@ -64,7 +144,7 @@
         </div>
     </nav>
 
-    <!-- Sidebar (identique) -->
+    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h3>Menu Joueur</h3>
@@ -90,61 +170,49 @@
 
     <!-- Contenu principal -->
     <main class="dashboard-main">
-        <div class="dashboard-container" style="grid-template-columns: 1fr; max-width: 800px; margin: 0 auto;">
-            <div class="main-panel" style="padding: 30px;">
-                <div class="player-header">
-                    <div class="player-header-left">
-                        <h1>Modifier mon profil</h1>
-                        <p>Mettez à jour vos informations personnelles</p>
-                    </div>
+        <div class="profile-edit-container">
+            <h1>Modifier mon profil</h1>
+            <form id="profileForm">
+                <div class="form-group">
+                    <label>Poste de jeu</label>
+                    <input type="text" id="position" placeholder="Ex: Attaquant, Milieu">
                 </div>
-
-                <form id="profileForm">
-                    <div class="form-group">
-                        <label>Poste de jeu</label>
-                        <input type="text" id="position" placeholder="Ex: Attaquant, Milieu">
-                    </div>
-                    <div class="form-row" style="display: flex; gap: 20px; flex-wrap: wrap;">
-                        <div class="form-group" style="flex:1;">
-                            <label>Taille (cm)</label>
-                            <input type="number" id="height" placeholder="175">
-                        </div>
-                        <div class="form-group" style="flex:1;">
-                            <label>Poids (kg)</label>
-                            <input type="number" id="weight" placeholder="70">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Pied fort</label>
-                        <select id="preferredFoot">
-                            <option value="">Sélectionnez</option>
-                            <option>Droitier</option>
-                            <option>Gaucher</option>
-                            <option>Ambidextre</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Club actuel</label>
-                        <input type="text" id="club" placeholder="Nom du club ou 'Joueur libre'">
-                    </div>
-                    <div class="form-group">
-                        <label>Nationalité</label>
-                        <input type="text" id="nationality" placeholder="Ex: Bénin">
-                    </div>
-                    <div class="form-group">
-                        <label>Biographie</label>
-                        <textarea id="bio" rows="3" placeholder="Courte biographie..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Numéro de licence</label>
-                        <input type="text" id="licenseNumber" placeholder="Ex: 12345">
-                    </div>
-                    <div class="form-actions" style="margin-top: 30px; text-align: right;">
-                        <button type="submit" class="btn-save" style="background: var(--primary); color: white; padding: 12px 28px; border-radius: 40px; border: none; cursor: pointer;">Enregistrer les modifications</button>
-                        <a href="dashboard.html" class="btn-cancel" style="margin-left: 15px; color: var(--gray); text-decoration: none;">Annuler</a>
-                    </div>
-                </form>
-            </div>
+                <div class="form-group">
+                    <label>Taille (cm)</label>
+                    <input type="number" id="height" placeholder="175">
+                </div>
+                <div class="form-group">
+                    <label>Poids (kg)</label>
+                    <input type="number" id="weight" placeholder="70">
+                </div>
+                <div class="form-group">
+                    <label>Pied fort</label>
+                    <select id="preferredFoot">
+                        <option value="">Sélectionnez</option>
+                        <option>Droitier</option>
+                        <option>Gaucher</option>
+                        <option>Ambidextre</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Club actuel</label>
+                    <input type="text" id="club" placeholder="Nom du club ou 'Joueur libre'">
+                </div>
+                <div class="form-group">
+                    <label>Nationalité</label>
+                    <input type="text" id="nationality" placeholder="Ex: Bénin">
+                </div>
+                <div class="form-group">
+                    <label>Biographie</label>
+                    <textarea id="bio" rows="3" placeholder="Courte biographie..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Numéro de licence</label>
+                    <input type="text" id="licenseNumber" placeholder="Ex: 12345">
+                </div>
+                <button type="submit" class="btn-save">Enregistrer les modifications</button>
+                <div id="message" class="message"></div>
+            </form>
         </div>
     </main>
 
@@ -170,210 +238,141 @@
 
     <script src="js/dashboard.js"></script>
     <script>
-        // Ce script utilise l'instance supabasePlayersSpacePrive définie dans dashboard.js
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Vérifier la session
-            const { data: { session } } = await supabasePlayersSpacePrive.auth.getSession();
-            if (!session) {
-                window.location.href = '../auth/login.html';
-                return;
-            }
-            const userId = session.user.id;
+        // Chargement des données existantes
+        async function loadProfileData() {
+            const user = await window.supabasePlayersSpacePrive.auth.getUser();
+            if (!user) return;
 
-            // Charger le profil depuis profiles
-            const { data: profile, error: profileError } = await supabasePlayersSpacePrive
+            // Récupérer les données de profiles
+            const { data: profile, error: profileError } = await window.supabasePlayersSpacePrive
                 .from('profiles')
                 .select('bio, country')
-                .eq('id', userId)
+                .eq('id', user.data.user.id)
                 .single();
-            if (!profileError && profile) {
-                document.getElementById('bio').value = profile.bio || '';
-                document.getElementById('nationality').value = profile.country || '';
-            }
+            if (profileError) console.error(profileError);
 
-            // Charger les données depuis player_cv
-            const { data: cv, error: cvError } = await supabasePlayersSpacePrive
+            // Récupérer les données de player_cv
+            const { data: cv, error: cvError } = await window.supabasePlayersSpacePrive
                 .from('player_cv')
                 .select('data')
-                .eq('player_id', userId)
+                .eq('player_id', user.data.user.id)
                 .maybeSingle();
-            let cvData = cv?.data || {};
+            if (cvError) console.error(cvError);
+
+            const cvData = cv?.data || {};
+
+            // Remplir les champs
             document.getElementById('position').value = cvData.position || '';
             document.getElementById('height').value = cvData.taille || '';
             document.getElementById('weight').value = cvData.poids || '';
             document.getElementById('preferredFoot').value = cvData.piedFort || '';
             document.getElementById('club').value = cvData.club || '';
+            document.getElementById('nationality').value = profile?.country || '';
+            document.getElementById('bio').value = profile?.bio || '';
             document.getElementById('licenseNumber').value = cvData.license_number || '';
+        }
 
-            // Soumission du formulaire
-            const form = document.getElementById('profileForm');
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
+        // Sauvegarde des modifications
+        async function saveProfile(e) {
+            e.preventDefault();
 
-                const bio = document.getElementById('bio').value.trim();
-                const nationality = document.getElementById('nationality').value.trim();
-                const position = document.getElementById('position').value.trim();
-                const height = parseInt(document.getElementById('height').value, 10);
-                const weight = parseInt(document.getElementById('weight').value, 10);
-                const preferredFoot = document.getElementById('preferredFoot').value;
-                const club = document.getElementById('club').value.trim();
-                const licenseNumber = document.getElementById('licenseNumber').value.trim();
+            const user = await window.supabasePlayersSpacePrive.auth.getUser();
+            if (!user) {
+                showMessage('Veuillez vous reconnecter', 'error');
+                return;
+            }
 
-                // Mise à jour de profiles
-                const { error: updateProfileError } = await supabasePlayersSpacePrive
-                    .from('profiles')
-                    .update({
-                        bio: bio || null,
-                        country: nationality || null
-                    })
-                    .eq('id', userId);
-                if (updateProfileError) {
-                    alert('Erreur mise à jour profil : ' + updateProfileError.message);
+            const userId = user.data.user.id;
+
+            // Récupérer les valeurs du formulaire
+            const bio = document.getElementById('bio').value.trim();
+            const nationality = document.getElementById('nationality').value.trim();
+
+            const position = document.getElementById('position').value.trim();
+            const height = parseInt(document.getElementById('height').value, 10) || null;
+            const weight = parseInt(document.getElementById('weight').value, 10) || null;
+            const preferredFoot = document.getElementById('preferredFoot').value;
+            const club = document.getElementById('club').value.trim();
+            const licenseNumber = document.getElementById('licenseNumber').value.trim();
+
+            // Mettre à jour profiles
+            const { error: profileError } = await window.supabasePlayersSpacePrive
+                .from('profiles')
+                .update({
+                    bio: bio || null,
+                    country: nationality || null
+                })
+                .eq('id', userId);
+            if (profileError) {
+                showMessage('Erreur lors de la mise à jour du profil : ' + profileError.message, 'error');
+                return;
+            }
+
+            // Récupérer ou créer l'entrée player_cv
+            const { data: existing, error: selectError } = await window.supabasePlayersSpacePrive
+                .from('player_cv')
+                .select('id, data')
+                .eq('player_id', userId)
+                .maybeSingle();
+
+            let cvData = existing?.data || {};
+            cvData = {
+                ...cvData,
+                position,
+                taille: height,
+                poids: weight,
+                piedFort: preferredFoot,
+                club,
+                license_number: licenseNumber
+            };
+
+            if (existing) {
+                const { error: updateError } = await window.supabasePlayersSpacePrive
+                    .from('player_cv')
+                    .update({ data: cvData })
+                    .eq('id', existing.id);
+                if (updateError) {
+                    showMessage('Erreur lors de la mise à jour du CV : ' + updateError.message, 'error');
                     return;
                 }
-
-                // Mise à jour de player_cv
-                // Récupérer l'id de player_cv ou créer
-                const { data: existing, error: selectError } = await supabasePlayersSpacePrive
+            } else {
+                const { error: insertError } = await window.supabasePlayersSpacePrive
                     .from('player_cv')
-                    .select('id, data')
-                    .eq('player_id', userId)
-                    .maybeSingle();
-
-                let newData = existing?.data || {};
-                newData = {
-                    ...newData,
-                    position,
-                    taille: height,
-                    poids: weight,
-                    piedFort: preferredFoot,
-                    club,
-                    license_number: licenseNumber
-                };
-
-                if (existing) {
-                    const { error: updateError } = await supabasePlayersSpacePrive
-                        .from('player_cv')
-                        .update({ data: newData })
-                        .eq('id', existing.id);
-                    if (updateError) {
-                        alert('Erreur mise à jour CV : ' + updateError.message);
-                        return;
-                    }
-                } else {
-                    const { error: insertError } = await supabasePlayersSpacePrive
-                        .from('player_cv')
-                        .insert([{ player_id: userId, data: newData }]);
-                    if (insertError) {
-                        alert('Erreur création CV : ' + insertError.message);
-                        return;
-                    }
+                    .insert([{ player_id: userId, data: cvData }]);
+                if (insertError) {
+                    showMessage('Erreur lors de la création du CV : ' + insertError.message, 'error');
+                    return;
                 }
+            }
 
-                alert('Profil mis à jour avec succès !');
+            showMessage('Profil mis à jour avec succès !', 'success');
+            setTimeout(() => {
                 window.location.href = 'dashboard.html';
-            });
+            }, 2000);
+        }
 
-            // Initialiser les menus (copié depuis dashboard.js)
-            function initUserMenu() {
-                const userMenu = document.getElementById('userMenu');
-                const dropdown = document.getElementById('userDropdown');
-                if (!userMenu || !dropdown) return;
-                userMenu.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    dropdown.classList.toggle('show');
-                });
-                document.addEventListener('click', () => dropdown.classList.remove('show'));
-            }
+        function showMessage(text, type) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.textContent = text;
+            msgDiv.className = `message ${type}`;
+            msgDiv.style.display = 'block';
+            setTimeout(() => {
+                msgDiv.style.display = 'none';
+            }, 5000);
+        }
 
-            function initSidebar() {
-                const menuBtn = document.getElementById('menuToggle');
-                const sidebar = document.getElementById('sidebar');
-                const closeBtn = document.getElementById('closeSidebar');
-                const overlay = document.getElementById('sidebarOverlay');
-                const menuHandle = document.getElementById('menuHandle');
-
-                function openSidebar() {
-                    sidebar.classList.add('active');
-                    if (overlay) overlay.classList.add('active');
-                }
-                function closeSidebarFunc() {
-                    sidebar.classList.remove('active');
-                    if (overlay) overlay.classList.remove('active');
-                }
-
-                if (menuBtn) menuBtn.addEventListener('click', openSidebar);
-                if (menuHandle) menuHandle.addEventListener('click', openSidebar);
-                if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
-                if (overlay) overlay.addEventListener('click', closeSidebarFunc);
-
-                let touchStartX = 0, touchStartY = 0, touchEndX = 0;
-                const swipeThreshold = 50;
-                document.addEventListener('touchstart', (e) => {
-                    touchStartX = e.changedTouches[0].screenX;
-                    touchStartY = e.changedTouches[0].screenY;
-                }, { passive: true });
-                document.addEventListener('touchend', (e) => {
-                    touchEndX = e.changedTouches[0].screenX;
-                    const diffX = touchEndX - touchStartX;
-                    const diffY = e.changedTouches[0].screenY - touchStartY;
-                    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
-                        if (e.cancelable) e.preventDefault();
-                        if (diffX > 0 && touchStartX < 50) openSidebar();
-                        else if (diffX < 0) closeSidebarFunc();
-                    }
-                }, { passive: false });
-            }
-
-            function addMenuHandle() {
-                if (document.getElementById('menuHandle')) return;
-                const handle = document.createElement('div');
-                handle.id = 'menuHandle';
-                handle.className = 'menu-handle';
-                handle.setAttribute('aria-label', 'Ouvrir le menu');
-                handle.innerHTML = '<span></span>';
-                document.body.appendChild(handle);
-            }
-
-            function initLogout() {
-                document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
-                    link.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        supabasePlayersSpacePrive.auth.signOut().then(() => {
-                            window.location.href = '../index.html';
-                        });
-                    });
-                });
-            }
-
-            addMenuHandle();
-            initUserMenu();
-            initSidebar();
-            initLogout();
-
-            // Gestion du sélecteur de langue (simple toast)
-            document.getElementById('langSelect')?.addEventListener('change', (e) => {
-                alert(`Langue changée en ${e.target.options[e.target.selectedIndex].text} (démonstration)`);
-            });
-            document.getElementById('languageLink')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                alert('Changement de langue bientôt disponible');
-            });
-
-            // Mettre à jour le nom de l'utilisateur dans la navbar
-            const { data: { user } } = await supabasePlayersSpacePrive.auth.getUser();
-            if (user) {
-                const { data: profile } = await supabasePlayersSpacePrive
-                    .from('profiles')
-                    .select('full_name, avatar_url')
-                    .eq('id', user.id)
-                    .single();
-                if (profile) {
-                    document.getElementById('userName').textContent = profile.full_name || 'Joueur';
-                    document.getElementById('userAvatar').src = profile.avatar_url || 'img/user-default.jpg';
-                }
-            }
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadProfileData();
+            const form = document.getElementById('profileForm');
+            form.addEventListener('submit', saveProfile);
         });
+
+        // Fonctions UI (menu, etc.) déjà définies dans dashboard.js
+        // On s'assure que les événements du menu sont bien initialisés
+        if (window.initUserMenu) window.initUserMenu();
+        if (window.initSidebar) window.initSidebar();
+        if (window.addMenuHandle) window.addMenuHandle();
     </script>
 </body>
 </html>
