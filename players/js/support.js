@@ -41,7 +41,7 @@ async function checkSession() {
     try {
         const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
         if (error || !session) {
-            window.location.href = '../public/auth/login.html';
+            window.location.href = '../auth/login.html';
             return null;
         }
         currentUser = session.user;
@@ -49,18 +49,18 @@ async function checkSession() {
         return currentUser;
     } catch (err) {
         console.error('❌ Erreur checkSession :', err);
-        window.location.href = '../public/auth/login.html';
+        window.location.href = '../auth/login.html';
         return null;
     }
 }
 
-// ===== CHARGEMENT DU PROFIL =====
+// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
 async function loadProfile() {
     try {
         const { data, error } = await supabasePlayersSpacePrive
-            .from('player_profiles')
-            .select('*')
-            .eq('user_id', currentUser.id)
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .eq('id', currentUser.id)
             .single();
 
         if (error) {
@@ -68,7 +68,7 @@ async function loadProfile() {
             return null;
         }
         currentProfile = data;
-        document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
+        document.getElementById('userName').textContent = currentProfile.full_name || 'Joueur';
         document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
         return currentProfile;
     } catch (err) {
@@ -107,11 +107,11 @@ function renderFAQ(items) {
     container.innerHTML = items.map((item, index) => `
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFAQ(${index})">
-                <span>${item.question}</span>
+                <span>${escapeHtml(item.question)}</span>
                 <i class="fas fa-chevron-down"></i>
             </div>
             <div class="faq-answer" id="faq-${index}">
-                ${item.answer}
+                ${escapeHtml(item.answer)}
             </div>
         </div>
     `).join('');
@@ -228,7 +228,6 @@ function initSidebar() {
     if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
     if (overlay) overlay.addEventListener('click', closeSidebarFunc);
 
-    // Swipe avec correction
     let touchStartX = 0, touchStartY = 0, touchEndX = 0;
     const swipeThreshold = 50;
 
@@ -263,6 +262,17 @@ function initLogout() {
                 window.location.href = '../index.html';
             });
         });
+    });
+}
+
+// ===== UTILITAIRE =====
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
     });
 }
 
