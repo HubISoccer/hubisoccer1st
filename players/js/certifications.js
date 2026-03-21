@@ -42,7 +42,7 @@ async function checkSession() {
     try {
         const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
         if (error || !session) {
-            window.location.href = '../public/auth/login.html';
+            window.location.href = '../auth/login.html';
             return null;
         }
         currentUser = session.user;
@@ -50,18 +50,18 @@ async function checkSession() {
         return currentUser;
     } catch (err) {
         console.error('❌ Erreur checkSession :', err);
-        window.location.href = '../public/auth/login.html';
+        window.location.href = '../auth/login.html';
         return null;
     }
 }
 
-// ===== CHARGEMENT DU PROFIL =====
+// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
 async function loadProfile() {
     try {
         const { data, error } = await supabasePlayersSpacePrive
-            .from('player_profiles')
-            .select('*')
-            .eq('user_id', currentUser.id)
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .eq('id', currentUser.id)
             .single();
 
         if (error) {
@@ -69,7 +69,7 @@ async function loadProfile() {
             return null;
         }
         currentProfile = data;
-        document.getElementById('userName').textContent = currentProfile.nom_complet || 'Joueur';
+        document.getElementById('userName').textContent = currentProfile.full_name || 'Joueur';
         document.getElementById('userAvatar').src = currentProfile.avatar_url || 'img/user-default.jpg';
         return currentProfile;
     } catch (err) {
@@ -114,7 +114,6 @@ function renderCertificates() {
             rejected: 'Rejeté'
         }[cert.status] || 'En attente';
 
-        // Icône en fonction du type
         let icon = 'fa-file-alt';
         if (cert.type === 'scolaire') icon = 'fa-graduation-cap';
         else if (cert.type === 'sportif') icon = 'fa-futbol';
@@ -123,13 +122,23 @@ function renderCertificates() {
             <div class="cert-card ${cert.status}">
                 <div class="cert-icon"><i class="fas ${icon}"></i></div>
                 <div class="cert-info">
-                    <h4>${cert.title}</h4>
+                    <h4>${escapeHtml(cert.title)}</h4>
                     <p>${cert.year}</p>
                 </div>
                 <span class="cert-status ${cert.status}">${statusText}</span>
             </div>
         `;
     }).join('');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
 }
 
 // ===== GESTION DU FORMULAIRE D'AJOUT =====
@@ -262,8 +271,7 @@ function initSidebar() {
     if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
     if (overlay) overlay.addEventListener('click', closeSidebarFunc);
 
-    // Swipe avec correction
-    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+    let touchStartX = 0, touchStartY = 0;
     const swipeThreshold = 50;
 
     document.addEventListener('touchstart', (e) => {
@@ -272,8 +280,7 @@ function initSidebar() {
     }, { passive: true });
 
     document.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        const diffX = touchEndX - touchStartX;
+        const diffX = e.changedTouches[0].screenX - touchStartX;
         const diffY = e.changedTouches[0].screenY - touchStartY;
 
         if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
@@ -321,7 +328,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('langSelect')?.addEventListener('change', (e) => {
         const lang = e.target.value;
         showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
-        // Plus tard, implémenter la traduction
     });
 
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
