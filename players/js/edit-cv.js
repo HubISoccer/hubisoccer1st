@@ -1,7 +1,7 @@
 // ===== CONFIGURATION SUPABASE =====
 // Utilisation de l'instance globale définie dans auth.js
-const supabase = window.supabaseAuthPrive;
-if (!supabase) {
+const supabaseClient = window.supabaseAuthPrive;
+if (!supabaseClient) {
     console.error('❌ supabaseAuthPrive non défini. Vérifiez que auth.js est chargé.');
 }
 
@@ -44,7 +44,7 @@ function showToast(message, type = 'info', duration = 3000) {
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
     try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
         if (error || !session) {
             window.location.href = '../auth/login.html';
             return null;
@@ -67,7 +67,7 @@ async function loadPlayerProfile() {
         return;
     }
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('profiles')
             .select('*')
             .eq('id', currentUser.id)
@@ -94,7 +94,7 @@ async function loadPlayerProfile() {
 async function loadCV() {
     if (!playerProfile?.id) return;
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('player_cv')
             .select('*')
             .eq('player_id', playerProfile.id)
@@ -347,12 +347,12 @@ async function uploadSignatureIfNeeded(dataURL) {
         const fileName = `${currentUser.id}_signature_${Date.now()}.png`;
         const filePath = `signatures/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabaseClient.storage
             .from('documents')
             .upload(filePath, blob);
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabase.storage
+        const { data: urlData } = supabaseClient.storage
             .from('documents')
             .getPublicUrl(filePath);
         return urlData.publicUrl;
@@ -380,7 +380,7 @@ async function saveCV() {
     formData.signature_url = signatureUrl || null;
 
     try {
-        const { data: existing, error: selectError } = await supabase
+        const { data: existing, error: selectError } = await supabaseClient
             .from('player_cv')
             .select('id')
             .eq('player_id', playerProfile.id)
@@ -389,7 +389,7 @@ async function saveCV() {
         if (selectError) throw selectError;
 
         if (existing) {
-            const result = await supabase
+            const result = await supabaseClient
                 .from('player_cv')
                 .update({
                     data: formData,
@@ -399,7 +399,7 @@ async function saveCV() {
                 .eq('player_id', playerProfile.id);
             if (result.error) throw result.error;
         } else {
-            const result = await supabase
+            const result = await supabaseClient
                 .from('player_cv')
                 .insert([{
                     player_id: playerProfile.id,
@@ -704,7 +704,7 @@ function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabase.auth.signOut().then(() => {
+            supabaseClient.auth.signOut().then(() => {
                 window.location.href = '../index.html';
             });
         });
