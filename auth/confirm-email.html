@@ -29,6 +29,16 @@
         .icon { font-size: 64px; color: #6b3ba4; margin-bottom: 24px; }
         h2 { font-size: 1.8rem; margin-bottom: 16px; color: #1e1e2a; }
         p { color: #5a5a72; margin-bottom: 24px; }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #6b3ba4;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .btn {
             display: inline-block;
             padding: 12px 28px;
@@ -41,108 +51,73 @@
             margin-top: 16px;
         }
         .btn:hover { background: #552e84; transform: translateY(-2px); }
-        .loader {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #6b3ba4;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .error-details {
-            font-size: 0.8rem;
-            color: #e53e3e;
             background: #fff5f5;
+            color: #e53e3e;
             padding: 12px;
             border-radius: 16px;
+            font-size: 0.85rem;
             margin-top: 20px;
             word-break: break-all;
         }
     </style>
 </head>
 <body>
-    <div class="card" id="confirmCard">
+    <div class="card">
         <div class="icon"><i class="fas fa-envelope-open-text"></i></div>
-        <h2>Confirmation en cours</h2>
-        <p>Nous vérifions votre adresse email...</p>
-        <div class="loader"></div>
-        <div id="message"></div>
+        <h2 id="title">Confirmation en cours</h2>
+        <p id="message">Nous vérifions votre adresse email...</p>
+        <div class="loader" id="loader"></div>
         <div id="linkContainer" style="display: none;">
             <a href="login.html" class="btn">Se connecter</a>
         </div>
+        <div id="errorDetail" style="display: none;"></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
     <script>
-        const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
-
-        async function confirmEmail() {
+        (async () => {
             // Récupérer le token depuis l'URL (hash ou query)
             const hashParams = new URLSearchParams(window.location.hash.substring(1));
             let token = hashParams.get('access_token');
             let type = hashParams.get('type');
-
             if (!token) {
                 const queryParams = new URLSearchParams(window.location.search);
                 token = queryParams.get('token');
                 type = queryParams.get('type');
             }
 
-            // Debug : afficher ce qu'on a trouvé
-            console.log('Token trouvé :', token);
-            console.log('Type trouvé :', type);
-            console.log('URL complète :', window.location.href);
-
             if (!token) {
-                showError('Lien de confirmation invalide : aucun token détecté.');
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('title').innerText = 'Lien invalide';
+                document.getElementById('message').innerHTML = 'Aucun token détecté. Vérifiez le lien de confirmation.';
+                document.getElementById('linkContainer').style.display = 'block';
                 return;
             }
 
-            // Timeout de 15 secondes pour éviter le blocage
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Délai dépassé (15s)')), 15000);
-            });
-
             try {
-                const verificationPromise = supabase.auth.verifyOtp({
+                const { error } = await window.supabaseAuthPrive.auth.verifyOtp({
                     token_hash: token,
                     type: type === 'recovery' ? 'recovery' : 'signup'
                 });
-                const { error } = await Promise.race([verificationPromise, timeoutPromise]);
                 if (error) throw error;
-                showSuccess();
+
+                // Succès
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('title').innerText = 'Email confirmé !';
+                document.getElementById('message').innerHTML = 'Votre adresse email a été validée avec succès.';
+                document.getElementById('linkContainer').style.display = 'block';
             } catch (err) {
-                console.error('Erreur confirmation :', err);
-                showError(err.message || 'Erreur inconnue lors de la confirmation');
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('title').innerText = 'Erreur de confirmation';
+                document.getElementById('message').innerHTML = 'Une erreur est survenue.';
+                document.getElementById('linkContainer').style.display = 'block';
+                const errorDiv = document.getElementById('errorDetail');
+                errorDiv.style.display = 'block';
+                errorDiv.className = 'error-details';
+                errorDiv.innerText = err.message;
             }
-        }
-
-        function showSuccess() {
-            document.querySelector('.loader').style.display = 'none';
-            document.querySelector('.icon').innerHTML = '<i class="fas fa-check-circle" style="color: #6b3ba4;"></i>';
-            document.querySelector('h2').innerText = 'Email confirmé !';
-            document.querySelector('p').innerText = 'Votre adresse email a été validée avec succès.';
-            document.getElementById('linkContainer').style.display = 'block';
-        }
-
-        function showError(msg) {
-            document.querySelector('.loader').style.display = 'none';
-            document.querySelector('.icon').innerHTML = '<i class="fas fa-times-circle" style="color: #e53e3e;"></i>';
-            document.querySelector('h2').innerText = 'Erreur de confirmation';
-            document.querySelector('p').innerText = msg || 'Une erreur est survenue.';
-            // Ajoute des détails techniques si disponible
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error-details';
-            errorDiv.innerText = `Détail technique : ${msg}`;
-            document.getElementById('message').appendChild(errorDiv);
-            document.getElementById('linkContainer').style.display = 'block';
-        }
-
-        confirmEmail();
+        })();
     </script>
 </body>
 </html>
