@@ -62,7 +62,7 @@
 
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Sidebar gauche (menu joueur) -->
+    <!-- Sidebar gauche -->
     <div class="sidebar left-sidebar" id="leftSidebar">
         <div class="sidebar-header"><h3>Menu Joueur</h3><button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button></div>
         <nav class="sidebar-nav">
@@ -83,7 +83,7 @@
         </nav>
     </div>
 
-    <!-- Sidebar droite (communauté) -->
+    <!-- Sidebar droite -->
     <div class="sidebar right-sidebar" id="rightSidebar">
         <div class="sidebar-header"><h3>Communauté</h3><button class="close-sidebar" id="closeRightSidebar"><i class="fas fa-times"></i></button></div>
         <div class="sidebar-content">
@@ -144,47 +144,258 @@
         </div>
     </main>
 
-    <!-- MODALES -->
-    <div id="previewModal" class="preview-modal"><div class="preview-content"><div class="preview-header"><h3>Aperçu de votre publication</h3><button class="close-preview" onclick="closePreview()"><i class="fas fa-times"></i></button></div><div class="preview-body"><div class="preview-author"><img id="previewAuthorAvatar" src=""><span id="previewAuthorName"></span></div><div class="preview-text" id="previewText"></div><div class="preview-media" id="previewMedia"></div></div><div class="preview-actions"><button class="btn-preview-close" onclick="closePreview()">Retour</button><button class="btn-preview-publish" onclick="publishFromPreview()">Publier</button></div></div></div>
+    <!-- MODALES (tronquées ici pour la longueur, mais complètes dans le message suivant) -->
+    <!-- MODALE D'APERÇU -->
+    <div id="previewModal" class="preview-modal">
+        <div class="preview-content">
+            <div class="preview-header">
+                <h3>Aperçu de votre publication</h3>
+                <button class="close-preview" onclick="closePreview()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="preview-body">
+                <div class="preview-author">
+                    <img id="previewAuthorAvatar" src="">
+                    <span id="previewAuthorName"></span>
+                </div>
+                <div class="preview-text" id="previewText"></div>
+                <div class="preview-media" id="previewMedia"></div>
+            </div>
+            <div class="preview-actions">
+                <button class="btn-preview-close" onclick="closePreview()">Retour</button>
+                <button class="btn-preview-publish" onclick="publishFromPreview()">Publier</button>
+            </div>
+        </div>
+    </div>
 
-    <div id="editProfileModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Modifier mon profil</h2><span class="close-modal" onclick="closeEditProfileModal()">×</span></div><div class="modal-body"><form id="editProfileForm"><div class="form-group"><label>Bio</label><textarea id="editBio" rows="4"></textarea></div><div class="form-group"><label>Téléphone (WhatsApp)</label><input type="tel" id="editPhone"></div><div class="form-group"><label>Email professionnel</label><input type="email" id="editEmail"></div><div class="form-group"><label>Pays de résidence</label><select id="editCountry"><option value="">Sélectionner votre pays</option></select></div><div class="form-group"><label>Adresse complète</label><textarea id="editAddress" rows="2"></textarea></div><button type="submit" class="btn-save-profile">Enregistrer</button></form></div></div></div>
+    <!-- MODALE ÉDITION PROFIL -->
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Modifier mon profil</h2>
+                <span class="close-modal" onclick="closeEditProfileModal()">×</span>
+            </div>
+            <div class="modal-body">
+                <form id="editProfileForm">
+                    <div class="form-group"><label>Bio</label><textarea id="editBio" rows="4"></textarea></div>
+                    <div class="form-group"><label>Téléphone (WhatsApp)</label><input type="tel" id="editPhone"></div>
+                    <div class="form-group"><label>Email professionnel</label><input type="email" id="editEmail"></div>
+                    <div class="form-group"><label>Pays de résidence</label><select id="editCountry"><option value="">Sélectionner votre pays</option></select></div>
+                    <div class="form-group"><label>Adresse complète</label><textarea id="editAddress" rows="2"></textarea></div>
+                    <button type="submit" class="btn-save-profile">Enregistrer</button>
+                </form>
+            </div>
+        </div>
+    </div>
 
-    <div id="likesModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Personnes qui aiment ce post</h2><span class="close-modal" onclick="closeLikesModal()">×</span></div><div class="modal-body"><ul id="likesList" class="likes-list"></ul></div></div></div>
+    <!-- MODALE LIKES -->
+    <div id="likesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Personnes qui aiment ce post</h2><span class="close-modal" onclick="closeLikesModal()">×</span></div>
+            <div class="modal-body"><ul id="likesList" class="likes-list"></ul></div>
+        </div>
+    </div>
 
-    <div id="userProfileModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Profil</h2><span class="close-modal" onclick="closeUserProfileModal()">×</span></div><div class="modal-body"><div class="user-profile"><div class="profile-avatar"><img id="profileAvatar" src="img/user-default.jpg"></div><h3 id="profileName"></h3><p id="profileHubId"></p><div id="profileBadges" class="profile-badges"></div><p id="profileBio" class="profile-bio"></p><button class="btn-send-message" onclick="sendMessageToUser()"><i class="fas fa-envelope"></i> Envoyer un message</button></div></div></div></div>
+    <!-- MODALE PROFIL UTILISATEUR -->
+    <div id="userProfileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Profil</h2><span class="close-modal" onclick="closeUserProfileModal()">×</span></div>
+            <div class="modal-body">
+                <div class="user-profile">
+                    <div class="profile-avatar"><img id="profileAvatar" src="img/user-default.jpg"></div>
+                    <h3 id="profileName"></h3><p id="profileHubId"></p>
+                    <div id="profileBadges" class="profile-badges"></div>
+                    <p id="profileBio" class="profile-bio"></p>
+                    <button class="btn-send-message" onclick="sendMessageToUser()"><i class="fas fa-envelope"></i> Envoyer un message</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <div id="replyModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Répondre au commentaire</h2><span class="close-modal" onclick="closeReplyModal()">×</span></div><div class="modal-body"><div class="original-comment" id="originalComment"></div><textarea id="replyContent" rows="3" placeholder="Votre réponse..."></textarea><button class="btn-send-reply" onclick="sendReply()">Envoyer</button></div></div></div>
+    <!-- MODALE RÉPONSE COMMENTAIRE -->
+    <div id="replyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Répondre au commentaire</h2><span class="close-modal" onclick="closeReplyModal()">×</span></div>
+            <div class="modal-body">
+                <div class="original-comment" id="originalComment"></div>
+                <textarea id="replyContent" rows="3" placeholder="Votre réponse..."></textarea>
+                <button class="btn-send-reply" onclick="sendReply()">Envoyer</button>
+            </div>
+        </div>
+    </div>
 
-    <div id="notificationsModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Notifications</h2><span class="close-modal" onclick="closeNotificationsModal()">×</span></div><div class="modal-body"><button id="markAllRead" class="btn-mark-all-read" onclick="markAllNotificationsAsRead()">Tout marquer comme lu</button><ul id="notificationsList" class="notifications-list"></ul></div></div></div>
+    <!-- MODALE NOTIFICATIONS -->
+    <div id="notificationsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Notifications</h2><span class="close-modal" onclick="closeNotificationsModal()">×</span></div>
+            <div class="modal-body">
+                <button id="markAllRead" class="btn-mark-all-read" onclick="markAllNotificationsAsRead()">Tout marquer comme lu</button>
+                <ul id="notificationsList" class="notifications-list"></ul>
+            </div>
+        </div>
+    </div>
 
-    <div id="collectionsModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Ajouter à une collection</h2><span class="close-modal" onclick="closeCollectionsModal()">×</span></div><div class="modal-body"><ul id="collectionsModalList" class="collections-modal-list"></ul></div></div></div>
+    <!-- MODALE COLLECTIONS -->
+    <div id="collectionsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Ajouter à une collection</h2><span class="close-modal" onclick="closeCollectionsModal()">×</span></div>
+            <div class="modal-body"><ul id="collectionsModalList" class="collections-modal-list"></ul></div>
+        </div>
+    </div>
 
-    <div id="pollModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Créer un sondage</h2><span class="close-modal" onclick="closePollModal()">×</span></div><div class="modal-body"><div class="form-group"><label>Question</label><input type="text" id="pollQuestion"></div><div class="form-group"><label>Options (une par ligne)</label><textarea id="pollOptions" rows="4"></textarea></div><button id="submitPoll" class="btn-create-poll" onclick="createPoll()">Publier le sondage</button></div></div></div>
+    <!-- MODALE SONDAGE -->
+    <div id="pollModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Créer un sondage</h2><span class="close-modal" onclick="closePollModal()">×</span></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Question</label><input type="text" id="pollQuestion"></div>
+                <div class="form-group"><label>Options (une par ligne)</label><textarea id="pollOptions" rows="4"></textarea></div>
+                <button id="submitPoll" class="btn-create-poll" onclick="createPoll()">Publier le sondage</button>
+            </div>
+        </div>
+    </div>
 
-    <div id="shareModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Partager sur</h2><span class="close-modal" onclick="closeShareModal()">×</span></div><div class="modal-body"><div class="share-options"><button onclick="shareOn('facebook')" class="share-btn facebook"><i class="fab fa-facebook-f"></i> Facebook</button><button onclick="shareOn('twitter')" class="share-btn twitter"><i class="fab fa-twitter"></i> Twitter</button><button onclick="shareOn('whatsapp')" class="share-btn whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</button><button onclick="shareOn('email')" class="share-btn email"><i class="fas fa-envelope"></i> Email</button></div></div></div></div>
+    <!-- MODALE PARTAGE EXTERNE -->
+    <div id="shareModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Partager sur</h2><span class="close-modal" onclick="closeShareModal()">×</span></div>
+            <div class="modal-body">
+                <div class="share-options">
+                    <button onclick="shareOn('facebook')" class="share-btn facebook"><i class="fab fa-facebook-f"></i> Facebook</button>
+                    <button onclick="shareOn('twitter')" class="share-btn twitter"><i class="fab fa-twitter"></i> Twitter</button>
+                    <button onclick="shareOn('whatsapp')" class="share-btn whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                    <button onclick="shareOn('email')" class="share-btn email"><i class="fas fa-envelope"></i> Email</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <div id="privacyModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Confidentialité du profil</h2><span class="close-modal" onclick="closePrivacyModal()">×</span></div><div class="modal-body"><div class="radio-group"><label><input type="radio" name="privacy" value="public"> Public (tout le monde peut voir vos posts)</label><label><input type="radio" name="privacy" value="followers"> Abonnés uniquement</label><label><input type="radio" name="privacy" value="private"> Privé (personne ne voit vos posts)</label></div><button id="savePrivacy" class="btn-save-privacy" onclick="savePrivacy()">Enregistrer</button></div></div></div>
+    <!-- MODALE CONFIDENTIALITÉ -->
+    <div id="privacyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Confidentialité du profil</h2><span class="close-modal" onclick="closePrivacyModal()">×</span></div>
+            <div class="modal-body">
+                <div class="radio-group">
+                    <label><input type="radio" name="privacy" value="public"> Public (tout le monde peut voir vos posts)</label>
+                    <label><input type="radio" name="privacy" value="followers"> Abonnés uniquement</label>
+                    <label><input type="radio" name="privacy" value="private"> Privé (personne ne voit vos posts)</label>
+                </div>
+                <button id="savePrivacy" class="btn-save-privacy" onclick="savePrivacy()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
 
-    <div id="inviteModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Inviter des amis</h2><span class="close-modal" onclick="closeInviteModal()">×</span></div><div class="modal-body"><div class="form-group"><label>Email de l'ami</label><input type="email" id="inviteEmail"></div><button id="sendInvite" class="btn-send-invite" onclick="sendInvite()">Envoyer l'invitation</button></div></div></div>
+    <!-- MODALE INVITATION -->
+    <div id="inviteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Inviter des amis</h2><span class="close-modal" onclick="closeInviteModal()">×</span></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Email de l'ami</label><input type="email" id="inviteEmail"></div>
+                <button id="sendInvite" class="btn-send-invite" onclick="sendInvite()">Envoyer l'invitation</button>
+            </div>
+        </div>
+    </div>
 
-    <div id="mediaZoomModal" class="modal media-modal"><div class="modal-content media-modal-content"><span class="close-modal" onclick="closeMediaZoom()">×</span><div class="media-viewer" id="mediaViewer"></div></div></div>
+    <!-- MODALE ZOOM MÉDIA -->
+    <div id="mediaZoomModal" class="modal media-modal">
+        <div class="modal-content media-modal-content">
+            <span class="close-modal" onclick="closeMediaZoom()">×</span>
+            <div class="media-viewer" id="mediaViewer"></div>
+        </div>
+    </div>
 
-    <div id="storyModal" class="story-modal"><div class="story-viewer" id="storyViewer"><div class="story-progress"><div class="story-progress-bar" id="storyProgressBar"></div></div><button class="story-close" onclick="closeStoryModal()">×</button><button class="story-prev" onclick="prevStory()"><i class="fas fa-chevron-left"></i></button><button class="story-next" onclick="nextStory()"><i class="fas fa-chevron-right"></i></button></div></div>
+    <!-- MODALE STORY -->
+    <div id="storyModal" class="story-modal">
+        <div class="story-viewer" id="storyViewer">
+            <div class="story-progress"><div class="story-progress-bar" id="storyProgressBar"></div></div>
+            <button class="story-close" onclick="closeStoryModal()">×</button>
+            <button class="story-prev" onclick="prevStory()"><i class="fas fa-chevron-left"></i></button>
+            <button class="story-next" onclick="nextStory()"><i class="fas fa-chevron-right"></i></button>
+        </div>
+    </div>
 
-    <div id="createEventModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Créer un événement</h2><span class="close-modal" onclick="closeEventModal()">×</span></div><div class="modal-body"><div class="form-group"><label>Titre</label><input type="text" id="eventTitle"></div><div class="form-group"><label>Date et heure</label><input type="datetime-local" id="eventDate"></div><div class="form-group"><label>Lieu</label><input type="text" id="eventLocation"></div><div class="form-group"><label>Description</label><textarea id="eventDesc" rows="3"></textarea></div><button class="btn-create-event" onclick="createEvent()">Créer l'événement</button></div></div></div>
+    <!-- MODALE CRÉATION ÉVÉNEMENT -->
+    <div id="createEventModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Créer un événement</h2><span class="close-modal" onclick="closeEventModal()">×</span></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Titre</label><input type="text" id="eventTitle"></div>
+                <div class="form-group"><label>Date et heure</label><input type="datetime-local" id="eventDate"></div>
+                <div class="form-group"><label>Lieu</label><input type="text" id="eventLocation"></div>
+                <div class="form-group"><label>Description</label><textarea id="eventDesc" rows="3"></textarea></div>
+                <button class="btn-create-event" onclick="createEvent()">Créer l'événement</button>
+            </div>
+        </div>
+    </div>
 
-    <div id="schedulePostModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Programmer une publication</h2><span class="close-modal" onclick="closeScheduleModal()">×</span></div><div class="modal-body"><div class="form-group"><label>Date et heure de publication</label><input type="datetime-local" id="scheduleDateTime"></div><button class="btn-schedule" onclick="schedulePost()">Programmer</button></div></div></div>
+    <!-- MODALE PROGRAMMATION -->
+    <div id="schedulePostModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Programmer une publication</h2><span class="close-modal" onclick="closeScheduleModal()">×</span></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Date et heure de publication</label><input type="datetime-local" id="scheduleDateTime"></div>
+                <button class="btn-schedule" onclick="schedulePost()">Programmer</button>
+            </div>
+        </div>
+    </div>
 
-    <div id="reportModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Signaler</h2><span class="close-modal" onclick="closeReportModal()">×</span></div><div class="modal-body"><div class="form-group"><label>Raison</label><textarea id="reportReason" rows="3" placeholder="Pourquoi signalez-vous ce contenu ?"></textarea></div><button class="btn-report" onclick="submitReport()">Envoyer le signalement</button></div></div></div>
+    <!-- MODALE SIGNALEMENT -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Signaler</h2><span class="close-modal" onclick="closeReportModal()">×</span></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Raison</label><textarea id="reportReason" rows="3" placeholder="Pourquoi signalez-vous ce contenu ?"></textarea></div>
+                <button class="btn-report" onclick="submitReport()">Envoyer le signalement</button>
+            </div>
+        </div>
+    </div>
 
-    <div id="audioCommentModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Commentaire audio</h2><span class="close-modal" onclick="closeAudioModal()">×</span></div><div class="modal-body"><div class="form-group"><label>Sélectionner un fichier audio (mp3, m4a, ogg)</label><input type="file" id="audioFileInput" accept="audio/*"></div><button class="btn-upload-audio" onclick="uploadAudioComment()">Envoyer</button></div></div></div>
+    <!-- MODALE AUDIO COMMENTAIRE -->
+    <div id="audioCommentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Commentaire audio</h2><span class="close-modal" onclick="closeAudioModal()">×</span></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Sélectionner un fichier audio (mp3, m4a, ogg)</label><input type="file" id="audioFileInput" accept="audio/*"></div>
+                <button class="btn-upload-audio" onclick="uploadAudioComment()">Envoyer</button>
+            </div>
+        </div>
+    </div>
 
-    <div id="createCollectionModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Créer une collection</h2><span class="close-modal" onclick="closeCreateCollectionModal()">×</span></div><div class="modal-body"><div class="form-group"><label>Nom de la collection</label><input type="text" id="newCollectionName"></div><button class="btn-create-collection" onclick="createNewCollection()">Créer</button></div></div></div>
+    <!-- MODALE CRÉATION COLLECTION -->
+    <div id="createCollectionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Créer une collection</h2><span class="close-modal" onclick="closeCreateCollectionModal()">×</span></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Nom de la collection</label><input type="text" id="newCollectionName"></div>
+                <button class="btn-create-collection" onclick="createNewCollection()">Créer</button>
+            </div>
+        </div>
+    </div>
 
+    <!-- TOAST CONTAINER -->
     <div id="toastContainer" class="toast-container"></div>
+
+    <!-- LOADER GLOBAL -->
     <div id="globalLoader" class="global-loader" style="display: none;"><div class="spinner"></div></div>
 
-    <footer class="dashboard-footer"><div class="footer-content"><div class="compliance-badges"><span class="badge">Conformité APDP Bénin</span><span class="badge">Règlementation FIFA</span><span class="badge">Double Projet Sport-Études</span></div><div class="contact-info"><a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a><a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a></div><div class="legal"><p>HubISoccer - The Hub of Inspiration of Soccer</p><p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p><p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p></div></div></footer>
+    <!-- FOOTER -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
 
     <script src="js/feed.js"></script>
 </body>
