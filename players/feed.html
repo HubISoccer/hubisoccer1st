@@ -190,7 +190,7 @@
             </div>
             <div class="community-section">
                 <h4><i class="fas fa-store"></i> Emarket</h4>
-                <p>Bientôt disponible</p>
+                <button id="emarketBtn" class="btn-emarket" onclick="openEmarketModal()">Découvrir</button>
             </div>
         </div>
     </div>
@@ -203,9 +203,9 @@
 
             <!-- ========== STORIES : deux rubriques ========== -->
             <div class="stories-section">
-                <h3>My HubIS Enjoy</h3>
+                <h3><i class="fas fa-smile"></i> My HubIS Enjoy</h3>
                 <div class="stories-container" id="myStoriesContainer">
-                    <div class="story-add" onclick="openStoryUploadModal()">
+                    <div class="story-add" id="addStoryBtn" onclick="openStoryUploadModal()">
                         <div class="story-ring"><i class="fas fa-plus-circle"></i></div>
                         <span>Ajouter</span>
                     </div>
@@ -213,13 +213,13 @@
                 </div>
             </div>
             <div class="stories-section">
-                <h3>HubIS Mood</h3>
+                <h3><i class="fas fa-users"></i> HubIS Mood</h3>
                 <div class="stories-container" id="hubisMoodContainer">
                     <div class="stories-list" id="hubisMoodList"></div>
                 </div>
             </div>
 
-            <!-- ========== ZONE DE PUBLICATION (nouvelle disposition) ========== -->
+            <!-- ========== ZONE DE PUBLICATION (disposition 3-1-3) ========== -->
             <div class="publish-box">
                 <div class="publish-top">
                     <img src="img/user-default.jpg" alt="Avatar" id="publishAvatar">
@@ -228,7 +228,6 @@
                 <div class="publish-media" id="publishMediaPreview"></div>
                 <div class="publish-actions-new">
                     <div class="actions-left">
-<input type="file" id="mediaInput" accept="image/*,video/*" style="display: none;">
                         <button class="action-btn" id="attachMediaBtn"><i class="fas fa-image"></i> Photo/Vidéo</button>
                         <button class="action-btn publish-main" id="publishBtn"><i class="fas fa-paper-plane"></i> Publier</button>
                         <button class="action-btn" id="previewPostBtn"><i class="fas fa-eye"></i> Aperçu</button>
@@ -246,6 +245,7 @@
                     <span>Fichier sélectionné : <span id="mediaFileName"></span></span>
                     <button class="btn-cancel-media" onclick="cancelMedia()"><i class="fas fa-times"></i> Annuler</button>
                 </div>
+                <input type="file" id="mediaInput" accept="image/*,video/*" style="display: none;">
             </div>
 
             <!-- Indicateur nouveaux posts -->
@@ -294,7 +294,7 @@
         </div>
     </div>
 
-    <!-- Édition profil (avec champs enrichis) -->
+    <!-- Édition profil (champs enrichis) -->
     <div id="editProfileModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -319,7 +319,7 @@
                         <label>Pays de résidence</label>
                         <select id="editCountry">
                             <option value="">Sélectionner votre pays</option>
-                            <!-- La liste complète des pays sera générée par JS -->
+                            <!-- La liste sera générée par JS -->
                         </select>
                     </div>
                     <div class="form-group">
@@ -344,7 +344,7 @@
         </div>
     </div>
 
-    <!-- Profil utilisateur (affichage pour les autres) -->
+    <!-- Profil utilisateur -->
     <div id="userProfileModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -359,22 +359,10 @@
                     <h3 id="profileName"></h3>
                     <p id="profileHubId"></p>
                     <div id="profileBadges" class="profile-badges"></div>
-                    <div class="profile-info-group">
-                        <strong>Bio :</strong>
-                        <p id="profileBio"></p>
-                    </div>
-                    <div class="profile-info-group">
-                        <strong>Centres d'intérêt :</strong>
-                        <p id="profileInterests"></p>
-                    </div>
-                    <div class="profile-info-group">
-                        <strong>Raison d'être sur HubISoccer :</strong>
-                        <p id="profileReason"></p>
-                    </div>
-                    <div class="profile-info-group">
-                        <strong>Vision / Philosophie :</strong>
-                        <p id="profileVision"></p>
-                    </div>
+                    <div class="profile-info-group"><strong>Bio :</strong><p id="profileBio"></p></div>
+                    <div class="profile-info-group"><strong>Centres d'intérêt :</strong><p id="profileInterests"></p></div>
+                    <div class="profile-info-group"><strong>Raison d'être sur HubISoccer :</strong><p id="profileReason"></p></div>
+                    <div class="profile-info-group"><strong>Vision / Philosophie :</strong><p id="profileVision"></p></div>
                     <button class="btn-send-message" onclick="sendMessageToUser()"><i class="fas fa-envelope"></i> Envoyer un message</button>
                 </div>
             </div>
@@ -388,22 +376,18 @@
                 <h2>Personnes qui aiment ce post</h2>
                 <span class="close-modal" onclick="closeLikesModal()">×</span>
             </div>
-            <div class="modal-body">
-                <ul id="likesList" class="likes-list"></ul>
-            </div>
+            <div class="modal-body"><ul id="likesList" class="likes-list"></ul></div>
         </div>
     </div>
 
-    <!-- Dislikes (optionnel, même modal que likes mais avec titre différent) -->
+    <!-- Dislikes -->
     <div id="dislikesModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Personnes qui n'aiment pas ce post</h2>
                 <span class="close-modal" onclick="closeDislikesModal()">×</span>
             </div>
-            <div class="modal-body">
-                <ul id="dislikesList" class="likes-list"></ul>
-            </div>
+            <div class="modal-body"><ul id="dislikesList" class="likes-list"></ul></div>
         </div>
     </div>
 
@@ -436,16 +420,14 @@
         </div>
     </div>
 
-    <!-- Collections (liste) -->
+    <!-- Collections (ajouter/retirer) -->
     <div id="collectionsModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Ajouter à une collection</h2>
                 <span class="close-modal" onclick="closeCollectionsModal()">×</span>
             </div>
-            <div class="modal-body">
-                <ul id="collectionsModalList" class="collections-modal-list"></ul>
-            </div>
+            <div class="modal-body"><ul id="collectionsModalList" class="collections-modal-list"></ul></div>
         </div>
     </div>
 
@@ -457,10 +439,7 @@
                 <span class="close-modal" onclick="closeCreateCollectionModal()">×</span>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label>Nom de la collection</label>
-                    <input type="text" id="newCollectionName">
-                </div>
+                <div class="form-group"><label>Nom de la collection</label><input type="text" id="newCollectionName"></div>
                 <button class="btn-create-collection" onclick="createNewCollection()">Créer</button>
             </div>
         </div>
@@ -474,14 +453,8 @@
                 <span class="close-modal" onclick="closePollModal()">×</span>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label>Question</label>
-                    <input type="text" id="pollQuestion">
-                </div>
-                <div class="form-group">
-                    <label>Options (une par ligne)</label>
-                    <textarea id="pollOptions" rows="4"></textarea>
-                </div>
+                <div class="form-group"><label>Question</label><input type="text" id="pollQuestion"></div>
+                <div class="form-group"><label>Options (une par ligne)</label><textarea id="pollOptions" rows="4"></textarea></div>
                 <button id="submitPoll" class="btn-create-poll" onclick="createPoll()">Publier le sondage</button>
             </div>
         </div>
@@ -531,10 +504,7 @@
                 <span class="close-modal" onclick="closeInviteModal()">×</span>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label>Email de l'ami</label>
-                    <input type="email" id="inviteEmail">
-                </div>
+                <div class="form-group"><label>Email de l'ami</label><input type="email" id="inviteEmail"></div>
                 <button id="sendInvite" class="btn-send-invite" onclick="sendInvite()">Envoyer l'invitation</button>
             </div>
         </div>
@@ -549,16 +519,13 @@
         </div>
     </div>
 
-    <!-- Story modal (visualisation) -->
+    <!-- Story modal -->
     <div id="storyModal" class="story-modal">
         <div class="story-viewer" id="storyViewer">
-            <div class="story-progress">
-                <div class="story-progress-bar" id="storyProgressBar"></div>
-            </div>
+            <div class="story-progress"><div class="story-progress-bar" id="storyProgressBar"></div></div>
             <button class="story-close" onclick="closeStoryModal()">×</button>
             <button class="story-prev" onclick="prevStory()"><i class="fas fa-chevron-left"></i></button>
             <button class="story-next" onclick="nextStory()"><i class="fas fa-chevron-right"></i></button>
-            <button class="story-delete" id="storyDeleteBtn" style="display: none;" onclick="deleteCurrentStory()"><i class="fas fa-trash-alt"></i> Supprimer</button>
         </div>
     </div>
 
@@ -570,22 +537,10 @@
                 <span class="close-modal" onclick="closeEventModal()">×</span>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label>Titre</label>
-                    <input type="text" id="eventTitle">
-                </div>
-                <div class="form-group">
-                    <label>Date et heure</label>
-                    <input type="datetime-local" id="eventDate">
-                </div>
-                <div class="form-group">
-                    <label>Lieu</label>
-                    <input type="text" id="eventLocation">
-                </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="eventDesc" rows="3"></textarea>
-                </div>
+                <div class="form-group"><label>Titre</label><input type="text" id="eventTitle"></div>
+                <div class="form-group"><label>Date et heure</label><input type="datetime-local" id="eventDate"></div>
+                <div class="form-group"><label>Lieu</label><input type="text" id="eventLocation"></div>
+                <div class="form-group"><label>Description</label><textarea id="eventDesc" rows="3"></textarea></div>
                 <button class="btn-create-event" onclick="createEvent()">Créer l'événement</button>
             </div>
         </div>
@@ -599,10 +554,7 @@
                 <span class="close-modal" onclick="closeScheduleModal()">×</span>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label>Date et heure de publication</label>
-                    <input type="datetime-local" id="scheduleDateTime">
-                </div>
+                <div class="form-group"><label>Date et heure de publication</label><input type="datetime-local" id="scheduleDateTime"></div>
                 <button class="btn-schedule" onclick="schedulePost()">Programmer</button>
             </div>
         </div>
@@ -616,10 +568,7 @@
                 <span class="close-modal" onclick="closeReportModal()">×</span>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label>Raison</label>
-                    <textarea id="reportReason" rows="3" placeholder="Pourquoi signalez-vous ce contenu ?"></textarea>
-                </div>
+                <div class="form-group"><label>Raison</label><textarea id="reportReason" rows="3" placeholder="Pourquoi signalez-vous ce contenu ?"></textarea></div>
                 <button class="btn-report" onclick="submitReport()">Envoyer le signalement</button>
             </div>
         </div>
@@ -633,16 +582,13 @@
                 <span class="close-modal" onclick="closeAudioModal()">×</span>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label>Sélectionner un fichier audio (mp3, m4a, ogg)</label>
-                    <input type="file" id="audioFileInput" accept="audio/*">
-                </div>
+                <div class="form-group"><label>Sélectionner un fichier audio (mp3, m4a, ogg)</label><input type="file" id="audioFileInput" accept="audio/*"></div>
                 <button class="btn-upload-audio" onclick="uploadAudioComment()">Envoyer</button>
             </div>
         </div>
     </div>
 
-    <!-- Commentaire média (image/vidéo) -->
+    <!-- Commentaire média -->
     <div id="commentMediaModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -650,16 +596,13 @@
                 <span class="close-modal" onclick="closeCommentMediaModal()">×</span>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label>Fichier (image ou vidéo)</label>
-                    <input type="file" id="commentMediaFile" accept="image/*,video/*">
-                </div>
+                <div class="form-group"><label>Fichier (image ou vidéo)</label><input type="file" id="commentMediaFile" accept="image/*,video/*"></div>
                 <button class="btn-upload-media" onclick="uploadCommentMedia()">Envoyer</button>
             </div>
         </div>
     </div>
 
-    <!-- Bloquer un utilisateur (admin) -->
+    <!-- Bloquer utilisateur -->
     <div id="blockUserModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -669,6 +612,34 @@
             <div class="modal-body">
                 <p>Êtes-vous sûr de vouloir bloquer cet utilisateur ? Il ne pourra plus interagir avec vous.</p>
                 <button class="btn-block-user" onclick="confirmBlockUser()">Bloquer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historique -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Mon historique</h2>
+                <span class="close-modal" onclick="this.closest('.modal').remove()">×</span>
+            </div>
+            <div class="modal-body"><div id="historyContent"></div></div>
+        </div>
+    </div>
+
+    <!-- Emarket -->
+    <div id="emarketModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Emarket HubISoccer</h2>
+                <span class="close-modal" onclick="this.closest('.modal').remove()">×</span>
+            </div>
+            <div class="modal-body">
+                <p>Découvrez nos produits dérivés, équipements et offres partenaires.</p>
+                <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:15px;">
+                    <div style="border:1px solid #ddd; border-radius:8px; padding:10px; text-align:center; flex:1;"><img src="img/product1.jpg" style="width:100%; max-width:100px;"><p>Maillot officiel</p><button onclick="showToast('Fonctionnalité à venir', 'info')">Acheter</button></div>
+                    <div style="border:1px solid #ddd; border-radius:8px; padding:10px; text-align:center; flex:1;"><img src="img/product2.jpg" style="width:100%; max-width:100px;"><p>Ballon signature</p><button onclick="showToast('Fonctionnalité à venir', 'info')">Acheter</button></div>
+                </div>
             </div>
         </div>
     </div>
