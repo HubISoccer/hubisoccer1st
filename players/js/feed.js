@@ -44,15 +44,6 @@ let pendingPinCount = 0;
 let activeStoryMedia = null;
 let storyDeleteBtn = null;
 
-// ==================== TRADUCTIONS (pour les langues) ====================
-const translations = {
-    fr: {
-        // à appliquer via data-i18n ; ici simplifié pour le sélecteur
-    },
-    en: {}
-    // les autres langues peuvent être ajoutées, mais on ne gère que le rechargement par paramètre
-};
-
 // ==================== UTILITAIRES ====================
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
@@ -102,6 +93,16 @@ function formatPostContent(text) {
     text = text.replace(/@(\w+)/g, '<a href="#" onclick="openUserProfileByUsername(\'$1\')">@$1</a>');
     text = text.replace(/#(\w+)/g, '<a href="#" onclick="searchHashtag(\'$1\')">#$1</a>');
     return text;
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
 }
 
 function withButtonSpinner(button, asyncFn) {
@@ -508,9 +509,9 @@ async function loadPosts(reset = true) {
 
         const postIds = postsData.map(p => p.id);
         const likesCounts = await getCountsMap('unified_likes', 'post_id', postIds);
-const commentsCounts = await getCountsMap('unified_comments', 'post_id', postIds);
-const sharesCounts = await getCountsMap('unified_shares', 'post_id', postIds);
-const viewsCounts = await getCountsMap('post_views', 'post_id', postIds);
+        const commentsCounts = await getCountsMap('unified_comments', 'post_id', postIds);
+        const sharesCounts = await getCountsMap('unified_shares', 'post_id', postIds);
+        const viewsCounts = await getCountsMap('post_views', 'post_id', postIds);
 
         const newPosts = postsData.map(post => {
             const author = profilesMap[post.user_id];
@@ -614,7 +615,6 @@ function applyAdvancedFilters() {
         filtered.sort((a,b) => b.commentsCount - a.commentsCount);
     }
 
-    // Stocker la version filtrée dans une variable séparée pour l'affichage sans altérer posts
     window.filteredPosts = filtered;
 }
 
@@ -681,18 +681,6 @@ function renderPostCard(post, isHidden = false) {
             <div class="comments-section" id="comments-${post.id}"></div>
         </div>
     `;
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
-        return c;
-    });
 }
 
 function renderPosts() {
@@ -1283,7 +1271,7 @@ async function openStory(storyId) {
         <button class="story-next" onclick="nextStory()"><i class="fas fa-chevron-right"></i></button>
         ${contentHtml}
     `;
-    // Ajouter bouton de suppression si propriétaire
+    // Bouton de suppression si propriétaire
     if (story.user_id === currentProfile.id) {
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'story-delete';
@@ -1694,11 +1682,9 @@ async function sendInvite() {
     closeInviteModal();
 }
 function showPersonalHistory() {
-    // Ouvrir la modale d'historique avec les données de l'utilisateur
     openHistoryModal();
 }
 async function openHistoryModal() {
-    // Récupérer les 20 dernières actions
     const { data, error } = await supabaseClient
         .from('user_activities')
         .select('*')
@@ -2001,8 +1987,6 @@ async function confirmBlockUser() {
     } else {
         showToast('Utilisateur bloqué', 'success');
         closeBlockUserModal();
-        // Supprimer les commentaires de cet utilisateur sur les posts de l'utilisateur courant
-        // (à implémenter selon besoin)
     }
 }
 
@@ -2110,8 +2094,7 @@ async function toggleFollow(button) {
     });
 }
 
-// ==================== ÉPINGLAGE (PIN) ====================
-let pinCount = 0;
+// ==================== ÉPINGLAGE VIP ====================
 async function checkPinLimit() {
     const { data, error } = await supabaseClient
         .from('user_pins')
@@ -2123,7 +2106,6 @@ async function checkPinLimit() {
         return 2;
     }
     if (!data) {
-        // Initialiser
         await supabaseClient.from('user_pins').insert({ user_id: currentProfile.id, used_count: 0 });
         return 0;
     }
@@ -2141,7 +2123,6 @@ async function pinPost() {
         showToast('Écrivez quelque chose ou ajoutez un média', 'warning');
         return;
     }
-    // Publier le post avec flag is_pinned
     let mediaUrl = null, mediaType = null;
     if (file) {
         const fileExt = file.name.split('.').pop();
@@ -2173,7 +2154,6 @@ async function pinPost() {
         showToast('Erreur publication : ' + postError.message, 'error');
         return;
     }
-    // Incrémenter le compteur
     await supabaseClient
         .from('user_pins')
         .update({ used_count: used + 1 })
@@ -2182,7 +2162,6 @@ async function pinPost() {
     document.getElementById('postContent').value = '';
     document.getElementById('mediaInput').value = '';
     cancelMedia();
-    // Ajouter le post localement et repositionner les 3 premiers posts
     const newPost = {
         ...postData,
         author: currentProfile,
@@ -2196,7 +2175,6 @@ async function pinPost() {
         isFollowed: false,
         collections: []
     };
-    // Insérer en 3e position (index 2) si le fil a au moins 2 posts
     if (posts.length >= 2) {
         posts.splice(2, 0, newPost);
     } else {
@@ -2208,10 +2186,12 @@ async function pinPost() {
 // ==================== RECHERCHE ET FILTRES ====================
 function initSearchAndFilters() {
     const searchInput = document.getElementById('communitySearch');
-    searchInput.addEventListener('input', (e) => {
-        searchTerm = e.target.value.toLowerCase();
-        renderPosts();
-    });
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            searchTerm = e.target.value.toLowerCase();
+            renderPosts();
+        });
+    }
     document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
@@ -2220,15 +2200,18 @@ function initSearchAndFilters() {
             renderPosts();
         });
     });
-    document.getElementById('dateFilter').addEventListener('change', (e) => {
+    const dateFilterEl = document.getElementById('dateFilter');
+    if (dateFilterEl) dateFilterEl.addEventListener('change', (e) => {
         dateFilter = e.target.value;
         loadPosts(true);
     });
-    document.getElementById('popularityFilter').addEventListener('change', (e) => {
+    const popularityFilterEl = document.getElementById('popularityFilter');
+    if (popularityFilterEl) popularityFilterEl.addEventListener('change', (e) => {
         popularityFilter = e.target.value;
         loadPosts(true);
     });
-    document.getElementById('contentTypeFilter').addEventListener('change', (e) => {
+    const contentTypeFilterEl = document.getElementById('contentTypeFilter');
+    if (contentTypeFilterEl) contentTypeFilterEl.addEventListener('change', (e) => {
         contentTypeFilter = e.target.value;
         loadPosts(true);
     });
@@ -2238,11 +2221,13 @@ function initSearchAndFilters() {
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const userDropdown = document.getElementById('userDropdown');
-    userMenu.addEventListener('click', (e) => {
-        e.stopPropagation();
-        userDropdown.classList.toggle('show');
-    });
-    document.addEventListener('click', () => userDropdown.classList.remove('show'));
+    if (userMenu && userDropdown) {
+        userMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown.classList.toggle('show');
+        });
+        document.addEventListener('click', () => userDropdown.classList.remove('show'));
+    }
 }
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
@@ -2259,27 +2244,42 @@ function initSidebars() {
     const leftSidebar = document.getElementById('leftSidebar');
     const rightSidebar = document.getElementById('rightSidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    document.getElementById('menuToggle').addEventListener('click', () => {
-        leftSidebar.classList.add('active');
-        overlay.classList.add('active');
-    });
-    document.getElementById('rightSidebarToggle').addEventListener('click', () => {
-        rightSidebar.classList.add('active');
-        overlay.classList.add('active');
-    });
-    document.getElementById('closeLeftSidebar').addEventListener('click', () => {
-        leftSidebar.classList.remove('active');
-        overlay.classList.remove('active');
-    });
-    document.getElementById('closeRightSidebar').addEventListener('click', () => {
-        rightSidebar.classList.remove('active');
-        overlay.classList.remove('active');
-    });
-    overlay.addEventListener('click', () => {
-        leftSidebar.classList.remove('active');
-        rightSidebar.classList.remove('active');
-        overlay.classList.remove('active');
-    });
+    const menuToggle = document.getElementById('menuToggle');
+    const rightToggle = document.getElementById('rightSidebarToggle');
+    const closeLeft = document.getElementById('closeLeftSidebar');
+    const closeRight = document.getElementById('closeRightSidebar');
+
+    if (menuToggle && leftSidebar && overlay) {
+        menuToggle.addEventListener('click', () => {
+            leftSidebar.classList.add('active');
+            overlay.classList.add('active');
+        });
+    }
+    if (rightToggle && rightSidebar && overlay) {
+        rightToggle.addEventListener('click', () => {
+            rightSidebar.classList.add('active');
+            overlay.classList.add('active');
+        });
+    }
+    if (closeLeft && leftSidebar && overlay) {
+        closeLeft.addEventListener('click', () => {
+            leftSidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        });
+    }
+    if (closeRight && rightSidebar && overlay) {
+        closeRight.addEventListener('click', () => {
+            rightSidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        });
+    }
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            if (leftSidebar) leftSidebar.classList.remove('active');
+            if (rightSidebar) rightSidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        });
+    }
     let touchStartX = 0;
     document.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
@@ -2287,12 +2287,12 @@ function initSidebars() {
     document.addEventListener('touchend', (e) => {
         const diff = e.changedTouches[0].screenX - touchStartX;
         if (Math.abs(diff) > 50) {
-            if (diff > 0 && touchStartX < 50) {
+            if (diff > 0 && touchStartX < 50 && leftSidebar) {
                 leftSidebar.classList.add('active');
-                overlay.classList.add('active');
-            } else if (diff < 0 && touchStartX > window.innerWidth - 50) {
+                if (overlay) overlay.classList.add('active');
+            } else if (diff < 0 && touchStartX > window.innerWidth - 50 && rightSidebar) {
                 rightSidebar.classList.add('active');
-                overlay.classList.add('active');
+                if (overlay) overlay.classList.add('active');
             }
         }
     });
@@ -2303,40 +2303,44 @@ function subscribeToNewPosts() {
     supabaseClient
         .channel('unified_posts_changes_player')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'unified_posts' }, payload => {
-            // Ignorer si c'est l'utilisateur lui-même (déjà géré localement)
             if (payload.new.user_id === currentProfile.id) return;
             newPostsCount++;
             const indicator = document.getElementById('newPostsIndicator');
-            document.getElementById('newPostsCount').textContent = newPostsCount;
-            indicator.style.display = 'block';
+            const countSpan = document.getElementById('newPostsCount');
+            if (indicator && countSpan) {
+                countSpan.textContent = newPostsCount;
+                indicator.style.display = 'block';
+            }
         })
         .subscribe();
 }
 function hideNewPostsIndicator() {
-    document.getElementById('newPostsIndicator').style.display = 'none';
+    const indicator = document.getElementById('newPostsIndicator');
+    if (indicator) indicator.style.display = 'none';
     newPostsCount = 0;
 }
 
-// ==================== LANGUES (rechargement avec paramètre) ====================
+// ==================== LANGUES ====================
 function initLanguage() {
     const urlParams = new URLSearchParams(window.location.search);
     const lang = urlParams.get('lang') || localStorage.getItem('hubisoccer_lang') || 'fr';
     localStorage.setItem('hubisoccer_lang', lang);
     const select = document.getElementById('langSelect');
     if (select) select.value = lang;
-    select?.addEventListener('change', (e) => {
-        const newLang = e.target.value;
-        localStorage.setItem('hubisoccer_lang', newLang);
-        window.location.href = `${window.location.pathname}?lang=${newLang}`;
-    });
-    const languageLink = document.getElementById('languageLink');
-    if (languageLink) {
-        languageLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            select?.dispatchEvent(new Event('change'));
+    if (select) {
+        select.addEventListener('change', (e) => {
+            const newLang = e.target.value;
+            localStorage.setItem('hubisoccer_lang', newLang);
+            window.location.href = `${window.location.pathname}?lang=${newLang}`;
         });
     }
-    // Appliquer les textes statiques si besoin (simplifié, on recharge la page)
+    const languageLink = document.getElementById('languageLink');
+    if (languageLink && select) {
+        languageLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            select.dispatchEvent(new Event('change'));
+        });
+    }
 }
 
 // ==================== EMARKET ====================
@@ -2359,19 +2363,10 @@ function openEmarketModal() {
     document.body.appendChild(modal);
     modal.style.display = 'block';
 }
-function togglePostMenu(btn) {
-    const dropdown = btn.nextElementSibling;
-    dropdown.classList.toggle('show');
-    document.addEventListener('click', function closeMenu(e) {
-        if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.classList.remove('show');
-            document.removeEventListener('click', closeMenu);
-        }
-    });
-}
+
 // ==================== INITIALISATION PRINCIPALE ====================
 async function init() {
-    showLoaderWithProgress(12);
+    showLoaderWithProgress(11);
     const user = await checkSession();
     if (!user) return;
     await loadProfile();
@@ -2389,7 +2384,7 @@ async function init() {
     subscribeToNewPosts();
     initLanguage();
 
-    // Boutons de la zone de publication
+    // Boutons de la zone de publication (sécurisés)
     const attachMediaBtn = document.getElementById('attachMediaBtn');
     if (attachMediaBtn) {
         attachMediaBtn.addEventListener('click', () => {
@@ -2397,7 +2392,6 @@ async function init() {
             if (mediaInput) mediaInput.click();
         });
     }
-
     const mediaInput = document.getElementById('mediaInput');
     if (mediaInput) {
         mediaInput.addEventListener('change', function(e) {
@@ -2413,13 +2407,10 @@ async function init() {
             if (mediaFileName) mediaFileName.textContent = file.name;
         });
     }
-
     const previewPostBtn = document.getElementById('previewPostBtn');
     if (previewPostBtn) previewPostBtn.addEventListener('click', openPreview);
-
     const schedulePostBtn = document.getElementById('schedulePostBtn');
     if (schedulePostBtn) schedulePostBtn.addEventListener('click', openScheduleModal);
-
     const publishBtn = document.getElementById('publishBtn');
     if (publishBtn) {
         publishBtn.addEventListener('click', async () => {
@@ -2432,63 +2423,78 @@ async function init() {
             await withButtonSpinner(publishBtn, () => createPost(content, file));
         });
     }
-
     const mediaCancel = document.getElementById('mediaCancel');
     if (mediaCancel) mediaCancel.addEventListener('click', cancelMedia);
-
     const pinPostBtn = document.getElementById('pinPostBtn');
     if (pinPostBtn) pinPostBtn.addEventListener('click', pinPost);
 
     // Posts masqués
-    document.getElementById('showHiddenPosts').addEventListener('click', (e) => {
-        e.preventDefault();
-        loadHiddenPosts();
-    });
-    document.getElementById('backToFeedBtn').querySelector('button').addEventListener('click', backToFeed);
+    const showHiddenPosts = document.getElementById('showHiddenPosts');
+    if (showHiddenPosts) {
+        showHiddenPosts.addEventListener('click', (e) => {
+            e.preventDefault();
+            loadHiddenPosts();
+        });
+    }
+    const backToFeedBtn = document.getElementById('backToFeedBtn');
+    if (backToFeedBtn) {
+        const backButton = backToFeedBtn.querySelector('button');
+        if (backButton) backButton.addEventListener('click', backToFeed);
+    }
 
     // Édition du profil
-    document.getElementById('editProfileForm').addEventListener('submit', saveProfileChanges);
-    // document.getElementById('editProfileBtn').addEventListener('click', openEditProfileModal);
+    const editProfileForm = document.getElementById('editProfileForm');
+    if (editProfileForm) editProfileForm.addEventListener('submit', saveProfileChanges);
+    const editProfileBtn = document.getElementById('editProfileBtn');
+    if (editProfileBtn) editProfileBtn.addEventListener('click', openEditProfileModal);
 
     // Notifications
-    document.getElementById('notifIcon').addEventListener('click', openNotificationsModal);
-    document.getElementById('markAllRead').addEventListener('click', markAllNotificationsAsRead);
+    const notifIcon = document.getElementById('notifIcon');
+    if (notifIcon) notifIcon.addEventListener('click', openNotificationsModal);
+    const markAllRead = document.getElementById('markAllRead');
+    if (markAllRead) markAllRead.addEventListener('click', markAllNotificationsAsRead);
 
     // Collections
-    document.getElementById('createCollectionBtn').addEventListener('click', openCreateCollectionModal);
+    const createCollectionBtn = document.getElementById('createCollectionBtn');
+    if (createCollectionBtn) createCollectionBtn.addEventListener('click', openCreateCollectionModal);
 
     // Sondage
-    document.getElementById('pollBtn').addEventListener('click', openPollModal);
-    document.getElementById('submitPoll').addEventListener('click', createPoll);
+    const pollBtn = document.getElementById('pollBtn');
+    if (pollBtn) pollBtn.addEventListener('click', openPollModal);
+    const submitPoll = document.getElementById('submitPoll');
+    if (submitPoll) submitPoll.addEventListener('click', createPoll);
 
     // Confidentialité
-    document.getElementById('privacyBtn').addEventListener('click', openPrivacyModal);
-    document.getElementById('savePrivacy').addEventListener('click', savePrivacy);
+    const privacyBtn = document.getElementById('privacyBtn');
+    if (privacyBtn) privacyBtn.addEventListener('click', openPrivacyModal);
+    const savePrivacyBtn = document.getElementById('savePrivacy');
+    if (savePrivacyBtn) savePrivacyBtn.addEventListener('click', savePrivacy);
 
     // Invitations
-    document.getElementById('inviteBtn').addEventListener('click', openInviteModal);
-    document.getElementById('sendInvite').addEventListener('click', sendInvite);
+    const inviteBtn = document.getElementById('inviteBtn');
+    if (inviteBtn) inviteBtn.addEventListener('click', openInviteModal);
+    const sendInviteBtn = document.getElementById('sendInvite');
+    if (sendInviteBtn) sendInviteBtn.addEventListener('click', sendInvite);
 
     // Historique
-    document.getElementById('historyBtn').addEventListener('click', showPersonalHistory);
+    const historyBtn = document.getElementById('historyBtn');
+    if (historyBtn) historyBtn.addEventListener('click', showPersonalHistory);
 
     // Événement
-    document.getElementById('eventBtn').addEventListener('click', openEventModal);
-    // Le bouton createEvent est dans la modale, déjà relié par onclick
+    const eventBtn = document.getElementById('eventBtn');
+    if (eventBtn) eventBtn.addEventListener('click', openEventModal);
 
     // Charger plus
-    document.getElementById('loadMoreBtn').addEventListener('click', loadMorePosts);
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    if (loadMoreBtn) loadMoreBtn.addEventListener('click', loadMorePosts);
 
     // Modale de zoom média
     const closeZoom = document.querySelector('#mediaZoomModal .close-modal');
     if (closeZoom) closeZoom.addEventListener('click', closeMediaZoom);
 
-    // Emarket (dans la sidebar droite)
-    const emarketSection = document.querySelector('.community-section:last-child .view-all');
-    if (emarketSection) emarketSection.addEventListener('click', (e) => {
-        e.preventDefault();
-        openEmarketModal();
-    });
+    // Emarket
+    const emarketBtn = document.getElementById('emarketBtn');
+    if (emarketBtn) emarketBtn.addEventListener('click', openEmarketModal);
 
     // Exposer les fonctions globales
     window.closePreview = closePreview;
