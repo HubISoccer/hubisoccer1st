@@ -446,15 +446,21 @@ async function loadUserMetadata() {
 }
 
 // ==================== POSTS ====================
-async function getCounts(table, column, ids) {
+async function getCountsMap(table, column, ids) {
     if (!ids.length) return {};
     const { data, error } = await supabaseClient
         .from(table)
-        .select(`${column}, count`)
+        .select(column)
         .in(column, ids);
-    if (error) return {};
+    if (error) {
+        console.error(`Erreur chargement comptes pour ${table}:`, error);
+        return {};
+    }
     const counts = {};
-    data.forEach(item => { counts[item[column]] = (counts[item[column]] || 0) + item.count; });
+    data.forEach(item => {
+        const id = item[column];
+        counts[id] = (counts[id] || 0) + 1;
+    });
     return counts;
 }
 
@@ -501,10 +507,10 @@ async function loadPosts(reset = true) {
         const profilesMap = Object.fromEntries((profilesData || []).map(p => [p.id, p]));
 
         const postIds = postsData.map(p => p.id);
-        const likesCounts = await getCounts('unified_likes', 'post_id', postIds);
-        const commentsCounts = await getCounts('unified_comments', 'post_id', postIds);
-        const sharesCounts = await getCounts('unified_shares', 'post_id', postIds);
-        const viewsCounts = await getCounts('post_views', 'post_id', postIds);
+        const likesCounts = await getCountsMap('unified_likes', 'post_id', postIds);
+const commentsCounts = await getCountsMap('unified_comments', 'post_id', postIds);
+const sharesCounts = await getCountsMap('unified_shares', 'post_id', postIds);
+const viewsCounts = await getCountsMap('post_views', 'post_id', postIds);
 
         const newPosts = postsData.map(post => {
             const author = profilesMap[post.user_id];
@@ -2409,7 +2415,7 @@ async function init() {
 
     // Édition du profil
     document.getElementById('editProfileForm').addEventListener('submit', saveProfileChanges);
-    document.getElementById('editProfileBtn').addEventListener('click', openEditProfileModal);
+    // document.getElementById('editProfileBtn').addEventListener('click', openEditProfileModal);
 
     // Notifications
     document.getElementById('notifIcon').addEventListener('click', openNotificationsModal);
