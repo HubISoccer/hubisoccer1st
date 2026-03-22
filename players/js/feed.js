@@ -1,9 +1,9 @@
-// ===== CONFIGURATION SUPABASE =====
+// ==================== CONFIGURATION SUPABASE ====================
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===== ÉTAT GLOBAL =====
+// ==================== ÉTAT GLOBAL ====================
 let currentUser = null;
 let currentProfile = null;
 let posts = [];
@@ -41,8 +41,11 @@ let pendingPollData = null;
 let pendingEventData = null;
 let totalLoadSteps = 0;
 let loadedSteps = 0;
+let currentReportPostId = null;
+let audioCommentPostId = null;
+let observedPosts = new Set();
 
-// ===== TOAST =====
+// ==================== UTILITAIRES ====================
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -71,7 +74,45 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
-// ===== LOADER AVEC PROGRESSION =====
+function timeSince(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    let interval = Math.floor(seconds / 31536000);
+    if (interval >= 1) return `il y a ${interval} an${interval > 1 ? 's' : ''}`;
+    interval = Math.floor(seconds / 2592000);
+    if (interval >= 1) return `il y a ${interval} mois`;
+    interval = Math.floor(seconds / 86400);
+    if (interval >= 1) return `il y a ${interval} jour${interval > 1 ? 's' : ''}`;
+    interval = Math.floor(seconds / 3600);
+    if (interval >= 1) return `il y a ${interval} heure${interval > 1 ? 's' : ''}`;
+    interval = Math.floor(seconds / 60);
+    if (interval >= 1) return `il y a ${interval} minute${interval > 1 ? 's' : ''}`;
+    return `il y a ${seconds} seconde${seconds > 1 ? 's' : ''}`;
+}
+
+function formatPostContent(text) {
+    if (!text) return '';
+    text = text.replace(/@(\w+)/g, '<a href="#" onclick="openUserProfileByUsername(\'$1\')">@$1</a>');
+    text = text.replace(/#(\w+)/g, '<a href="#" onclick="searchHashtag(\'$1\')">#$1</a>');
+    return text;
+}
+
+function withButtonSpinner(button, asyncFn) {
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="button-spinner"></span>';
+    try {
+        return asyncFn().finally(() => {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        });
+    } catch (err) {
+        button.disabled = false;
+        button.innerHTML = originalText;
+        throw err;
+    }
+}
+
+// ==================== LOADER AVEC PROGRESSION ====================
 function updateLoaderProgress(stepName, increment = 1) {
     loadedSteps += increment;
     const percent = Math.min(100, Math.floor((loadedSteps / totalLoadSteps) * 100));
@@ -105,23 +146,7 @@ function showLoaderError(message) {
     }
 }
 
-function withButtonSpinner(button, asyncFn) {
-    const originalText = button.innerHTML;
-    button.disabled = true;
-    button.innerHTML = '<span class="button-spinner"></span>';
-    try {
-        return asyncFn().finally(() => {
-            button.disabled = false;
-            button.innerHTML = originalText;
-        });
-    } catch (err) {
-        button.disabled = false;
-        button.innerHTML = originalText;
-        throw err;
-    }
-}
-
-// ===== VÉRIFICATION DE SESSION =====
+// ==================== AUTHENTIFICATION ET PROFIL ====================
 async function checkSession() {
     updateLoaderProgress('Vérification session');
     const { data: { session }, error } = await supabaseClient.auth.getSession();
@@ -133,7 +158,6 @@ async function checkSession() {
     return currentUser;
 }
 
-// ===== CHARGEMENT DU PROFIL =====
 async function loadProfile() {
     updateLoaderProgress('Chargement profil');
     const { data, error } = await supabaseClient
@@ -154,7 +178,6 @@ async function loadProfile() {
     return currentProfile;
 }
 
-// ===== CHARGEMENT DE LA CONFIGURATION (audio comments) =====
 async function loadSiteConfig() {
     updateLoaderProgress('Configuration');
     const { data, error } = await supabaseClient
@@ -167,7 +190,7 @@ async function loadSiteConfig() {
     }
 }
 
-// ===== CHARGEMENT DES NOTIFICATIONS =====
+// ==================== NOTIFICATIONS ====================
 async function loadNotifications() {
     if (!currentProfile) return;
     updateLoaderProgress('Notifications');
@@ -251,7 +274,7 @@ function closeNotificationsModal() {
     document.getElementById('notificationsModal').style.display = 'none';
 }
 
-// ===== COLLECTIONS =====
+// ==================== COLLECTIONS ====================
 async function loadCollections() {
     updateLoaderProgress('Collections');
     const { data, error } = await supabaseClient
@@ -322,7 +345,7 @@ async function addPostToCollection(postId, collectionId) {
     } else {
         showToast('Post ajouté à la collection', 'success');
         if (collectionId === currentCollection) {
-            await loadPosts();
+            await loadPosts(true);
         }
     }
 }
@@ -338,7 +361,7 @@ async function removePostFromCollection(postId, collectionId) {
     } else {
         showToast('Post retiré de la collection', 'info');
         if (collectionId === currentCollection) {
-            await loadPosts();
+            await loadPosts(true);
         }
     }
 }
@@ -382,10 +405,10 @@ async function togglePostInCollection(postId, collectionId, currentlyIn) {
             else icon.style.display = 'none';
         }
     }
-    await loadPosts();
+    await loadPosts(true);
 }
 
-// ===== CHARGEMENT DES DONNÉES UTILISATEUR =====
+// ==================== CHARGEMENT DES DONNÉES UTILISATEUR ====================
 async function loadUserMetadata() {
     updateLoaderProgress('Métadonnées');
     const { data: likesData } = await supabaseClient
@@ -414,7 +437,104 @@ async function loadUserMetadata() {
     hiddenPosts = new Set(hiddenData?.map(h => h.post_id) || []);
 }
 
-// ===== CHARGEMENT DES POSTS (avec pagination) =====
+async function loadFollowers() {
+    const { data: followersData } = await supabaseClient
+        .from('unified_follows')
+        .select('follower_id, follower:profiles!follower_id (id, full_name, avatar_url, username)')
+        .eq('following_id', currentProfile.id);
+    followers = followersData || [];
+    const followersList = document.getElementById('followersList');
+    if (followersList) {
+        followersList.innerHTML = followers.slice(0, 5).map(f => `
+            <li onclick="openUserProfile('${f.follower_id}')">
+                <img src="${f.follower?.avatar_url || 'img/user-default.jpg'}">
+                <span>${f.follower?.full_name || 'Anonyme'}</span>
+            </li>
+        `).join('');
+        if (followers.length === 0) followersList.innerHTML = '<li>Aucun abonné</li>';
+    }
+}
+
+async function loadFollowing() {
+    const { data: followingData } = await supabaseClient
+        .from('unified_follows')
+        .select('following_id, following:profiles!following_id (id, full_name, avatar_url, username)')
+        .eq('follower_id', currentProfile.id);
+    following = followingData || [];
+    const followingList = document.getElementById('followingList');
+    if (followingList) {
+        followingList.innerHTML = following.slice(0, 5).map(f => `
+            <li onclick="openUserProfile('${f.following_id}')">
+                <img src="${f.following?.avatar_url || 'img/user-default.jpg'}">
+                <span>${f.following?.full_name || 'Anonyme'}</span>
+            </li>
+        `).join('');
+        if (following.length === 0) followingList.innerHTML = '<li>Aucun abonnement</li>';
+    }
+}
+
+async function loadSuggestions() {
+    // Suggérer des utilisateurs non suivis, avec le même rôle ou aléatoires
+    const { data: suggestions, error } = await supabaseClient
+        .from('profiles')
+        .select('id, full_name, avatar_url, username, role')
+        .neq('id', currentProfile.id)
+        .limit(5);
+    if (error) return;
+    const followingIds = following.map(f => f.following_id);
+    const filtered = suggestions.filter(s => !followingIds.includes(s.id));
+    const suggestionsList = document.getElementById('suggestionsList');
+    if (suggestionsList) {
+        suggestionsList.innerHTML = filtered.map(s => `
+            <li onclick="openUserProfile('${s.id}')">
+                <img src="${s.avatar_url || 'img/user-default.jpg'}">
+                <span>${s.full_name}</span>
+                <small>${s.role || ''}</small>
+            </li>
+        `).join('');
+        if (filtered.length === 0) suggestionsList.innerHTML = '<li>Aucune suggestion</li>';
+    }
+}
+
+async function loadTrends() {
+    // Simuler des hashtags populaires à partir des posts récents
+    const { data, error } = await supabaseClient
+        .from('unified_posts')
+        .select('content')
+        .limit(100);
+    if (error) return;
+    const hashtags = {};
+    data.forEach(post => {
+        const matches = post.content?.match(/#\w+/g) || [];
+        matches.forEach(tag => {
+            hashtags[tag] = (hashtags[tag] || 0) + 1;
+        });
+    });
+    const sorted = Object.entries(hashtags).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const trendsList = document.getElementById('trendsList');
+    if (trendsList) {
+        trendsList.innerHTML = sorted.map(([tag, count]) => `
+            <li onclick="searchHashtag('${tag.substring(1)}')">
+                <i class="fas fa-hashtag"></i> ${tag} <small>${count} posts</small>
+            </li>
+        `).join('');
+        if (sorted.length === 0) trendsList.innerHTML = '<li>Aucune tendance</li>';
+    }
+}
+
+// ==================== CHARGEMENT DES POSTS (PAGINATION) ====================
+async function getCounts(table, column, ids) {
+    if (!ids.length) return {};
+    const { data, error } = await supabaseClient
+        .from(table)
+        .select(`${column}, count`)
+        .in(column, ids);
+    if (error) return {};
+    const counts = {};
+    data.forEach(item => { counts[item[column]] = (counts[item[column]] || 0) + item.count; });
+    return counts;
+}
+
 async function loadPosts(reset = true) {
     if (reset) {
         currentPostOffset = 0;
@@ -484,7 +604,7 @@ async function loadPosts(reset = true) {
                 isDisliked: dislikedPosts.has(post.id),
                 isSaved: savedPosts.has(post.id),
                 isFollowed: following.some(f => f.following_id === post.user_id),
-                collections: [] // sera rempli après
+                collections: []
             };
         }).filter(p => p !== null);
 
@@ -526,25 +646,13 @@ async function loadPosts(reset = true) {
     }
 }
 
-async function getCounts(table, column, ids) {
-    if (!ids.length) return {};
-    const { data, error } = await supabaseClient
-        .from(table)
-        .select(`${column}, count`)
-        .in(column, ids);
-    if (error) return {};
-    const counts = {};
-    data.forEach(item => { counts[item[column]] = (counts[item[column]] || 0) + item.count; });
-    return counts;
-}
-
 function loadMorePosts() {
     if (hasMorePosts && !loadingMore) {
         loadPosts(false);
     }
 }
 
-// ===== FILTRES AVANCÉS =====
+// ==================== FILTRES ====================
 let dateFilter = 'all';
 let popularityFilter = 'all';
 let contentTypeFilter = 'all';
@@ -577,75 +685,11 @@ function applyAdvancedFilters() {
         filtered.sort((a,b) => b.commentsCount - a.commentsCount);
     }
 
-    posts = filtered;
+    // Stocker la version filtrée dans une variable séparée pour l'affichage sans altérer posts
+    window.filteredPosts = filtered;
 }
 
-// ===== POSTS MASQUÉS =====
-async function loadHiddenPosts() {
-    showingHidden = true;
-    document.getElementById('backToFeedBtn').style.display = 'block';
-    try {
-        const hiddenIds = Array.from(hiddenPosts);
-        if (hiddenIds.length === 0) {
-            document.getElementById('postsFeed').innerHTML = '<p class="no-data">Aucun post masqué.</p>';
-            return;
-        }
-        const { data: postsData, error } = await supabaseClient
-            .from('unified_posts')
-            .select('*')
-            .in('id', hiddenIds)
-            .order('created_at', { ascending: false });
-        if (error) throw error;
-
-        const authorIds = postsData.map(p => p.user_id).filter(Boolean);
-        const { data: profilesData } = await supabaseClient
-            .from('profiles')
-            .select('id, full_name, avatar_url, username, role, badges')
-            .in('id', authorIds);
-        const profilesMap = Object.fromEntries((profilesData || []).map(p => [p.id, p]));
-
-        const hiddenPostsList = await Promise.all(postsData.map(async post => {
-            const author = profilesMap[post.user_id];
-            const { count: likesCount } = await supabaseClient
-                .from('unified_likes')
-                .select('*', { count: 'exact', head: true })
-                .eq('post_id', post.id);
-            const { count: commentsCount } = await supabaseClient
-                .from('unified_comments')
-                .select('*', { count: 'exact', head: true })
-                .eq('post_id', post.id);
-            return {
-                ...post,
-                author,
-                likesCount: likesCount || 0,
-                commentsCount: commentsCount || 0,
-                isLiked: likedPosts.has(post.id),
-                isSaved: savedPosts.has(post.id)
-            };
-        }));
-        renderHiddenPosts(hiddenPostsList);
-        hiddenPostsList.forEach(post => loadComments(post.id));
-    } catch (error) {
-        console.error('Erreur chargement posts masqués:', error);
-        showToast('Erreur lors du chargement des posts masqués', 'error');
-    }
-}
-
-function renderHiddenPosts(hiddenPostsList) {
-    const feed = document.getElementById('postsFeed');
-    if (!feed) return;
-    if (hiddenPostsList.length === 0) {
-        feed.innerHTML = '<p class="no-data">Aucun post masqué.</p>';
-        return;
-    }
-    let html = '';
-    hiddenPostsList.forEach(post => {
-        html += renderPostCard(post, true);
-    });
-    feed.innerHTML = html;
-}
-
-// ===== RENDU D'UN POST =====
+// ==================== RENDU DES POSTS ====================
 function renderPostCard(post, isHidden = false) {
     const timeAgo = timeSince(new Date(post.created_at));
     const likedClass = post.isLiked ? 'liked' : '';
@@ -708,18 +752,11 @@ function renderPostCard(post, isHidden = false) {
     `;
 }
 
-function formatPostContent(text) {
-    if (!text) return '';
-    text = text.replace(/@(\w+)/g, '<a href="#" onclick="openUserProfileByUsername(\'$1\')">@$1</a>');
-    text = text.replace(/#(\w+)/g, '<a href="#" onclick="searchHashtag(\'$1\')">#$1</a>');
-    return text;
-}
-
 function renderPosts() {
     const feed = document.getElementById('postsFeed');
     if (!feed) return;
 
-    let filteredPosts = [...posts];
+    let filteredPosts = window.filteredPosts || [...posts];
     if (currentFilter === 'following') {
         const followingIds = following.map(f => f.following_id);
         filteredPosts = filteredPosts.filter(p => followingIds.includes(p.user_id));
@@ -754,7 +791,7 @@ function renderPosts() {
     observePostsForViews();
 }
 
-// ===== COMMENTAIRES =====
+// ==================== COMMENTAIRES ====================
 async function loadComments(postId) {
     const { data, error } = await supabaseClient
         .from('unified_comments')
@@ -853,13 +890,15 @@ async function addComment(postId) {
         } else {
             input.value = '';
             replyParentId = null;
+            // Recharger les commentaires localement (mise à jour du DOM)
             await loadComments(postId);
+            // Mettre à jour le compteur de commentaires
             const postCard = document.querySelector(`.post-card[data-post-id="${postId}"]`);
             if (postCard) {
                 const commentSpan = postCard.querySelector('.post-stats span:nth-child(2)');
                 if (commentSpan) {
                     let curr = parseInt(commentSpan.textContent) || 0;
-                    commentSpan.innerHTML = `<i class="fas fa-comment"></i> ${curr+1}`;
+                    commentSpan.innerHTML = `<i class="fas fa-comment"></i> ${curr + 1}`;
                 }
             }
             showToast('Commentaire ajouté', 'success');
@@ -942,7 +981,7 @@ async function deleteComment(commentId, postId) {
             const commentSpan = postCard.querySelector('.post-stats span:nth-child(2)');
             if (commentSpan) {
                 let curr = parseInt(commentSpan.textContent) || 0;
-                commentSpan.innerHTML = `<i class="fas fa-comment"></i> ${Math.max(0, curr-1)}`;
+                commentSpan.innerHTML = `<i class="fas fa-comment"></i> ${Math.max(0, curr - 1)}`;
             }
         }
     }
@@ -960,7 +999,7 @@ async function reportComment(commentId, postId) {
     }
 }
 
-// ===== LIKES, DISLIKES =====
+// ==================== LIKES, DISLIKES ====================
 async function likePost(postId) {
     const postCard = document.querySelector(`.post-card[data-post-id="${postId}"]`);
     const likeBtn = postCard?.querySelector('.post-actions button:first-child');
@@ -978,7 +1017,7 @@ async function likePost(postId) {
         }
         likedPosts.delete(postId);
         if (likeBtn) likeBtn.classList.remove('liked');
-        if (likeCountSpan) likeCountSpan.innerHTML = `<i class="fas fa-heart"></i> ${currentCount-1}`;
+        if (likeCountSpan) likeCountSpan.innerHTML = `<i class="fas fa-heart"></i> ${currentCount - 1}`;
     } else {
         const { error } = await supabaseClient
             .from('unified_likes')
@@ -989,8 +1028,13 @@ async function likePost(postId) {
         }
         likedPosts.add(postId);
         if (likeBtn) likeBtn.classList.add('liked');
-        if (likeCountSpan) likeCountSpan.innerHTML = `<i class="fas fa-heart"></i> ${currentCount+1}`;
+        if (likeCountSpan) likeCountSpan.innerHTML = `<i class="fas fa-heart"></i> ${currentCount + 1}`;
+        // Si un dislike était présent, le retirer
+        if (dislikedPosts.has(postId)) {
+            await dislikePost(postId);
+        }
     }
+    // Mettre à jour le post dans le tableau posts
     const postIndex = posts.findIndex(p => p.id == postId);
     if (postIndex !== -1) {
         posts[postIndex].isLiked = likedPosts.has(postId);
@@ -1025,13 +1069,14 @@ async function dislikePost(postId) {
         }
         dislikedPosts.add(postId);
         if (dislikeBtn) dislikeBtn.classList.add('disliked');
+        // Si déjà liké, retirer le like
         if (likedPosts.has(postId)) {
             await likePost(postId);
         }
     }
 }
 
-// ===== REPOST =====
+// ==================== REPOST ====================
 async function repost(originalPostId) {
     const originalPost = posts.find(p => p.id == originalPostId);
     if (!originalPost) return;
@@ -1048,11 +1093,33 @@ async function repost(originalPostId) {
         showToast('Erreur : ' + error.message, 'error');
     } else {
         showToast('Repost effectué', 'success');
+        // Ajouter le nouveau post localement en haut du fil
+        const newPost = {
+            id: Date.now(), // temporaire, mais on va recharger pour avoir l'ID réel
+            user_id: currentProfile.id,
+            content: content || null,
+            original_post_id: originalPostId,
+            post_type: 'repost',
+            created_at: new Date().toISOString(),
+            author: currentProfile,
+            likesCount: 0,
+            commentsCount: 0,
+            sharesCount: 0,
+            viewsCount: 0,
+            isLiked: false,
+            isDisliked: false,
+            isSaved: false,
+            isFollowed: false,
+            collections: []
+        };
+        posts.unshift(newPost);
+        renderPosts();
+        // Recharger pour avoir l'ID réel (ou utiliser Realtime)
         loadPosts(true);
     }
 }
 
-// ===== PARTAGE EXTERNE =====
+// ==================== PARTAGE EXTERNE ====================
 function sharePostExternal(postId) {
     const modal = document.getElementById('shareModal');
     modal.dataset.postId = postId;
@@ -1075,7 +1142,7 @@ function shareOn(platform) {
     closeShareModal();
 }
 
-// ===== STORIES =====
+// ==================== STORIES ====================
 async function loadStories() {
     updateLoaderProgress('Stories');
     const { data, error } = await supabaseClient
@@ -1206,7 +1273,7 @@ function startStoryTimer() {
     }
 }
 
-// ===== MENTIONS & HASHTAGS =====
+// ==================== MENTIONS & HASHTAGS ====================
 function searchHashtag(tag) {
     searchTerm = '#' + tag;
     document.getElementById('communitySearch').value = searchTerm;
@@ -1222,7 +1289,7 @@ async function openUserProfileByUsername(username) {
     else showToast('Utilisateur introuvable', 'error');
 }
 
-// ===== ZOOM MÉDIA =====
+// ==================== ZOOM MÉDIA ====================
 function openMediaZoom(url, type) {
     const modal = document.getElementById('mediaZoomModal');
     const viewer = document.getElementById('mediaViewer');
@@ -1234,7 +1301,7 @@ function closeMediaZoom() {
     document.getElementById('mediaZoomModal').style.display = 'none';
 }
 
-// ===== ÉVÉNEMENTS =====
+// ==================== ÉVÉNEMENTS ====================
 function openEventModal() {
     document.getElementById('createEventModal').style.display = 'block';
 }
@@ -1283,7 +1350,7 @@ async function createEvent() {
     }
 }
 
-// ===== PROGRAMMATION =====
+// ==================== PROGRAMMATION ====================
 function openScheduleModal() {
     document.getElementById('schedulePostModal').style.display = 'block';
 }
@@ -1334,7 +1401,7 @@ async function schedulePost() {
     }
 }
 
-// ===== APERÇU =====
+// ==================== APERÇU ====================
 function openPreview() {
     const content = document.getElementById('postContent').value.trim();
     const file = document.getElementById('mediaInput').files[0];
@@ -1363,7 +1430,7 @@ function publishFromPreview() {
     closePreview();
 }
 
-// ===== PUBLICATION =====
+// ==================== PUBLICATION ====================
 async function createPost(content, file) {
     let mediaUrl = null, mediaType = null;
     if (file) {
@@ -1396,6 +1463,8 @@ async function createPost(content, file) {
         document.getElementById('postContent').value = '';
         document.getElementById('mediaInput').value = '';
         cancelMedia();
+        // Ajouter localement le nouveau post en haut du fil
+        // Pour simplifier, on recharge mais on peut faire mieux avec Realtime
         loadPosts(true);
     }
 }
@@ -1406,7 +1475,7 @@ function cancelMedia() {
     previewMedia = null;
 }
 
-// ===== SONDAGE =====
+// ==================== SONDAGE ====================
 function openPollModal() {
     document.getElementById('pollModal').style.display = 'block';
 }
@@ -1438,7 +1507,7 @@ async function createPoll() {
     }
 }
 
-// ===== MODALES PROFIL, CONFIDENTIALITÉ, INVITATION =====
+// ==================== MODALES PROFIL, CONFIDENTIALITÉ, INVITATION ====================
 function openEditProfileModal() {
     const modal = document.getElementById('editProfileModal');
     document.getElementById('editBio').value = currentProfile.bio || '';
@@ -1519,8 +1588,7 @@ function showPersonalHistory() {
     showToast('Page d\'historique bientôt disponible', 'info');
 }
 
-// ===== SIGNALEMENT =====
-let currentReportPostId = null;
+// ==================== SIGNALEMENT ====================
 function openReportModal(postId) {
     currentReportPostId = postId;
     document.getElementById('reportModal').style.display = 'block';
@@ -1546,8 +1614,7 @@ async function submitReport() {
     }
 }
 
-// ===== AUDIO COMMENTAIRES =====
-let audioCommentPostId = null;
+// ==================== AUDIO COMMENTAIRES ====================
 function openAudioCommentModal(postId) {
     if (!audioCommentsEnabled) return;
     audioCommentPostId = postId;
@@ -1593,8 +1660,7 @@ async function uploadAudioComment() {
     }
 }
 
-// ===== VUES =====
-let observedPosts = new Set();
+// ==================== VUES ====================
 function observePostsForViews() {
     const postsElements = document.querySelectorAll('.post-card');
     const observer = new IntersectionObserver((entries) => {
@@ -1621,22 +1687,251 @@ async function recordView(postId) {
     if (error) console.error('Erreur enregistrement vue:', error);
 }
 
-// ===== FONCTIONS UTILITAIRES =====
-function timeSince(date) {
-    const seconds = Math.floor((new Date() - date) / 1000);
-    let interval = Math.floor(seconds / 31536000);
-    if (interval >= 1) return `il y a ${interval} an${interval > 1 ? 's' : ''}`;
-    interval = Math.floor(seconds / 2592000);
-    if (interval >= 1) return `il y a ${interval} mois`;
-    interval = Math.floor(seconds / 86400);
-    if (interval >= 1) return `il y a ${interval} jour${interval > 1 ? 's' : ''}`;
-    interval = Math.floor(seconds / 3600);
-    if (interval >= 1) return `il y a ${interval} heure${interval > 1 ? 's' : ''}`;
-    interval = Math.floor(seconds / 60);
-    if (interval >= 1) return `il y a ${interval} minute${interval > 1 ? 's' : ''}`;
-    return `il y a ${seconds} seconde${seconds > 1 ? 's' : ''}`;
+// ==================== POSTS MASQUÉS ====================
+async function hidePost(postId) {
+    const { error } = await supabaseClient
+        .from('unified_hidden')
+        .insert({ user_id: currentProfile.id, post_id: postId });
+    if (error) {
+        showToast('Erreur : ' + error.message, 'error');
+        return;
+    }
+    hiddenPosts.add(postId);
+    // Retirer du DOM
+    const postCard = document.querySelector(`.post-card[data-post-id="${postId}"]`);
+    if (postCard) postCard.remove();
+    showToast('Post masqué', 'success');
+}
+async function loadHiddenPosts() {
+    showingHidden = true;
+    document.getElementById('backToFeedBtn').style.display = 'block';
+    try {
+        const hiddenIds = Array.from(hiddenPosts);
+        if (hiddenIds.length === 0) {
+            document.getElementById('postsFeed').innerHTML = '<p class="no-data">Aucun post masqué.</p>';
+            return;
+        }
+        const { data: postsData, error } = await supabaseClient
+            .from('unified_posts')
+            .select('*')
+            .in('id', hiddenIds)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+
+        const authorIds = postsData.map(p => p.user_id).filter(Boolean);
+        const { data: profilesData } = await supabaseClient
+            .from('profiles')
+            .select('id, full_name, avatar_url, username, role, badges')
+            .in('id', authorIds);
+        const profilesMap = Object.fromEntries((profilesData || []).map(p => [p.id, p]));
+
+        const hiddenPostsList = await Promise.all(postsData.map(async post => {
+            const author = profilesMap[post.user_id];
+            const { count: likesCount } = await supabaseClient
+                .from('unified_likes')
+                .select('*', { count: 'exact', head: true })
+                .eq('post_id', post.id);
+            const { count: commentsCount } = await supabaseClient
+                .from('unified_comments')
+                .select('*', { count: 'exact', head: true })
+                .eq('post_id', post.id);
+            return {
+                ...post,
+                author,
+                likesCount: likesCount || 0,
+                commentsCount: commentsCount || 0,
+                isLiked: likedPosts.has(post.id),
+                isSaved: savedPosts.has(post.id)
+            };
+        }));
+        renderHiddenPosts(hiddenPostsList);
+        hiddenPostsList.forEach(post => loadComments(post.id));
+    } catch (error) {
+        console.error('Erreur chargement posts masqués:', error);
+        showToast('Erreur lors du chargement des posts masqués', 'error');
+    }
+}
+function renderHiddenPosts(hiddenPostsList) {
+    const feed = document.getElementById('postsFeed');
+    if (!feed) return;
+    if (hiddenPostsList.length === 0) {
+        feed.innerHTML = '<p class="no-data">Aucun post masqué.</p>';
+        return;
+    }
+    let html = '';
+    hiddenPostsList.forEach(post => {
+        html += renderPostCard(post, true);
+    });
+    feed.innerHTML = html;
+}
+function backToFeed() {
+    showingHidden = false;
+    document.getElementById('backToFeedBtn').style.display = 'none';
+    loadPosts(true);
 }
 
+// ==================== GESTION DES POSTS (MODIFIER, SUPPRIMER) ====================
+async function editPost(postId) {
+    const post = posts.find(p => p.id == postId);
+    if (!post) return;
+    const newContent = prompt('Modifier votre publication :', post.content);
+    if (newContent === null) return;
+    const { error } = await supabaseClient
+        .from('unified_posts')
+        .update({ content: newContent })
+        .eq('id', postId);
+    if (error) {
+        showToast('Erreur : ' + error.message, 'error');
+    } else {
+        showToast('Publication modifiée', 'success');
+        // Mise à jour locale
+        post.content = newContent;
+        const postCard = document.querySelector(`.post-card[data-post-id="${postId}"]`);
+        if (postCard) {
+            const contentDiv = postCard.querySelector('.post-content');
+            if (contentDiv) contentDiv.innerHTML = formatPostContent(newContent);
+        }
+    }
+}
+async function deletePost(postId) {
+    if (!confirm('Supprimer cette publication ?')) return;
+    const { error } = await supabaseClient
+        .from('unified_posts')
+        .delete()
+        .eq('id', postId);
+    if (error) {
+        showToast('Erreur : ' + error.message, 'error');
+    } else {
+        showToast('Publication supprimée', 'success');
+        // Supprimer du DOM et du tableau
+        const postCard = document.querySelector(`.post-card[data-post-id="${postId}"]`);
+        if (postCard) postCard.remove();
+        const index = posts.findIndex(p => p.id == postId);
+        if (index !== -1) posts.splice(index, 1);
+    }
+}
+
+// ==================== PROFIL UTILISATEUR ====================
+async function openUserProfile(userId) {
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+    if (error) {
+        showToast('Erreur chargement profil', 'error');
+        return;
+    }
+    const modal = document.getElementById('userProfileModal');
+    document.getElementById('profileAvatar').src = data.avatar_url || 'img/user-default.jpg';
+    document.getElementById('profileName').textContent = data.full_name;
+    document.getElementById('profileHubId').textContent = `@${data.username || 'utilisateur'}`;
+    const badgesHtml = (data.badges || []).map(b => `<span class="badge-mini">${b}</span>`).join('');
+    document.getElementById('profileBadges').innerHTML = badgesHtml;
+    document.getElementById('profileBio').textContent = data.bio || 'Aucune bio.';
+    modal.dataset.userId = userId;
+    modal.style.display = 'block';
+}
+function closeUserProfileModal() {
+    document.getElementById('userProfileModal').style.display = 'none';
+}
+function sendMessageToUser() {
+    const userId = document.getElementById('userProfileModal').dataset.userId;
+    window.location.href = `messages.html?user=${userId}`;
+}
+async function showLikes(postId) {
+    const { data, error } = await supabaseClient
+        .from('unified_likes')
+        .select('user_id, profiles(id, full_name, avatar_url)')
+        .eq('post_id', postId)
+        .limit(100);
+    if (error) {
+        showToast('Erreur chargement des likes', 'error');
+        return;
+    }
+    const list = document.getElementById('likesList');
+    if (data.length === 0) {
+        list.innerHTML = '<li>Aucun like</li>';
+    } else {
+        list.innerHTML = data.map(l => `
+            <li onclick="openUserProfile('${l.user_id}')">
+                <img src="${l.profiles?.avatar_url || 'img/user-default.jpg'}">
+                <span>${l.profiles?.full_name || 'Anonyme'}</span>
+            </li>
+        `).join('');
+    }
+    document.getElementById('likesModal').style.display = 'block';
+}
+function closeLikesModal() {
+    document.getElementById('likesModal').style.display = 'none';
+}
+
+// ==================== FILTRES ET RECHERCHE ====================
+function initFilters() {
+    const dateSelect = document.getElementById('dateFilter');
+    const popularitySelect = document.getElementById('popularityFilter');
+    const contentTypeSelect = document.getElementById('contentTypeFilter');
+    if (dateSelect) dateSelect.addEventListener('change', () => {
+        dateFilter = dateSelect.value;
+        applyAdvancedFilters();
+        renderPosts();
+    });
+    if (popularitySelect) popularitySelect.addEventListener('change', () => {
+        popularityFilter = popularitySelect.value;
+        applyAdvancedFilters();
+        renderPosts();
+    });
+    if (contentTypeSelect) contentTypeSelect.addEventListener('change', () => {
+        contentTypeFilter = contentTypeSelect.value;
+        applyAdvancedFilters();
+        renderPosts();
+    });
+    const searchInput = document.getElementById('communitySearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            searchTerm = e.target.value.toLowerCase();
+            renderPosts();
+        });
+    }
+    const filterBtns = document.querySelectorAll('.filter-btn[data-filter]');
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentFilter = btn.dataset.filter;
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderPosts();
+        });
+    });
+    const roleBtns = document.querySelectorAll('.role-filters .filter-btn');
+    roleBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const role = btn.dataset.role;
+            if (role === 'all') {
+                currentFilter = 'all';
+            } else {
+                // Filtrage par rôle
+                currentFilter = 'role';
+                window.currentRole = role;
+            }
+            roleBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderPosts();
+        });
+    });
+}
+
+// ==================== MENU UTILISATEUR ====================
+function toggleUserMenu() {
+    const dropdown = document.getElementById('userDropdown');
+    dropdown.classList.toggle('show');
+}
+function closeUserMenuOnClickOutside(e) {
+    const menu = document.getElementById('userMenu');
+    const dropdown = document.getElementById('userDropdown');
+    if (menu && !menu.contains(e.target) && dropdown && dropdown.classList.contains('show')) {
+        dropdown.classList.remove('show');
+    }
+}
 function togglePostMenu(btn) {
     const dropdown = btn.nextElementSibling;
     dropdown.classList.toggle('show');
@@ -1647,7 +1942,6 @@ function togglePostMenu(btn) {
         }
     });
 }
-
 async function toggleFollow(button) {
     const followedId = button.dataset.userId;
     const isFollowing = button.classList.contains('following');
@@ -1667,475 +1961,104 @@ async function toggleFollow(button) {
             button.classList.add('following');
             button.textContent = 'Abonné';
         }
-        await loadFollowers();
+        await loadFollowing();
+        await loadSuggestions();
         await loadPosts(true);
     });
 }
 
-async function loadFollowers() {
-    updateLoaderProgress('Chargement des abonnés');
-    const { data: followersData } = await supabaseClient
-        .from('unified_follows')
-        .select('follower_id, follower:profiles!follower_id (id, full_name, avatar_url, username)')
-        .eq('following_id', currentProfile.id);
-    followers = followersData || [];
-    const followersList = document.getElementById('followersList');
-    if (followersList) {
-        followersList.innerHTML = followers.map(f => `
-            <li onclick="openUserProfile('${f.follower_id}')">
-                <img src="${f.follower?.avatar_url || 'img/user-default.jpg'}">
-                <span>${f.follower?.full_name || 'Anonyme'}</span>
-                <small>@${f.follower?.username || ''}</small>
-            </li>
-        `).join('');
-    }
-    const { data: followingData } = await supabaseClient
-        .from('unified_follows')
-        .select('following_id, followed:profiles!following_id (id, full_name, avatar_url, username)')
-        .eq('follower_id', currentProfile.id);
-    following = followingData || [];
-    const followingList = document.getElementById('followingList');
-    if (followingList) {
-        followingList.innerHTML = following.map(f => `
-            <li onclick="openUserProfile('${f.following_id}')">
-                <img src="${f.followed?.avatar_url || 'img/user-default.jpg'}">
-                <span>${f.followed?.full_name || 'Anonyme'}</span>
-                <small>@${f.followed?.username || ''}</small>
-            </li>
-        `).join('');
-    }
-    document.getElementById('insightReach').textContent = (followers.length * 10).toLocaleString();
-    document.getElementById('insightEngagement').textContent = '12%';
-    document.getElementById('insightNewFollowers').textContent = `+${Math.floor(Math.random() * 10)}`;
-    const { data: suggestionsData } = await supabaseClient
-        .from('profiles')
-        .select('id, full_name, avatar_url, username')
-        .neq('id', currentProfile.id)
-        .limit(5);
-    const suggestionsList = document.getElementById('suggestionsList');
-    if (suggestionsList) {
-        suggestionsList.innerHTML = (suggestionsData || []).map(s => `
-            <li onclick="openUserProfile('${s.id}')">
-                <img src="${s.avatar_url || 'img/user-default.jpg'}">
-                <span>${s.full_name || 'Anonyme'}</span>
-                <small>@${s.username || ''}</small>
-            </li>
-        `).join('');
-    }
-    const { data: trendsData } = await supabaseClient
-        .from('unified_posts')
-        .select('id, content')
-        .order('created_at', { ascending: false })
-        .limit(3);
-    const trendsList = document.getElementById('trendsList');
-    if (trendsList) {
-        trendsList.innerHTML = (trendsData || []).map(t => `
-            <li onclick="scrollToPost(${t.id})">
-                <i class="fas fa-fire" style="color: var(--primary);"></i>
-                <span>${t.content?.substring(0, 30)}...</span>
-            </li>
-        `).join('');
-    }
-    updateLoaderProgress('Abonnés chargés');
-}
-
-function scrollToPost(postId) {
-    const postElement = document.querySelector(`.post-card[data-post-id="${postId}"]`);
-    if (postElement) postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-async function openUserProfile(userId) {
-    selectedUserId = userId;
-    const { data, error } = await supabaseClient
-        .from('profiles')
-        .select('full_name, avatar_url, username, bio, badges, privacy')
-        .eq('id', userId)
-        .single();
-    if (error) {
-        showToast('Erreur chargement profil', 'error');
-        return;
-    }
-    document.getElementById('profileName').textContent = data.full_name || 'Anonyme';
-    document.getElementById('profileHubId').textContent = `@${data.username || ''}`;
-    document.getElementById('profileAvatar').src = data.avatar_url || 'img/user-default.jpg';
-    document.getElementById('profileBio').textContent = data.bio || '';
-    const badgesContainer = document.getElementById('profileBadges');
-    if (badgesContainer) {
-        badgesContainer.innerHTML = (data.badges || []).map(b => `<span class="badge-mini">${b}</span>`).join('');
-    }
-    document.getElementById('userProfileModal').style.display = 'block';
-}
-function closeUserProfileModal() {
-    document.getElementById('userProfileModal').style.display = 'none';
-}
-function sendMessageToUser() {
-    if (selectedUserId) {
-        window.location.href = `messages.html?to=${selectedUserId}`;
-    } else {
-        showToast('Aucun utilisateur sélectionné', 'warning');
-    }
-}
-
-async function showLikes(postId) {
-    const { data, error } = await supabaseClient
-        .from('unified_likes')
-        .select('user_id, author:profiles!user_id (id, full_name, avatar_url, username)')
-        .eq('post_id', postId);
-    if (error) {
-        showToast('Erreur', 'error');
-        return;
-    }
-    const list = document.getElementById('likesList');
-    list.innerHTML = data.map(like => `
-        <li onclick="openUserProfile('${like.author?.id}')">
-            <img src="${like.author?.avatar_url || 'img/user-default.jpg'}">
-            <span>${like.author?.full_name || 'Anonyme'}</span>
-            <small>@${like.author?.username || ''}</small>
-        </li>
-    `).join('');
-    document.getElementById('likesModal').style.display = 'block';
-}
-function closeLikesModal() {
-    document.getElementById('likesModal').style.display = 'none';
-}
-
-async function editPost(postId) {
-    const post = posts.find(p => p.id == postId);
-    const newContent = prompt('Modifier votre message :', post.content);
-    if (newContent === null) return;
-    const { error } = await supabaseClient
-        .from('unified_posts')
-        .update({ content: newContent })
-        .eq('id', postId);
-    if (error) {
-        showToast('Erreur', 'error');
-    } else {
-        showToast('Post modifié', 'success');
-        loadPosts(true);
-    }
-}
-async function deletePost(postId) {
-    if (!confirm('Supprimer ce post définitivement ?')) return;
-    const { error } = await supabaseClient
-        .from('unified_posts')
-        .delete()
-        .eq('id', postId);
-    if (error) {
-        showToast('Erreur', 'error');
-    } else {
-        showToast('Post supprimé', 'success');
-        loadPosts(true);
-    }
-}
-async function hidePost(postId) {
-    if (!confirm('Masquer ce post ?')) return;
-    const { error } = await supabaseClient
-        .from('unified_hidden')
-        .insert({ user_id: currentProfile.id, post_id: postId });
-    if (error) {
-        showToast('Erreur', 'error');
-    } else {
-        hiddenPosts.add(postId);
-        showToast('Post masqué', 'success');
-        loadPosts(true);
-    }
-}
-async function unhidePost(postId) {
-    if (!confirm('Réafficher ce post ?')) return;
-    const { error } = await supabaseClient
-        .from('unified_hidden')
-        .delete()
-        .eq('user_id', currentProfile.id)
-        .eq('post_id', postId);
-    if (error) {
-        showToast('Erreur', 'error');
-    } else {
-        hiddenPosts.delete(postId);
-        showToast('Post réaffiché', 'success');
-        loadHiddenPosts();
-    }
-}
-
-// ===== RECHERCHE ET FILTRES =====
-function initSearchAndFilters() {
-    const searchInput = document.getElementById('communitySearch');
-    searchInput.addEventListener('input', (e) => {
-        searchTerm = e.target.value.toLowerCase();
-        renderPosts();
-    });
-    document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentFilter = btn.dataset.filter;
-            renderPosts();
-        });
-    });
-    document.getElementById('dateFilter').addEventListener('change', (e) => {
-        dateFilter = e.target.value;
-        loadPosts(true);
-    });
-    document.getElementById('popularityFilter').addEventListener('change', (e) => {
-        popularityFilter = e.target.value;
-        loadPosts(true);
-    });
-    document.getElementById('contentTypeFilter').addEventListener('change', (e) => {
-        contentTypeFilter = e.target.value;
-        loadPosts(true);
-    });
-}
-
-// ===== MENU UTILISATEUR =====
-function initUserMenu() {
-    const userMenu = document.getElementById('userMenu');
-    const userDropdown = document.getElementById('userDropdown');
-    userMenu.addEventListener('click', (e) => {
-        e.stopPropagation();
-        userDropdown.classList.toggle('show');
-    });
-    document.addEventListener('click', () => userDropdown.classList.remove('show'));
-}
-function initLogout() {
-    document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
-        link.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await supabaseClient.auth.signOut();
-            window.location.href = '../index.html';
-        });
-    });
-}
-
-// ===== GESTION DES SIDEBARS =====
+// ==================== SIDEBARS ====================
 function initSidebars() {
     const leftSidebar = document.getElementById('leftSidebar');
     const rightSidebar = document.getElementById('rightSidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    document.getElementById('menuToggle').addEventListener('click', () => {
-        leftSidebar.classList.add('active');
-        overlay.classList.add('active');
-    });
-    document.getElementById('rightSidebarToggle').addEventListener('click', () => {
-        rightSidebar.classList.add('active');
-        overlay.classList.add('active');
-    });
-    document.getElementById('closeLeftSidebar').addEventListener('click', () => {
-        leftSidebar.classList.remove('active');
-        overlay.classList.remove('active');
-    });
-    document.getElementById('closeRightSidebar').addEventListener('click', () => {
-        rightSidebar.classList.remove('active');
-        overlay.classList.remove('active');
-    });
-    overlay.addEventListener('click', () => {
-        leftSidebar.classList.remove('active');
-        rightSidebar.classList.remove('active');
-        overlay.classList.remove('active');
-    });
-    let touchStartX = 0;
-    document.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-    });
-    document.addEventListener('touchend', (e) => {
-        const diff = e.changedTouches[0].screenX - touchStartX;
-        if (Math.abs(diff) > 50) {
-            if (diff > 0 && touchStartX < 50) {
-                leftSidebar.classList.add('active');
-                overlay.classList.add('active');
-            } else if (diff < 0 && touchStartX > window.innerWidth - 50) {
-                rightSidebar.classList.add('active');
-                overlay.classList.add('active');
-            }
-        }
-    });
-}
+    const toggleLeft = document.getElementById('menuToggle');
+    const toggleRight = document.getElementById('rightSidebarToggle');
+    const closeLeftBtn = document.getElementById('closeLeftSidebar');
+    const closeRightBtn = document.getElementById('closeRightSidebar');
 
-// ===== NOUVEAUX POSTS (Realtime) =====
-function subscribeToNewPosts() {
-    supabaseClient
-        .channel('unified_posts_changes_player')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'unified_posts' }, payload => {
-            newPostsCount++;
-            const indicator = document.getElementById('newPostsIndicator');
-            document.getElementById('newPostsCount').textContent = newPostsCount;
-            indicator.style.display = 'block';
-        })
-        .subscribe();
-}
-function hideNewPostsIndicator() {
-    document.getElementById('newPostsIndicator').style.display = 'none';
-    newPostsCount = 0;
-}
-document.getElementById('newPostsIndicator')?.addEventListener('click', () => {
-    loadPosts(true);
-    hideNewPostsIndicator();
-});
+    function openLeft() { leftSidebar.classList.add('active'); overlay.classList.add('active'); }
+    function closeLeftSidebar() { leftSidebar.classList.remove('active'); overlay.classList.remove('active'); }
+    function openRight() { rightSidebar.classList.add('active'); overlay.classList.add('active'); }
+    function closeRightSidebar() { rightSidebar.classList.remove('active'); overlay.classList.remove('active'); }
 
-// ===== INITIALISATION PRINCIPALE =====
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation feed.js');
-    showLoaderWithProgress(10); // 10 étapes
+    if (toggleLeft) toggleLeft.addEventListener('click', openLeft);
+    if (toggleRight) toggleRight.addEventListener('click', openRight);
+    if (closeLeftBtn) closeLeftBtn.addEventListener('click', closeLeftSidebar);
+    if (closeRightBtn) closeRightBtn.addEventListener('click', closeRightSidebar);
+    if (overlay) overlay.addEventListener('click', () => { closeLeftSidebar(); closeRightSidebar(); });
+}
+// ==================== INITIALISATION ====================
+async function init() {
+    showLoaderWithProgress(12);
     const user = await checkSession();
     if (!user) return;
     await loadProfile();
     await loadSiteConfig();
-    await loadNotifications();
+    await loadFollowers();
+    await loadFollowing();
     await loadCollections();
     await loadUserMetadata();
-    await loadFollowers();
+    await loadNotifications();
     await loadStories();
+    await loadSuggestions();
+    await loadTrends();
     await loadPosts(true);
-    initSearchAndFilters();
-    initUserMenu();
-    initLogout();
+    initFilters();
     initSidebars();
-    subscribeToNewPosts();
-
-    // Boutons de la zone de publication
+    document.getElementById('userMenu').addEventListener('click', toggleUserMenu);
+    document.addEventListener('click', closeUserMenuOnClickOutside);
     document.getElementById('attachMediaBtn').addEventListener('click', () => document.getElementById('mediaInput').click());
-    document.getElementById('mediaInput').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const preview = document.getElementById('publishMediaPreview');
-        const url = URL.createObjectURL(file);
-        if (file.type.startsWith('image/')) preview.innerHTML = `<img src="${url}" alt="Aperçu">`;
-        else preview.innerHTML = `<video src="${url}" controls></video>`;
-        document.getElementById('mediaCancel').style.display = 'flex';
-        document.getElementById('mediaFileName').textContent = file.name;
+    document.getElementById('mediaInput').addEventListener('change', (e) => {
+        if (e.target.files.length) {
+            const file = e.target.files[0];
+            document.getElementById('mediaFileName').textContent = file.name;
+            document.getElementById('mediaCancel').style.display = 'flex';
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const previewDiv = document.getElementById('publishMediaPreview');
+                if (file.type.startsWith('image/')) {
+                    previewDiv.innerHTML = `<img src="${ev.target.result}" alt="Aperçu">`;
+                } else if (file.type.startsWith('video/')) {
+                    previewDiv.innerHTML = `<video src="${ev.target.result}" controls></video>`;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
     });
-    document.getElementById('previewPostBtn').addEventListener('click', openPreview);
-    document.getElementById('schedulePostBtn').addEventListener('click', openScheduleModal);
-    document.getElementById('publishBtn').addEventListener('click', async () => {
+    document.getElementById('publishBtn').addEventListener('click', () => {
         const content = document.getElementById('postContent').value.trim();
         const file = document.getElementById('mediaInput').files[0];
         if (!content && !file) {
-            showToast('Écrivez quelque chose ou ajoutez un média', 'warning');
+            showToast('Veuillez écrire quelque chose ou ajouter un média', 'warning');
             return;
         }
-        await withButtonSpinner(document.getElementById('publishBtn'), () => createPost(content, file));
+        createPost(content, file);
     });
-    document.getElementById('mediaCancel').addEventListener('click', cancelMedia);
-
-    // Posts masqués
+    document.getElementById('pollBtn').addEventListener('click', openPollModal);
+    document.getElementById('eventBtn').addEventListener('click', openEventModal);
+    document.getElementById('previewPostBtn').addEventListener('click', openPreview);
+    document.getElementById('schedulePostBtn').addEventListener('click', openScheduleModal);
+    document.getElementById('createCollectionBtn').addEventListener('click', openCreateCollectionModal);
+    document.getElementById('privacyBtn').addEventListener('click', openPrivacyModal);
+    document.getElementById('inviteBtn').addEventListener('click', openInviteModal);
     document.getElementById('showHiddenPosts').addEventListener('click', (e) => {
         e.preventDefault();
         loadHiddenPosts();
     });
-    document.getElementById('backToFeedBtn').querySelector('button').addEventListener('click', () => {
-        showingHidden = false;
-        document.getElementById('backToFeedBtn').style.display = 'none';
-        loadPosts(true);
-    });
-
-    // Édition du profil
-    document.getElementById('editProfileForm').addEventListener('submit', saveProfileChanges);
-
-    // Notifications
-    document.getElementById('notifIcon').addEventListener('click', openNotificationsModal);
-    document.getElementById('markAllRead').addEventListener('click', markAllNotificationsAsRead);
-
-    // Collections
-    document.getElementById('createCollectionBtn').addEventListener('click', openCreateCollectionModal);
-
-    // Sondage
-    document.getElementById('pollBtn').addEventListener('click', openPollModal);
-    document.getElementById('submitPoll').addEventListener('click', createPoll);
-
-    // Confidentialité
-    document.getElementById('privacyBtn').addEventListener('click', openPrivacyModal);
-    document.getElementById('savePrivacy').addEventListener('click', savePrivacy);
-
-    // Invitations
-    document.getElementById('inviteBtn').addEventListener('click', openInviteModal);
-    document.getElementById('sendInvite').addEventListener('click', sendInvite);
-
-    // Historique
     document.getElementById('historyBtn').addEventListener('click', showPersonalHistory);
-
-    // Événement
-    document.getElementById('eventBtn').addEventListener('click', openEventModal);
-    document.getElementById('createEventBtn')?.addEventListener('click', createEvent);
-
-    // Charger plus
-    document.getElementById('loadMoreBtn').addEventListener('click', loadMorePosts);
-
-    // Modale de zoom média
-    const closeZoom = document.querySelector('#mediaZoomModal .close-modal');
-    if (closeZoom) closeZoom.addEventListener('click', closeMediaZoom);
-
-    // Exposer les fonctions globales
-    window.closePreview = closePreview;
-    window.publishFromPreview = publishFromPreview;
-    window.openUserProfile = openUserProfile;
-    window.closeUserProfileModal = closeUserProfileModal;
-    window.sendMessageToUser = sendMessageToUser;
-    window.closeLikesModal = closeLikesModal;
-    window.closeReplyModal = closeReplyModal;
-    window.sendReply = sendReply;
-    window.closeNotificationsModal = closeNotificationsModal;
-    window.markAllNotificationsAsRead = markAllNotificationsAsRead;
-    window.closeCollectionsModal = closeCollectionsModal;
-    window.togglePostInCollection = togglePostInCollection;
-    window.closePollModal = closePollModal;
-    window.closeShareModal = closeShareModal;
-    window.closePrivacyModal = closePrivacyModal;
-    window.closeInviteModal = closeInviteModal;
-    window.closeMediaZoom = closeMediaZoom;
-    window.openMediaZoom = openMediaZoom;
-    window.closeEventModal = closeEventModal;
-    window.closeScheduleModal = closeScheduleModal;
-    window.closeReportModal = closeReportModal;
-    window.closeAudioModal = closeAudioModal;
-    window.openStoryUploadModal = openStoryUploadModal;
-    window.uploadStory = uploadStory;
-    window.openStory = openStory;
-    window.closeStoryModal = closeStoryModal;
-    window.nextStory = nextStory;
-    window.prevStory = prevStory;
-    window.toggleFollow = toggleFollow;
-    window.likePost = likePost;
-    window.dislikePost = dislikePost;
-    window.addComment = addComment;
-    window.focusComment = focusComment;
-    window.scrollToComments = scrollToComments;
-    window.openReplyModal = openReplyModal;
-    window.editComment = editComment;
-    window.deleteComment = deleteComment;
-    window.reportComment = reportComment;
-    window.repost = repost;
-    window.sharePostExternal = sharePostExternal;
-    window.shareOn = shareOn;
-    window.openEventModal = openEventModal;
-    window.createEvent = createEvent;
-    window.openScheduleModal = openScheduleModal;
-    window.schedulePost = schedulePost;
-    window.openReportModal = openReportModal;
-    window.submitReport = submitReport;
-    window.openAudioCommentModal = openAudioCommentModal;
-    window.uploadAudioComment = uploadAudioComment;
-    window.editPost = editPost;
-    window.deletePost = deletePost;
-    window.hidePost = hidePost;
-    window.unhidePost = unhidePost;
-    window.showLikes = showLikes;
-    window.openEditProfileModal = openEditProfileModal;
-    window.closeEditProfileModal = closeEditProfileModal;
-    window.createNewCollection = createNewCollection;
-    window.closeCreateCollectionModal = closeCreateCollectionModal;
-    window.setCurrentCollection = setCurrentCollection;
-    window.searchHashtag = searchHashtag;
-    window.openUserProfileByUsername = openUserProfileByUsername;
-    window.cancelMedia = cancelMedia;
-    window.loadMorePosts = loadMorePosts;
-    window.loadPosts = loadPosts;
-
-    document.getElementById('langSelect')?.addEventListener('change', (e) => {
-        const lang = e.target.value;
-        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+    document.getElementById('logoutLink').addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        window.location.href = '../index.html';
     });
-    document.getElementById('languageLink')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        showToast('Changement de langue bientôt disponible', 'info');
+    document.getElementById('logoutLinkSidebar').addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        window.location.href = '../index.html';
     });
+    document.getElementById('backToFeedBtn').querySelector('button').addEventListener('click', backToFeed);
+    document.getElementById('editProfileForm').addEventListener('submit', saveProfileChanges);
+    updateLoaderProgress('Initialisation terminée');
+}
 
-    console.log('✅ Initialisation terminée');
-});
+// Lancer l'initialisation
+init();
