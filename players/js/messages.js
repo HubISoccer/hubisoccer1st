@@ -11,15 +11,18 @@ let currentConversation = null;
 let messages = [];
 let messageSubscription = null;
 let typingTimeout = null;
-let selectedMessage = null;
 let pendingReply = null;
 let showingArchives = false;
 let mediaRecorder = null;
-let audioChunks = [];
+let audioChunksLocal = [];
 let recordingTimer = null;
 let recordingSeconds = 0;
 let currentUploadController = null;
-let selectedMessagesForDelete = new Set(); // pour la suppression multiple
+let selectedMessagesForDelete = new Set();
+let pendingMediaFile = null;
+let pendingAudioBlob = null;
+let emojiPickerVisible = false;
+let currentContextMessageId = null;
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -105,7 +108,6 @@ async function loadProfile() {
 async function loadConversations() {
     showLoader(true);
     try {
-        // Récupérer les conversations auxquelles l'utilisateur participe
         const { data: participants, error: partError } = await supabaseClient
             .from('conversation_participants')
             .select('conversation_id, last_read_at')
@@ -120,7 +122,6 @@ async function loadConversations() {
             return;
         }
 
-        // Récupérer les infos des conversations
         let query = supabaseClient
             .from('conversations')
             .select('*')
@@ -147,9 +148,7 @@ async function loadConversations() {
         const { data: convs, error: convError } = await query;
         if (convError) throw convError;
 
-        // Pour chaque conversation, récupérer le dernier message et les participants
         conversations = await Promise.all(convs.map(async (conv) => {
-            // Dernier message
             const { data: lastMsg, error: msgError } = await supabaseClient
                 .from('messages')
                 .select('*')
@@ -160,17 +159,14 @@ async function loadConversations() {
                 .maybeSingle();
             if (msgError) console.error(msgError);
 
-            // Participants
             const { data: part, error: partError2 } = await supabaseClient
                 .from('conversation_participants')
                 .select('user_id, profiles:user_id (full_name, avatar_url, username)')
                 .eq('conversation_id', conv.id);
             if (partError2) console.error(partError2);
 
-            let name = '';
-            let avatar = '';
-            let isGroup = conv.is_group;
-            if (isGroup) {
+            let name = '', avatar = '';
+            if (conv.is_group) {
                 name = conv.group_name || 'Groupe';
                 avatar = conv.group_avatar || 'img/group-default.jpg';
             } else {
@@ -190,7 +186,7 @@ async function loadConversations() {
                 avatar,
                 lastMessage: lastMsg,
                 lastMessageTime: lastMsg?.created_at,
-                unreadCount: 0 // à calculer plus tard
+                unreadCount: 0
             };
         }));
 
@@ -243,11 +239,10 @@ async function selectConversation(conversationId) {
     initChatInput();
 }
 
-// ===== CHARGEMENT DES MESSAGES D'UNE CONVERSATION =====
+// ===== CHARGEMENT DES MESSAGES =====
 async function loadMessages(conversationId) {
     showLoader(true);
     try {
-        // Récupérer les messages non supprimés pour l'utilisateur
         const { data, error } = await supabaseClient
             .from('messages')
             .select('*, profiles:user_id (full_name, avatar_url)')
@@ -257,7 +252,6 @@ async function loadMessages(conversationId) {
         if (error) throw error;
 
         messages = data || [];
-        // Marquer comme lus les messages entrants
         await markMessagesAsRead(conversationId);
 
         if (messageSubscription) messageSubscription.unsubscribe();
@@ -271,14 +265,11 @@ async function loadMessages(conversationId) {
 }
 
 async function markMessagesAsRead(conversationId) {
-    // Mettre à jour la date de dernière lecture dans conversation_participants
     await supabaseClient
         .from('conversation_participants')
         .update({ last_read_at: new Date().toISOString() })
         .eq('conversation_id', conversationId)
         .eq('user_id', currentProfile.id);
-
-    // Mettre à jour le compteur de non-lus (si on avait une colonne, on pourrait la décrémenter)
 }
 
 function subscribeToMessages(conversationId) {
@@ -290,7 +281,6 @@ function subscribeToMessages(conversationId) {
             table: 'messages',
             filter: `conversation_id=eq.${conversationId}`
         }, async (payload) => {
-            // Ne pas ajouter le message si l'utilisateur est l'expéditeur (déjà ajouté localement) ou si le message est supprimé pour lui
             if (payload.new.user_id === currentProfile.id) return;
             if (payload.new.deleted_for?.includes(currentProfile.id)) return;
             const { data: author } = await supabaseClient
@@ -304,7 +294,6 @@ function subscribeToMessages(conversationId) {
             };
             messages.push(newMsg);
             renderMessages();
-            // Mettre à jour la conversation dans la liste (dernier message)
             const conv = conversations.find(c => c.id === conversationId);
             if (conv) {
                 conv.lastMessage = newMsg;
@@ -362,7 +351,17 @@ function renderMessages() {
     container.scrollTop = container.scrollHeight;
 }
 
-// ===== ZONE DE SAISIE (initiale) =====
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+// ===== ZONE DE SAISIE =====
 function initChatInput() {
     const container = document.getElementById('chatInputArea');
     if (!container) return;
@@ -384,7 +383,6 @@ function initChatInput() {
         </div>
     `;
 
-    // Attacher les événements
     document.getElementById('messageInput').addEventListener('input', handleTyping);
     document.getElementById('messageInput').addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
     document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
@@ -393,7 +391,6 @@ function initChatInput() {
     document.getElementById('emojiBtn').addEventListener('click', toggleEmojiPicker);
     document.getElementById('stickerBtn').addEventListener('click', toggleStickerPicker);
 
-    // Input file caché
     if (!document.getElementById('fileInput')) {
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
@@ -408,10 +405,7 @@ function initChatInput() {
 let typingTimeoutId = null;
 function handleTyping() {
     if (typingTimeoutId) clearTimeout(typingTimeoutId);
-    // Envoyer un signal de saisie (à implémenter avec Realtime)
-    typingTimeoutId = setTimeout(() => {
-        // Arrêt de la saisie
-    }, 2000);
+    typingTimeoutId = setTimeout(() => {}, 2000);
 }
 
 function cancelReply() {
@@ -419,7 +413,7 @@ function cancelReply() {
     document.getElementById('replyIndicator').style.display = 'none';
 }
 
-// ===== ENVOI D'UN MESSAGE =====
+// ===== ENVOI DE MESSAGE =====
 async function sendMessage() {
     const input = document.getElementById('messageInput');
     const content = input.value.trim();
@@ -483,16 +477,14 @@ async function sendMessage() {
         input.value = '';
         pendingReply = null;
         document.getElementById('replyIndicator').style.display = 'none';
-        // Ajouter localement
         const newMsg = {
             ...messageData,
-            id: Date.now(), // temporaire
+            id: Date.now(),
             created_at: new Date().toISOString(),
             profiles: { full_name: currentProfile.full_name, avatar_url: currentProfile.avatar_url }
         };
         messages.push(newMsg);
         renderMessages();
-        // Mettre à jour la dernière conversation
         const conv = conversations.find(c => c.id === currentConversation.id);
         if (conv) {
             conv.lastMessage = newMsg;
@@ -503,9 +495,6 @@ async function sendMessage() {
 }
 
 // ===== GESTION DES MÉDIAS =====
-let pendingMediaFile = null;
-let pendingAudioBlob = null;
-
 function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -526,7 +515,6 @@ function handleFileSelect(event) {
 
 // ===== AUDIO =====
 let mediaRecorderAudio = null;
-let audioChunks = [];
 let recordingActive = false;
 let recordingStartTime = null;
 
@@ -543,10 +531,10 @@ async function startRecording() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorderAudio = new MediaRecorder(stream);
-        audioChunks = [];
-        mediaRecorderAudio.ondataavailable = event => audioChunks.push(event.data);
+        audioChunksLocal = [];
+        mediaRecorderAudio.ondataavailable = event => audioChunksLocal.push(event.data);
         mediaRecorderAudio.onstop = () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const audioBlob = new Blob(audioChunksLocal, { type: 'audio/webm' });
             pendingAudioBlob = audioBlob;
             const audioUrl = URL.createObjectURL(audioBlob);
             const previewDiv = document.getElementById('audioPreview');
@@ -585,7 +573,7 @@ function startTimer() {
         const minutes = Math.floor(elapsed / 60);
         const seconds = elapsed % 60;
         document.getElementById('recordingTime').textContent = `${minutes}:${seconds.toString().padStart(2,'0')}`;
-        if (elapsed >= 300) { // 5 minutes max
+        if (elapsed >= 300) {
             stopRecording();
             showToast('Enregistrement limité à 5 minutes', 'warning');
         }
@@ -602,13 +590,9 @@ document.getElementById('cancelAudioBtn')?.addEventListener('click', () => {
 });
 
 // ===== ÉMOJIS ET STICKERS =====
-let emojiPickerVisible = false;
 function toggleEmojiPicker() {
-    if (!emojiPickerVisible) {
-        showEmojiPicker();
-    } else {
-        hideEmojiPicker();
-    }
+    if (!emojiPickerVisible) showEmojiPicker();
+    else hideEmojiPicker();
 }
 function showEmojiPicker() {
     const picker = document.createElement('div');
@@ -637,11 +621,11 @@ function hideEmojiPicker() {
 }
 
 function toggleStickerPicker() {
-    // Similaire à emoji picker, mais avec des stickers personnalisés (images)
-    showStickerPicker();
+    const picker = document.getElementById('stickerPicker');
+    if (picker) picker.remove();
+    else showStickerPicker();
 }
 function showStickerPicker() {
-    // Pour simplifier, on utilise des emojis comme stickers, ou on charge depuis une table
     const picker = document.createElement('div');
     picker.className = 'sticker-picker';
     picker.id = 'stickerPicker';
@@ -653,7 +637,7 @@ function showStickerPicker() {
         div.onclick = () => {
             const input = document.getElementById('messageInput');
             input.value += sticker;
-            hideStickerPicker();
+            picker.remove();
         };
         picker.appendChild(div);
     });
@@ -701,8 +685,7 @@ async function deleteSelectedMessages(forEveryone = false) {
 document.getElementById('confirmDeleteSelected')?.addEventListener('click', () => deleteSelectedMessages(false));
 document.getElementById('confirmDeleteSelectedEveryone')?.addEventListener('click', () => deleteSelectedMessages(true));
 
-// ===== MENU CONTEXTUEL (un seul message) =====
-let currentContextMessageId = null;
+// ===== MENU CONTEXTUEL =====
 function showContextMenu(event, messageId) {
     event.preventDefault();
     currentContextMessageId = messageId;
@@ -728,9 +711,8 @@ function replyToMessageFromMenu() {
     const msg = messages.find(m => m.id === currentContextMessageId);
     if (msg) {
         pendingReply = msg;
-        const replyIndicator = document.getElementById('replyIndicator');
         document.getElementById('replyToName').textContent = msg.profiles?.full_name || 'Utilisateur';
-        replyIndicator.style.display = 'flex';
+        document.getElementById('replyIndicator').style.display = 'flex';
         hideContextMenu();
     }
 }
@@ -768,97 +750,34 @@ async function deleteForEveryone() {
     hideContextMenu();
 }
 
-// ===== SUPPRESSION DE CONVERSATION =====
-let conversationToDelete = null;
-function openDeleteConvModal(conversationId) {
-    conversationToDelete = conversationId;
-    document.getElementById('deleteConvModal').style.display = 'block';
-}
-function closeDeleteConvModal() {
-    document.getElementById('deleteConvModal').style.display = 'none';
-    conversationToDelete = null;
-}
-async function confirmDeleteConversation() {
-    if (!conversationToDelete) return;
-    // Supprimer la conversation (tous les messages et participants)
-    const { error } = await supabaseClient
-        .from('conversations')
-        .delete()
-        .eq('id', conversationToDelete);
-    if (error) {
-        showToast('Erreur lors de la suppression', 'error');
-    } else {
-        showToast('Conversation supprimée', 'success');
-        await loadConversations();
-        if (currentConversation?.id === conversationToDelete) {
-            currentConversation = null;
-            document.getElementById('chatHeader').innerHTML = '';
-            document.getElementById('chatMessagesArea').innerHTML = '';
-            document.getElementById('chatInputArea').innerHTML = '';
-        }
-    }
-    closeDeleteConvModal();
-}
-
-// ===== ARCHIVAGE / DÉSARCHIVAGE =====
-async function toggleArchive(conversationId) {
-    const { data: existing } = await supabaseClient
-        .from('archived_conversations')
-        .select('id')
-        .eq('user_id', currentProfile.id)
-        .eq('conversation_id', conversationId)
-        .maybeSingle();
-    if (existing) {
-        await supabaseClient
-            .from('archived_conversations')
-            .delete()
-            .eq('id', existing.id);
-        showToast('Conversation désarchivée', 'success');
-    } else {
-        await supabaseClient
-            .from('archived_conversations')
-            .insert({ user_id: currentProfile.id, conversation_id: conversationId });
-        showToast('Conversation archivée', 'success');
-    }
-    await loadConversations();
-}
-document.getElementById('archiveToggleBtn')?.addEventListener('click', () => {
+// ===== ARCHIVAGE =====
+function toggleArchive() {
     showingArchives = !showingArchives;
     document.getElementById('archiveToggleText').textContent = showingArchives ? 'Conversations' : 'Archives';
     loadConversations();
-});
-
-// ===== BLOCAGE UTILISATEUR =====
-async function blockUser(userId) {
-    await supabaseClient
-        .from('blocked_users')
-        .insert({ user_id: currentProfile.id, blocked_user_id: userId });
-    showToast('Utilisateur bloqué', 'success');
-    // Optionnel : fermer la conversation si elle est ouverte
-    if (currentConversation && !currentConversation.is_group) {
-        const otherParticipant = await getOtherParticipant(currentConversation.id);
-        if (otherParticipant === userId) {
-            currentConversation = null;
-            document.getElementById('chatHeader').innerHTML = '';
-            document.getElementById('chatMessagesArea').innerHTML = '';
-            document.getElementById('chatInputArea').innerHTML = '';
-        }
-    }
-    await loadConversations();
 }
-async function unblockUser(userId) {
-    await supabaseClient
-        .from('blocked_users')
+async function archiveConversation(conversationId) {
+    const { error } = await supabaseClient
+        .from('archived_conversations')
+        .insert({ user_id: currentProfile.id, conversation_id: conversationId });
+    if (error) showToast('Erreur lors de l\'archivage', 'error');
+    else loadConversations();
+}
+async function unarchiveConversation(conversationId) {
+    const { error } = await supabaseClient
+        .from('archived_conversations')
         .delete()
         .eq('user_id', currentProfile.id)
-        .eq('blocked_user_id', userId);
-    showToast('Utilisateur débloqué', 'success');
-    await loadBlockedUsers();
+        .eq('conversation_id', conversationId);
+    if (error) showToast('Erreur lors du désarchivage', 'error');
+    else loadConversations();
 }
+
+// ===== BLOCAGE =====
 async function loadBlockedUsers() {
     const { data, error } = await supabaseClient
         .from('blocked_users')
-        .select('blocked_user_id, profiles:blocked_user_id (full_name, avatar_url, username)')
+        .select('blocked_user_id, profiles:blocked_user_id (full_name, avatar_url)')
         .eq('user_id', currentProfile.id);
     if (error) {
         console.error(error);
@@ -868,55 +787,63 @@ async function loadBlockedUsers() {
     listDiv.innerHTML = (data || []).map(b => `
         <div class="blocked-user-item">
             <div class="blocked-user-avatar"><img src="${b.profiles?.avatar_url || 'img/user-default.jpg'}"></div>
-            <div class="blocked-user-info"><div class="blocked-user-name">${b.profiles?.full_name || 'Utilisateur'}</div><div>@${b.profiles?.username || ''}</div></div>
+            <div class="blocked-user-info"><div class="blocked-user-name">${b.profiles?.full_name || 'Utilisateur'}</div></div>
             <button class="blocked-user-unblock" onclick="unblockUser('${b.blocked_user_id}')">Débloquer</button>
         </div>
     `).join('');
-}
-document.getElementById('blockedUsersBtn')?.addEventListener('click', () => {
-    loadBlockedUsers();
     document.getElementById('blockedUsersModal').style.display = 'block';
-});
-function closeBlockedUsersModal() {
-    document.getElementById('blockedUsersModal').style.display = 'none';
+}
+async function blockUser(userId) {
+    const { error } = await supabaseClient
+        .from('blocked_users')
+        .insert({ user_id: currentProfile.id, blocked_user_id: userId });
+    if (error) showToast('Erreur lors du blocage', 'error');
+    else showToast('Utilisateur bloqué', 'success');
+}
+async function unblockUser(userId) {
+    const { error } = await supabaseClient
+        .from('blocked_users')
+        .delete()
+        .eq('user_id', currentProfile.id)
+        .eq('blocked_user_id', userId);
+    if (error) showToast('Erreur lors du déblocage', 'error');
+    else {
+        showToast('Utilisateur débloqué', 'success');
+        loadBlockedUsers();
+    }
 }
 
 // ===== GROUPES =====
-async function loadFollowersForGroup() {
-    const { data, error } = await supabaseClient
+async function openCreateGroupModal() {
+    const { data: followers, error } = await supabaseClient
         .from('unified_follows')
-        .select('following_id, profiles:following_id (full_name, avatar_url, username)')
+        .select('following_id, profiles:following_id (full_name, avatar_url)')
         .eq('follower_id', currentProfile.id);
     if (error) {
         console.error(error);
         return;
     }
     const listDiv = document.getElementById('groupMembersList');
-    listDiv.innerHTML = (data || []).map(f => `
-        <label><input type="checkbox" value="${f.following_id}"> ${f.profiles?.full_name || 'Utilisateur'}</label>
+    listDiv.innerHTML = (followers || []).map(f => `
+        <label style="display: block; margin: 5px 0;">
+            <input type="checkbox" value="${f.following_id}"> ${f.profiles?.full_name || 'Utilisateur'}
+        </label>
     `).join('');
-}
-document.getElementById('createGroupBtn')?.addEventListener('click', () => {
-    loadFollowersForGroup();
     document.getElementById('createGroupModal').style.display = 'block';
-});
-function closeCreateGroupModal() {
-    document.getElementById('createGroupModal').style.display = 'none';
 }
-document.getElementById('confirmCreateGroup')?.addEventListener('click', async () => {
+async function createGroup() {
     const groupName = document.getElementById('groupName').value.trim();
     if (!groupName) {
         showToast('Veuillez donner un nom au groupe', 'warning');
         return;
     }
     const selected = Array.from(document.querySelectorAll('#groupMembersList input:checked')).map(cb => cb.value);
-    if (selected.length === 0) {
-        showToast('Sélectionnez au moins un participant', 'warning');
+    if (selected.length < 2) {
+        showToast('Sélectionnez au moins 2 participants', 'warning');
         return;
     }
-    const participants = [currentProfile.id, ...selected];
-    // Créer la conversation de groupe
-    const { data: newConv, error: convError } = await supabaseClient
+    const participants = [...selected, currentProfile.id];
+    const { data: conv, error: convError } = await supabaseClient
         .from('conversations')
         .insert({ is_group: true, group_name: groupName })
         .select()
@@ -925,187 +852,210 @@ document.getElementById('confirmCreateGroup')?.addEventListener('click', async (
         showToast('Erreur création groupe', 'error');
         return;
     }
-    // Ajouter les participants
-    const participantsRows = participants.map(uid => ({ conversation_id: newConv.id, user_id: uid }));
+    const participantsData = participants.map(uid => ({ conversation_id: conv.id, user_id: uid }));
     const { error: partError } = await supabaseClient
         .from('conversation_participants')
-        .insert(participantsRows);
+        .insert(participantsData);
     if (partError) {
         showToast('Erreur ajout participants', 'error');
         return;
     }
     showToast('Groupe créé avec succès', 'success');
     closeCreateGroupModal();
-    await loadConversations();
-    selectConversation(newConv.id);
-});
-
-// ===== EN-TÊTE DE CONVERSATION =====
-function renderChatHeader() {
-    const headerDiv = document.getElementById('chatHeader');
-    if (!currentConversation) {
-        headerDiv.innerHTML = '';
-        return;
+    loadConversations();
+}
+function closeCreateGroupModal() {
+    document.getElementById('createGroupModal').style.display = 'none';
+}
+function closeBlockedUsersModal() {
+    document.getElementById('blockedUsersModal').style.display = 'none';
+}
+function closeDeleteConvModal() {
+    document.getElementById('deleteConvModal').style.display = 'none';
+}
+async function confirmDeleteConversation() {
+    if (currentConversation) {
+        await supabaseClient
+            .from('archived_conversations')
+            .delete()
+            .eq('user_id', currentProfile.id)
+            .eq('conversation_id', currentConversation.id);
+        await supabaseClient
+            .from('conversation_participants')
+            .delete()
+            .eq('conversation_id', currentConversation.id)
+            .eq('user_id', currentProfile.id);
+        const { count } = await supabaseClient
+            .from('conversation_participants')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', currentConversation.id);
+        if (count === 0) {
+            await supabaseClient
+                .from('conversations')
+                .delete()
+                .eq('id', currentConversation.id);
+        }
+        showToast('Conversation supprimée', 'success');
+        closeDeleteConvModal();
+        currentConversation = null;
+        document.getElementById('chatHeader').innerHTML = '';
+        document.getElementById('chatMessagesArea').innerHTML = '';
+        document.getElementById('chatInputArea').innerHTML = '';
+        loadConversations();
     }
-    const isGroup = currentConversation.is_group;
-    const name = currentConversation.name;
-    const avatar = currentConversation.avatar;
-    headerDiv.innerHTML = `
-        <div class="chat-header-left">
-            <button class="back-btn" id="backToListBtn" onclick="closeChatPanel()"><i class="fas fa-arrow-left"></i></button>
-            <div class="chat-contact" onclick="showUserInfo(${currentConversation.id})">
-                <div class="chat-contact-avatar"><img src="${avatar}" alt="${name}"></div>
-                <div class="chat-contact-info">
-                    <h3>${name}</h3>
-                    <p>${isGroup ? 'Groupe' : 'En ligne'}</p>
-                </div>
-            </div>
-        </div>
-        <div class="chat-actions">
-            <button class="chat-action-btn" onclick="toggleArchive(${currentConversation.id})" title="Archiver"><i class="fas fa-archive"></i></button>
-            <button class="chat-action-btn" onclick="openDeleteConvModal(${currentConversation.id})" title="Supprimer"><i class="fas fa-trash-alt"></i></button>
-            ${!isGroup ? `<button class="chat-action-btn" onclick="blockUser(${getOtherParticipantId()})" title="Bloquer"><i class="fas fa-ban"></i></button>` : ''}
-            ${isGroup ? `<button class="chat-action-btn" onclick="showGroupMembers()" title="Membres"><i class="fas fa-users"></i></button>` : ''}
+}
+
+// ===== INFOS UTILISATEUR =====
+async function showUserInfo(userId) {
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('full_name, avatar_url, bio, username')
+        .eq('id', userId)
+        .single();
+    if (error) return;
+    document.getElementById('userInfoContent').innerHTML = `
+        <div style="text-align:center;">
+            <img src="${data.avatar_url || 'img/user-default.jpg'}" style="width:80px; height:80px; border-radius:50%;">
+            <h3>${data.full_name}</h3>
+            <p>@${data.username || ''}</p>
+            <p>${data.bio || ''}</p>
         </div>
     `;
-}
-function closeChatPanel() {
-    currentConversation = null;
-    document.getElementById('chatHeader').innerHTML = '';
-    document.getElementById('chatMessagesArea').innerHTML = '';
-    document.getElementById('chatInputArea').innerHTML = '';
-    // Sur mobile, on peut réafficher la liste des conversations
-}
-async function showUserInfo(conversationId) {
-    if (currentConversation.is_group) {
-        // Afficher les membres du groupe
-        const { data: participants } = await supabaseClient
-            .from('conversation_participants')
-            .select('user_id, profiles:user_id (full_name, avatar_url, username)')
-            .eq('conversation_id', conversationId);
-        const modalBody = document.getElementById('userInfoContent');
-        modalBody.innerHTML = `<h3>Membres du groupe</h3>${participants.map(p => `<div><img src="${p.profiles?.avatar_url || 'img/user-default.jpg'}" style="width:30px;height:30px;border-radius:50%;"> ${p.profiles?.full_name}</div>`).join('')}`;
-        document.getElementById('userInfoModal').style.display = 'block';
-    } else {
-        const otherId = getOtherParticipantId();
-        const { data: profile, error } = await supabaseClient
-            .from('profiles')
-            .select('full_name, avatar_url, username, bio')
-            .eq('id', otherId)
-            .single();
-        if (error) return;
-        document.getElementById('userInfoContent').innerHTML = `
-            <div class="user-profile">
-                <img src="${profile.avatar_url || 'img/user-default.jpg'}" style="width:80px;height:80px;border-radius:50%;">
-                <h3>${profile.full_name}</h3>
-                <p>@${profile.username}</p>
-                <p>${profile.bio || ''}</p>
-            </div>
-        `;
-        document.getElementById('userInfoModal').style.display = 'block';
-    }
+    document.getElementById('userInfoModal').style.display = 'block';
 }
 function closeUserInfoModal() {
     document.getElementById('userInfoModal').style.display = 'none';
 }
-function getOtherParticipantId() {
-    if (!currentConversation || currentConversation.is_group) return null;
-    const participants = currentConversation.participants || [];
-    const other = participants.find(p => p.user_id !== currentProfile.id);
-    return other?.user_id;
-}
 
-// ===== LECTEURS PERSONNALISÉS =====
-function openMediaZoom(url, type) {
-    const modal = document.createElement('div');
-    modal.className = 'modal media-modal';
-    modal.innerHTML = `
-        <div class="modal-content media-modal-content" style="max-width:90%; background:transparent;">
-            <span class="close-modal" onclick="this.closest('.modal').remove()" style="color:white; position:absolute; top:20px; right:20px;">×</span>
-            <div class="media-viewer" style="display:flex; justify-content:center; align-items:center; min-height:80vh;">
-                ${type === 'image' ? `<img src="${url}" style="max-width:100%; max-height:80vh;">` : `<video controls src="${url}" style="max-width:100%; max-height:80vh;"></video>`}
+function renderChatHeader() {
+    const header = document.getElementById('chatHeader');
+    if (!header || !currentConversation) return;
+    header.innerHTML = `
+        <div class="chat-header-left">
+            <button class="back-btn" id="backToConversationsBtn" onclick="closeCurrentConversation()"><i class="fas fa-arrow-left"></i></button>
+            <div class="chat-contact">
+                <div class="chat-contact-avatar"><img src="${currentConversation.avatar}" alt="${currentConversation.name}"></div>
+                <div class="chat-contact-info">
+                    <h3>${currentConversation.name}</h3>
+                    <p>${currentConversation.is_group ? 'Groupe' : 'En ligne'}</p>
+                </div>
             </div>
         </div>
+        <div class="chat-actions">
+            <button class="chat-action-btn" onclick="showUserInfo(${currentConversation.is_group ? null : getOtherParticipantId()})" title="Infos"><i class="fas fa-info-circle"></i></button>
+            <button class="chat-action-btn" onclick="archiveConversation(${currentConversation.id})" title="Archiver"><i class="fas fa-archive"></i></button>
+            <button class="chat-action-btn" onclick="openSelectMessagesModal()" title="Sélectionner"><i class="fas fa-check-double"></i></button>
+            <button class="chat-action-btn danger" onclick="openDeleteConvModal()" title="Supprimer"><i class="fas fa-trash-alt"></i></button>
+        </div>
     `;
-    document.body.appendChild(modal);
-    modal.style.display = 'block';
+    document.getElementById('backToConversationsBtn')?.addEventListener('click', () => {
+        currentConversation = null;
+        document.getElementById('chatHeader').innerHTML = '';
+        document.getElementById('chatMessagesArea').innerHTML = '';
+        document.getElementById('chatInputArea').innerHTML = '';
+    });
 }
 
-// ===== MARQUER COMME LU (conversation) =====
-async function markConversationAsRead(conversationId) {
-    await supabaseClient
-        .from('conversation_participants')
-        .update({ last_read_at: new Date().toISOString() })
-        .eq('conversation_id', conversationId)
-        .eq('user_id', currentProfile.id);
-    // Mettre à jour le compteur de non-lus dans la liste
-    const conv = conversations.find(c => c.id === conversationId);
-    if (conv) conv.unreadCount = 0;
+function openDeleteConvModal() {
+    document.getElementById('deleteConvModal').style.display = 'block';
+}
+
+function getOtherParticipantId() {
+    // À implémenter si nécessaire
+    return null;
+}
+
+function closeCurrentConversation() {
+    currentConversation = null;
     renderConversationsList();
 }
 
 // ===== INITIALISATION =====
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation messages.js');
+async function init() {
     const user = await checkSession();
     if (!user) return;
     await loadProfile();
     await loadConversations();
 
-    // Gestion de l'URL pour ouvrir directement une conversation (ex: ?to=userId)
     const urlParams = new URLSearchParams(window.location.search);
-    const toUserId = urlParams.get('to');
-    if (toUserId) {
-        // Créer ou ouvrir une conversation privée avec cet utilisateur
-        const { data: existingConv } = await supabaseClient
+    const targetUserId = urlParams.get('to');
+    if (targetUserId) {
+        // Vérifier si une conversation existe déjà
+        const { data: existing } = await supabaseClient
             .from('conversation_participants')
             .select('conversation_id')
-            .eq('user_id', currentProfile.id)
-            .in('conversation_id', (await supabaseClient.from('conversation_participants').select('conversation_id').eq('user_id', toUserId)).data?.map(p => p.conversation_id) || [])
-            .maybeSingle();
-        if (existingConv) {
-            selectConversation(existingConv.conversation_id);
+            .eq('user_id', currentProfile.id);
+        const convIds = existing?.map(e => e.conversation_id) || [];
+        let found = null;
+        for (const cid of convIds) {
+            const { data: participants } = await supabaseClient
+                .from('conversation_participants')
+                .select('user_id')
+                .eq('conversation_id', cid);
+            if (participants?.length === 2 && participants.some(p => p.user_id === targetUserId)) {
+                found = cid;
+                break;
+            }
+        }
+        if (found) {
+            await selectConversation(found);
         } else {
-            // Créer une nouvelle conversation privée
-            const { data: newConv } = await supabaseClient
+            const { data: newConv, error: convError } = await supabaseClient
                 .from('conversations')
                 .insert({ is_group: false })
                 .select()
                 .single();
-            await supabaseClient
-                .from('conversation_participants')
-                .insert([
-                    { conversation_id: newConv.id, user_id: currentProfile.id },
-                    { conversation_id: newConv.id, user_id: toUserId }
-                ]);
-            await loadConversations();
-            selectConversation(newConv.id);
+            if (!convError) {
+                await supabaseClient
+                    .from('conversation_participants')
+                    .insert([
+                        { conversation_id: newConv.id, user_id: currentProfile.id },
+                        { conversation_id: newConv.id, user_id: targetUserId }
+                    ]);
+                await loadConversations();
+                await selectConversation(newConv.id);
+            }
         }
     }
 
-    // Bouton de rafraîchissement
-    document.getElementById('refreshBtn')?.addEventListener('click', () => loadConversations());
+    document.getElementById('refreshBtn').addEventListener('click', () => loadConversations());
+    document.getElementById('archiveToggleBtn').addEventListener('click', toggleArchive);
+    document.getElementById('blockedUsersBtn').addEventListener('click', loadBlockedUsers);
+    document.getElementById('createGroupBtn').addEventListener('click', openCreateGroupModal);
+    document.getElementById('confirmCreateGroup').addEventListener('click', createGroup);
+}
 
-    // Exposer les fonctions globales
-    window.closeCreateGroupModal = closeCreateGroupModal;
-    window.closeSelectMessagesModal = closeSelectMessagesModal;
-    window.closeDeleteConvModal = closeDeleteConvModal;
-    window.closeBlockedUsersModal = closeBlockedUsersModal;
-    window.closeUserInfoModal = closeUserInfoModal;
-    window.confirmDeleteConversation = confirmDeleteConversation;
-    window.toggleArchive = toggleArchive;
-    window.blockUser = blockUser;
-    window.unblockUser = unblockUser;
-    window.showUserInfo = showUserInfo;
-    window.openMediaZoom = openMediaZoom;
-    window.showContextMenu = showContextMenu;
-    window.copyMessageFromMenu = copyMessageFromMenu;
-    window.replyToMessageFromMenu = replyToMessageFromMenu;
-    window.pinMessageFromMenu = pinMessageFromMenu;
-    window.deleteForMe = deleteForMe;
-    window.deleteForEveryone = deleteForEveryone;
-    window.sendMessage = sendMessage;
-    window.closeChatPanel = closeChatPanel;
+// Exposer les fonctions globales
+window.closeCreateGroupModal = closeCreateGroupModal;
+window.closeBlockedUsersModal = closeBlockedUsersModal;
+window.closeDeleteConvModal = closeDeleteConvModal;
+window.confirmDeleteConversation = confirmDeleteConversation;
+window.openSelectMessagesModal = openSelectMessagesModal;
+window.closeSelectMessagesModal = closeSelectMessagesModal;
+window.deleteSelectedMessages = deleteSelectedMessages;
+window.showContextMenu = showContextMenu;
+window.copyMessageFromMenu = copyMessageFromMenu;
+window.replyToMessageFromMenu = replyToMessageFromMenu;
+window.pinMessageFromMenu = pinMessageFromMenu;
+window.deleteForMe = deleteForMe;
+window.deleteForEveryone = deleteForEveryone;
+window.cancelReply = cancelReply;
+window.toggleAudioRecorder = toggleAudioRecorder;
+window.sendMessage = sendMessage;
+window.openMediaZoom = (url, type) => {
+    const modal = document.getElementById('mediaZoomModal');
+    const viewer = document.getElementById('mediaViewer');
+    if (type === 'image') viewer.innerHTML = `<img src="${url}" alt="Zoom">`;
+    else viewer.innerHTML = `<video src="${url}" controls autoplay></video>`;
+    modal.style.display = 'block';
+};
+window.closeMediaZoom = () => document.getElementById('mediaZoomModal').style.display = 'none';
+window.showUserInfo = showUserInfo;
+window.closeUserInfoModal = closeUserInfoModal;
+window.blockUser = blockUser;
+window.unblockUser = unblockUser;
+window.archiveConversation = archiveConversation;
+window.unarchiveConversation = unarchiveConversation;
+window.closeCurrentConversation = closeCurrentConversation;
 
-    console.log('✅ Initialisation terminée');
-});
+document.addEventListener('DOMContentLoaded', init);
