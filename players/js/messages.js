@@ -1,36 +1,25 @@
 // ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseMessages = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== ÉTAT GLOBAL =====
 let currentUser = null;
 let currentProfile = null;
 let conversations = [];
-let currentConversationId = null;
-let currentContact = null;
-let messagesSubscription = null;
-let conversationsSubscription = null;
-let replyingTo = null;
-let searchTerm = '';
-let targetUserId = null;
-let attachments = [];
-let contextMenuMsgId = null;
-let archivedConversationIds = new Set();
-let blockedUserIds = new Set();
-let isUploading = false;
-let showArchived = false;
-let selectedMessages = new Set();
-let selectionMode = false;
-
-// Variables pour l'enregistrement audio
+let currentConversation = null;
+let messages = [];
+let messageSubscription = null;
+let typingTimeout = null;
+let selectedMessage = null;
+let pendingReply = null;
+let showingArchives = false;
 let mediaRecorder = null;
-let recordedAudioBlob = null;
 let audioChunks = [];
 let recordingTimer = null;
 let recordingSeconds = 0;
-let isRecording = false;
-let recordingStream = null;
+let currentUploadController = null;
+let selectedMessagesForDelete = new Set(); // pour la suppression multiple
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -61,1722 +50,1062 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
-// ===== LOADER GLOBAL =====
+// ===== LOADER =====
 function showLoader(show = true) {
     const loader = document.getElementById('globalLoader');
     if (loader) loader.style.display = show ? 'flex' : 'none';
 }
 
+function withButtonSpinner(button, asyncFn) {
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="button-spinner"></span>';
+    try {
+        return asyncFn().finally(() => {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        });
+    } catch (err) {
+        button.disabled = false;
+        button.innerHTML = originalText;
+        throw err;
+    }
+}
+
 // ===== VÉRIFICATION DE SESSION =====
 async function checkSession() {
-    const { data: { session }, error } = await supabaseMessages.auth.getSession();
+    const { data: { session }, error } = await supabaseClient.auth.getSession();
     if (error || !session) {
-        window.location.href = '../public/auth/login.html';
+        window.location.href = '../auth/login.html';
         return null;
     }
     currentUser = session.user;
-    currentUser.access_token = session.access_token;
     return currentUser;
 }
 
-// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
+// ===== CHARGEMENT DU PROFIL =====
 async function loadProfile() {
-    const { data, error } = await supabaseMessages
+    const { data, error } = await supabaseClient
         .from('profiles')
         .select('*')
         .eq('id', currentUser.id)
         .single();
     if (error) {
         console.error('Erreur chargement profil:', error);
+        showToast('Impossible de charger votre profil', 'error');
         return null;
     }
     currentProfile = data;
-    document.getElementById('userName').textContent = data.full_name || 'Utilisateur';
+    document.getElementById('userName').textContent = data.full_name || 'Joueur';
     document.getElementById('userAvatar').src = data.avatar_url || 'img/user-default.jpg';
-    startPresenceTracking();
     return currentProfile;
-}
-
-// ===== GESTION DE LA PRÉSENCE EN LIGNE =====
-let presenceInterval = null;
-
-async function updatePresence() {
-    if (!currentProfile) return;
-    const { error } = await supabaseMessages
-        .from('user_presence')
-        .upsert({
-            user_id: currentProfile.id,
-            online: true,
-            last_seen: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-    if (error) console.error('Erreur mise à jour présence:', error);
-}
-
-function startPresenceTracking() {
-    updatePresence();
-    presenceInterval = setInterval(updatePresence, 30000);
-}
-
-function stopPresenceTracking() {
-    if (presenceInterval) clearInterval(presenceInterval);
-}
-
-async function setOffline() {
-    if (!currentProfile) return;
-    await supabaseMessages
-        .from('user_presence')
-        .upsert({
-            user_id: currentProfile.id,
-            online: false,
-            last_seen: new Date().toISOString()
-        }, { onConflict: 'user_id' });
 }
 
 // ===== CHARGEMENT DES CONVERSATIONS =====
 async function loadConversations() {
-    console.log('Chargement des conversations...');
     showLoader(true);
+    try {
+        // Récupérer les conversations auxquelles l'utilisateur participe
+        const { data: participants, error: partError } = await supabaseClient
+            .from('conversation_participants')
+            .select('conversation_id, last_read_at')
+            .eq('user_id', currentProfile.id);
+        if (partError) throw partError;
 
-    // Récupérer les IDs des conversations archivées
-    const { data: archivedData } = await supabaseMessages
-        .from('archived_conversations')
-        .select('conversation_id')
-        .eq('user_id', currentProfile.id);
-    archivedConversationIds = new Set(archivedData?.map(a => a.conversation_id) || []);
-
-    // Récupérer les IDs des utilisateurs bloqués
-    const { data: blockedData } = await supabaseMessages
-        .from('blocked_users')
-        .select('blocked_id')
-        .eq('blocker_id', currentProfile.id);
-    blockedUserIds = new Set(blockedData?.map(b => b.blocked_id) || []);
-
-    const { data, error } = await supabaseMessages
-        .from('conversations')
-        .select(`
-            id,
-            participant1_id,
-            participant2_id,
-            last_message_content,
-            last_message_at,
-            participant1:profiles!participant1_id (id, full_name, avatar_url, username),
-            participant2:profiles!participant2_id (id, full_name, avatar_url, username)
-        `)
-        .or(`participant1_id.eq.${currentProfile.id},participant2_id.eq.${currentProfile.id}`)
-        .order('last_message_at', { ascending: false, nullsFirst: false });
-
-    if (error) {
-        console.error('Erreur chargement conversations:', error);
-        showLoader(false);
-        return;
-    }
-
-    let allConversations = data.map(conv => {
-        const contact = (conv.participant1.id === currentProfile.id) ? conv.participant2 : conv.participant1;
-        const contactName = contact?.full_name || 'Utilisateur inconnu';
-        return {
-            id: conv.id,
-            contactId: contact?.id,
-            contactName: contactName,
-            contactAvatar: contact?.avatar_url,
-            lastMessage: conv.last_message_content,
-            lastTime: conv.last_message_at,
-            unread: 0,
-            online: false
-        };
-    });
-
-    // Filtrer selon le mode (archives ou actives)
-    if (showArchived) {
-        conversations = allConversations.filter(conv => archivedConversationIds.has(conv.id));
-    } else {
-        conversations = allConversations.filter(conv => {
-            if (archivedConversationIds.has(conv.id)) return false;
-            if (blockedUserIds.has(conv.contactId)) return false;
-            return true;
-        });
-    }
-
-    // Charger les statuts en ligne des contacts
-    const contactIds = conversations.map(c => c.contactId).filter(Boolean);
-    if (contactIds.length > 0) {
-        const { data: presenceData } = await supabaseMessages
-            .from('user_presence')
-            .select('user_id, online')
-            .in('user_id', contactIds);
-        if (presenceData) {
-            const presenceMap = {};
-            presenceData.forEach(p => presenceMap[p.user_id] = p);
-            conversations.forEach(c => {
-                const p = presenceMap[c.contactId];
-                if (p) c.online = p.online;
-            });
+        const convIds = participants.map(p => p.conversation_id);
+        if (convIds.length === 0) {
+            conversations = [];
+            renderConversationsList();
+            showLoader(false);
+            return;
         }
-    }
 
-    renderConversations();
-    showLoader(false);
+        // Récupérer les infos des conversations
+        let query = supabaseClient
+            .from('conversations')
+            .select('*')
+            .in('id', convIds)
+            .order('updated_at', { ascending: false });
+
+        if (showingArchives) {
+            const { data: archived } = await supabaseClient
+                .from('archived_conversations')
+                .select('conversation_id')
+                .eq('user_id', currentProfile.id);
+            const archivedIds = archived.map(a => a.conversation_id);
+            if (archivedIds.length) query = query.in('id', archivedIds);
+            else { conversations = []; renderConversationsList(); showLoader(false); return; }
+        } else {
+            const { data: archived } = await supabaseClient
+                .from('archived_conversations')
+                .select('conversation_id')
+                .eq('user_id', currentProfile.id);
+            const archivedIds = archived.map(a => a.conversation_id);
+            if (archivedIds.length) query = query.not('id', 'in', `(${archivedIds.join(',')})`);
+        }
+
+        const { data: convs, error: convError } = await query;
+        if (convError) throw convError;
+
+        // Pour chaque conversation, récupérer le dernier message et les participants
+        conversations = await Promise.all(convs.map(async (conv) => {
+            // Dernier message
+            const { data: lastMsg, error: msgError } = await supabaseClient
+                .from('messages')
+                .select('*')
+                .eq('conversation_id', conv.id)
+                .not('deleted_for', 'cs', `{${currentProfile.id}}`)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (msgError) console.error(msgError);
+
+            // Participants
+            const { data: part, error: partError2 } = await supabaseClient
+                .from('conversation_participants')
+                .select('user_id, profiles:user_id (full_name, avatar_url, username)')
+                .eq('conversation_id', conv.id);
+            if (partError2) console.error(partError2);
+
+            let name = '';
+            let avatar = '';
+            let isGroup = conv.is_group;
+            if (isGroup) {
+                name = conv.group_name || 'Groupe';
+                avatar = conv.group_avatar || 'img/group-default.jpg';
+            } else {
+                const other = part?.find(p => p.user_id !== currentProfile.id);
+                if (other) {
+                    name = other.profiles?.full_name || 'Utilisateur';
+                    avatar = other.profiles?.avatar_url || 'img/user-default.jpg';
+                } else {
+                    name = 'Inconnu';
+                    avatar = 'img/user-default.jpg';
+                }
+            }
+
+            return {
+                ...conv,
+                name,
+                avatar,
+                lastMessage: lastMsg,
+                lastMessageTime: lastMsg?.created_at,
+                unreadCount: 0 // à calculer plus tard
+            };
+        }));
+
+        renderConversationsList();
+    } catch (error) {
+        console.error('Erreur chargement conversations:', error);
+        showToast('Erreur lors du chargement des conversations', 'error');
+    } finally {
+        showLoader(false);
+    }
 }
 
-// ===== RENDU DES CONVERSATIONS =====
-function renderConversations() {
-    const list = document.getElementById('conversationsList');
-    if (!list) return;
-
-    const filtered = conversations.filter(conv =>
-        (conv.contactName || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    list.innerHTML = filtered.map(conv => {
-        const lastTime = conv.lastTime ? new Date(conv.lastTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
-        const isActive = conv.id === currentConversationId;
-        const onlineClass = conv.online ? 'online' : '';
-        const avatarUrl = conv.contactAvatar ? conv.contactAvatar : 'img/user-default.jpg';
-        const unarchiveButton = showArchived ? `<button class="unarchive-btn" onclick="event.stopPropagation(); unarchiveConversation(${conv.id})"><i class="fas fa-undo"></i></button>` : '';
-
-        return `
-            <div class="conversation-item ${isActive ? 'active' : ''}" data-conv-id="${conv.id}">
-                <div class="conversation-avatar ${onlineClass}">
-                    <img src="${avatarUrl}" alt="Avatar">
-                </div>
-                <div class="conversation-info">
-                    <div class="conversation-name">
-                        <span>${conv.contactName}</span>
-                        <span class="conversation-time">${lastTime}</span>
-                    </div>
-                    <div class="conversation-last">
-                        ${conv.lastMessage ? conv.lastMessage.substring(0, 30) : ''}${conv.lastMessage && conv.lastMessage.length > 30 ? '…' : ''}
-                        ${conv.unread > 0 ? `<span class="conversation-badge">${conv.unread}</span>` : ''}
-                    </div>
-                </div>
-                ${unarchiveButton}
+function renderConversationsList() {
+    const container = document.getElementById('conversationsList');
+    if (!container) return;
+    if (conversations.length === 0) {
+        container.innerHTML = '<div class="empty-conversations">Aucune conversation</div>';
+        return;
+    }
+    container.innerHTML = conversations.map(conv => `
+        <div class="conversation-item" data-conversation-id="${conv.id}">
+            <div class="conversation-avatar">
+                <img src="${conv.avatar}" alt="${conv.name}">
             </div>
-        `;
-    }).join('');
+            <div class="conversation-info">
+                <div class="conversation-name">
+                    <span>${conv.name}</span>
+                    <span class="conversation-time">${conv.lastMessageTime ? new Date(conv.lastMessageTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}</span>
+                </div>
+                <div class="conversation-last">${conv.lastMessage?.content || 'Aucun message'}</div>
+            </div>
+        </div>
+    `).join('');
 
-    document.querySelectorAll('.conversation-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const convId = parseInt(item.dataset.convId);
+    document.querySelectorAll('.conversation-item').forEach(el => {
+        el.addEventListener('click', () => {
+            const convId = parseInt(el.dataset.conversationId);
             selectConversation(convId);
         });
     });
 }
 
-// ===== CRÉER UNE CONVERSATION AVEC UN UTILISATEUR =====
-async function findOrCreateConversationWithUser(userId) {
-    console.log('Recherche/création conversation avec utilisateur', userId);
-
-    const { data: existingConv, error: searchError } = await supabaseMessages
-        .from('conversations')
-        .select('id')
-        .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${userId}),and(participant1_id.eq.${userId},participant2_id.eq.${currentProfile.id})`)
-        .maybeSingle();
-
-    if (searchError) {
-        console.error('Erreur recherche conversation:', searchError);
-        return null;
-    }
-
-    if (existingConv) {
-        console.log('Conversation existante trouvée', existingConv.id);
-        return existingConv.id;
-    }
-
-    const { data: newConv, error: createError } = await supabaseMessages
-        .from('conversations')
-        .insert([{
-            participant1_id: currentProfile.id,
-            participant2_id: userId
-        }])
-        .select()
-        .single();
-
-    if (createError) {
-        console.error('Erreur création conversation:', createError);
-        return null;
-    }
-
-    console.log('Nouvelle conversation créée', newConv.id);
-    return newConv.id;
+async function selectConversation(conversationId) {
+    currentConversation = conversations.find(c => c.id === conversationId);
+    if (!currentConversation) return;
+    await loadMessages(conversationId);
+    await markConversationAsRead(conversationId);
+    renderChatHeader();
+    renderMessages();
+    initChatInput();
 }
 
-// ===== SÉLECTION D'UNE CONVERSATION =====
-async function selectConversation(convId) {
-    console.log('Sélection conversation', convId);
-    if (messagesSubscription) messagesSubscription.unsubscribe();
-    currentConversationId = convId;
+// ===== CHARGEMENT DES MESSAGES D'UNE CONVERSATION =====
+async function loadMessages(conversationId) {
+    showLoader(true);
+    try {
+        // Récupérer les messages non supprimés pour l'utilisateur
+        const { data, error } = await supabaseClient
+            .from('messages')
+            .select('*, profiles:user_id (full_name, avatar_url)')
+            .eq('conversation_id', conversationId)
+            .not('deleted_for', 'cs', `{${currentProfile.id}}`)
+            .order('created_at', { ascending: true });
+        if (error) throw error;
 
-    const conv = conversations.find(c => c.id === convId);
-    if (conv) {
-        const { data: contactProfile } = await supabaseMessages
-            .from('profiles')
-            .select('*')
-            .eq('id', conv.contactId)
-            .single();
-        currentContact = contactProfile;
+        messages = data || [];
+        // Marquer comme lus les messages entrants
+        await markMessagesAsRead(conversationId);
+
+        if (messageSubscription) messageSubscription.unsubscribe();
+        subscribeToMessages(conversationId);
+    } catch (error) {
+        console.error('Erreur chargement messages:', error);
+        showToast('Erreur lors du chargement des messages', 'error');
+    } finally {
+        showLoader(false);
     }
+}
 
-    renderConversations();
-    await loadMessages(convId);
-    renderChatHeader();
-    renderChatInput();
+async function markMessagesAsRead(conversationId) {
+    // Mettre à jour la date de dernière lecture dans conversation_participants
+    await supabaseClient
+        .from('conversation_participants')
+        .update({ last_read_at: new Date().toISOString() })
+        .eq('conversation_id', conversationId)
+        .eq('user_id', currentProfile.id);
 
-    messagesSubscription = supabaseMessages
-        .channel(`messages:${convId}`)
+    // Mettre à jour le compteur de non-lus (si on avait une colonne, on pourrait la décrémenter)
+}
+
+function subscribeToMessages(conversationId) {
+    messageSubscription = supabaseClient
+        .channel(`messages:${conversationId}`)
         .on('postgres_changes', {
             event: 'INSERT',
             schema: 'public',
             table: 'messages',
-            filter: `conversation_id=eq.${convId}`
-        }, payload => {
-            console.log('Nouveau message reçu', payload.new);
-            if (currentConversationId === convId) {
-                appendMessage(payload.new);
+            filter: `conversation_id=eq.${conversationId}`
+        }, async (payload) => {
+            // Ne pas ajouter le message si l'utilisateur est l'expéditeur (déjà ajouté localement) ou si le message est supprimé pour lui
+            if (payload.new.user_id === currentProfile.id) return;
+            if (payload.new.deleted_for?.includes(currentProfile.id)) return;
+            const { data: author } = await supabaseClient
+                .from('profiles')
+                .select('full_name, avatar_url')
+                .eq('id', payload.new.user_id)
+                .single();
+            const newMsg = {
+                ...payload.new,
+                profiles: author
+            };
+            messages.push(newMsg);
+            renderMessages();
+            // Mettre à jour la conversation dans la liste (dernier message)
+            const conv = conversations.find(c => c.id === conversationId);
+            if (conv) {
+                conv.lastMessage = newMsg;
+                conv.lastMessageTime = newMsg.created_at;
+                renderConversationsList();
             }
-            updateConversationLastMessage(convId, payload.new);
         })
         .subscribe();
-
-    if (window.innerWidth <= 900) {
-        document.querySelector('.conversations-panel').classList.add('hide');
-        document.querySelector('.chat-panel').classList.remove('hide');
-    }
-}
-
-// ===== CHARGEMENT DES MESSAGES =====
-async function loadMessages(convId) {
-    console.log('Chargement des messages pour conversation', convId);
-    showLoader(true);
-    const { data, error } = await supabaseMessages
-        .from('messages')
-        .select(`
-            id,
-            sender_id,
-            content,
-            attachment_url,
-            attachment_path,
-            reply_to_id,
-            created_at,
-            is_read
-        `)
-        .eq('conversation_id', convId)
-        .order('created_at', { ascending: true });
-
-    if (error) {
-        console.error('Erreur chargement messages:', error);
-        showLoader(false);
-        return;
-    }
-
-    // Charger les messages cités séparément
-    const replyIds = data.filter(m => m.reply_to_id).map(m => m.reply_to_id);
-    let repliesMap = new Map();
-    if (replyIds.length > 0) {
-        const { data: replies, error: replyError } = await supabaseMessages
-            .from('messages')
-            .select('id, content, attachment_url')
-            .in('id', replyIds);
-        if (!replyError) {
-            replies.forEach(r => repliesMap.set(r.id, r));
-        }
-    }
-
-    renderMessages(data, repliesMap);
-    showLoader(false);
-}
-
-// ===== FORMATAGE DE LA DATE DES MESSAGES =====
-function formatMessageDate(date) {
-    const now = new Date();
-    const msgDate = new Date(date);
-    const diffDays = Math.floor((now - msgDate) / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) {
-        return "Aujourd'hui à " + msgDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    } else if (diffDays === 1) {
-        return "Hier à " + msgDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    } else {
-        return msgDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + " à " + msgDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    }
-}
-
-// ===== FONCTION UTILITAIRE POUR DÉTERMINER LE TYPE DE FICHIER =====
-function getFileType(path) {
-    const ext = path.split('.').pop().split('?')[0].toLowerCase();
-    const imageExt = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
-    const videoExt = ['mp4', 'webm', 'ogg', 'mov'];
-    const audioExt = ['mp3', 'wav', 'ogg', 'm4a', 'webm'];
-    if (imageExt.includes(ext)) return 'image';
-    if (videoExt.includes(ext)) return 'video';
-    if (audioExt.includes(ext)) return 'audio';
-    return 'other';
-}
-
-// ===== GÉNÉRATION D'URL SIGNÉE =====
-async function getSignedUrl(path, expiresIn = 3600) {
-    const parts = path.split('/');
-    const bucket = parts[0];
-    const fileName = parts.slice(1).join('/');
-    const { data, error } = await supabaseMessages.storage
-        .from(bucket)
-        .createSignedUrl(fileName, expiresIn);
-    if (error) {
-        console.error('Erreur génération URL signée:', error);
-        return null;
-    }
-    return data.signedUrl;
 }
 
 // ===== RENDU DES MESSAGES =====
-function renderMessages(messages, repliesMap = new Map()) {
-    const area = document.getElementById('chatMessagesArea');
-    if (!area) return;
+function renderMessages() {
+    const container = document.getElementById('chatMessagesArea');
+    if (!container) return;
+    if (messages.length === 0) {
+        container.innerHTML = '<div class="empty-messages">Aucun message. Soyez le premier à écrire !</div>';
+        return;
+    }
+
+    let lastDate = null;
     let html = '';
     messages.forEach(msg => {
-        const isMe = msg.sender_id === currentProfile.id;
-        const time = formatMessageDate(msg.created_at);
-        let replyHtml = '';
-        if (msg.reply_to_id) {
-            const replied = repliesMap.get(msg.reply_to_id);
-            if (replied) {
-                const replyContent = replied.content ? `<span>${replied.content}</span>` : '';
-                const replyAttachment = replied.attachment_url ? `<i class="fas fa-image"></i> Image` : '';
-                replyHtml = `<div class="reply-quote">${replyContent} ${replyAttachment}</div>`;
+        const msgDate = new Date(msg.created_at).toLocaleDateString();
+        if (msgDate !== lastDate) {
+            html += `<div class="date-separator">${msgDate}</div>`;
+            lastDate = msgDate;
+        }
+        const isOwn = msg.user_id === currentProfile.id;
+        const replyHtml = msg.reply_to_id ? `<div class="reply-quote">Réponse à un message</div>` : '';
+        let mediaHtml = '';
+        if (msg.media_url) {
+            if (msg.media_type === 'image') {
+                mediaHtml = `<div class="message-attachment"><img src="${msg.media_url}" alt="Image" onclick="openMediaZoom('${msg.media_url}', 'image')"></div>`;
+            } else if (msg.media_type === 'video') {
+                mediaHtml = `<div class="message-attachment"><video src="${msg.media_url}" controls onclick="openMediaZoom('${msg.media_url}', 'video')"></video></div>`;
+            } else if (msg.media_type === 'audio') {
+                mediaHtml = `<div class="message-attachment"><audio controls src="${msg.media_url}"></audio></div>`;
+            } else if (msg.media_type === 'file') {
+                mediaHtml = `<div class="message-attachment"><a href="${msg.media_url}" target="_blank" download><i class="fas fa-file"></i> Télécharger le fichier</a></div>`;
             }
         }
-        let attachmentHtml = '';
-        let fileType = null;
-        if (msg.attachment_path) {
-            fileType = getFileType(msg.attachment_path);
-            attachmentHtml = `<div class="message-attachment" data-path="${msg.attachment_path}" data-type="${fileType}" data-msg-id="${msg.id}"></div>`;
-        } else if (msg.attachment_url) {
-            fileType = getFileType(msg.attachment_url);
-            if (fileType === 'image') {
-                attachmentHtml = `<div class="message-attachment"><img src="${msg.attachment_url}" alt="Image" onclick="window.open('${msg.attachment_url}', '_blank')"></div>`;
-            } else if (fileType === 'video') {
-                attachmentHtml = `<div class="message-attachment"><video src="${msg.attachment_url}" controls style="max-width:200px; max-height:200px;"></video></div>`;
-            } else if (fileType === 'audio') {
-                attachmentHtml = `<div class="message-attachment"><audio src="${msg.attachment_url}" controls></audio></div>`;
-            } else {
-                attachmentHtml = `<div class="message-attachment"><a href="${msg.attachment_url}" target="_blank">Fichier joint</a></div>`;
-            }
-        }
-        const selectedClass = selectedMessages.has(msg.id) ? 'selected' : '';
+        const pinnedIcon = msg.pinned ? '<i class="fas fa-thumbtack" style="color:var(--gold); margin-left:5px;"></i>' : '';
         html += `
-            <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'} ${selectedClass}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}" onclick="handleMessageClick(event, ${msg.id})">
-                ${replyHtml}
-                ${attachmentHtml}
-                <div class="message-content">${msg.content || ''}</div>
-                <span class="message-time">${time}</span>
-                <div class="message-actions">
-                    <button class="message-action" onclick="event.stopPropagation(); showContextMenu(event, ${msg.id})"><i class="fas fa-ellipsis-v"></i></button>
+            <div class="message-bubble ${isOwn ? 'outgoing' : 'incoming'}" data-message-id="${msg.id}">
+                <div class="message-content" oncontextmenu="showContextMenu(event, ${msg.id})">
+                    ${replyHtml}
+                    <div class="message-text">${escapeHtml(msg.content)} ${pinnedIcon}</div>
+                    ${mediaHtml}
                 </div>
-                <div class="read-status">
-                    ${isMe && msg.is_read ? '<i class="fas fa-check-double" style="color:var(--gold);" title="Lu"></i>' : isMe && !msg.is_read ? '<i class="fas fa-check" title="Délivré"></i>' : ''}
-                </div>
+                <div class="message-time">${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
             </div>
         `;
     });
-    area.innerHTML = html;
-
-    // Générer les URLs signées pour les messages avec attachment_path
-    messages.forEach(async (msg) => {
-        if (msg.attachment_path) {
-            const signedUrl = await getSignedUrl(msg.attachment_path);
-            if (!signedUrl) return;
-            const container = document.querySelector(`.message-attachment[data-msg-id="${msg.id}"]`);
-            if (!container) return;
-            const fileType = container.dataset.type;
-            if (fileType === 'image') {
-                container.innerHTML = `<img src="${signedUrl}" alt="Image" onclick="window.open('${signedUrl}', '_blank')">`;
-            } else if (fileType === 'video') {
-                container.innerHTML = `<video src="${signedUrl}" controls style="max-width:200px; max-height:200px;"></video>`;
-            } else if (fileType === 'audio') {
-                container.innerHTML = `<audio src="${signedUrl}" controls></audio>`;
-            } else {
-                container.innerHTML = `<a href="${signedUrl}" target="_blank">Fichier joint</a>`;
-            }
-        }
-    });
-
-    // Marquer les messages comme lus si la conversation est ouverte
-    messages.filter(m => !m.is_read && m.sender_id !== currentProfile.id).forEach(async m => {
-        await supabaseMessages
-            .from('messages')
-            .update({ is_read: true })
-            .eq('id', m.id);
-    });
+    container.innerHTML = html;
+    container.scrollTop = container.scrollHeight;
 }
 
-// ===== AJOUTER UN MESSAGE (Realtime) =====
-function appendMessage(msg) {
-    console.log('appendMessage appelé avec msg:', msg);
-    const area = document.getElementById('chatMessagesArea');
-    if (!area) return;
-    const isMe = msg.sender_id === currentProfile.id;
-    const time = formatMessageDate(msg.created_at);
-    let replyHtml = '';
-    if (msg.reply_to_id) {
-        // On ne peut pas charger le message cité immédiatement, on affiche juste un placeholder
-        replyHtml = `<div class="reply-quote">Réponse à un message</div>`;
-    }
-    let attachmentHtml = '';
-    let fileType = null;
-    if (msg.attachment_path) {
-        fileType = getFileType(msg.attachment_path);
-        attachmentHtml = `<div class="message-attachment" data-path="${msg.attachment_path}" data-type="${fileType}" data-msg-id="${msg.id}"></div>`;
-    } else if (msg.attachment_url) {
-        fileType = getFileType(msg.attachment_url);
-        if (fileType === 'image') {
-            attachmentHtml = `<div class="message-attachment"><img src="${msg.attachment_url}" alt="Image" onclick="window.open('${msg.attachment_url}', '_blank')"></div>`;
-        } else if (fileType === 'video') {
-            attachmentHtml = `<div class="message-attachment"><video src="${msg.attachment_url}" controls style="max-width:200px; max-height:200px;"></video></div>`;
-        } else if (fileType === 'audio') {
-            attachmentHtml = `<div class="message-attachment"><audio src="${msg.attachment_url}" controls></audio></div>`;
-        } else {
-            attachmentHtml = `<div class="message-attachment"><a href="${msg.attachment_url}" target="_blank">Fichier joint</a></div>`;
-        }
-    }
-
-    const msgHtml = `
-        <div class="message-bubble ${isMe ? 'outgoing' : 'incoming'}" data-msg-id="${msg.id}" data-sender="${msg.sender_id}" onclick="handleMessageClick(event, ${msg.id})">
-            ${replyHtml}
-            ${attachmentHtml}
-            <div class="message-content">${msg.content || ''}</div>
-            <span class="message-time">${time}</span>
-            <div class="message-actions">
-                <button class="message-action" onclick="event.stopPropagation(); showContextMenu(event, ${msg.id})"><i class="fas fa-ellipsis-v"></i></button>
+// ===== ZONE DE SAISIE (initiale) =====
+function initChatInput() {
+    const container = document.getElementById('chatInputArea');
+    if (!container) return;
+    container.innerHTML = `
+        <div id="replyIndicator" class="reply-indicator" style="display: none;">
+            <span><i class="fas fa-reply"></i> Répondre à <span id="replyToName"></span></span>
+            <button class="cancel-reply" onclick="cancelReply()"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="attachmentPreview" class="attachment-preview" style="display: none;"></div>
+        <div class="input-row">
+            <div class="message-input-wrapper">
+                <textarea id="messageInput" class="message-input" rows="1" placeholder="Écrire un message..."></textarea>
             </div>
-            <div class="read-status">
-                ${isMe && msg.is_read ? '<i class="fas fa-check-double" style="color:var(--gold);" title="Lu"></i>' : isMe && !msg.is_read ? '<i class="fas fa-check" title="Délivré"></i>' : ''}
-            </div>
+            <button id="attachFileBtn" class="attach-btn" title="Joindre un fichier"><i class="fas fa-paperclip"></i></button>
+            <button id="audioRecordBtn" class="audio-btn" title="Message audio"><i class="fas fa-microphone"></i></button>
+            <button id="emojiBtn" class="emoji-btn" title="Émojis"><i class="fas fa-smile"></i></button>
+            <button id="stickerBtn" class="sticker-btn" title="Stickers"><i class="fas fa-sticky-note"></i></button>
+            <button id="sendMessageBtn" class="send-btn"><i class="fas fa-paper-plane"></i></button>
         </div>
     `;
-    area.insertAdjacentHTML('beforeend', msgHtml);
 
-    if (msg.attachment_path) {
-        getSignedUrl(msg.attachment_path).then(signedUrl => {
-            if (!signedUrl) return;
-            const container = document.querySelector(`.message-attachment[data-msg-id="${msg.id}"]`);
-            if (!container) return;
-            const fileType = container.dataset.type;
-            if (fileType === 'image') {
-                container.innerHTML = `<img src="${signedUrl}" alt="Image" onclick="window.open('${signedUrl}', '_blank')">`;
-            } else if (fileType === 'video') {
-                container.innerHTML = `<video src="${signedUrl}" controls style="max-width:200px; max-height:200px;"></video>`;
-            } else if (fileType === 'audio') {
-                container.innerHTML = `<audio src="${signedUrl}" controls></audio>`;
-            } else {
-                container.innerHTML = `<a href="${signedUrl}" target="_blank">Fichier joint</a>`;
-            }
-        });
-    }
-}
+    // Attacher les événements
+    document.getElementById('messageInput').addEventListener('input', handleTyping);
+    document.getElementById('messageInput').addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+    document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
+    document.getElementById('attachFileBtn').addEventListener('click', () => document.getElementById('fileInput')?.click());
+    document.getElementById('audioRecordBtn').addEventListener('click', toggleAudioRecorder);
+    document.getElementById('emojiBtn').addEventListener('click', toggleEmojiPicker);
+    document.getElementById('stickerBtn').addEventListener('click', toggleStickerPicker);
 
-function updateConversationLastMessage(convId, msg) {
-    const conv = conversations.find(c => c.id === convId);
-    if (conv) {
-        conv.lastMessage = msg.content || (msg.attachment_path || msg.attachment_url ? '📎 Fichier' : '');
-        conv.lastTime = msg.created_at;
-        renderConversations();
-    }
-}
-
-// ===== GESTION DE LA SÉLECTION MULTIPLE =====
-function handleMessageClick(event, msgId) {
-    if (selectionMode) {
-        event.preventDefault();
-        event.stopPropagation();
-        const msgElement = document.querySelector(`[data-msg-id="${msgId}"]`);
-        if (selectedMessages.has(msgId)) {
-            selectedMessages.delete(msgId);
-            msgElement.classList.remove('selected');
-        } else {
-            selectedMessages.add(msgId);
-            msgElement.classList.add('selected');
-        }
-        updateSelectionBar();
-    }
-}
-
-function updateSelectionBar() {
-    let selectionBar = document.getElementById('selectionBar');
-    if (!selectionBar) {
-        selectionBar = document.createElement('div');
-        selectionBar.id = 'selectionBar';
-        selectionBar.className = 'selection-bar';
-        selectionBar.innerHTML = `
-            <span id="selectedCount">0</span> message(s) sélectionné(s)
-            <button onclick="deleteSelectedMessages()"><i class="fas fa-trash-alt"></i> Supprimer</button>
-            <button onclick="cancelSelection()">Annuler</button>
-        `;
-        document.body.appendChild(selectionBar);
-    }
-    const count = selectedMessages.size;
-    selectionBar.style.display = count > 0 ? 'flex' : 'none';
-    document.getElementById('selectedCount').textContent = count;
-}
-
-function cancelSelection() {
-    selectionMode = false;
-    selectedMessages.clear();
-    document.querySelectorAll('.message-bubble.selected').forEach(el => el.classList.remove('selected'));
-    document.getElementById('selectionBar')?.remove();
-}
-
-async function deleteSelectedMessages() {
-    if (selectedMessages.size === 0) return;
-    if (!confirm(`Supprimer définitivement ${selectedMessages.size} message(s) ?`)) return;
-    const forEveryone = confirm('Supprimer pour tous les participants ? (Annuler pour ne supprimer que pour vous)');
-    if (forEveryone) {
-        for (let msgId of selectedMessages) {
-            await supabaseMessages
-                .from('messages')
-                .delete()
-                .eq('id', msgId);
-        }
-        showToast('Messages supprimés pour tous', 'success');
-        await loadMessages(currentConversationId);
-    } else {
-        // Suppression locale uniquement (pas de persistance)
-        selectedMessages.forEach(msgId => {
-            document.querySelector(`[data-msg-id="${msgId}"]`)?.remove();
-        });
-        showToast('Messages supprimés localement', 'success');
-    }
-    cancelSelection();
-}
-
-// ===== GESTION DES FICHIERS AVEC PRÉVISUALISATION =====
-function openFilePicker() {
-    let fileInput = document.getElementById('fileInput');
-    if (!fileInput) {
-        fileInput = document.createElement('input');
+    // Input file caché
+    if (!document.getElementById('fileInput')) {
+        const fileInput = document.createElement('input');
         fileInput.type = 'file';
         fileInput.id = 'fileInput';
-        fileInput.accept = 'image/*,video/*,audio/*,.pdf';
         fileInput.style.display = 'none';
-        fileInput.multiple = true;
-        document.body.appendChild(fileInput);
+        fileInput.accept = 'image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx';
         fileInput.addEventListener('change', handleFileSelect);
+        document.body.appendChild(fileInput);
     }
-    fileInput.click();
 }
 
-function handleFileSelect(e) {
-    const files = e.target.files;
-    if (files.length === 0) return;
-
-    let preview = document.querySelector('.attachment-preview');
-    if (!preview) {
-        preview = document.createElement('div');
-        preview.className = 'attachment-preview';
-        document.getElementById('chatInputArea').appendChild(preview);
-    } else {
-        preview.innerHTML = '';
-    }
-
-    attachments = Array.from(files);
-
-    Array.from(files).forEach((file, index) => {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const fileDiv = document.createElement('div');
-            fileDiv.className = 'preview-item';
-            fileDiv.dataset.index = index;
-
-            let mediaElement;
-            if (file.type.startsWith('image/')) {
-                mediaElement = document.createElement('img');
-                mediaElement.src = ev.target.result;
-                mediaElement.style.maxWidth = '100px';
-                mediaElement.style.maxHeight = '100px';
-                mediaElement.style.borderRadius = '5px';
-            } else if (file.type.startsWith('video/')) {
-                mediaElement = document.createElement('video');
-                mediaElement.src = ev.target.result;
-                mediaElement.controls = true;
-                mediaElement.style.maxWidth = '100px';
-                mediaElement.style.maxHeight = '100px';
-                mediaElement.style.borderRadius = '5px';
-            } else if (file.type.startsWith('audio/')) {
-                mediaElement = document.createElement('audio');
-                mediaElement.src = ev.target.result;
-                mediaElement.controls = true;
-                mediaElement.style.maxWidth = '100px';
-                mediaElement.style.maxHeight = '100px';
-                mediaElement.style.borderRadius = '5px';
-            } else {
-                mediaElement = document.createElement('i');
-                mediaElement.className = 'fas fa-file file-icon';
-            }
-            mediaElement.style.margin = '5px';
-
-            const removeBtn = document.createElement('button');
-            removeBtn.className = 'remove-preview-btn';
-            removeBtn.innerHTML = '<i class="fas fa-times"></i>';
-            removeBtn.onclick = () => {
-                fileDiv.remove();
-                attachments = attachments.filter((_, i) => i !== index);
-                if (attachments.length === 0) preview.remove();
-            };
-
-            fileDiv.appendChild(mediaElement);
-            fileDiv.appendChild(removeBtn);
-            preview.appendChild(fileDiv);
-        };
-        reader.readAsDataURL(file);
-    });
-
-    showToast(`${files.length} fichier(s) sélectionné(s)`, 'info');
+let typingTimeoutId = null;
+function handleTyping() {
+    if (typingTimeoutId) clearTimeout(typingTimeoutId);
+    // Envoyer un signal de saisie (à implémenter avec Realtime)
+    typingTimeoutId = setTimeout(() => {
+        // Arrêt de la saisie
+    }, 2000);
 }
 
-// ===== UPLOAD DE FICHIER AVEC PROGRESSION =====
-function uploadFileWithProgress(file, bucket, onProgress) {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        const formData = new FormData();
-        formData.append('file', file);
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${currentProfile.id}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-        xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`, true);
-        xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
-        xhr.setRequestHeader('Authorization', `Bearer ${currentUser.access_token}`);
-
-        xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable && onProgress) {
-                const percent = Math.round((e.loaded / e.total) * 100);
-                onProgress(percent);
-            }
-        };
-
-        xhr.onload = () => {
-            if (xhr.status === 200) {
-                resolve(`${bucket}/${fileName}`);
-            } else {
-                reject(new Error('Upload failed'));
-            }
-        };
-        xhr.onerror = () => reject(new Error('Network error'));
-        xhr.send(formData);
-    });
+function cancelReply() {
+    pendingReply = null;
+    document.getElementById('replyIndicator').style.display = 'none';
 }
 
 // ===== ENVOI D'UN MESSAGE =====
-async function sendMessage(e) {
-    e.preventDefault();
-    if (isUploading) {
-        showToast('Un fichier est déjà en cours d\'envoi', 'warning');
-        return;
-    }
-
+async function sendMessage() {
     const input = document.getElementById('messageInput');
     const content = input.value.trim();
-    const files = attachments;
-
-    if (!content && files.length === 0) {
-        showToast('Veuillez écrire un message ou joindre un fichier', 'warning');
-        return;
-    }
-
-    const conv = conversations.find(c => c.id === currentConversationId);
-    if (!conv) {
-        showToast('Aucune conversation sélectionnée', 'error');
-        return;
-    }
-
-    isUploading = true;
-    const sendBtn = document.querySelector('.send-btn');
-    sendBtn.classList.add('loading');
-
-    let attachmentPaths = [];
-    if (files.length > 0) {
-        const progressDiv = document.getElementById('uploadProgress');
-        const progressBar = document.getElementById('progressBar');
-        const progressPercent = document.getElementById('progressPercent');
-        progressDiv.style.display = 'flex';
-
-        for (let file of files) {
-            try {
-                const path = await uploadFileWithProgress(file, 'message-attachments', (percent) => {
-                    progressBar.style.width = percent + '%';
-                    progressPercent.textContent = percent + '%';
-                });
-                attachmentPaths.push(path);
-            } catch (err) {
-                console.error('Upload error:', err);
-                showToast('Erreur upload', 'error');
-                isUploading = false;
-                sendBtn.classList.remove('loading');
-                progressDiv.style.display = 'none';
+    if (!content && !pendingMediaFile && !pendingAudioBlob) return;
+    const btn = document.getElementById('sendMessageBtn');
+    withButtonSpinner(btn, async () => {
+        let mediaUrl = null, mediaType = null, mediaSize = null;
+        if (pendingMediaFile) {
+            const file = pendingMediaFile;
+            mediaSize = file.size;
+            if (file.type.startsWith('image/')) mediaType = 'image';
+            else if (file.type.startsWith('video/')) mediaType = 'video';
+            else if (file.type.startsWith('audio/')) mediaType = 'audio';
+            else mediaType = 'file';
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${currentProfile.id}_${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await supabaseClient.storage
+                .from('message-attachments')
+                .upload(fileName, file);
+            if (uploadError) {
+                showToast('Erreur upload : ' + uploadError.message, 'error');
                 return;
             }
+            const { data: urlData } = supabaseClient.storage.from('message-attachments').getPublicUrl(fileName);
+            mediaUrl = urlData.publicUrl;
+            pendingMediaFile = null;
+            document.getElementById('attachmentPreview').style.display = 'none';
+        } else if (pendingAudioBlob) {
+            const fileName = `${currentProfile.id}_audio_${Date.now()}.webm`;
+            const { error: uploadError } = await supabaseClient.storage
+                .from('message-attachments')
+                .upload(fileName, pendingAudioBlob);
+            if (uploadError) {
+                showToast('Erreur upload audio', 'error');
+                return;
+            }
+            const { data: urlData } = supabaseClient.storage.from('message-attachments').getPublicUrl(fileName);
+            mediaUrl = urlData.publicUrl;
+            mediaType = 'audio';
+            pendingAudioBlob = null;
+            document.getElementById('audioPreview').style.display = 'none';
         }
-        progressDiv.style.display = 'none';
-    }
 
-    if (attachmentPaths.length > 0) {
-        for (let path of attachmentPaths) {
-            await insertMessage(conv.id, content, null, path);
+        const messageData = {
+            conversation_id: currentConversation.id,
+            user_id: currentProfile.id,
+            content: content || null,
+            media_url: mediaUrl,
+            media_type: mediaType,
+            media_size: mediaSize,
+            reply_to_id: pendingReply?.id || null,
+            deleted_for: []
+        };
+        const { error } = await supabaseClient
+            .from('messages')
+            .insert(messageData);
+        if (error) {
+            showToast('Erreur envoi : ' + error.message, 'error');
+            return;
         }
-    } else {
-        await insertMessage(conv.id, content, null, null);
-    }
-
-    input.value = '';
-    input.style.height = 'auto';
-    attachments = [];
-    document.querySelector('.attachment-preview')?.remove();
-    if (replyingTo) cancelReply();
-
-    isUploading = false;
-    sendBtn.classList.remove('loading');
+        input.value = '';
+        pendingReply = null;
+        document.getElementById('replyIndicator').style.display = 'none';
+        // Ajouter localement
+        const newMsg = {
+            ...messageData,
+            id: Date.now(), // temporaire
+            created_at: new Date().toISOString(),
+            profiles: { full_name: currentProfile.full_name, avatar_url: currentProfile.avatar_url }
+        };
+        messages.push(newMsg);
+        renderMessages();
+        // Mettre à jour la dernière conversation
+        const conv = conversations.find(c => c.id === currentConversation.id);
+        if (conv) {
+            conv.lastMessage = newMsg;
+            conv.lastMessageTime = newMsg.created_at;
+            renderConversationsList();
+        }
+    });
 }
 
-async function insertMessage(conversationId, content, attachmentUrl, attachmentPath) {
-    const insertData = {
-        conversation_id: conversationId,
-        sender_id: currentProfile.id,
-        content: content,
-        reply_to_id: replyingTo ? replyingTo.id : null,
-        is_read: false
-    };
-    if (attachmentUrl) insertData.attachment_url = attachmentUrl;
-    if (attachmentPath) insertData.attachment_path = attachmentPath;
+// ===== GESTION DES MÉDIAS =====
+let pendingMediaFile = null;
+let pendingAudioBlob = null;
 
-    const { data: newMsg, error: msgError } = await supabaseMessages
-        .from('messages')
-        .insert(insertData)
-        .select()
-        .single();
-
-    if (msgError) {
-        console.error('Erreur envoi message:', msgError);
-        showToast('Erreur lors de l\'envoi', 'error');
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 500 * 1024 * 1024) {
+        showToast('Fichier trop volumineux (max 500 Mo)', 'warning');
         return;
     }
-
-    const lastContent = attachmentUrl || attachmentPath ? '📎 Fichier' : content;
-    await supabaseMessages
-        .from('conversations')
-        .update({
-            last_message_content: lastContent,
-            last_message_at: new Date().toISOString()
-        })
-        .eq('id', conversationId);
+    pendingMediaFile = file;
+    const previewDiv = document.getElementById('attachmentPreview');
+    previewDiv.innerHTML = `
+        <div class="preview-item">
+            <i class="fas fa-file"></i> ${file.name}
+            <button class="remove-preview-btn" onclick="pendingMediaFile=null; document.getElementById('attachmentPreview').style.display='none'"><i class="fas fa-times"></i></button>
+        </div>
+    `;
+    previewDiv.style.display = 'block';
 }
 
-// ===== ENREGISTREMENT AUDIO =====
-function formatTime(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
+// ===== AUDIO =====
+let mediaRecorderAudio = null;
+let audioChunks = [];
+let recordingActive = false;
+let recordingStartTime = null;
 
-function updateRecordingTimer() {
-    recordingSeconds++;
-    const timerDisplay = document.querySelector('.recording-timer');
-    if (timerDisplay) {
-        timerDisplay.textContent = formatTime(recordingSeconds);
+function toggleAudioRecorder() {
+    const recorderDiv = document.getElementById('audioRecorder');
+    if (recorderDiv.style.display === 'none') {
+        startRecording();
+    } else {
+        stopRecording();
     }
 }
 
 async function startRecording() {
     try {
-        recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(recordingStream);
-        recordedAudioBlob = null;
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorderAudio = new MediaRecorder(stream);
         audioChunks = [];
-        recordingSeconds = 0;
-
-        mediaRecorder.ondataavailable = event => {
-            audioChunks.push(event.data);
+        mediaRecorderAudio.ondataavailable = event => audioChunks.push(event.data);
+        mediaRecorderAudio.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            pendingAudioBlob = audioBlob;
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const previewDiv = document.getElementById('audioPreview');
+            const audioPlayer = document.getElementById('recordedAudio');
+            audioPlayer.src = audioUrl;
+            previewDiv.style.display = 'block';
+            stream.getTracks().forEach(track => track.stop());
         };
-
-        mediaRecorder.onstop = () => {
-            recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            if (recordingStream) {
-                recordingStream.getTracks().forEach(track => track.stop());
-                recordingStream = null;
-            }
-            displayAudioPreview();
-        };
-
-        mediaRecorder.start();
-        isRecording = true;
-
-        const btn = document.querySelector('.audio-btn');
-        btn.innerHTML = '<i class="fas fa-stop"></i>';
-        const timer = document.createElement('span');
-        timer.className = 'recording-timer';
-        timer.id = 'recordingTimer';
-        timer.textContent = '0:00';
-        btn.parentNode.insertBefore(timer, btn.nextSibling);
-
-        recordingTimer = setInterval(updateRecordingTimer, 1000);
+        mediaRecorderAudio.start();
+        recordingActive = true;
+        recordingStartTime = Date.now();
+        document.getElementById('startRecordBtn').style.display = 'none';
+        document.getElementById('stopRecordBtn').style.display = 'inline-block';
+        document.getElementById('recordingTime').textContent = '0:00';
+        startTimer();
     } catch (err) {
-        console.error('Erreur accès micro:', err);
         showToast('Impossible d\'accéder au microphone', 'error');
     }
 }
 
 function stopRecording() {
-    if (mediaRecorder && isRecording) {
-        mediaRecorder.stop();
-        clearInterval(recordingTimer);
-        isRecording = false;
+    if (mediaRecorderAudio && recordingActive) {
+        mediaRecorderAudio.stop();
+        recordingActive = false;
+        if (recordingTimer) clearInterval(recordingTimer);
+        document.getElementById('startRecordBtn').style.display = 'inline-block';
+        document.getElementById('stopRecordBtn').style.display = 'none';
     }
 }
 
-function toggleRecording() {
-    if (isRecording) {
-        stopRecording();
+function startTimer() {
+    if (recordingTimer) clearInterval(recordingTimer);
+    recordingTimer = setInterval(() => {
+        if (!recordingActive) return;
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        document.getElementById('recordingTime').textContent = `${minutes}:${seconds.toString().padStart(2,'0')}`;
+        if (elapsed >= 300) { // 5 minutes max
+            stopRecording();
+            showToast('Enregistrement limité à 5 minutes', 'warning');
+        }
+    }, 1000);
+}
+
+document.getElementById('sendAudioBtn')?.addEventListener('click', () => {
+    if (pendingAudioBlob) sendMessage();
+});
+document.getElementById('cancelAudioBtn')?.addEventListener('click', () => {
+    pendingAudioBlob = null;
+    document.getElementById('audioPreview').style.display = 'none';
+    document.getElementById('audioRecorder').style.display = 'none';
+});
+
+// ===== ÉMOJIS ET STICKERS =====
+let emojiPickerVisible = false;
+function toggleEmojiPicker() {
+    if (!emojiPickerVisible) {
+        showEmojiPicker();
     } else {
-        startRecording();
+        hideEmojiPicker();
     }
 }
-
-function displayAudioPreview() {
-    if (!recordedAudioBlob) return;
-
-    const inputArea = document.getElementById('chatInputArea');
-    const originalForm = document.getElementById('messageForm');
-    originalForm.style.display = 'none';
-
-    const previewDiv = document.createElement('div');
-    previewDiv.id = 'audioPreview';
-    previewDiv.className = 'audio-preview';
-
-    const audioUrl = URL.createObjectURL(recordedAudioBlob);
-    const audio = document.createElement('audio');
-    audio.src = audioUrl;
-    audio.controls = true;
-
-    const sendBtn = document.createElement('button');
-    sendBtn.className = 'btn-send-audio';
-    sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Envoyer';
-    sendBtn.onclick = async () => {
-        await sendRecordedAudio();
-        previewDiv.remove();
-        originalForm.style.display = 'flex';
-        resetAudioButton();
-    };
-
-    const cancelBtn = document.createElement('button');
-    cancelBtn.className = 'btn-cancel-audio';
-    cancelBtn.innerHTML = '<i class="fas fa-times"></i> Annuler';
-    cancelBtn.onclick = () => {
-        recordedAudioBlob = null;
-        audioChunks = [];
-        previewDiv.remove();
-        originalForm.style.display = 'flex';
-        resetAudioButton();
-    };
-
-    previewDiv.appendChild(audio);
-    previewDiv.appendChild(sendBtn);
-    previewDiv.appendChild(cancelBtn);
-    inputArea.appendChild(previewDiv);
+function showEmojiPicker() {
+    const picker = document.createElement('div');
+    picker.className = 'simple-emoji-picker';
+    picker.id = 'emojiPicker';
+    const emojis = ['😀','😁','😂','🤣','😃','😄','😅','😆','😉','😊','😋','😎','😍','😘','🥰','😗','😙','😚','🙂','🤗','🤩','🤔','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','😯','😪','😫','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','☹️','🙁','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','😰','😱','😳','🤯','😬','😡','😠','🤬','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😈','👿','👹','👺','🤡','💩','👻','💀','👽','🤖','🎃','😺','😸','😹','😻','😼','😽','🙀','😿','😾'];
+    emojis.forEach(emoji => {
+        const span = document.createElement('span');
+        span.className = 'emoji-item';
+        span.textContent = emoji;
+        span.onclick = () => {
+            const input = document.getElementById('messageInput');
+            input.value += emoji;
+            hideEmojiPicker();
+        };
+        picker.appendChild(span);
+    });
+    const btn = document.getElementById('emojiBtn');
+    btn.parentNode.insertBefore(picker, btn.nextSibling);
+    emojiPickerVisible = true;
+}
+function hideEmojiPicker() {
+    const picker = document.getElementById('emojiPicker');
+    if (picker) picker.remove();
+    emojiPickerVisible = false;
 }
 
-function resetAudioButton() {
-    const btn = document.querySelector('.audio-btn');
-    if (btn) btn.innerHTML = '<i class="fas fa-microphone"></i>';
-    const timer = document.getElementById('recordingTimer');
-    if (timer) timer.remove();
-    isRecording = false;
+function toggleStickerPicker() {
+    // Similaire à emoji picker, mais avec des stickers personnalisés (images)
+    showStickerPicker();
+}
+function showStickerPicker() {
+    // Pour simplifier, on utilise des emojis comme stickers, ou on charge depuis une table
+    const picker = document.createElement('div');
+    picker.className = 'sticker-picker';
+    picker.id = 'stickerPicker';
+    const stickers = ['⚽','🏀','🏈','⚾','🎾','🏐','🏉','🎱','🏓','🏸','🥊','🥋','⛳','🏹','🎿','⛷️','🏂','🏋️','🤸','🤼','🤽','🤾','🏌️','🏇','🧘'];
+    stickers.forEach(sticker => {
+        const div = document.createElement('div');
+        div.className = 'sticker-item';
+        div.textContent = sticker;
+        div.onclick = () => {
+            const input = document.getElementById('messageInput');
+            input.value += sticker;
+            hideStickerPicker();
+        };
+        picker.appendChild(div);
+    });
+    const btn = document.getElementById('stickerBtn');
+    btn.parentNode.insertBefore(picker, btn.nextSibling);
+}
+function hideStickerPicker() {
+    const picker = document.getElementById('stickerPicker');
+    if (picker) picker.remove();
 }
 
-async function sendRecordedAudio() {
-    if (!recordedAudioBlob) return;
-
-    const conv = conversations.find(c => c.id === currentConversationId);
-    if (!conv) {
-        showToast('Aucune conversation sélectionnée', 'error');
-        return;
+// ===== SÉLECTION MULTIPLE DE MESSAGES =====
+function openSelectMessagesModal() {
+    const listDiv = document.getElementById('selectMessagesList');
+    listDiv.innerHTML = messages.map(msg => `
+        <div class="select-message-item">
+            <label>
+                <input type="checkbox" value="${msg.id}"> ${msg.content?.substring(0, 50) || 'Message sans texte'}
+            </label>
+        </div>
+    `).join('');
+    document.getElementById('selectMessagesModal').style.display = 'block';
+}
+function closeSelectMessagesModal() {
+    document.getElementById('selectMessagesModal').style.display = 'none';
+}
+async function deleteSelectedMessages(forEveryone = false) {
+    const checkboxes = document.querySelectorAll('#selectMessagesList input:checked');
+    const ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    if (ids.length === 0) return;
+    for (const id of ids) {
+        if (forEveryone) {
+            await supabaseClient
+                .from('messages')
+                .delete()
+                .eq('id', id);
+        } else {
+            await supabaseClient.rpc('delete_message_for_user', { message_id: id, user_id: currentProfile.id });
+        }
     }
+    showToast(`${ids.length} message(s) supprimé(s)`, 'success');
+    closeSelectMessagesModal();
+    await loadMessages(currentConversation.id);
+}
+document.getElementById('confirmDeleteSelected')?.addEventListener('click', () => deleteSelectedMessages(false));
+document.getElementById('confirmDeleteSelectedEveryone')?.addEventListener('click', () => deleteSelectedMessages(true));
 
-    // Limite de durée : 10 minutes
-    if (recordingSeconds > 600) {
-        showToast('L\'enregistrement ne doit pas dépasser 10 minutes', 'warning');
-        return;
+// ===== MENU CONTEXTUEL (un seul message) =====
+let currentContextMessageId = null;
+function showContextMenu(event, messageId) {
+    event.preventDefault();
+    currentContextMessageId = messageId;
+    const menu = document.getElementById('messageContextMenu');
+    menu.style.top = `${event.clientY}px`;
+    menu.style.left = `${event.clientX}px`;
+    menu.style.display = 'block';
+    document.addEventListener('click', hideContextMenu);
+}
+function hideContextMenu() {
+    document.getElementById('messageContextMenu').style.display = 'none';
+    document.removeEventListener('click', hideContextMenu);
+}
+function copyMessageFromMenu() {
+    const msg = messages.find(m => m.id === currentContextMessageId);
+    if (msg && msg.content) {
+        navigator.clipboard.writeText(msg.content);
+        showToast('Message copié', 'success');
     }
-
-    isUploading = true;
-    const sendBtn = document.querySelector('.send-btn');
-    sendBtn.classList.add('loading');
-
-    const progressDiv = document.getElementById('uploadProgress');
-    const progressBar = document.getElementById('progressBar');
-    const progressPercent = document.getElementById('progressPercent');
-    progressDiv.style.display = 'flex';
-
-    const file = new File([recordedAudioBlob], 'audio.webm', { type: 'audio/webm' });
-
-    try {
-        const path = await uploadFileWithProgress(file, 'message-attachments', (percent) => {
-            progressBar.style.width = percent + '%';
-            progressPercent.textContent = percent + '%';
-        });
-        progressDiv.style.display = 'none';
-
-        await insertMessage(conv.id, '', null, path);
-        console.log('Message audio inséré, en attente de Realtime...');
-
-        recordedAudioBlob = null;
-        audioChunks = [];
-        resetAudioButton();
-    } catch (err) {
-        console.error('Upload error:', err);
-        showToast('Erreur lors de l\'upload de l\'audio', 'error');
-        progressDiv.style.display = 'none';
-        resetAudioButton();
-    } finally {
-        isUploading = false;
-        sendBtn.classList.remove('loading');
+    hideContextMenu();
+}
+function replyToMessageFromMenu() {
+    const msg = messages.find(m => m.id === currentContextMessageId);
+    if (msg) {
+        pendingReply = msg;
+        const replyIndicator = document.getElementById('replyIndicator');
+        document.getElementById('replyToName').textContent = msg.profiles?.full_name || 'Utilisateur';
+        replyIndicator.style.display = 'flex';
+        hideContextMenu();
     }
 }
-
-// ===== SUPPRESSION D'UN MESSAGE =====
-async function deleteMessage(msgId, forEveryone = false) {
-    if (!confirm('Supprimer ce message ?')) return;
-    if (forEveryone) {
-        const { error } = await supabaseMessages
+async function pinMessageFromMenu() {
+    const msg = messages.find(m => m.id === currentContextMessageId);
+    if (msg) {
+        const newPinned = !msg.pinned;
+        await supabaseClient
+            .from('messages')
+            .update({ pinned: newPinned })
+            .eq('id', msg.id);
+        msg.pinned = newPinned;
+        renderMessages();
+        showToast(newPinned ? 'Message épinglé' : 'Message désépinglé', 'success');
+    }
+    hideContextMenu();
+}
+async function deleteForMe() {
+    if (currentContextMessageId) {
+        await supabaseClient.rpc('delete_message_for_user', { message_id: currentContextMessageId, user_id: currentProfile.id });
+        await loadMessages(currentConversation.id);
+        showToast('Message supprimé pour vous', 'success');
+    }
+    hideContextMenu();
+}
+async function deleteForEveryone() {
+    if (currentContextMessageId && confirm('Supprimer ce message pour tous ?')) {
+        await supabaseClient
             .from('messages')
             .delete()
-            .eq('id', msgId);
-        if (error) {
-            showToast('Erreur lors de la suppression', 'error');
-        } else {
-            showToast('Message supprimé pour tous', 'success');
-            await loadMessages(currentConversationId);
-        }
-    } else {
-        // Suppression locale uniquement
-        document.querySelector(`[data-msg-id="${msgId}"]`)?.remove();
-        showToast('Message supprimé (visible seulement pour vous)', 'success');
+            .eq('id', currentContextMessageId);
+        await loadMessages(currentConversation.id);
+        showToast('Message supprimé pour tous', 'success');
     }
+    hideContextMenu();
 }
 
-// ===== RÉPONDRE =====
-function replyToMessage(msgId) {
-    const msgElement = document.querySelector(`[data-msg-id="${msgId}"] .message-content`);
-    if (msgElement) {
-        replyingTo = { id: msgId, content: msgElement.textContent };
-        renderChatInput();
-        document.getElementById('messageInput').focus();
-    }
-}
-
-function cancelReply() {
-    replyingTo = null;
-    renderChatInput();
-}
-
-// ===== MENU CONTEXTUEL =====
-function showContextMenu(event, msgId) {
-    event.preventDefault();
-    contextMenuMsgId = msgId;
-    const menu = document.getElementById('messageContextMenu');
-    const msgElement = document.querySelector(`[data-msg-id="${msgId}"]`);
-    const senderId = msgElement?.dataset.sender;
-    const isMe = senderId === currentProfile.id;
-
-    const deleteForEveryoneOption = document.getElementById('deleteForEveryoneOption');
-    if (deleteForEveryoneOption) {
-        deleteForEveryoneOption.style.display = isMe ? 'block' : 'none';
-    }
-
-    // Ajuster la position pour ne pas sortir de l'écran
-    const x = Math.min(event.pageX, window.innerWidth - menu.offsetWidth - 10);
-    const y = Math.min(event.pageY, window.innerHeight - menu.offsetHeight - 10);
-    menu.style.left = x + 'px';
-    menu.style.top = y + 'px';
-    menu.style.display = 'block';
-
-    document.addEventListener('click', function closeMenu(e) {
-        if (!menu.contains(e.target)) {
-            menu.style.display = 'none';
-            document.removeEventListener('click', closeMenu);
-        }
-    });
-}
-
-function copyMessageFromMenu() {
-    const msgElement = document.querySelector(`[data-msg-id="${contextMenuMsgId}"] .message-content`);
-    if (msgElement) {
-        navigator.clipboard.writeText(msgElement.textContent);
-        showToast('Message copié !', 'success');
-    }
-    document.getElementById('messageContextMenu').style.display = 'none';
-}
-
-function replyToMessageFromMenu() {
-    replyToMessage(contextMenuMsgId);
-    document.getElementById('messageContextMenu').style.display = 'none';
-}
-
-function deleteForMe() {
-    deleteMessage(contextMenuMsgId, false);
-    document.getElementById('messageContextMenu').style.display = 'none';
-}
-
-function deleteForEveryone() {
-    deleteMessage(contextMenuMsgId, true);
-    document.getElementById('messageContextMenu').style.display = 'none';
-}
-
-// ===== ACTIONS SUR LA CONVERSATION =====
-async function archiveConversation() {
-    if (!currentConversationId || !currentProfile) return;
-    const { data: existing, error: checkError } = await supabaseMessages
-        .from('archived_conversations')
-        .select('id')
-        .eq('user_id', currentProfile.id)
-        .eq('conversation_id', currentConversationId)
-        .maybeSingle();
-    if (checkError) {
-        console.error('Erreur vérification archivage:', checkError);
-        showToast('Erreur lors de l\'archivage', 'error');
-        return;
-    }
-    if (existing) {
-        showToast('Conversation déjà archivée', 'info');
-        return;
-    }
-    const { error } = await supabaseMessages
-        .from('archived_conversations')
-        .insert([{
-            user_id: currentProfile.id,
-            conversation_id: currentConversationId
-        }]);
-    if (error) {
-        console.error('Erreur archivage:', error);
-        showToast('Erreur lors de l\'archivage', 'error');
-    } else {
-        showToast('Conversation archivée', 'success');
-        backToConversations();
-        await loadConversations();
-    }
-}
-
-async function blockUser() {
-    if (!currentContact || !currentProfile) return;
-    if (!confirm(`Bloquer ${currentContact.full_name} ? Vous ne recevrez plus de messages de sa part.`)) return;
-    const { data: existing, error: checkError } = await supabaseMessages
-        .from('blocked_users')
-        .select('id')
-        .eq('blocker_id', currentProfile.id)
-        .eq('blocked_id', currentContact.id)
-        .maybeSingle();
-    if (checkError) {
-        console.error('Erreur vérification blocage:', checkError);
-        showToast('Erreur lors du blocage', 'error');
-        return;
-    }
-    if (existing) {
-        showToast('Cet utilisateur est déjà bloqué', 'info');
-        return;
-    }
-    const { error } = await supabaseMessages
-        .from('blocked_users')
-        .insert([{
-            blocker_id: currentProfile.id,
-            blocked_id: currentContact.id
-        }]);
-    if (error) {
-        console.error('Erreur blocage:', error);
-        showToast('Erreur lors du blocage', 'error');
-    } else {
-        showToast('Utilisateur bloqué', 'success');
-        backToConversations();
-        await loadConversations();
-    }
-}
-
-function openDeleteConvModal() {
+// ===== SUPPRESSION DE CONVERSATION =====
+let conversationToDelete = null;
+function openDeleteConvModal(conversationId) {
+    conversationToDelete = conversationId;
     document.getElementById('deleteConvModal').style.display = 'block';
 }
 function closeDeleteConvModal() {
     document.getElementById('deleteConvModal').style.display = 'none';
+    conversationToDelete = null;
 }
 async function confirmDeleteConversation() {
-    if (!currentConversationId) return;
-    const { error: msgError } = await supabaseMessages
-        .from('messages')
-        .delete()
-        .eq('conversation_id', currentConversationId);
-    if (msgError) {
-        showToast('Erreur lors de la suppression des messages', 'error');
-        return;
-    }
-    const { error: convError } = await supabaseMessages
+    if (!conversationToDelete) return;
+    // Supprimer la conversation (tous les messages et participants)
+    const { error } = await supabaseClient
         .from('conversations')
         .delete()
-        .eq('id', currentConversationId);
-    if (convError) {
-        showToast('Erreur lors de la suppression de la conversation', 'error');
-        return;
+        .eq('id', conversationToDelete);
+    if (error) {
+        showToast('Erreur lors de la suppression', 'error');
+    } else {
+        showToast('Conversation supprimée', 'success');
+        await loadConversations();
+        if (currentConversation?.id === conversationToDelete) {
+            currentConversation = null;
+            document.getElementById('chatHeader').innerHTML = '';
+            document.getElementById('chatMessagesArea').innerHTML = '';
+            document.getElementById('chatInputArea').innerHTML = '';
+        }
     }
-    showToast('Conversation supprimée', 'success');
     closeDeleteConvModal();
-    currentConversationId = null;
-    currentContact = null;
-    document.querySelector('.conversations-panel').classList.remove('hide');
-    document.querySelector('.chat-panel').classList.add('hide');
+}
+
+// ===== ARCHIVAGE / DÉSARCHIVAGE =====
+async function toggleArchive(conversationId) {
+    const { data: existing } = await supabaseClient
+        .from('archived_conversations')
+        .select('id')
+        .eq('user_id', currentProfile.id)
+        .eq('conversation_id', conversationId)
+        .maybeSingle();
+    if (existing) {
+        await supabaseClient
+            .from('archived_conversations')
+            .delete()
+            .eq('id', existing.id);
+        showToast('Conversation désarchivée', 'success');
+    } else {
+        await supabaseClient
+            .from('archived_conversations')
+            .insert({ user_id: currentProfile.id, conversation_id: conversationId });
+        showToast('Conversation archivée', 'success');
+    }
     await loadConversations();
 }
+document.getElementById('archiveToggleBtn')?.addEventListener('click', () => {
+    showingArchives = !showingArchives;
+    document.getElementById('archiveToggleText').textContent = showingArchives ? 'Conversations' : 'Archives';
+    loadConversations();
+});
 
-function openUserInfoModal() {
-    if (!currentContact) return;
-    const content = document.getElementById('userInfoContent');
-    const avatarUrl = currentContact.avatar_url ? currentContact.avatar_url : 'img/user-default.jpg';
-    content.innerHTML = `
-        <div style="text-align: center;">
-            <img src="${avatarUrl}" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 15px;">
-            <h3>${currentContact.full_name || 'Utilisateur'}</h3>
-            <p>@${currentContact.username || ''}</p>
-            <p>${currentContact.bio || 'Aucune bio'}</p>
-        </div>
-    `;
-    document.getElementById('userInfoModal').style.display = 'block';
-}
-function closeUserInfoModal() {
-    document.getElementById('userInfoModal').style.display = 'none';
-}
-
-function backToConversations() {
-    document.querySelector('.conversations-panel').classList.remove('hide');
-    document.querySelector('.chat-panel').classList.add('hide');
-}
-
-// ===== RENDU DE L'EN-TÊTE DE CONVERSATION =====
-function renderChatHeader() {
-    const header = document.getElementById('chatHeader');
-    if (!header) return;
-    if (!currentContact) {
-        header.innerHTML = '';
-        return;
-    }
-    const onlineClass = currentContact.online ? 'online' : '';
-    const avatarUrl = currentContact.avatar_url ? currentContact.avatar_url : 'img/user-default.jpg';
-    header.innerHTML = `
-        <div class="chat-header-left">
-            <button class="back-btn" onclick="backToConversations()"><i class="fas fa-arrow-left"></i></button>
-            <div class="chat-contact">
-                <div class="chat-contact-avatar ${onlineClass}">
-                    <img src="${avatarUrl}" alt="Avatar">
-                </div>
-                <div class="chat-contact-info">
-                    <h3>${currentContact.full_name || 'Inconnu'}</h3>
-                    <p>${currentContact.online ? 'En ligne' : 'Hors ligne'}</p>
-                </div>
-            </div>
-        </div>
-        <div class="chat-actions">
-            <button class="chat-action-btn" onclick="archiveConversation()" title="Archiver"><i class="fas fa-archive"></i></button>
-            <button class="chat-action-btn" onclick="blockUser()" title="Bloquer"><i class="fas fa-ban"></i></button>
-            <button class="chat-action-btn danger" onclick="openDeleteConvModal()" title="Supprimer la conversation"><i class="fas fa-trash-alt"></i></button>
-            <button class="chat-action-btn" onclick="openUserInfoModal()" title="Informations"><i class="fas fa-info-circle"></i></button>
-        </div>
-    `;
-}
-
-// ===== RENDU DE LA ZONE DE SAISIE =====
-function renderChatInput() {
-    const area = document.getElementById('chatInputArea');
-    if (!area) return;
-    const replyIndicator = replyingTo ? `
-        <div class="reply-indicator">
-            <span><i class="fas fa-reply"></i> Réponse à : "${replyingTo.content.substring(0, 30)}${replyingTo.content.length > 30 ? '…' : ''}"</span>
-            <button class="cancel-reply" onclick="cancelReply()"><i class="fas fa-times"></i></button>
-        </div>
-    ` : '';
-    area.innerHTML = `
-        <form class="message-form" id="messageForm" onsubmit="sendMessage(event)">
-            ${replyIndicator}
-            <div class="input-row">
-                <button type="button" class="attach-btn" onclick="openFilePicker()"><i class="fas fa-paperclip"></i></button>
-                <div class="message-input-wrapper">
-                    <textarea class="message-input" id="messageInput" placeholder="Votre message..." rows="1"></textarea>
-                </div>
-                <button type="button" class="emoji-btn" onclick="openEmojiPicker()"><i class="fas fa-smile"></i></button>
-                <button type="button" class="sticker-btn" onclick="openStickerPicker()"><i class="fas fa-images"></i></button>
-                <button type="button" class="audio-btn" onclick="toggleRecording()" title="Enregistrer un message vocal"><i class="fas fa-microphone"></i></button>
-                <button type="submit" class="send-btn"><i class="fas fa-paper-plane"></i></button>
-            </div>
-        </form>
-    `;
-
-    const textarea = document.getElementById('messageInput');
-    if (textarea) {
-        textarea.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
-        });
-    }
-}
-
-// ===== EMOJIS SIMPLES =====
-function openEmojiPicker() {
-    const existingPicker = document.getElementById('simple-emoji-picker');
-    if (existingPicker) {
-        existingPicker.remove();
-        return;
-    }
-
-    const picker = document.createElement('div');
-    picker.id = 'simple-emoji-picker';
-    picker.className = 'simple-emoji-picker';
-
-    const emojis = ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '💀', '👻', '👽', '👾', '🤖', '💩', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'];
-
-    emojis.forEach(emoji => {
-        const span = document.createElement('span');
-        span.textContent = emoji;
-        span.className = 'emoji-item';
-        span.onclick = () => {
-            const textarea = document.getElementById('messageInput');
-            if (textarea) {
-                const start = textarea.selectionStart;
-                const end = textarea.selectionEnd;
-                textarea.value = textarea.value.substring(0, start) + emoji + textarea.value.substring(end);
-                textarea.dispatchEvent(new Event('input'));
-            }
-            picker.remove();
-        };
-        picker.appendChild(span);
-    });
-
-    const btn = document.querySelector('.emoji-btn');
-    const rect = btn.getBoundingClientRect();
-    picker.style.position = 'absolute';
-    picker.style.top = (rect.bottom + window.scrollY) + 'px';
-    picker.style.left = (rect.left + window.scrollX) + 'px';
-
-    document.body.appendChild(picker);
-}
-
-// ===== STICKERS THÉMATIQUES =====
-function openStickerPicker() {
-    const existingPicker = document.getElementById('sticker-picker');
-    if (existingPicker) {
-        existingPicker.remove();
-        return;
-    }
-
-    const picker = document.createElement('div');
-    picker.id = 'sticker-picker';
-    picker.className = 'sticker-picker';
-
-    const stickers = [
-        '⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱',
-        '📚', '✏️', '📖', '📝', '🎓', '📐', '🔬', '🧪', '💻', '📊',
-        '💼', '📈', '📉', '💰', '💳', '📦', '🚀', '💡', '🔑', '📌',
-        '👔', '🧑‍💼', '🤝', '📞', '✉️', '📨', '📩', '📤', '📥', '🗂️'
-    ];
-
-    stickers.forEach(sticker => {
-        const span = document.createElement('span');
-        span.textContent = sticker;
-        span.className = 'sticker-item';
-        span.onclick = () => {
-            const textarea = document.getElementById('messageInput');
-            if (textarea) {
-                const start = textarea.selectionStart;
-                const end = textarea.selectionEnd;
-                textarea.value = textarea.value.substring(0, start) + sticker + textarea.value.substring(end);
-                textarea.dispatchEvent(new Event('input'));
-            }
-            picker.remove();
-        };
-        picker.appendChild(span);
-    });
-
-    const btn = document.querySelector('.sticker-btn');
-    const rect = btn.getBoundingClientRect();
-    picker.style.position = 'absolute';
-    picker.style.top = (rect.bottom + window.scrollY) + 'px';
-    picker.style.left = (rect.left + window.scrollX) + 'px';
-
-    document.body.appendChild(picker);
-}
-
-// ===== GESTION DES UTILISATEURS BLOQUÉS =====
-async function loadBlockedUsers() {
-    if (!currentProfile) return [];
-    const { data, error } = await supabaseMessages
+// ===== BLOCAGE UTILISATEUR =====
+async function blockUser(userId) {
+    await supabaseClient
         .from('blocked_users')
-        .select('blocked_id')
-        .eq('blocker_id', currentProfile.id);
+        .insert({ user_id: currentProfile.id, blocked_user_id: userId });
+    showToast('Utilisateur bloqué', 'success');
+    // Optionnel : fermer la conversation si elle est ouverte
+    if (currentConversation && !currentConversation.is_group) {
+        const otherParticipant = await getOtherParticipant(currentConversation.id);
+        if (otherParticipant === userId) {
+            currentConversation = null;
+            document.getElementById('chatHeader').innerHTML = '';
+            document.getElementById('chatMessagesArea').innerHTML = '';
+            document.getElementById('chatInputArea').innerHTML = '';
+        }
+    }
+    await loadConversations();
+}
+async function unblockUser(userId) {
+    await supabaseClient
+        .from('blocked_users')
+        .delete()
+        .eq('user_id', currentProfile.id)
+        .eq('blocked_user_id', userId);
+    showToast('Utilisateur débloqué', 'success');
+    await loadBlockedUsers();
+}
+async function loadBlockedUsers() {
+    const { data, error } = await supabaseClient
+        .from('blocked_users')
+        .select('blocked_user_id, profiles:blocked_user_id (full_name, avatar_url, username)')
+        .eq('user_id', currentProfile.id);
     if (error) {
-        console.error('Erreur chargement bloqués:', error);
-        showToast('Erreur lors du chargement des utilisateurs bloqués', 'error');
-        return [];
+        console.error(error);
+        return;
     }
-    const blockedIds = data.map(b => b.blocked_id);
-    if (blockedIds.length === 0) return [];
-
-    const { data: profiles, error: profilesError } = await supabaseMessages
-        .from('profiles')
-        .select('id, full_name, avatar_url')
-        .in('id', blockedIds);
-    if (profilesError) {
-        console.error('Erreur chargement profils bloqués:', profilesError);
-        return [];
-    }
-    return profiles;
+    const listDiv = document.getElementById('blockedUsersList');
+    listDiv.innerHTML = (data || []).map(b => `
+        <div class="blocked-user-item">
+            <div class="blocked-user-avatar"><img src="${b.profiles?.avatar_url || 'img/user-default.jpg'}"></div>
+            <div class="blocked-user-info"><div class="blocked-user-name">${b.profiles?.full_name || 'Utilisateur'}</div><div>@${b.profiles?.username || ''}</div></div>
+            <button class="blocked-user-unblock" onclick="unblockUser('${b.blocked_user_id}')">Débloquer</button>
+        </div>
+    `).join('');
 }
-
-async function openBlockedUsersModal() {
-    const modal = document.getElementById('blockedUsersModal');
-    const listContainer = document.getElementById('blockedUsersList');
-    if (!modal || !listContainer) return;
-
-    const blockedUsers = await loadBlockedUsers();
-    if (blockedUsers.length === 0) {
-        listContainer.innerHTML = '<p class="no-data">Aucun utilisateur bloqué.</p>';
-    } else {
-        listContainer.innerHTML = blockedUsers.map(user => `
-            <div class="blocked-user-item" data-user-id="${user.id}">
-                <div class="blocked-user-avatar">
-                    <img src="${user.avatar_url || 'img/user-default.jpg'}" alt="${user.full_name}">
-                </div>
-                <div class="blocked-user-info">
-                    <div class="blocked-user-name">${user.full_name}</div>
-                </div>
-                <button class="blocked-user-unblock" onclick="unblockUser('${user.id}')">Débloquer</button>
-            </div>
-        `).join('');
-    }
-    modal.style.display = 'block';
-}
-
+document.getElementById('blockedUsersBtn')?.addEventListener('click', () => {
+    loadBlockedUsers();
+    document.getElementById('blockedUsersModal').style.display = 'block';
+});
 function closeBlockedUsersModal() {
     document.getElementById('blockedUsersModal').style.display = 'none';
 }
 
-async function unblockUser(userId) {
-    if (!currentProfile || !userId) return;
-    const { error } = await supabaseMessages
-        .from('blocked_users')
-        .delete()
-        .eq('blocker_id', currentProfile.id)
-        .eq('blocked_id', userId);
+// ===== GROUPES =====
+async function loadFollowersForGroup() {
+    const { data, error } = await supabaseClient
+        .from('unified_follows')
+        .select('following_id, profiles:following_id (full_name, avatar_url, username)')
+        .eq('follower_id', currentProfile.id);
     if (error) {
-        console.error('Erreur déblocage:', error);
-        showToast('Erreur lors du déblocage', 'error');
-    } else {
-        showToast('Utilisateur débloqué', 'success');
-        closeBlockedUsersModal();
-        await loadConversations();
+        console.error(error);
+        return;
     }
+    const listDiv = document.getElementById('groupMembersList');
+    listDiv.innerHTML = (data || []).map(f => `
+        <label><input type="checkbox" value="${f.following_id}"> ${f.profiles?.full_name || 'Utilisateur'}</label>
+    `).join('');
 }
-
-// ===== MESSAGE DE BIENVENUE AUTOMATIQUE (support) =====
-async function ensureSupportConversation() {
-    console.log('Création conversation support...');
-    let supportProfileId;
-
-    const { data: supportData, error: searchError } = await supabaseMessages
-        .from('profiles')
-        .select('id')
-        .eq('username', 'SUPPORT')
-        .maybeSingle();
-
-    if (searchError) {
-        console.error('Erreur recherche support:', searchError);
+document.getElementById('createGroupBtn')?.addEventListener('click', () => {
+    loadFollowersForGroup();
+    document.getElementById('createGroupModal').style.display = 'block';
+});
+function closeCreateGroupModal() {
+    document.getElementById('createGroupModal').style.display = 'none';
+}
+document.getElementById('confirmCreateGroup')?.addEventListener('click', async () => {
+    const groupName = document.getElementById('groupName').value.trim();
+    if (!groupName) {
+        showToast('Veuillez donner un nom au groupe', 'warning');
         return;
     }
-
-    if (!supportData) {
-        // Créer un profil support
-        const { data: newSupport, error: insertError } = await supabaseMessages
-            .from('profiles')
-            .insert([{
-                id: crypto.randomUUID(), // générer un UUID
-                username: 'SUPPORT',
-                full_name: 'Support HubISoccer',
-                avatar_url: 'img/user-default.jpg'
-            }])
-            .select()
-            .single();
-
-        if (insertError) {
-            console.error('Erreur création support:', insertError);
-            return;
-        }
-        supportProfileId = newSupport.id;
-    } else {
-        supportProfileId = supportData.id;
+    const selected = Array.from(document.querySelectorAll('#groupMembersList input:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        showToast('Sélectionnez au moins un participant', 'warning');
+        return;
     }
-
-    const { data: existingConv, error: convCheckError } = await supabaseMessages
+    const participants = [currentProfile.id, ...selected];
+    // Créer la conversation de groupe
+    const { data: newConv, error: convError } = await supabaseClient
         .from('conversations')
-        .select('id')
-        .or(`and(participant1_id.eq.${currentProfile.id},participant2_id.eq.${supportProfileId}),and(participant1_id.eq.${supportProfileId},participant2_id.eq.${currentProfile.id})`)
-        .maybeSingle();
-
-    if (convCheckError) {
-        console.error('Erreur vérification conversation support:', convCheckError);
-        return;
-    }
-
-    if (existingConv) {
-        console.log('Conversation support déjà existante');
-        return;
-    }
-
-    const { data: newConv, error: convError } = await supabaseMessages
-        .from('conversations')
-        .insert([{
-            participant1_id: currentProfile.id,
-            participant2_id: supportProfileId
-        }])
+        .insert({ is_group: true, group_name: groupName })
         .select()
         .single();
-
     if (convError) {
-        console.error('Erreur création conversation support:', convError);
+        showToast('Erreur création groupe', 'error');
         return;
     }
+    // Ajouter les participants
+    const participantsRows = participants.map(uid => ({ conversation_id: newConv.id, user_id: uid }));
+    const { error: partError } = await supabaseClient
+        .from('conversation_participants')
+        .insert(participantsRows);
+    if (partError) {
+        showToast('Erreur ajout participants', 'error');
+        return;
+    }
+    showToast('Groupe créé avec succès', 'success');
+    closeCreateGroupModal();
+    await loadConversations();
+    selectConversation(newConv.id);
+});
 
-    const { error: msgError } = await supabaseMessages
-        .from('messages')
-        .insert([{
-            conversation_id: newConv.id,
-            sender_id: supportProfileId,
-            content: 'Bienvenue sur HubISoccer ! Nous sommes là pour vous aider. N\'hésitez pas à poser vos questions.'
-        }]);
-
-    if (msgError) {
-        console.error('Erreur envoi message bienvenue:', msgError);
+// ===== EN-TÊTE DE CONVERSATION =====
+function renderChatHeader() {
+    const headerDiv = document.getElementById('chatHeader');
+    if (!currentConversation) {
+        headerDiv.innerHTML = '';
+        return;
+    }
+    const isGroup = currentConversation.is_group;
+    const name = currentConversation.name;
+    const avatar = currentConversation.avatar;
+    headerDiv.innerHTML = `
+        <div class="chat-header-left">
+            <button class="back-btn" id="backToListBtn" onclick="closeChatPanel()"><i class="fas fa-arrow-left"></i></button>
+            <div class="chat-contact" onclick="showUserInfo(${currentConversation.id})">
+                <div class="chat-contact-avatar"><img src="${avatar}" alt="${name}"></div>
+                <div class="chat-contact-info">
+                    <h3>${name}</h3>
+                    <p>${isGroup ? 'Groupe' : 'En ligne'}</p>
+                </div>
+            </div>
+        </div>
+        <div class="chat-actions">
+            <button class="chat-action-btn" onclick="toggleArchive(${currentConversation.id})" title="Archiver"><i class="fas fa-archive"></i></button>
+            <button class="chat-action-btn" onclick="openDeleteConvModal(${currentConversation.id})" title="Supprimer"><i class="fas fa-trash-alt"></i></button>
+            ${!isGroup ? `<button class="chat-action-btn" onclick="blockUser(${getOtherParticipantId()})" title="Bloquer"><i class="fas fa-ban"></i></button>` : ''}
+            ${isGroup ? `<button class="chat-action-btn" onclick="showGroupMembers()" title="Membres"><i class="fas fa-users"></i></button>` : ''}
+        </div>
+    `;
+}
+function closeChatPanel() {
+    currentConversation = null;
+    document.getElementById('chatHeader').innerHTML = '';
+    document.getElementById('chatMessagesArea').innerHTML = '';
+    document.getElementById('chatInputArea').innerHTML = '';
+    // Sur mobile, on peut réafficher la liste des conversations
+}
+async function showUserInfo(conversationId) {
+    if (currentConversation.is_group) {
+        // Afficher les membres du groupe
+        const { data: participants } = await supabaseClient
+            .from('conversation_participants')
+            .select('user_id, profiles:user_id (full_name, avatar_url, username)')
+            .eq('conversation_id', conversationId);
+        const modalBody = document.getElementById('userInfoContent');
+        modalBody.innerHTML = `<h3>Membres du groupe</h3>${participants.map(p => `<div><img src="${p.profiles?.avatar_url || 'img/user-default.jpg'}" style="width:30px;height:30px;border-radius:50%;"> ${p.profiles?.full_name}</div>`).join('')}`;
+        document.getElementById('userInfoModal').style.display = 'block';
     } else {
-        console.log('Message de bienvenue envoyé');
-        await loadConversations();
+        const otherId = getOtherParticipantId();
+        const { data: profile, error } = await supabaseClient
+            .from('profiles')
+            .select('full_name, avatar_url, username, bio')
+            .eq('id', otherId)
+            .single();
+        if (error) return;
+        document.getElementById('userInfoContent').innerHTML = `
+            <div class="user-profile">
+                <img src="${profile.avatar_url || 'img/user-default.jpg'}" style="width:80px;height:80px;border-radius:50%;">
+                <h3>${profile.full_name}</h3>
+                <p>@${profile.username}</p>
+                <p>${profile.bio || ''}</p>
+            </div>
+        `;
+        document.getElementById('userInfoModal').style.display = 'block';
     }
 }
-
-// ===== RECHERCHE =====
-function initSearch() {
-    const input = document.getElementById('searchConv');
-    if (input) {
-        input.addEventListener('input', (e) => {
-            searchTerm = e.target.value;
-            renderConversations();
-        });
-    }
+function closeUserInfoModal() {
+    document.getElementById('userInfoModal').style.display = 'none';
+}
+function getOtherParticipantId() {
+    if (!currentConversation || currentConversation.is_group) return null;
+    const participants = currentConversation.participants || [];
+    const other = participants.find(p => p.user_id !== currentProfile.id);
+    return other?.user_id;
 }
 
-// ===== SOUSCRIPTION AUX NOUVELLES CONVERSATIONS =====
-function subscribeToNewConversations() {
-    conversationsSubscription = supabaseMessages
-        .channel('conversations_changes')
-        .on('postgres_changes', {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'conversations',
-            filter: `participant1_id=eq.${currentProfile.id} OR participant2_id=eq.${currentProfile.id}`
-        }, async (payload) => {
-            console.log('Nouvelle conversation créée', payload.new);
-            await loadConversations();
-        })
-        .subscribe();
+// ===== LECTEURS PERSONNALISÉS =====
+function openMediaZoom(url, type) {
+    const modal = document.createElement('div');
+    modal.className = 'modal media-modal';
+    modal.innerHTML = `
+        <div class="modal-content media-modal-content" style="max-width:90%; background:transparent;">
+            <span class="close-modal" onclick="this.closest('.modal').remove()" style="color:white; position:absolute; top:20px; right:20px;">×</span>
+            <div class="media-viewer" style="display:flex; justify-content:center; align-items:center; min-height:80vh;">
+                ${type === 'image' ? `<img src="${url}" style="max-width:100%; max-height:80vh;">` : `<video controls src="${url}" style="max-width:100%; max-height:80vh;"></video>`}
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.style.display = 'block';
 }
 
-// ===== GESTION DES SWIPES =====
-let touchStartX = 0;
-let touchEndX = 0;
-const swipeThreshold = 50;
-
-document.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-}, false);
-
-document.addEventListener('touchend', (e) => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleSwipe(e);
-}, false);
-
-function handleSwipe(e) {
-    const leftSidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const diff = touchEndX - touchStartX;
-
-    if (diff > swipeThreshold && touchStartX < 50) {
-        leftSidebar?.classList.add('active');
-        overlay?.classList.add('active');
-    } else if (diff < -swipeThreshold && leftSidebar?.classList.contains('active')) {
-        if (e.cancelable) e.preventDefault();
-        leftSidebar?.classList.remove('active');
-        overlay?.classList.remove('active');
-    }
-}
-
-// ===== MENU UTILISATEUR =====
-function initUserMenu() {
-    const userMenu = document.getElementById('userMenu');
-    const dropdown = document.getElementById('userDropdown');
-    if (userMenu && dropdown) {
-        userMenu.addEventListener('click', (e) => {
-            e.stopPropagation();
-            dropdown.classList.toggle('show');
-        });
-        document.addEventListener('click', () => dropdown.classList.remove('show'));
-    }
-}
-
-// ===== SIDEBAR GAUCHE =====
-function initSidebar() {
-    const menuBtn = document.getElementById('menuToggle');
-    const sidebar = document.getElementById('sidebar');
-    const closeBtn = document.getElementById('closeSidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-
-    function openSidebar() {
-        sidebar?.classList.add('active');
-        overlay?.classList.add('active');
-    }
-    function closeSidebarFunc() {
-        sidebar?.classList.remove('active');
-        overlay?.classList.remove('active');
-    }
-
-    menuBtn?.addEventListener('click', openSidebar);
-    closeBtn?.addEventListener('click', closeSidebarFunc);
-    overlay?.addEventListener('click', closeSidebarFunc);
-}
-
-// ===== DÉCONNEXION =====
-function initLogout() {
-    document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
-        link.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await setOffline();
-            await supabaseMessages.auth.signOut();
-            window.location.href = '../index.html';
-        });
-    });
-}
-
-// ===== EXTRAIRE LE PARAMÈTRE "TO" DE L'URL =====
-function getTargetUserIdFromUrl() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const to = urlParams.get('to');
-    return to; // c'est un UUID
+// ===== MARQUER COMME LU (conversation) =====
+async function markConversationAsRead(conversationId) {
+    await supabaseClient
+        .from('conversation_participants')
+        .update({ last_read_at: new Date().toISOString() })
+        .eq('conversation_id', conversationId)
+        .eq('user_id', currentProfile.id);
+    // Mettre à jour le compteur de non-lus dans la liste
+    const conv = conversations.find(c => c.id === conversationId);
+    if (conv) conv.unreadCount = 0;
+    renderConversationsList();
 }
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation messages (unifié)');
-
+    console.log('🚀 Initialisation messages.js');
     const user = await checkSession();
     if (!user) return;
-
     await loadProfile();
-
-    targetUserId = getTargetUserIdFromUrl();
-    console.log('Target user ID from URL:', targetUserId);
-
     await loadConversations();
-    await ensureSupportConversation();
 
-    subscribeToNewConversations();
-
-    if (targetUserId && targetUserId !== currentProfile.id) {
-        const convId = await findOrCreateConversationWithUser(targetUserId);
-        if (convId) {
-            await loadConversations();
-            await selectConversation(convId);
+    // Gestion de l'URL pour ouvrir directement une conversation (ex: ?to=userId)
+    const urlParams = new URLSearchParams(window.location.search);
+    const toUserId = urlParams.get('to');
+    if (toUserId) {
+        // Créer ou ouvrir une conversation privée avec cet utilisateur
+        const { data: existingConv } = await supabaseClient
+            .from('conversation_participants')
+            .select('conversation_id')
+            .eq('user_id', currentProfile.id)
+            .in('conversation_id', (await supabaseClient.from('conversation_participants').select('conversation_id').eq('user_id', toUserId)).data?.map(p => p.conversation_id) || [])
+            .maybeSingle();
+        if (existingConv) {
+            selectConversation(existingConv.conversation_id);
         } else {
-            showToast('Impossible de créer la conversation', 'error');
+            // Créer une nouvelle conversation privée
+            const { data: newConv } = await supabaseClient
+                .from('conversations')
+                .insert({ is_group: false })
+                .select()
+                .single();
+            await supabaseClient
+                .from('conversation_participants')
+                .insert([
+                    { conversation_id: newConv.id, user_id: currentProfile.id },
+                    { conversation_id: newConv.id, user_id: toUserId }
+                ]);
+            await loadConversations();
+            selectConversation(newConv.id);
         }
     }
 
-    renderChatInput();
+    // Bouton de rafraîchissement
+    document.getElementById('refreshBtn')?.addEventListener('click', () => loadConversations());
 
-    if (window.innerWidth <= 900) {
-        document.querySelector('.conversations-panel')?.classList.remove('hide');
-        document.querySelector('.chat-panel')?.classList.add('hide');
-    }
-
-    const archiveBtn = document.getElementById('archiveToggleBtn');
-    if (archiveBtn) archiveBtn.addEventListener('click', toggleArchive);
-    const blockedBtn = document.getElementById('blockedUsersBtn');
-    if (blockedBtn) blockedBtn.addEventListener('click', openBlockedUsersModal);
-    const refreshBtn = document.getElementById('refreshBtn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', () => {
-            showLoader(true);
-            loadConversations().then(() => {
-                if (currentConversationId) loadMessages(currentConversationId);
-                showLoader(false);
-            });
-        });
-    }
-
-    initSearch();
-    initUserMenu();
-    initSidebar();
-    initLogout();
-
-    document.getElementById('langSelect')?.addEventListener('change', (e) => {
-        const lang = e.target.value;
-        showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
-    });
-
-    document.getElementById('languageLink')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        showToast('Changement de langue bientôt disponible', 'info');
-    });
+    // Exposer les fonctions globales
+    window.closeCreateGroupModal = closeCreateGroupModal;
+    window.closeSelectMessagesModal = closeSelectMessagesModal;
+    window.closeDeleteConvModal = closeDeleteConvModal;
+    window.closeBlockedUsersModal = closeBlockedUsersModal;
+    window.closeUserInfoModal = closeUserInfoModal;
+    window.confirmDeleteConversation = confirmDeleteConversation;
+    window.toggleArchive = toggleArchive;
+    window.blockUser = blockUser;
+    window.unblockUser = unblockUser;
+    window.showUserInfo = showUserInfo;
+    window.openMediaZoom = openMediaZoom;
+    window.showContextMenu = showContextMenu;
+    window.copyMessageFromMenu = copyMessageFromMenu;
+    window.replyToMessageFromMenu = replyToMessageFromMenu;
+    window.pinMessageFromMenu = pinMessageFromMenu;
+    window.deleteForMe = deleteForMe;
+    window.deleteForEveryone = deleteForEveryone;
+    window.sendMessage = sendMessage;
+    window.closeChatPanel = closeChatPanel;
 
     console.log('✅ Initialisation terminée');
 });
-
-// ===== FONCTIONS GLOBALES =====
-window.backToConversations = backToConversations;
-window.sendMessage = sendMessage;
-window.replyToMessage = replyToMessage;
-window.cancelReply = cancelReply;
-window.deleteMessage = deleteMessage;
-window.openFilePicker = openFilePicker;
-window.showContextMenu = showContextMenu;
-window.copyMessageFromMenu = copyMessageFromMenu;
-window.replyToMessageFromMenu = replyToMessageFromMenu;
-window.deleteForMe = deleteForMe;
-window.deleteForEveryone = deleteForEveryone;
-window.archiveConversation = archiveConversation;
-window.blockUser = blockUser;
-window.openDeleteConvModal = openDeleteConvModal;
-window.closeDeleteConvModal = closeDeleteConvModal;
-window.confirmDeleteConversation = confirmDeleteConversation;
-window.openUserInfoModal = openUserInfoModal;
-window.closeUserInfoModal = closeUserInfoModal;
-window.openEmojiPicker = openEmojiPicker;
-window.openStickerPicker = openStickerPicker;
-window.toggleRecording = toggleRecording;
-window.openBlockedUsersModal = openBlockedUsersModal;
-window.closeBlockedUsersModal = closeBlockedUsersModal;
-window.unblockUser = unblockUser;
-window.toggleArchive = toggleArchive;
-window.unarchiveConversation = unarchiveConversation;
-
-function toggleArchive() {
-    showArchived = !showArchived;
-    const btnText = document.getElementById('archiveToggleText');
-    if (btnText) btnText.textContent = showArchived ? 'Conversations' : 'Archives';
-    loadConversations();
-}
-
-async function unarchiveConversation(convId) {
-    const { error } = await supabaseMessages
-        .from('archived_conversations')
-        .delete()
-        .eq('user_id', currentProfile.id)
-        .eq('conversation_id', convId);
-    if (error) {
-        showToast('Erreur lors du désarchivage', 'error');
-    } else {
-        showToast('Conversation désarchivée', 'success');
-        await loadConversations();
-    }
-}
