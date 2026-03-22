@@ -6,20 +6,16 @@
     <title>Mes Messages | HubISoccer - Joueur</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles spécifiques -->
     <link rel="stylesheet" href="css/messages.css">
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- Navbar -->
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="dashboard-title">Espace Joueur</span>
         </div>
         <div class="nav-right">
-            <!-- Sélecteur de langue -->
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
@@ -46,33 +42,28 @@
                 <option value="pl">🇵🇱 Polski</option>
                 <option value="vi">🇻🇳 Tiếng Việt</option>
             </select>
-            <div class="notif-icon" id="notifIcon">
-                <i class="fas fa-bell"></i>
-                <span class="notif-badge" id="notifBadge">0</span>
-            </div>
+            <div class="notif-icon" id="notifIcon"><i class="fas fa-bell"></i><span class="notif-badge" id="notifBadge">0</span></div>
             <div class="user-menu" id="userMenu">
                 <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
-                    <a href="dashboard.html">Mon profil</a>
-                    <a href="support.html">Paramètres</a>
+                    <a href="profile-edit.html"><i class="fas fa-user"></i> Mon profil</a>
+                    <a href="#" id="historyBtn"><i class="fas fa-history"></i> Mon historique</a>
+                    <a href="support.html"><i class="fas fa-cog"></i> Paramètres</a>
                     <a href="#" id="languageLink">Langue (Français)</a>
-                    <a href="#" id="logoutLink">Déconnexion</a>
+                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                 </div>
             </div>
-            <button class="menu-toggle" id="menuToggle">
-                <i class="fas fa-bars"></i>
-            </button>
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
         </div>
     </nav>
 
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <!-- Sidebar gauche -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <h3>Menu Joueur</h3>
-            <button class="close-sidebar" id="closeSidebar"><i class="fas fa-times"></i></button>
-        </div>
+    <div class="sidebar left-sidebar" id="leftSidebar">
+        <div class="sidebar-header"><h3>Menu Joueur</h3><button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button></div>
         <nav class="sidebar-nav">
             <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
             <a href="feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
@@ -89,9 +80,8 @@
             <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
         </nav>
     </div>
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Contenu principal -->
+    <!-- CONTENU PRINCIPAL -->
     <main class="messages-main">
         <div class="messages-container">
             <div class="messages-header">
@@ -99,29 +89,25 @@
             </div>
             <div class="messaging-area">
                 <!-- Liste des conversations -->
-                <div class="conversations-panel">
+                <div class="conversations-panel" id="conversationsPanel">
                     <div class="conversations-header">
                         <h2>Conversations</h2>
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <div class="search-box" style="flex: 1;">
+                            <div class="search-box">
                                 <i class="fas fa-search"></i>
                                 <input type="text" id="searchConv" placeholder="Rechercher...">
                             </div>
-                            <button id="refreshBtn" class="refresh-btn" title="Rafraîchir">
-                                <i class="fas fa-sync-alt"></i>
-                            </button>
+                            <button id="refreshBtn" class="refresh-btn" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
                         </div>
-                        <div class="action-buttons" style="margin-top: 10px;">
-                            <button id="archiveToggleBtn" class="archive-btn">
-                                <i class="fas fa-archive"></i> <span id="archiveToggleText">Archives</span>
-                            </button>
-                            <button id="blockedUsersBtn" class="blocked-users-btn">
-                                <i class="fas fa-ban"></i> <span>Bloqués</span>
-                            </button>
+                        <div class="action-buttons">
+                            <button id="createGroupBtn" class="archive-btn"><i class="fas fa-users"></i> Nouveau groupe</button>
+                            <button id="archiveToggleBtn" class="archive-btn"><i class="fas fa-archive"></i> <span id="archiveToggleText">Archives</span></button>
+                            <button id="blockedUsersBtn" class="blocked-users-btn"><i class="fas fa-ban"></i> Bloqués</button>
                         </div>
                     </div>
                     <div class="conversations-list" id="conversationsList"></div>
                 </div>
+
                 <!-- Zone de chat -->
                 <div class="chat-panel" id="chatPanel">
                     <div class="chat-header" id="chatHeader"></div>
@@ -132,57 +118,55 @@
         </div>
     </main>
 
-    <!-- Barre de progression pour upload -->
-    <div id="uploadProgress" class="upload-progress" style="display: none;">
-        <div class="progress-bar" id="progressBar"></div>
-        <span id="progressPercent">0%</span>
-    </div>
-
-    <!-- Loader global -->
-    <div id="globalLoader" class="global-loader" style="display: none;">
-        <div class="spinner"></div>
-    </div>
-
-    <!-- Modales -->
-    <div id="deleteConvModal" class="modal">
+    <!-- MODALES -->
+    <div id="createGroupModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Supprimer la conversation</h2>
-                <span class="close-modal" onclick="closeDeleteConvModal()">&times;</span>
-            </div>
+            <div class="modal-header"><h2>Créer un groupe</h2><span class="close-modal" onclick="closeCreateGroupModal()">×</span></div>
             <div class="modal-body">
-                <p>Êtes-vous sûr de vouloir supprimer cette conversation ? Tous les messages seront effacés définitivement.</p>
+                <div class="form-group"><label>Nom du groupe</label><input type="text" id="groupName" placeholder="Nom du groupe"></div>
+                <div class="form-group"><label>Participants</label><div id="groupMembersList" class="members-checkbox-list"></div></div>
+                <div class="modal-actions"><button class="btn-cancel" onclick="closeCreateGroupModal()">Annuler</button><button class="btn-confirm" id="confirmCreateGroup">Créer</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="selectMessagesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Sélectionner des messages</h2><span class="close-modal" onclick="closeSelectMessagesModal()">×</span></div>
+            <div class="modal-body">
+                <p>Cochez les messages à supprimer</p>
+                <div id="selectMessagesList" class="select-messages-list"></div>
                 <div class="modal-actions">
-                    <button class="btn-cancel" onclick="closeDeleteConvModal()">Annuler</button>
-                    <button class="btn-confirm" onclick="confirmDeleteConversation()">Supprimer</button>
+                    <button class="btn-cancel" onclick="closeSelectMessagesModal()">Annuler</button>
+                    <button class="btn-confirm" id="confirmDeleteSelected">Supprimer pour moi</button>
+                    <button class="btn-confirm" id="confirmDeleteSelectedEveryone" style="background:#dc3545;">Supprimer pour tous</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <div id="deleteConvModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Supprimer la conversation</h2><span class="close-modal" onclick="closeDeleteConvModal()">×</span></div>
+            <div class="modal-body"><p>Êtes-vous sûr de vouloir supprimer cette conversation ?</p><div class="modal-actions"><button class="btn-cancel" onclick="closeDeleteConvModal()">Annuler</button><button class="btn-confirm" onclick="confirmDeleteConversation()">Supprimer</button></div></div>
+        </div>
+    </div>
+
     <div id="blockedUsersModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Utilisateurs bloqués</h2>
-                <span class="close-modal" onclick="closeBlockedUsersModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div id="blockedUsersList" class="blocked-users-list"></div>
-            </div>
+            <div class="modal-header"><h2>Utilisateurs bloqués</h2><span class="close-modal" onclick="closeBlockedUsersModal()">×</span></div>
+            <div class="modal-body"><div id="blockedUsersList" class="blocked-users-list"></div></div>
         </div>
     </div>
 
     <div id="userInfoModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Informations</h2>
-                <span class="close-modal" onclick="closeUserInfoModal()">&times;</span>
-            </div>
+            <div class="modal-header"><h2>Informations</h2><span class="close-modal" onclick="closeUserInfoModal()">×</span></div>
             <div class="modal-body" id="userInfoContent"></div>
         </div>
     </div>
 
-    <!-- Menu contextuel -->
+    <!-- MENU CONTEXTUEL -->
     <div id="messageContextMenu" class="context-menu" style="display: none;">
         <ul>
             <li onclick="copyMessageFromMenu()"><i class="fas fa-copy"></i> Copier</li>
@@ -193,7 +177,22 @@
         </ul>
     </div>
 
-    <!-- Toast container -->
+    <!-- ENREGISTREMENT AUDIO -->
+    <div id="audioRecorder" class="audio-recorder" style="display: none;">
+        <div class="recorder-controls">
+            <button id="startRecordBtn"><i class="fas fa-microphone"></i> Enregistrer</button>
+            <button id="stopRecordBtn" style="display: none;"><i class="fas fa-stop"></i> Arrêter</button>
+            <span id="recordingTime">0:00</span>
+        </div>
+        <div id="audioPreview" style="display: none;">
+            <audio controls id="recordedAudio"></audio>
+            <button id="sendAudioBtn">Envoyer</button>
+            <button id="cancelAudioBtn">Annuler</button>
+        </div>
+    </div>
+
+    <div id="uploadProgress" class="upload-progress" style="display: none;"><div class="progress-bar" id="progressBar"></div><span id="progressPercent">0%</span></div>
+    <div id="globalLoader" class="global-loader" style="display: none;"><div class="spinner"></div></div>
     <div id="toastContainer" class="toast-container"></div>
 
     <footer class="dashboard-footer">
@@ -210,7 +209,7 @@
             <div class="legal">
                 <p>HubISoccer - The Hub of Inspiration of Soccer</p>
                 <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
-                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
             </div>
         </div>
     </footer>
