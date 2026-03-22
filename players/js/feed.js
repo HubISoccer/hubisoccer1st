@@ -634,9 +634,9 @@ function renderPostCard(post, isHidden = false) {
     const authorName = post.author?.full_name || 'Anonyme';
     const roleBadge = post.author?.role ? `<span class="role-badge">${post.author.role}</span>` : '';
     const badges = post.author?.badges ? post.author.badges.map(b => `<span class="badge-mini">${b}</span>`).join('') : '';
-    const followButton = post.user_id !== currentProfile?.id 
-        ? `<button class="follow-btn ${post.isFollowed ? 'following' : ''}" data-user-id="${post.user_id}" onclick="toggleFollow(this)">${post.isFollowed ? 'Abonné' : 'Suivre'}</button>`
-        : '';
+    const followButton = post.user_id !== currentProfile?.id ?
+        `<button class="follow-btn ${post.isFollowed ? 'following' : ''}" data-user-id="${post.user_id}" onclick="toggleFollow(this)">${post.isFollowed ? 'Abonné' : 'Suivre'}</button>` :
+        '';
     const collectionIcon = post.collections?.length ? '<i class="fas fa-folder collection-icon" style="color: var(--gold); margin-left:5px;" title="Dans une collection"></i>' : '';
     const menu = `
         <div class="post-menu">
@@ -645,7 +645,10 @@ function renderPostCard(post, isHidden = false) {
                 ${post.user_id === currentProfile?.id ? `<button onclick="editPost(${post.id})"><i class="fas fa-edit"></i> Modifier</button>` : ''}
                 ${post.user_id === currentProfile?.id ? `<button onclick="deletePost(${post.id})" class="delete"><i class="fas fa-trash-alt"></i> Supprimer</button>` : ''}
                 <button onclick="showCollectionsModal(${post.id})"><i class="fas fa-folder-plus"></i> Ajouter à une collection</button>
-                <button onclick="hidePost(${post.id})"><i class="fas fa-eye-slash"></i> Masquer</button>
+                ${isHidden 
+                    ? `<button onclick="unhidePost(${post.id})"><i class="fas fa-eye"></i> Réafficher</button>`
+                    : `<button onclick="hidePost(${post.id})"><i class="fas fa-eye-slash"></i> Masquer</button>`
+                }
                 <button onclick="openReportModal(${post.id})"><i class="fas fa-flag"></i> Signaler</button>
                 ${post.user_id !== currentProfile?.id ? `<button onclick="openBlockUserModal('${post.user_id}')"><i class="fas fa-ban"></i> Bloquer</button>` : ''}
             </div>
@@ -681,45 +684,6 @@ function renderPostCard(post, isHidden = false) {
             <div class="comments-section" id="comments-${post.id}"></div>
         </div>
     `;
-}
-
-function renderPosts() {
-    const feed = document.getElementById('postsFeed');
-    if (!feed) return;
-
-    let filteredPosts = window.filteredPosts || [...posts];
-    if (currentFilter === 'following') {
-        const followingIds = following.map(f => f.following_id);
-        filteredPosts = filteredPosts.filter(p => followingIds.includes(p.user_id));
-    } else if (currentFilter === 'saved') {
-        if (currentCollection === 'default') {
-            filteredPosts = filteredPosts.filter(p => savedPosts.has(p.id));
-        } else {
-            const collection = collections.find(c => c.id === currentCollection);
-            if (collection) {
-                filteredPosts = filteredPosts.filter(p => p.collections?.includes(currentCollection));
-            }
-        }
-    }
-    if (searchTerm) {
-        filteredPosts = filteredPosts.filter(p => 
-            p.content?.toLowerCase().includes(searchTerm) ||
-            p.author?.full_name?.toLowerCase().includes(searchTerm) ||
-            p.author?.username?.toLowerCase().includes(searchTerm)
-        );
-    }
-
-    if (filteredPosts.length === 0) {
-        feed.innerHTML = '<p class="no-data">Aucun post à afficher.</p>';
-        return;
-    }
-
-    let html = '';
-    filteredPosts.forEach(post => {
-        html += renderPostCard(post);
-    });
-    feed.innerHTML = html;
-    observePostsForViews();
 }
 
 // ==================== COMMENTAIRES ====================
@@ -2634,6 +2598,7 @@ async function init() {
     window.confirmBlockUser = confirmBlockUser;
     window.openEmarketModal = openEmarketModal;
     window.togglePostMenu = togglePostMenu;
+    window.unhidePost = unhidePost;
 
     updateLoaderProgress('Initialisation terminée');
 }
