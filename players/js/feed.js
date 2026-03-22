@@ -427,7 +427,7 @@ async function loadPosts(reset = true) {
   loadingMore = true;
   const feedLoader = document.getElementById('feedLoader');
   if (feedLoader && reset) feedLoader.style.display = 'flex';
-  
+
   try {
     updateLoaderProgress('Chargement des publications');
     let query = supabaseClient
@@ -435,10 +435,10 @@ async function loadPosts(reset = true) {
       .select('*')
       .order('created_at', { ascending: false })
       .range(currentPostOffset, currentPostOffset + POSTS_PER_PAGE - 1);
-    
+
     const { data: postsData, error: postsError } = await query;
     if (postsError) throw postsError;
-    
+
     if (!postsData.length) {
       hasMorePosts = false;
       document.getElementById('loadMoreBtn').style.display = 'none';
@@ -448,7 +448,7 @@ async function loadPosts(reset = true) {
       updateLoaderProgress('Aucune publication', 0);
       return;
     }
-    
+
     const authorIds = [...new Set(postsData.map(p => p.user_id))];
     const { data: profilesData, error: profilesError } = await supabaseClient
       .from('profiles')
@@ -456,39 +456,39 @@ async function loadPosts(reset = true) {
       .in('id', authorIds);
     if (profilesError) throw profilesError;
     const profilesMap = Object.fromEntries((profilesData || []).map(p => [p.id, p]));
-    
+
     // Récupération des compteurs un par un (simple mais fiable)
     const likesCounts = {};
     const commentsCounts = {};
     const sharesCounts = {};
     const viewsCounts = {};
-    
+
     for (const post of postsData) {
       const { count: likes } = await supabaseClient
         .from('unified_likes')
         .select('*', { count: 'exact', head: true })
         .eq('post_id', post.id);
       likesCounts[post.id] = likes || 0;
-      
+
       const { count: comments } = await supabaseClient
         .from('unified_comments')
         .select('*', { count: 'exact', head: true })
         .eq('post_id', post.id);
       commentsCounts[post.id] = comments || 0;
-      
+
       const { count: shares } = await supabaseClient
         .from('unified_shares')
         .select('*', { count: 'exact', head: true })
         .eq('post_id', post.id);
       sharesCounts[post.id] = shares || 0;
-      
+
       const { count: views } = await supabaseClient
         .from('post_views')
         .select('*', { count: 'exact', head: true })
         .eq('post_id', post.id);
       viewsCounts[post.id] = views || 0;
     }
-    
+
     const newPosts = postsData.map(post => {
       const author = profilesMap[post.user_id];
       if (!author) return null;
@@ -498,7 +498,7 @@ async function loadPosts(reset = true) {
         if (!isFollowing) return null;
       }
       if (hiddenPosts.has(post.id)) return null;
-      
+
       return {
         ...post,
         author,
@@ -513,7 +513,7 @@ async function loadPosts(reset = true) {
         collections: [] // sera rempli après
       };
     }).filter(p => p !== null);
-    
+
     // Récupérer les collections pour ces posts
     const { data: collItems } = await supabaseClient
       .from('collection_items')
@@ -525,7 +525,7 @@ async function loadPosts(reset = true) {
       collectionMap.get(item.post_id).push(item.collection_id);
     });
     newPosts.forEach(p => { p.collections = collectionMap.get(p.id) || []; });
-    
+
     if (reset) {
       posts = newPosts;
     } else {
@@ -538,7 +538,7 @@ async function loadPosts(reset = true) {
     } else {
       document.getElementById('loadMoreBtn').style.display = 'none';
     }
-    
+
     applyAdvancedFilters();
     renderPosts();
     posts.forEach(post => loadComments(post.id));
@@ -1216,7 +1216,7 @@ function startStoryTimer() {
         }, 10);
         storyTimer = setTimeout(() => {
             nextStory();
-        }, 5000);
+        }, 10000000);
     }
 }
 
