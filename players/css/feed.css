@@ -1437,24 +1437,6 @@ body {
     right: 20px;
 }
 
-.story-delete {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.6);
-    color: white;
-    border: none;
-    border-radius: 30px;
-    padding: 8px 16px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    z-index: 10;
-}
-
 .story-progress {
     position: absolute;
     bottom: 20px;
@@ -1653,6 +1635,66 @@ body {
 .collections-list li i {
     color: var(--primary);
     width: 20px;
+}
+
+.btn-create-story {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-top: 10px;
+}
+.btn-create-story:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(85, 27, 140, 0.3);
+}
+
+.story-delete {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 10;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+.story-delete:hover {
+    background: rgba(220, 53, 69, 0.9);
+}
+
+.btn-emarket {
+    width: 100%;
+    padding: 10px;
+    background: var(--gold);
+    color: black;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+.btn-emarket:hover {
+    background: var(--gold-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 204, 0, 0.3);
 }
 
 /* ===== AUTRES MODALES ===== */
