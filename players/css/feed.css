@@ -339,6 +339,36 @@ body {
     margin-bottom: 30px;
 }
 
+.feed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+.feed-header h1 {
+    margin-bottom: 0;
+}
+.refresh-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.refresh-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(85,27,140,0.2);
+}
+
 /* ===== STORIES (deux rubriques) ===== */
 .stories-section {
     margin-bottom: 30px;
