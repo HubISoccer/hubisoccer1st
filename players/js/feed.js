@@ -2381,30 +2381,54 @@ async function init() {
     initLanguage();
 
     // Boutons de la zone de publication
-    document.getElementById('attachMediaBtn').addEventListener('click', () => document.getElementById('mediaInput').click());
-    document.getElementById('mediaInput').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const preview = document.getElementById('publishMediaPreview');
-        const url = URL.createObjectURL(file);
-        if (file.type.startsWith('image/')) preview.innerHTML = `<img src="${url}" alt="Aperçu">`;
-        else preview.innerHTML = `<video src="${url}" controls></video>`;
-        document.getElementById('mediaCancel').style.display = 'flex';
-        document.getElementById('mediaFileName').textContent = file.name;
-    });
-    document.getElementById('previewPostBtn').addEventListener('click', openPreview);
-    document.getElementById('schedulePostBtn').addEventListener('click', openScheduleModal);
-    document.getElementById('publishBtn').addEventListener('click', async () => {
-        const content = document.getElementById('postContent').value.trim();
-        const file = document.getElementById('mediaInput').files[0];
-        if (!content && !file) {
-            showToast('Écrivez quelque chose ou ajoutez un média', 'warning');
-            return;
-        }
-        await withButtonSpinner(document.getElementById('publishBtn'), () => createPost(content, file));
-    });
-    document.getElementById('mediaCancel').addEventListener('click', cancelMedia);
-    document.getElementById('pinPostBtn').addEventListener('click', pinPost);
+    const attachMediaBtn = document.getElementById('attachMediaBtn');
+    if (attachMediaBtn) {
+        attachMediaBtn.addEventListener('click', () => {
+            const mediaInput = document.getElementById('mediaInput');
+            if (mediaInput) mediaInput.click();
+        });
+    }
+    
+    const mediaInput = document.getElementById('mediaInput');
+    if (mediaInput) {
+        mediaInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const preview = document.getElementById('publishMediaPreview');
+            const url = URL.createObjectURL(file);
+            if (file.type.startsWith('image/')) preview.innerHTML = `<img src="${url}" alt="Aperçu">`;
+            else preview.innerHTML = `<video src="${url}" controls></video>`;
+            const mediaCancel = document.getElementById('mediaCancel');
+            const mediaFileName = document.getElementById('mediaFileName');
+            if (mediaCancel) mediaCancel.style.display = 'flex';
+            if (mediaFileName) mediaFileName.textContent = file.name;
+        });
+    }
+    
+    const previewPostBtn = document.getElementById('previewPostBtn');
+    if (previewPostBtn) previewPostBtn.addEventListener('click', openPreview);
+    
+    const schedulePostBtn = document.getElementById('schedulePostBtn');
+    if (schedulePostBtn) schedulePostBtn.addEventListener('click', openScheduleModal);
+    
+    const publishBtn = document.getElementById('publishBtn');
+    if (publishBtn) {
+        publishBtn.addEventListener('click', async () => {
+            const content = document.getElementById('postContent').value.trim();
+            const file = document.getElementById('mediaInput')?.files[0];
+            if (!content && !file) {
+                showToast('Écrivez quelque chose ou ajoutez un média', 'warning');
+                return;
+            }
+            await withButtonSpinner(publishBtn, () => createPost(content, file));
+        });
+    }
+    
+    const mediaCancel = document.getElementById('mediaCancel');
+    if (mediaCancel) mediaCancel.addEventListener('click', cancelMedia);
+    
+    const pinPostBtn = document.getElementById('pinPostBtn');
+    if (pinPostBtn) pinPostBtn.addEventListener('click', pinPost);
 
     // Posts masqués
     document.getElementById('showHiddenPosts').addEventListener('click', (e) => {
