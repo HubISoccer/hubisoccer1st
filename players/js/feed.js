@@ -2513,6 +2513,7 @@ async function init() {
     window.nextStory = nextStory;
     window.prevStory = prevStory;
     window.toggleFollow = toggleFollow;
+    window.togglePostMenu = togglePostMenu;
     window.likePost = likePost;
     window.dislikePost = dislikePost;
     window.addComment = addComment;
@@ -2554,7 +2555,6 @@ async function init() {
     window.closeBlockUserModal = closeBlockUserModal;
     window.confirmBlockUser = confirmBlockUser;
     window.openEmarketModal = openEmarketModal;
-    window.togglePostMenu = togglePostMenu;
 
     updateLoaderProgress('Initialisation terminée');
 }
