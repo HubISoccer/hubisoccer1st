@@ -1222,37 +1222,37 @@ async function uploadStory() {
     const text = document.getElementById('storyText').value.trim();
     const publishBtn = document.getElementById('publishStoryBtn');
     const progressDiv = document.getElementById('storyUploadProgress');
-    
+
     let mediaUrl = null;
-    
+
     if (type !== 'text' && (!fileInput.files || !fileInput.files.length)) {
         showToast('Veuillez sélectionner un fichier', 'warning');
         return;
     }
-    
+
     // Désactiver le bouton et afficher un message de chargement
     publishBtn.disabled = true;
     publishBtn.innerHTML = '<span class="button-spinner"></span> Téléchargement...';
     if (progressDiv) progressDiv.style.display = 'block';
-    
+
     try {
         if (type !== 'text') {
             const file = fileInput.files[0];
             const fileExt = file.name.split('.').pop();
             const fileName = `${currentProfile.id}_story_${Date.now()}.${fileExt}`;
-            
+
             // Upload via Supabase (méthode qui fonctionne)
             const { error: uploadError } = await supabaseClient.storage
                 .from('player-posts')
                 .upload(fileName, file);
             if (uploadError) throw uploadError;
-            
+
             const { data: urlData } = supabaseClient.storage
                 .from('player-posts')
                 .getPublicUrl(fileName);
             mediaUrl = urlData.publicUrl;
         }
-        
+
         const content = type === 'text' ? text : null;
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
         const { error } = await supabaseClient
@@ -1264,9 +1264,9 @@ async function uploadStory() {
                 media_url: mediaUrl,
                 expires_at: expiresAt
             });
-        
+
         if (error) throw error;
-        
+
         showToast('Story publiée', 'success');
         document.querySelector('#tempStoryModal')?.remove();
         await loadStories();
@@ -2394,6 +2394,18 @@ function openEmarketModal() {
     `;
     document.body.appendChild(modal);
     modal.style.display = 'block';
+}
+
+// ==================== MENU DES POSTS ====================
+function togglePostMenu(btn) {
+    const dropdown = btn.nextElementSibling;
+    dropdown.classList.toggle('show');
+    document.addEventListener('click', function closeMenu(e) {
+        if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+            document.removeEventListener('click', closeMenu);
+        }
+    });
 }
 
 // ==================== INITIALISATION PRINCIPALE ====================
