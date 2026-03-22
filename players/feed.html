@@ -163,7 +163,7 @@
             </div>
             <div class="community-section">
                 <h4><i class="fas fa-cog"></i> Gestionnaire</h4>
-                <button class="btn-edit-profile" onclick="openEditProfileModal()"><i class="fas fa-pen"></i> Modifier mon profil</button>
+                <button class="btn-edit-profile" id="editProfileBtn"><i class="fas fa-pen"></i> Modifier mon profil</button>
                 <button id="privacyBtn" class="btn-privacy"><i class="fas fa-lock"></i> Confidentialité</button>
                 <button id="inviteBtn" class="btn-invite"><i class="fas fa-user-plus"></i> Inviter des amis</button>
             </div>
@@ -188,6 +188,10 @@
                     <button class="filter-btn" data-role="staff">Staff médical</button>
                 </div>
             </div>
+            <div class="community-section">
+                <h4><i class="fas fa-store"></i> Emarket</h4>
+                <p>Bientôt disponible</p>
+            </div>
         </div>
     </div>
 
@@ -197,30 +201,45 @@
             <h1>Ma Communauté</h1>
             <p>Partagez et interagissez avec les joueurs et acteurs du football.</p>
 
-            <!-- Stories -->
-            <div class="stories-container" id="storiesContainer">
-                <div class="story-add" onclick="openStoryUploadModal()">
-                    <div class="story-ring"><i class="fas fa-plus-circle"></i></div>
-                    <span>Ajouter une story</span>
+            <!-- ========== STORIES : deux rubriques ========== -->
+            <div class="stories-section">
+                <h3>My HubIS Enjoy</h3>
+                <div class="stories-container" id="myStoriesContainer">
+                    <div class="story-add" onclick="openStoryUploadModal()">
+                        <div class="story-ring"><i class="fas fa-plus-circle"></i></div>
+                        <span>Ajouter</span>
+                    </div>
+                    <div class="stories-list" id="myStoriesList"></div>
                 </div>
-                <div class="stories-list" id="storiesList"></div>
+            </div>
+            <div class="stories-section">
+                <h3>HubIS Mood</h3>
+                <div class="stories-container" id="hubisMoodContainer">
+                    <div class="stories-list" id="hubisMoodList"></div>
+                </div>
             </div>
 
-            <!-- Zone de publication -->
+            <!-- ========== ZONE DE PUBLICATION (nouvelle disposition) ========== -->
             <div class="publish-box">
                 <div class="publish-top">
                     <img src="img/user-default.jpg" alt="Avatar" id="publishAvatar">
                     <textarea id="postContent" placeholder="Quoi de neuf ?" rows="2"></textarea>
                 </div>
                 <div class="publish-media" id="publishMediaPreview"></div>
-                <div class="publish-actions">
-                    <input type="file" id="mediaInput" accept="image/*,video/*" style="display: none;">
-                    <button class="action-btn" id="attachMediaBtn"><i class="fas fa-image"></i> Photo/Vidéo</button>
-                    <button class="action-btn" id="pollBtn"><i class="fas fa-chart-pie"></i> Sondage</button>
-                    <button class="action-btn" id="eventBtn"><i class="fas fa-calendar-alt"></i> Événement</button>
-                    <button class="action-btn" id="previewPostBtn"><i class="fas fa-eye"></i> Aperçu</button>
-                    <button class="action-btn" id="schedulePostBtn"><i class="fas fa-clock"></i> Prog.</button>
-                    <button class="action-btn publish-main" id="publishBtn"><i class="fas fa-paper-plane"></i> Publier</button>
+                <div class="publish-actions-new">
+                    <div class="actions-left">
+                        <button class="action-btn" id="attachMediaBtn"><i class="fas fa-image"></i> Photo/Vidéo</button>
+                        <button class="action-btn publish-main" id="publishBtn"><i class="fas fa-paper-plane"></i> Publier</button>
+                        <button class="action-btn" id="previewPostBtn"><i class="fas fa-eye"></i> Aperçu</button>
+                    </div>
+                    <div class="actions-center">
+                        <button class="pin-btn" id="pinPostBtn" title="Épingler cette publication (VIP limité à 2)"><img src="img/logo-navbar.png" alt="HubISoccer"></button>
+                    </div>
+                    <div class="actions-right">
+                        <button class="action-btn" id="pollBtn"><i class="fas fa-chart-pie"></i> Sondage</button>
+                        <button class="action-btn" id="eventBtn"><i class="fas fa-calendar-alt"></i> Événement</button>
+                        <button class="action-btn" id="schedulePostBtn"><i class="fas fa-clock"></i> Prog.</button>
+                    </div>
                 </div>
                 <div class="media-cancel" id="mediaCancel" style="display: none;">
                     <span>Fichier sélectionné : <span id="mediaFileName"></span></span>
@@ -253,7 +272,7 @@
     <!-- ========== MODALES ========== -->
 
     <!-- Aperçu publication -->
-    <div id="previewModal" class="preview-modal">
+    <div id="previewModal" class="modal preview-modal">
         <div class="preview-content">
             <div class="preview-header">
                 <h3>Aperçu de votre publication</h3>
@@ -274,7 +293,7 @@
         </div>
     </div>
 
-    <!-- Édition profil -->
+    <!-- Édition profil (avec champs enrichis) -->
     <div id="editProfileModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -299,14 +318,64 @@
                         <label>Pays de résidence</label>
                         <select id="editCountry">
                             <option value="">Sélectionner votre pays</option>
+                            <!-- La liste complète des pays sera générée par JS -->
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Adresse complète</label>
                         <textarea id="editAddress" rows="2"></textarea>
                     </div>
+                    <div class="form-group">
+                        <label>Centres d'intérêt</label>
+                        <textarea id="editInterests" rows="3" placeholder="Football, musique, voyages..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Raison pour laquelle je suis sur HubISoccer</label>
+                        <textarea id="editReason" rows="3" placeholder="Partager ma passion, trouver des opportunités..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Vision / Philosophie</label>
+                        <textarea id="editVision" rows="3" placeholder="Ma vision du sport et de la vie..."></textarea>
+                    </div>
                     <button type="submit" class="btn-save-profile">Enregistrer</button>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profil utilisateur (affichage pour les autres) -->
+    <div id="userProfileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Profil</h2>
+                <span class="close-modal" onclick="closeUserProfileModal()">×</span>
+            </div>
+            <div class="modal-body">
+                <div class="user-profile">
+                    <div class="profile-avatar">
+                        <img id="profileAvatar" src="img/user-default.jpg">
+                    </div>
+                    <h3 id="profileName"></h3>
+                    <p id="profileHubId"></p>
+                    <div id="profileBadges" class="profile-badges"></div>
+                    <div class="profile-info-group">
+                        <strong>Bio :</strong>
+                        <p id="profileBio"></p>
+                    </div>
+                    <div class="profile-info-group">
+                        <strong>Centres d'intérêt :</strong>
+                        <p id="profileInterests"></p>
+                    </div>
+                    <div class="profile-info-group">
+                        <strong>Raison d'être sur HubISoccer :</strong>
+                        <p id="profileReason"></p>
+                    </div>
+                    <div class="profile-info-group">
+                        <strong>Vision / Philosophie :</strong>
+                        <p id="profileVision"></p>
+                    </div>
+                    <button class="btn-send-message" onclick="sendMessageToUser()"><i class="fas fa-envelope"></i> Envoyer un message</button>
+                </div>
             </div>
         </div>
     </div>
@@ -324,24 +393,15 @@
         </div>
     </div>
 
-    <!-- Profil utilisateur -->
-    <div id="userProfileModal" class="modal">
+    <!-- Dislikes (optionnel, même modal que likes mais avec titre différent) -->
+    <div id="dislikesModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Profil</h2>
-                <span class="close-modal" onclick="closeUserProfileModal()">×</span>
+                <h2>Personnes qui n'aiment pas ce post</h2>
+                <span class="close-modal" onclick="closeDislikesModal()">×</span>
             </div>
             <div class="modal-body">
-                <div class="user-profile">
-                    <div class="profile-avatar">
-                        <img id="profileAvatar" src="img/user-default.jpg">
-                    </div>
-                    <h3 id="profileName"></h3>
-                    <p id="profileHubId"></p>
-                    <div id="profileBadges" class="profile-badges"></div>
-                    <p id="profileBio" class="profile-bio"></p>
-                    <button class="btn-send-message" onclick="sendMessageToUser()"><i class="fas fa-envelope"></i> Envoyer un message</button>
-                </div>
+                <ul id="dislikesList" class="likes-list"></ul>
             </div>
         </div>
     </div>
@@ -375,7 +435,7 @@
         </div>
     </div>
 
-    <!-- Collections -->
+    <!-- Collections (liste) -->
     <div id="collectionsModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -384,6 +444,23 @@
             </div>
             <div class="modal-body">
                 <ul id="collectionsModalList" class="collections-modal-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Créer une collection -->
+    <div id="createCollectionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Créer une collection</h2>
+                <span class="close-modal" onclick="closeCreateCollectionModal()">×</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nom de la collection</label>
+                    <input type="text" id="newCollectionName">
+                </div>
+                <button class="btn-create-collection" onclick="createNewCollection()">Créer</button>
             </div>
         </div>
     </div>
@@ -467,10 +544,11 @@
         <div class="modal-content media-modal-content">
             <span class="close-modal" onclick="closeMediaZoom()">×</span>
             <div class="media-viewer" id="mediaViewer"></div>
+            <div class="media-caption" id="mediaCaption"></div>
         </div>
     </div>
 
-    <!-- Story modal -->
+    <!-- Story modal (visualisation) -->
     <div id="storyModal" class="story-modal">
         <div class="story-viewer" id="storyViewer">
             <div class="story-progress">
@@ -479,10 +557,11 @@
             <button class="story-close" onclick="closeStoryModal()">×</button>
             <button class="story-prev" onclick="prevStory()"><i class="fas fa-chevron-left"></i></button>
             <button class="story-next" onclick="nextStory()"><i class="fas fa-chevron-right"></i></button>
+            <button class="story-delete" id="storyDeleteBtn" style="display: none;" onclick="deleteCurrentStory()"><i class="fas fa-trash-alt"></i> Supprimer</button>
         </div>
     </div>
 
-    <!-- Créer événement -->
+    <!-- Événement -->
     <div id="createEventModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -511,7 +590,7 @@
         </div>
     </div>
 
-    <!-- Programmer publication -->
+    <!-- Programmation -->
     <div id="schedulePostModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -528,7 +607,7 @@
         </div>
     </div>
 
-    <!-- Signaler -->
+    <!-- Signalement -->
     <div id="reportModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -562,24 +641,38 @@
         </div>
     </div>
 
-    <!-- Créer collection -->
-    <div id="createCollectionModal" class="modal">
+    <!-- Commentaire média (image/vidéo) -->
+    <div id="commentMediaModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Créer une collection</h2>
-                <span class="close-modal" onclick="closeCreateCollectionModal()">×</span>
+                <h2>Ajouter un média au commentaire</h2>
+                <span class="close-modal" onclick="closeCommentMediaModal()">×</span>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label>Nom de la collection</label>
-                    <input type="text" id="newCollectionName">
+                    <label>Fichier (image ou vidéo)</label>
+                    <input type="file" id="commentMediaFile" accept="image/*,video/*">
                 </div>
-                <button class="btn-create-collection" onclick="createNewCollection()">Créer</button>
+                <button class="btn-upload-media" onclick="uploadCommentMedia()">Envoyer</button>
             </div>
         </div>
     </div>
 
-    <!-- Conteneur toasts et loader global -->
+    <!-- Bloquer un utilisateur (admin) -->
+    <div id="blockUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Bloquer l'utilisateur</h2>
+                <span class="close-modal" onclick="closeBlockUserModal()">×</span>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir bloquer cet utilisateur ? Il ne pourra plus interagir avec vous.</p>
+                <button class="btn-block-user" onclick="confirmBlockUser()">Bloquer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toasts et loader -->
     <div id="toastContainer" class="toast-container"></div>
     <div id="globalLoader" class="global-loader" style="display: none;">
         <div class="spinner"></div>
