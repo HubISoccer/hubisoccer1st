@@ -2554,6 +2554,7 @@ async function init() {
     window.closeBlockUserModal = closeBlockUserModal;
     window.confirmBlockUser = confirmBlockUser;
     window.openEmarketModal = openEmarketModal;
+    window.togglePostMenu = togglePostMenu;
 
     updateLoaderProgress('Initialisation terminée');
 }
