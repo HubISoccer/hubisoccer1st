@@ -2359,7 +2359,16 @@ function openEmarketModal() {
     document.body.appendChild(modal);
     modal.style.display = 'block';
 }
-
+function togglePostMenu(btn) {
+    const dropdown = btn.nextElementSibling;
+    dropdown.classList.toggle('show');
+    document.addEventListener('click', function closeMenu(e) {
+        if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+            document.removeEventListener('click', closeMenu);
+        }
+    });
+}
 // ==================== INITIALISATION PRINCIPALE ====================
 async function init() {
     showLoaderWithProgress(12);
@@ -2388,7 +2397,7 @@ async function init() {
             if (mediaInput) mediaInput.click();
         });
     }
-    
+
     const mediaInput = document.getElementById('mediaInput');
     if (mediaInput) {
         mediaInput.addEventListener('change', function(e) {
@@ -2404,13 +2413,13 @@ async function init() {
             if (mediaFileName) mediaFileName.textContent = file.name;
         });
     }
-    
+
     const previewPostBtn = document.getElementById('previewPostBtn');
     if (previewPostBtn) previewPostBtn.addEventListener('click', openPreview);
-    
+
     const schedulePostBtn = document.getElementById('schedulePostBtn');
     if (schedulePostBtn) schedulePostBtn.addEventListener('click', openScheduleModal);
-    
+
     const publishBtn = document.getElementById('publishBtn');
     if (publishBtn) {
         publishBtn.addEventListener('click', async () => {
@@ -2423,10 +2432,10 @@ async function init() {
             await withButtonSpinner(publishBtn, () => createPost(content, file));
         });
     }
-    
+
     const mediaCancel = document.getElementById('mediaCancel');
     if (mediaCancel) mediaCancel.addEventListener('click', cancelMedia);
-    
+
     const pinPostBtn = document.getElementById('pinPostBtn');
     if (pinPostBtn) pinPostBtn.addEventListener('click', pinPost);
 
@@ -2513,7 +2522,6 @@ async function init() {
     window.nextStory = nextStory;
     window.prevStory = prevStory;
     window.toggleFollow = toggleFollow;
-    window.togglePostMenu = togglePostMenu;
     window.likePost = likePost;
     window.dislikePost = dislikePost;
     window.addComment = addComment;
@@ -2555,6 +2563,7 @@ async function init() {
     window.closeBlockUserModal = closeBlockUserModal;
     window.confirmBlockUser = confirmBlockUser;
     window.openEmarketModal = openEmarketModal;
+    window.togglePostMenu = togglePostMenu;
 
     updateLoaderProgress('Initialisation terminée');
 }
