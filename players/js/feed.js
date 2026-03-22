@@ -1191,61 +1191,121 @@ function renderStories() {
 }
 
 function openStoryUploadModal() {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.id = 'tempStoryModal';
-    modal.innerHTML = `
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.id = 'tempStoryModal';
+  modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header"><h2>Ajouter une story</h2><span class="close-modal" onclick="this.closest('.modal').remove()">×</span></div>
             <div class="modal-body">
                 <div class="form-group"><label>Type</label><select id="storyType"><option value="image">Image</option><option value="video">Vidéo</option><option value="text">Texte</option></select></div>
                 <div class="form-group"><label>Fichier (si image/vidéo)</label><input type="file" id="storyFile" accept="image/*,video/*"></div>
                 <div class="form-group"><label>Texte (si texte)</label><textarea id="storyText" rows="3"></textarea></div>
-                <button class="btn-create-story" onclick="uploadStory()">Publier la story</button>
+                <!-- Barre de progression -->
+                <div id="storyUploadProgress" style="display: none; margin-top: 10px;">
+                    <div style="background: #eee; border-radius: 20px; overflow: hidden;">
+                        <div id="storyProgressBar" style="width: 0%; height: 6px; background: var(--primary); transition: width 0.2s;"></div>
+                    </div>
+                    <p id="storyUploadPercent" style="font-size: 0.8rem; margin-top: 5px;">0%</p>
+                </div>
+                <button class="btn-create-story" id="publishStoryBtn" onclick="uploadStory()">Publier la story</button>
             </div>
         </div>
     `;
-    document.body.appendChild(modal);
-    modal.style.display = 'block';
+  document.body.appendChild(modal);
+  modal.style.display = 'block';
 }
 
 async function uploadStory() {
-    const type = document.getElementById('storyType').value;
-    const fileInput = document.getElementById('storyFile');
-    const text = document.getElementById('storyText').value.trim();
-    let mediaUrl = null;
-    if (type !== 'text' && fileInput.files.length) {
-        const file = fileInput.files[0];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${currentProfile.id}_story_${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabaseClient.storage
-            .from('player-posts')
-            .upload(fileName, file);
-        if (uploadError) {
-            showToast('Erreur upload : ' + uploadError.message, 'error');
-            return;
-        }
-        const { data: urlData } = supabaseClient.storage.from('player-posts').getPublicUrl(fileName);
-        mediaUrl = urlData.publicUrl;
+  const type = document.getElementById('storyType').value;
+  const fileInput = document.getElementById('storyFile');
+  const text = document.getElementById('storyText').value.trim();
+  const publishBtn = document.getElementById('publishStoryBtn');
+  const progressDiv = document.getElementById('storyUploadProgress');
+  const progressBar = document.getElementById('storyProgressBar');
+  const progressPercent = document.getElementById('storyUploadPercent');
+  
+  let mediaUrl = null;
+  
+  if (type !== 'text' && (!fileInput.files || !fileInput.files.length)) {
+    showToast('Veuillez sélectionner un fichier', 'warning');
+    return;
+  }
+  
+  // Désactiver le bouton et afficher la barre de progression
+  publishBtn.disabled = true;
+  publishBtn.innerHTML = '<span class="button-spinner"></span> Téléchargement...';
+  if (progressDiv) progressDiv.style.display = 'block';
+  if (progressBar) progressBar.style.width = '0%';
+  if (progressPercent) progressPercent.textContent = '0%';
+  
+  try {
+    if (type !== 'text') {
+      const file = fileInput.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentProfile.id}_story_${Date.now()}.${fileExt}`;
+      const bucket = 'player-posts';
+      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${fileName}`;
+      
+      // Upload avec progression via XMLHttpRequest
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`, true);
+        xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+        xhr.setRequestHeader('Authorization', `Bearer ${SUPABASE_ANON_KEY}`);
+        
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            if (progressBar) progressBar.style.width = `${percent}%`;
+            if (progressPercent) progressPercent.textContent = `${percent}%`;
+          }
+        };
+        
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            mediaUrl = publicUrl;
+            resolve();
+          } else {
+            reject(new Error(`Upload failed: ${xhr.statusText}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error('Upload network error'));
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        xhr.send(formData);
+      });
     }
+    
+    // Insérer la story dans la base
     const content = type === 'text' ? text : null;
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const { error } = await supabaseClient
-        .from('user_stories')
-        .insert({
-            user_id: currentProfile.id,
-            content_type: type,
-            content: content,
-            media_url: mediaUrl,
-            expires_at: expiresAt
-        });
-    if (error) {
-        showToast('Erreur : ' + error.message, 'error');
-    } else {
-        showToast('Story publiée', 'success');
-        document.querySelector('#tempStoryModal').remove();
-        await loadStories();
-    }
+      .from('user_stories')
+      .insert({
+        user_id: currentProfile.id,
+        content_type: type,
+        content: content,
+        media_url: mediaUrl,
+        expires_at: expiresAt
+      });
+    
+    if (error) throw error;
+    
+    showToast('Story publiée', 'success');
+    document.querySelector('#tempStoryModal')?.remove();
+    await loadStories();
+  } catch (error) {
+    showToast('Erreur : ' + error.message, 'error');
+  } finally {
+    // Réactiver le bouton et cacher la progression
+    publishBtn.disabled = false;
+    publishBtn.innerHTML = 'Publier la story';
+    if (progressDiv) progressDiv.style.display = 'none';
+    if (progressBar) progressBar.style.width = '0%';
+    if (progressPercent) progressPercent.textContent = '0%';
+  }
 }
 
 async function openStory(storyId) {
