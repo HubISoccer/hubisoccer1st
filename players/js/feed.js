@@ -1858,6 +1858,26 @@ async function hidePost(postId) {
     if (postCard) postCard.remove();
     showToast('Post masqué', 'success');
 }
+
+async function unhidePost(postId) {
+    const { error } = await supabaseClient
+        .from('unified_hidden')
+        .delete()
+        .eq('user_id', currentProfile.id)
+        .eq('post_id', postId);
+    if (error) {
+        showToast('Erreur : ' + error.message, 'error');
+    } else {
+        hiddenPosts.delete(postId);
+        showToast('Post réaffiché', 'success');
+        if (showingHidden) {
+            loadHiddenPosts();
+        } else {
+            loadPosts(true);
+        }
+    }
+}
+
 async function loadHiddenPosts() {
     showingHidden = true;
     document.getElementById('backToFeedBtn').style.display = 'block';
