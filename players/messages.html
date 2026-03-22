@@ -110,7 +110,9 @@
 
                 <!-- Zone de chat -->
                 <div class="chat-panel" id="chatPanel">
-                    <div class="chat-header" id="chatHeader"></div>
+                    <div class="chat-header" id="chatHeader">
+                        <!-- Le contenu sera généré par JS -->
+                    </div>
                     <div class="chat-messages-area" id="chatMessagesArea"></div>
                     <div class="chat-input-area" id="chatInputArea"></div>
                 </div>
@@ -118,7 +120,8 @@
         </div>
     </main>
 
-    <!-- MODALES -->
+    <!-- ========== MODALES ========== -->
+    <!-- Modale pour créer un groupe -->
     <div id="createGroupModal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h2>Créer un groupe</h2><span class="close-modal" onclick="closeCreateGroupModal()">×</span></div>
@@ -130,6 +133,7 @@
         </div>
     </div>
 
+    <!-- Modale pour sélectionner des messages à supprimer -->
     <div id="selectMessagesModal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h2>Sélectionner des messages</h2><span class="close-modal" onclick="closeSelectMessagesModal()">×</span></div>
@@ -145,6 +149,7 @@
         </div>
     </div>
 
+    <!-- Modale pour confirmer la suppression de la conversation -->
     <div id="deleteConvModal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h2>Supprimer la conversation</h2><span class="close-modal" onclick="closeDeleteConvModal()">×</span></div>
@@ -152,6 +157,7 @@
         </div>
     </div>
 
+    <!-- Modale pour lister les utilisateurs bloqués -->
     <div id="blockedUsersModal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h2>Utilisateurs bloqués</h2><span class="close-modal" onclick="closeBlockedUsersModal()">×</span></div>
@@ -159,10 +165,20 @@
         </div>
     </div>
 
+    <!-- Modale pour afficher les informations d'un utilisateur -->
     <div id="userInfoModal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h2>Informations</h2><span class="close-modal" onclick="closeUserInfoModal()">×</span></div>
             <div class="modal-body" id="userInfoContent"></div>
+        </div>
+    </div>
+
+    <!-- Modale pour zoomer sur une image/vidéo -->
+    <div id="mediaZoomModal" class="modal media-modal">
+        <div class="modal-content media-modal-content">
+            <span class="close-modal" onclick="closeMediaZoom()">×</span>
+            <div class="media-viewer" id="mediaViewer"></div>
+            <div class="media-caption" id="mediaCaption"></div>
         </div>
     </div>
 
@@ -191,10 +207,16 @@
         </div>
     </div>
 
+    <!-- BARRE DE PROGRESSION UPLOAD -->
     <div id="uploadProgress" class="upload-progress" style="display: none;"><div class="progress-bar" id="progressBar"></div><span id="progressPercent">0%</span></div>
+
+    <!-- LOADER GLOBAL -->
     <div id="globalLoader" class="global-loader" style="display: none;"><div class="spinner"></div></div>
+
+    <!-- TOASTS -->
     <div id="toastContainer" class="toast-container"></div>
 
+    <!-- FOOTER -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
