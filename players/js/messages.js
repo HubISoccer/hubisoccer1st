@@ -201,14 +201,23 @@ async function loadConversations() {
     }
 }
 
+// ===== RENDU DE LA LISTE DES CONVERSATIONS =====
 function renderConversationsList() {
     const container = document.getElementById('conversationsList');
     if (!container) return;
-    if (conversations.length === 0) {
+
+    // Filtre de recherche
+    const searchTerm = document.getElementById('searchConv')?.value.toLowerCase() || '';
+    let filtered = conversations;
+    if (searchTerm) {
+        filtered = conversations.filter(conv => conv.name.toLowerCase().includes(searchTerm));
+    }
+
+    if (filtered.length === 0) {
         container.innerHTML = '<div class="empty-conversations">Aucune conversation</div>';
         return;
     }
-    container.innerHTML = conversations.map(conv => `
+    container.innerHTML = filtered.map(conv => `
         <div class="conversation-item" data-conversation-id="${conv.id}">
             <div class="conversation-avatar">
                 <img src="${conv.avatar}" alt="${conv.name}">
@@ -220,17 +229,65 @@ function renderConversationsList() {
                 </div>
                 <div class="conversation-last">${conv.lastMessage?.content || 'Aucun message'}</div>
             </div>
+            <div class="conversation-actions">
+                <button class="archive-indiv-btn" data-conv-id="${conv.id}" title="${showingArchives ? 'Désarchiver' : 'Archiver'}"><i class="fas ${showingArchives ? 'fa-undo' : 'fa-archive'}"></i></button>
+            </div>
         </div>
     `).join('');
 
     document.querySelectorAll('.conversation-item').forEach(el => {
-        el.addEventListener('click', () => {
+        el.addEventListener('click', (e) => {
+            // Empêcher le clic sur le bouton d'archive de déclencher la sélection
+            if (e.target.closest('.archive-indiv-btn')) return;
             const convId = parseInt(el.dataset.conversationId);
             selectConversation(convId);
         });
+        const archiveBtn = el.querySelector('.archive-indiv-btn');
+        if (archiveBtn) {
+            archiveBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const convId = parseInt(archiveBtn.dataset.convId);
+                toggleArchiveConversation(convId);
+            });
+        }
     });
 }
 
+// ===== ARCHIVER/DÉSARCHIVER UNE CONVERSATION =====
+async function toggleArchiveConversation(conversationId) {
+    if (showingArchives) {
+        await unarchiveConversation(conversationId);
+    } else {
+        await archiveConversation(conversationId);
+    }
+    await loadConversations();
+    if (currentConversation && currentConversation.id === conversationId) {
+        currentConversation = null;
+        document.getElementById('chatHeader').innerHTML = '';
+        document.getElementById('chatMessagesArea').innerHTML = '';
+        document.getElementById('chatInputArea').innerHTML = '';
+    }
+}
+
+async function archiveConversation(conversationId) {
+    const { error } = await supabaseClient
+        .from('archived_conversations')
+        .insert({ user_id: currentProfile.id, conversation_id: conversationId });
+    if (error) showToast('Erreur lors de l\'archivage', 'error');
+    else showToast('Conversation archivée', 'success');
+}
+
+async function unarchiveConversation(conversationId) {
+    const { error } = await supabaseClient
+        .from('archived_conversations')
+        .delete()
+        .eq('user_id', currentProfile.id)
+        .eq('conversation_id', conversationId);
+    if (error) showToast('Erreur lors du désarchivage', 'error');
+    else showToast('Conversation désarchivée', 'success');
+}
+
+// ===== SÉLECTIONNER UNE CONVERSATION =====
 async function selectConversation(conversationId) {
     currentConversation = conversations.find(c => c.id === conversationId);
     if (!currentConversation) return;
@@ -306,6 +363,69 @@ function subscribeToMessages(conversationId) {
         .subscribe();
 }
 
+// ===== RENDU DE L'EN-TÊTE DU CHAT =====
+function renderChatHeader() {
+    const container = document.getElementById('chatHeader');
+    if (!container) return;
+    if (!currentConversation) {
+        container.innerHTML = '';
+        return;
+    }
+    const otherUserId = currentConversation.is_group ? null : currentConversation.participants?.find(p => p.user_id !== currentProfile.id)?.user_id;
+    container.innerHTML = `
+        <div class="chat-header-left">
+            <button class="back-btn" id="backToListBtn" style="display: none;"><i class="fas fa-arrow-left"></i></button>
+            <div class="chat-contact" onclick="${otherUserId ? `showUserInfo('${otherUserId}')` : ''}">
+                <div class="chat-contact-avatar">
+                    <img src="${currentConversation.avatar}" alt="${currentConversation.name}">
+                </div>
+                <div class="chat-contact-info">
+                    <h3>${currentConversation.name}</h3>
+                    <p>${currentConversation.is_group ? 'Groupe' : 'En ligne'}</p>
+                </div>
+            </div>
+        </div>
+        <div class="chat-actions">
+            <button class="chat-action-btn" id="selectMessagesBtn" title="Sélectionner des messages"><i class="fas fa-check-square"></i></button>
+            <button class="chat-action-btn danger" id="deleteConversationBtn" title="Supprimer la conversation"><i class="fas fa-trash-alt"></i></button>
+        </div>
+    `;
+
+    // Bouton retour mobile
+    const backBtn = document.getElementById('backToListBtn');
+    if (backBtn) {
+        backBtn.style.display = window.innerWidth <= 900 ? 'flex' : 'none';
+        backBtn.addEventListener('click', () => {
+            const panel = document.getElementById('conversationsPanel');
+            const chatPanel = document.getElementById('chatPanel');
+            if (panel && chatPanel) {
+                panel.classList.remove('hide');
+                chatPanel.classList.add('hide');
+            }
+        });
+    }
+
+    // Bouton sélection de messages
+    const selectBtn = document.getElementById('selectMessagesBtn');
+    if (selectBtn) selectBtn.addEventListener('click', openSelectMessagesModal);
+
+    // Bouton suppression conversation
+    const deleteConvBtn = document.getElementById('deleteConversationBtn');
+    if (deleteConvBtn) deleteConvBtn.addEventListener('click', () => {
+        document.getElementById('deleteConvModal').style.display = 'block';
+    });
+
+    // Gestion responsive : masquer/afficher les panneaux
+    if (window.innerWidth <= 900) {
+        const panel = document.getElementById('conversationsPanel');
+        const chatPanel = document.getElementById('chatPanel');
+        if (panel && chatPanel) {
+            panel.classList.remove('hide');
+            chatPanel.classList.add('hide');
+        }
+    }
+}
+
 // ===== RENDU DES MESSAGES =====
 function renderMessages() {
     const container = document.getElementById('chatMessagesArea');
@@ -351,6 +471,16 @@ function renderMessages() {
     });
     container.innerHTML = html;
     container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
 }
 
 // ===== ZONE DE SAISIE =====
@@ -507,7 +637,7 @@ function handleFileSelect(event) {
 
 // ===== AUDIO =====
 let mediaRecorderAudio = null;
-let audioChunksLocal = [];   // variable locale pour éviter conflit
+let audioChunksLocal = [];
 let recordingActive = false;
 let recordingStartTime = null;
 
@@ -743,27 +873,11 @@ async function deleteForEveryone() {
     hideContextMenu();
 }
 
-// ===== ARCHIVAGE =====
+// ===== ARCHIVAGE GLOBAL =====
 function toggleArchive() {
     showingArchives = !showingArchives;
     document.getElementById('archiveToggleText').textContent = showingArchives ? 'Conversations' : 'Archives';
     loadConversations();
-}
-async function archiveConversation(conversationId) {
-    const { error } = await supabaseClient
-        .from('archived_conversations')
-        .insert({ user_id: currentProfile.id, conversation_id: conversationId });
-    if (error) showToast('Erreur lors de l\'archivage', 'error');
-    else loadConversations();
-}
-async function unarchiveConversation(conversationId) {
-    const { error } = await supabaseClient
-        .from('archived_conversations')
-        .delete()
-        .eq('user_id', currentProfile.id)
-        .eq('conversation_id', conversationId);
-    if (error) showToast('Erreur lors du désarchivage', 'error');
-    else loadConversations();
 }
 
 // ===== BLOCAGE =====
@@ -920,12 +1034,35 @@ function closeUserInfoModal() {
     document.getElementById('userInfoModal').style.display = 'none';
 }
 
+// ===== ZOOM MÉDIA =====
+function openMediaZoom(url, type) {
+    const modal = document.getElementById('mediaZoomModal');
+    const viewer = document.getElementById('mediaViewer');
+    const captionDiv = document.getElementById('mediaCaption');
+    if (type === 'image') viewer.innerHTML = `<img src="${url}" alt="Zoom">`;
+    else viewer.innerHTML = `<video src="${url}" controls autoplay></video>`;
+    if (captionDiv) captionDiv.innerHTML = '';
+    modal.style.display = 'block';
+}
+function closeMediaZoom() {
+    document.getElementById('mediaZoomModal').style.display = 'none';
+}
+
+// ===== RECHERCHE EN TEMPS RÉEL =====
+function initSearch() {
+    const searchInput = document.getElementById('searchConv');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => renderConversationsList());
+    }
+}
+
 // ===== INITIALISATION =====
 async function init() {
     const user = await checkSession();
     if (!user) return;
     await loadProfile();
     await loadConversations();
+    initSearch();
 
     const urlParams = new URLSearchParams(window.location.search);
     const targetUserId = urlParams.get('to');
@@ -972,6 +1109,23 @@ async function init() {
     document.getElementById('blockedUsersBtn').addEventListener('click', loadBlockedUsers);
     document.getElementById('createGroupBtn').addEventListener('click', openCreateGroupModal);
     document.getElementById('confirmCreateGroup').addEventListener('click', createGroup);
+
+    // Gestion du responsive pour le retour
+    window.addEventListener('resize', () => {
+        if (window.innerWidth <= 900) {
+            const panel = document.getElementById('conversationsPanel');
+            const chatPanel = document.getElementById('chatPanel');
+            if (panel && chatPanel) {
+                if (currentConversation) {
+                    panel.classList.add('hide');
+                    chatPanel.classList.remove('hide');
+                } else {
+                    panel.classList.remove('hide');
+                    chatPanel.classList.add('hide');
+                }
+            }
+        }
+    });
 }
 
 // Exposer les fonctions globales
@@ -991,13 +1145,10 @@ window.deleteForEveryone = deleteForEveryone;
 window.cancelReply = cancelReply;
 window.toggleAudioRecorder = toggleAudioRecorder;
 window.sendMessage = sendMessage;
-window.openMediaZoom = (url, type) => {
-    const modal = document.getElementById('mediaZoomModal');
-    const viewer = document.getElementById('mediaViewer');
-    if (type === 'image') viewer.innerHTML = `<img src="${url}" alt="Zoom">`;
-    else viewer.innerHTML = `<video src="${url}" controls autoplay></video>`;
-    modal.style.display = 'block';
-};
-window.closeMediaZoom = () => document.getElementById('mediaZoomModal').style.display = 'none';
+window.openMediaZoom = openMediaZoom;
+window.closeMediaZoom = closeMediaZoom;
+window.showUserInfo = showUserInfo;
+window.closeUserInfoModal = closeUserInfoModal;
+window.unblockUser = unblockUser;
 
 document.addEventListener('DOMContentLoaded', init);
