@@ -512,6 +512,7 @@ async function loadPosts(reset = true) {
         const commentsCounts = await getCountsMap('unified_comments', 'post_id', postIds);
         const sharesCounts = await getCountsMap('unified_shares', 'post_id', postIds);
         const viewsCounts = await getCountsMap('post_views', 'post_id', postIds);
+        const dislikesCounts = await getCountsMap('unified_dislikes', 'post_id', postIds); // Ajout
 
         const newPosts = postsData.map(post => {
             const author = profilesMap[post.user_id];
@@ -530,6 +531,7 @@ async function loadPosts(reset = true) {
                 commentsCount: commentsCounts[post.id] || 0,
                 sharesCount: sharesCounts[post.id] || 0,
                 viewsCount: viewsCounts[post.id] || 0,
+                dislikesCount: dislikesCounts[post.id] || 0, // Ajout
                 isLiked: likedPosts.has(post.id),
                 isDisliked: dislikedPosts.has(post.id),
                 isSaved: savedPosts.has(post.id),
@@ -634,9 +636,9 @@ function renderPostCard(post, isHidden = false) {
     const authorName = post.author?.full_name || 'Anonyme';
     const roleBadge = post.author?.role ? `<span class="role-badge">${post.author.role}</span>` : '';
     const badges = post.author?.badges ? post.author.badges.map(b => `<span class="badge-mini">${b}</span>`).join('') : '';
-    const followButton = post.user_id !== currentProfile?.id ?
-        `<button class="follow-btn ${post.isFollowed ? 'following' : ''}" data-user-id="${post.user_id}" onclick="toggleFollow(this)">${post.isFollowed ? 'Abonné' : 'Suivre'}</button>` :
-        '';
+    const followButton = post.user_id !== currentProfile?.id 
+        ? `<button class="follow-btn ${post.isFollowed ? 'following' : ''}" data-user-id="${post.user_id}" onclick="toggleFollow(this)">${post.isFollowed ? 'Abonné' : 'Suivre'}</button>`
+        : '';
     const collectionIcon = post.collections?.length ? '<i class="fas fa-folder collection-icon" style="color: var(--gold); margin-left:5px;" title="Dans une collection"></i>' : '';
     const menu = `
         <div class="post-menu">
@@ -684,6 +686,45 @@ function renderPostCard(post, isHidden = false) {
             <div class="comments-section" id="comments-${post.id}"></div>
         </div>
     `;
+}
+
+function renderPosts() {
+    const feed = document.getElementById('postsFeed');
+    if (!feed) return;
+
+    let filteredPosts = window.filteredPosts || [...posts];
+    if (currentFilter === 'following') {
+        const followingIds = following.map(f => f.following_id);
+        filteredPosts = filteredPosts.filter(p => followingIds.includes(p.user_id));
+    } else if (currentFilter === 'saved') {
+        if (currentCollection === 'default') {
+            filteredPosts = filteredPosts.filter(p => savedPosts.has(p.id));
+        } else {
+            const collection = collections.find(c => c.id === currentCollection);
+            if (collection) {
+                filteredPosts = filteredPosts.filter(p => p.collections?.includes(currentCollection));
+            }
+        }
+    }
+    if (searchTerm) {
+        filteredPosts = filteredPosts.filter(p => 
+            p.content?.toLowerCase().includes(searchTerm) ||
+            p.author?.full_name?.toLowerCase().includes(searchTerm) ||
+            p.author?.username?.toLowerCase().includes(searchTerm)
+        );
+    }
+
+    if (filteredPosts.length === 0) {
+        feed.innerHTML = '<p class="no-data">Aucun post à afficher.</p>';
+        return;
+    }
+
+    let html = '';
+    filteredPosts.forEach(post => {
+        html += renderPostCard(post);
+    });
+    feed.innerHTML = html;
+    observePostsForViews();
 }
 
 // ==================== COMMENTAIRES ====================
@@ -1022,6 +1063,11 @@ async function dislikePost(postId) {
             await likePost(postId);
         }
     }
+    const postIndex = posts.findIndex(p => p.id == postId);
+    if (postIndex !== -1) {
+        posts[postIndex].isDisliked = dislikedPosts.has(postId);
+        posts[postIndex].dislikesCount = dislikedPosts.has(postId) ? posts[postIndex].dislikesCount + 1 : posts[postIndex].dislikesCount - 1;
+    }
 }
 
 async function showLikes(postId) {
@@ -1155,17 +1201,16 @@ function renderStories() {
 }
 
 function openStoryUploadModal() {
-  const modal = document.createElement('div');
-  modal.className = 'modal';
-  modal.id = 'tempStoryModal';
-  modal.innerHTML = `
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'tempStoryModal';
+    modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header"><h2>Ajouter une story</h2><span class="close-modal" onclick="this.closest('.modal').remove()">×</span></div>
             <div class="modal-body">
                 <div class="form-group"><label>Type</label><select id="storyType"><option value="image">Image</option><option value="video">Vidéo</option><option value="text">Texte</option></select></div>
                 <div class="form-group"><label>Fichier (si image/vidéo)</label><input type="file" id="storyFile" accept="image/*,video/*"></div>
                 <div class="form-group"><label>Texte (si texte)</label><textarea id="storyText" rows="3"></textarea></div>
-                <!-- Barre de progression -->
                 <div id="storyUploadProgress" style="display: none; margin-top: 10px;">
                     <div style="background: #eee; border-radius: 20px; overflow: hidden;">
                         <div id="storyProgressBar" style="width: 0%; height: 6px; background: var(--primary); transition: width 0.2s;"></div>
@@ -1176,8 +1221,8 @@ function openStoryUploadModal() {
             </div>
         </div>
     `;
-  document.body.appendChild(modal);
-  modal.style.display = 'block';
+    document.body.appendChild(modal);
+    modal.style.display = 'block';
 }
 
 async function uploadStory() {
@@ -1194,7 +1239,6 @@ async function uploadStory() {
         return;
     }
 
-    // Désactiver le bouton et afficher un message de chargement
     publishBtn.disabled = true;
     publishBtn.innerHTML = '<span class="button-spinner"></span> Téléchargement...';
     if (progressDiv) progressDiv.style.display = 'block';
@@ -1205,7 +1249,6 @@ async function uploadStory() {
             const fileExt = file.name.split('.').pop();
             const fileName = `${currentProfile.id}_story_${Date.now()}.${fileExt}`;
 
-            // Upload via Supabase (méthode qui fonctionne)
             const { error: uploadError } = await supabaseClient.storage
                 .from('player-posts')
                 .upload(fileName, file);
@@ -1237,7 +1280,6 @@ async function uploadStory() {
     } catch (error) {
         showToast('Erreur : ' + error.message, 'error');
     } finally {
-        // Réactiver le bouton et masquer l'indicateur
         publishBtn.disabled = false;
         publishBtn.innerHTML = 'Publier la story';
         if (progressDiv) progressDiv.style.display = 'none';
@@ -1267,7 +1309,6 @@ async function openStory(storyId) {
         <button class="story-next" onclick="nextStory()"><i class="fas fa-chevron-right"></i></button>
         ${contentHtml}
     `;
-    // Bouton de suppression si propriétaire
     if (story.user_id === currentProfile.id) {
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'story-delete';
@@ -1320,7 +1361,6 @@ function startStoryTimer(story) {
     const bar = document.getElementById('storyProgressBar');
     if (!bar) return;
 
-    // Si c'est une vidéo, on écoute la fin et on ne lance pas de timer
     const video = document.querySelector('#storyViewer video');
     if (video && story.content_type === 'video') {
         video.addEventListener('ended', () => nextStory());
@@ -1328,7 +1368,6 @@ function startStoryTimer(story) {
         return;
     }
 
-    // Pour image ou texte : timer de 10 minutes (600000 ms)
     bar.style.width = '0%';
     bar.style.transition = 'none';
     setTimeout(() => {
@@ -1499,7 +1538,7 @@ function publishFromPreview() {
     closePreview();
 }
 
-// ==================== PUBLICATION (avec progression) ====================
+// ==================== PUBLICATION ====================
 async function createPost(content, file) {
     let mediaUrl = null, mediaType = null;
     if (file) {
@@ -1534,7 +1573,6 @@ async function createPost(content, file) {
         document.getElementById('postContent').value = '';
         document.getElementById('mediaInput').value = '';
         cancelMedia();
-        // Ajouter localement le nouveau post en haut du fil
         const newPost = {
             ...data,
             author: currentProfile,
@@ -1542,6 +1580,7 @@ async function createPost(content, file) {
             commentsCount: 0,
             sharesCount: 0,
             viewsCount: 0,
+            dislikesCount: 0,
             isLiked: false,
             isDisliked: false,
             isSaved: false,
@@ -1673,7 +1712,6 @@ function closeInviteModal() {
 async function sendInvite() {
     const email = document.getElementById('inviteEmail').value.trim();
     if (!email) return;
-    // Simuler envoi (à implémenter avec un vrai service)
     showToast(`Invitation envoyée à ${email}`, 'success');
     closeInviteModal();
 }
@@ -2043,7 +2081,6 @@ async function loadFollowers() {
         if (following.length === 0) followingList.innerHTML = '<li>Aucun abonnement</li>';
     }
 
-    // Suggestions : profils non suivis
     const { data: suggestionsData } = await supabaseClient
         .from('profiles')
         .select('id, full_name, avatar_url, username')
@@ -2060,7 +2097,6 @@ async function loadFollowers() {
         `).join('');
     }
 
-    // Tendances : hashtags populaires (simplifié)
     const { data: trendsData } = await supabaseClient
         .from('unified_posts')
         .select('content')
@@ -2185,6 +2221,7 @@ async function pinPost() {
         commentsCount: 0,
         sharesCount: 0,
         viewsCount: 0,
+        dislikesCount: 0,
         isLiked: false,
         isDisliked: false,
         isSaved: false,
@@ -2412,7 +2449,6 @@ async function init() {
     subscribeToNewPosts();
     initLanguage();
 
-    // Boutons de la zone de publication (sécurisés)
     const attachMediaBtn = document.getElementById('attachMediaBtn');
     if (attachMediaBtn) {
         attachMediaBtn.addEventListener('click', () => {
@@ -2456,7 +2492,6 @@ async function init() {
     const pinPostBtn = document.getElementById('pinPostBtn');
     if (pinPostBtn) pinPostBtn.addEventListener('click', pinPost);
 
-    // Posts masqués
     const showHiddenPosts = document.getElementById('showHiddenPosts');
     if (showHiddenPosts) {
         showHiddenPosts.addEventListener('click', (e) => {
@@ -2470,61 +2505,49 @@ async function init() {
         if (backButton) backButton.addEventListener('click', backToFeed);
     }
 
-    // Édition du profil
     const editProfileForm = document.getElementById('editProfileForm');
     if (editProfileForm) editProfileForm.addEventListener('submit', saveProfileChanges);
     const editProfileBtn = document.getElementById('editProfileBtn');
     if (editProfileBtn) editProfileBtn.addEventListener('click', openEditProfileModal);
 
-    // Notifications
     const notifIcon = document.getElementById('notifIcon');
     if (notifIcon) notifIcon.addEventListener('click', openNotificationsModal);
     const markAllRead = document.getElementById('markAllRead');
     if (markAllRead) markAllRead.addEventListener('click', markAllNotificationsAsRead);
 
-    // Collections
     const createCollectionBtn = document.getElementById('createCollectionBtn');
     if (createCollectionBtn) createCollectionBtn.addEventListener('click', openCreateCollectionModal);
 
-    // Sondage
     const pollBtn = document.getElementById('pollBtn');
     if (pollBtn) pollBtn.addEventListener('click', openPollModal);
     const submitPoll = document.getElementById('submitPoll');
     if (submitPoll) submitPoll.addEventListener('click', createPoll);
 
-    // Confidentialité
     const privacyBtn = document.getElementById('privacyBtn');
     if (privacyBtn) privacyBtn.addEventListener('click', openPrivacyModal);
     const savePrivacyBtn = document.getElementById('savePrivacy');
     if (savePrivacyBtn) savePrivacyBtn.addEventListener('click', savePrivacy);
 
-    // Invitations
     const inviteBtn = document.getElementById('inviteBtn');
     if (inviteBtn) inviteBtn.addEventListener('click', openInviteModal);
     const sendInviteBtn = document.getElementById('sendInvite');
     if (sendInviteBtn) sendInviteBtn.addEventListener('click', sendInvite);
 
-    // Historique
     const historyBtn = document.getElementById('historyBtn');
     if (historyBtn) historyBtn.addEventListener('click', showPersonalHistory);
 
-    // Événement
     const eventBtn = document.getElementById('eventBtn');
     if (eventBtn) eventBtn.addEventListener('click', openEventModal);
 
-    // Charger plus
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     if (loadMoreBtn) loadMoreBtn.addEventListener('click', loadMorePosts);
 
-    // Modale de zoom média
     const closeZoom = document.querySelector('#mediaZoomModal .close-modal');
     if (closeZoom) closeZoom.addEventListener('click', closeMediaZoom);
 
-    // Emarket
     const emarketBtn = document.getElementById('emarketBtn');
     if (emarketBtn) emarketBtn.addEventListener('click', openEmarketModal);
 
-    // Exposer les fonctions globales
     window.closePreview = closePreview;
     window.publishFromPreview = publishFromPreview;
     window.openUserProfile = openUserProfile;
