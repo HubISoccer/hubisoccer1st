@@ -11,10 +11,11 @@ let currentConversation = null;
 let messages = [];
 let messageSubscription = null;
 let typingTimeout = null;
+let selectedMessage = null;
 let pendingReply = null;
 let showingArchives = false;
 let mediaRecorder = null;
-let audioChunksLocal = [];
+let audioChunks = [];         // utilisé uniquement dans la partie audio (global)
 let recordingTimer = null;
 let recordingSeconds = 0;
 let currentUploadController = null;
@@ -165,7 +166,8 @@ async function loadConversations() {
                 .eq('conversation_id', conv.id);
             if (partError2) console.error(partError2);
 
-            let name = '', avatar = '';
+            let name = '';
+            let avatar = '';
             if (conv.is_group) {
                 name = conv.group_name || 'Groupe';
                 avatar = conv.group_avatar || 'img/group-default.jpg';
@@ -351,16 +353,6 @@ function renderMessages() {
     container.scrollTop = container.scrollHeight;
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
-}
-
 // ===== ZONE DE SAISIE =====
 function initChatInput() {
     const container = document.getElementById('chatInputArea');
@@ -515,6 +507,7 @@ function handleFileSelect(event) {
 
 // ===== AUDIO =====
 let mediaRecorderAudio = null;
+let audioChunksLocal = [];   // variable locale pour éviter conflit
 let recordingActive = false;
 let recordingStartTime = null;
 
@@ -927,49 +920,6 @@ function closeUserInfoModal() {
     document.getElementById('userInfoModal').style.display = 'none';
 }
 
-function renderChatHeader() {
-    const header = document.getElementById('chatHeader');
-    if (!header || !currentConversation) return;
-    header.innerHTML = `
-        <div class="chat-header-left">
-            <button class="back-btn" id="backToConversationsBtn" onclick="closeCurrentConversation()"><i class="fas fa-arrow-left"></i></button>
-            <div class="chat-contact">
-                <div class="chat-contact-avatar"><img src="${currentConversation.avatar}" alt="${currentConversation.name}"></div>
-                <div class="chat-contact-info">
-                    <h3>${currentConversation.name}</h3>
-                    <p>${currentConversation.is_group ? 'Groupe' : 'En ligne'}</p>
-                </div>
-            </div>
-        </div>
-        <div class="chat-actions">
-            <button class="chat-action-btn" onclick="showUserInfo(${currentConversation.is_group ? null : getOtherParticipantId()})" title="Infos"><i class="fas fa-info-circle"></i></button>
-            <button class="chat-action-btn" onclick="archiveConversation(${currentConversation.id})" title="Archiver"><i class="fas fa-archive"></i></button>
-            <button class="chat-action-btn" onclick="openSelectMessagesModal()" title="Sélectionner"><i class="fas fa-check-double"></i></button>
-            <button class="chat-action-btn danger" onclick="openDeleteConvModal()" title="Supprimer"><i class="fas fa-trash-alt"></i></button>
-        </div>
-    `;
-    document.getElementById('backToConversationsBtn')?.addEventListener('click', () => {
-        currentConversation = null;
-        document.getElementById('chatHeader').innerHTML = '';
-        document.getElementById('chatMessagesArea').innerHTML = '';
-        document.getElementById('chatInputArea').innerHTML = '';
-    });
-}
-
-function openDeleteConvModal() {
-    document.getElementById('deleteConvModal').style.display = 'block';
-}
-
-function getOtherParticipantId() {
-    // À implémenter si nécessaire
-    return null;
-}
-
-function closeCurrentConversation() {
-    currentConversation = null;
-    renderConversationsList();
-}
-
 // ===== INITIALISATION =====
 async function init() {
     const user = await checkSession();
@@ -980,7 +930,6 @@ async function init() {
     const urlParams = new URLSearchParams(window.location.search);
     const targetUserId = urlParams.get('to');
     if (targetUserId) {
-        // Vérifier si une conversation existe déjà
         const { data: existing } = await supabaseClient
             .from('conversation_participants')
             .select('conversation_id')
@@ -1050,12 +999,5 @@ window.openMediaZoom = (url, type) => {
     modal.style.display = 'block';
 };
 window.closeMediaZoom = () => document.getElementById('mediaZoomModal').style.display = 'none';
-window.showUserInfo = showUserInfo;
-window.closeUserInfoModal = closeUserInfoModal;
-window.blockUser = blockUser;
-window.unblockUser = unblockUser;
-window.archiveConversation = archiveConversation;
-window.unarchiveConversation = unarchiveConversation;
-window.closeCurrentConversation = closeCurrentConversation;
 
 document.addEventListener('DOMContentLoaded', init);
