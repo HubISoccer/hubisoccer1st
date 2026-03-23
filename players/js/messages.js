@@ -1062,6 +1062,47 @@ async function init() {
     if (!user) return;
     await loadProfile();
     await loadConversations();
+    
+        // ==== CRÉER UNE CONVERSATION DE BIENVENUE AVEC LE SUPPORT SI AUCUNE CONVERSATION ====
+    if (conversations.length === 0) {
+        const supportId = '2c6c8e5b-2d13-4648-b656-8ca782806bdb';
+        const { data: supportProfile, error: supportError } = await supabaseClient
+            .from('profiles')
+            .select('id')
+            .eq('id', supportId)
+            .single();
+        if (supportError) {
+            console.warn('Profil support introuvable :', supportError);
+        } else {
+            const { data: newConv, error: convError } = await supabaseClient
+                .from('conversations')
+                .insert({ is_group: false })
+                .select()
+                .single();
+            if (!convError && newConv) {
+                await supabaseClient
+                    .from('conversation_participants')
+                    .insert([
+                        { conversation_id: newConv.id, user_id: currentProfile.id },
+                        { conversation_id: newConv.id, user_id: supportId }
+                    ]);
+                const welcomeMessage = "👋 Bienvenue sur HubISoccer ! Je suis l'assistant support. N'hésitez pas à m'écrire si vous avez des questions, des problèmes ou des suggestions. Bonne aventure sportive ! ⚽";
+                await supabaseClient
+                    .from('messages')
+                    .insert({
+                        conversation_id: newConv.id,
+                        user_id: supportId,
+                        content: welcomeMessage,
+                        deleted_for: []
+                    });
+                await loadConversations(); // recharger pour afficher la nouvelle conversation
+                showToast('Une conversation de bienvenue a été créée avec le support', 'info');
+            } else {
+                console.error('Erreur création conversation support :', convError);
+            }
+        }
+    }
+    
     initSearch();
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -1152,3 +1193,7 @@ window.closeUserInfoModal = closeUserInfoModal;
 window.unblockUser = unblockUser;
 
 document.addEventListener('DOMContentLoaded', init);
+
+
+
+
