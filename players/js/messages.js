@@ -292,7 +292,7 @@ async function selectConversation(conversationId) {
     currentConversation = conversations.find(c => c.id === conversationId);
     if (!currentConversation) return;
     await loadMessages(conversationId);
-    await markConversationAsRead(conversationId);
+    await markMessagesAsRead(conversationId);
     renderChatHeader();
     renderMessages();
     initChatInput();
