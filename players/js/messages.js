@@ -10,16 +10,12 @@ let conversations = [];
 let currentConversation = null;
 let messages = [];
 let messageSubscription = null;
-let typingTimeout = null;
-let selectedMessage = null;
 let pendingReply = null;
 let showingArchives = false;
 let mediaRecorder = null;
-let audioChunks = [];         // utilisé uniquement dans la partie audio (global)
+let audioChunks = [];
 let recordingTimer = null;
 let recordingSeconds = 0;
-let currentUploadController = null;
-let selectedMessagesForDelete = new Set();
 let pendingMediaFile = null;
 let pendingAudioBlob = null;
 let emojiPickerVisible = false;
@@ -76,7 +72,7 @@ function withButtonSpinner(button, asyncFn) {
     }
 }
 
-// ===== VÉRIFICATION DE SESSION =====
+// ===== SESSION ET PROFIL =====
 async function checkSession() {
     const { data: { session }, error } = await supabaseClient.auth.getSession();
     if (error || !session) {
@@ -87,7 +83,6 @@ async function checkSession() {
     return currentUser;
 }
 
-// ===== CHARGEMENT DU PROFIL =====
 async function loadProfile() {
     const { data, error } = await supabaseClient
         .from('profiles')
@@ -105,7 +100,7 @@ async function loadProfile() {
     return currentProfile;
 }
 
-// ===== CHARGEMENT DES CONVERSATIONS =====
+// ===== CONVERSATIONS =====
 async function loadConversations() {
     showLoader(true);
     try {
@@ -201,12 +196,10 @@ async function loadConversations() {
     }
 }
 
-// ===== RENDU DE LA LISTE DES CONVERSATIONS =====
 function renderConversationsList() {
     const container = document.getElementById('conversationsList');
     if (!container) return;
 
-    // Filtre de recherche
     const searchTerm = document.getElementById('searchConv')?.value.toLowerCase() || '';
     let filtered = conversations;
     if (searchTerm) {
@@ -235,25 +228,10 @@ function renderConversationsList() {
         </div>
     `).join('');
 
-    document.querySelectorAll('.conversation-item').forEach(el => {
-        el.addEventListener('click', (e) => {
-            // Empêcher le clic sur le bouton d'archive de déclencher la sélection
-            if (e.target.closest('.archive-indiv-btn')) return;
-            const convId = parseInt(el.dataset.conversationId);
-            selectConversation(convId);
-        });
-        const archiveBtn = el.querySelector('.archive-indiv-btn');
-        if (archiveBtn) {
-            archiveBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const convId = parseInt(archiveBtn.dataset.convId);
-                toggleArchiveConversation(convId);
-            });
-        }
-    });
+    // Les événements sont gérés par délégation dans init()
 }
 
-// ===== ARCHIVER/DÉSARCHIVER UNE CONVERSATION =====
+// ===== ARCHIVAGE INDIVIDUEL =====
 async function toggleArchiveConversation(conversationId) {
     if (showingArchives) {
         await unarchiveConversation(conversationId);
@@ -287,7 +265,7 @@ async function unarchiveConversation(conversationId) {
     else showToast('Conversation désarchivée', 'success');
 }
 
-// ===== SÉLECTIONNER UNE CONVERSATION =====
+// ===== SÉLECTION D'UNE CONVERSATION =====
 async function selectConversation(conversationId) {
     currentConversation = conversations.find(c => c.id === conversationId);
     if (!currentConversation) return;
@@ -298,7 +276,7 @@ async function selectConversation(conversationId) {
     initChatInput();
 }
 
-// ===== CHARGEMENT DES MESSAGES =====
+// ===== MESSAGES =====
 async function loadMessages(conversationId) {
     showLoader(true);
     try {
@@ -363,14 +341,10 @@ function subscribeToMessages(conversationId) {
         .subscribe();
 }
 
-// ===== RENDU DE L'EN-TÊTE DU CHAT =====
 function renderChatHeader() {
     const container = document.getElementById('chatHeader');
-    if (!container) return;
-    if (!currentConversation) {
-        container.innerHTML = '';
-        return;
-    }
+    if (!container || !currentConversation) return;
+
     const otherUserId = currentConversation.is_group ? null : currentConversation.participants?.find(p => p.user_id !== currentProfile.id)?.user_id;
     container.innerHTML = `
         <div class="chat-header-left">
@@ -391,7 +365,6 @@ function renderChatHeader() {
         </div>
     `;
 
-    // Bouton retour mobile
     const backBtn = document.getElementById('backToListBtn');
     if (backBtn) {
         backBtn.style.display = window.innerWidth <= 900 ? 'flex' : 'none';
@@ -405,17 +378,14 @@ function renderChatHeader() {
         });
     }
 
-    // Bouton sélection de messages
     const selectBtn = document.getElementById('selectMessagesBtn');
     if (selectBtn) selectBtn.addEventListener('click', openSelectMessagesModal);
 
-    // Bouton suppression conversation
     const deleteConvBtn = document.getElementById('deleteConversationBtn');
     if (deleteConvBtn) deleteConvBtn.addEventListener('click', () => {
         document.getElementById('deleteConvModal').style.display = 'block';
     });
 
-    // Gestion responsive : masquer/afficher les panneaux
     if (window.innerWidth <= 900) {
         const panel = document.getElementById('conversationsPanel');
         const chatPanel = document.getElementById('chatPanel');
@@ -426,7 +396,6 @@ function renderChatHeader() {
     }
 }
 
-// ===== RENDU DES MESSAGES =====
 function renderMessages() {
     const container = document.getElementById('chatMessagesArea');
     if (!container) return;
@@ -483,7 +452,7 @@ function escapeHtml(str) {
     });
 }
 
-// ===== ZONE DE SAISIE =====
+// ===== SAISIE DE MESSAGE =====
 function initChatInput() {
     const container = document.getElementById('chatInputArea');
     if (!container) return;
@@ -535,7 +504,6 @@ function cancelReply() {
     document.getElementById('replyIndicator').style.display = 'none';
 }
 
-// ===== ENVOI DE MESSAGE =====
 async function sendMessage() {
     const input = document.getElementById('messageInput');
     const content = input.value.trim();
@@ -616,7 +584,7 @@ async function sendMessage() {
     });
 }
 
-// ===== GESTION DES MÉDIAS =====
+// ===== MÉDIAS, AUDIO, ÉMOJIS, ETC. (inchangés mais doivent être présents) =====
 function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -635,7 +603,6 @@ function handleFileSelect(event) {
     previewDiv.style.display = 'block';
 }
 
-// ===== AUDIO =====
 let mediaRecorderAudio = null;
 let audioChunksLocal = [];
 let recordingActive = false;
@@ -712,7 +679,6 @@ document.getElementById('cancelAudioBtn')?.addEventListener('click', () => {
     document.getElementById('audioRecorder').style.display = 'none';
 });
 
-// ===== ÉMOJIS ET STICKERS =====
 function toggleEmojiPicker() {
     if (!emojiPickerVisible) showEmojiPicker();
     else hideEmojiPicker();
@@ -1038,10 +1004,8 @@ function closeUserInfoModal() {
 function openMediaZoom(url, type) {
     const modal = document.getElementById('mediaZoomModal');
     const viewer = document.getElementById('mediaViewer');
-    const captionDiv = document.getElementById('mediaCaption');
     if (type === 'image') viewer.innerHTML = `<img src="${url}" alt="Zoom">`;
     else viewer.innerHTML = `<video src="${url}" controls autoplay></video>`;
-    if (captionDiv) captionDiv.innerHTML = '';
     modal.style.display = 'block';
 }
 function closeMediaZoom() {
@@ -1056,14 +1020,14 @@ function initSearch() {
     }
 }
 
-// ===== INITIALISATION =====
+// ===== INITIALISATION PRINCIPALE =====
 async function init() {
     const user = await checkSession();
     if (!user) return;
     await loadProfile();
     await loadConversations();
-    
-        // ==== CRÉER UNE CONVERSATION DE BIENVENUE AVEC LE SUPPORT SI AUCUNE CONVERSATION ====
+
+    // ==== CRÉER UNE CONVERSATION DE BIENVENUE AVEC LE SUPPORT SI AUCUNE CONVERSATION ====
     if (conversations.length === 0) {
         const supportId = '2c6c8e5b-2d13-4648-b656-8ca782806bdb';
         const { data: supportProfile, error: supportError } = await supabaseClient
@@ -1102,7 +1066,7 @@ async function init() {
             }
         }
     }
-    
+
     initSearch();
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -1151,7 +1115,28 @@ async function init() {
     document.getElementById('createGroupBtn').addEventListener('click', openCreateGroupModal);
     document.getElementById('confirmCreateGroup').addEventListener('click', createGroup);
 
-    // Gestion du responsive pour le retour
+    // Délégation des clics sur les conversations (plus robuste)
+    const convList = document.getElementById('conversationsList');
+    if (convList) {
+        convList.addEventListener('click', (e) => {
+            const item = e.target.closest('.conversation-item');
+            if (!item) return;
+            if (e.target.closest('.archive-indiv-btn')) return;
+            const convId = parseInt(item.dataset.conversationId);
+            if (convId) selectConversation(convId);
+        });
+        // Archivage individuel via délégation
+        convList.addEventListener('click', async (e) => {
+            const archiveBtn = e.target.closest('.archive-indiv-btn');
+            if (archiveBtn) {
+                e.stopPropagation();
+                const convId = parseInt(archiveBtn.dataset.convId);
+                if (convId) await toggleArchiveConversation(convId);
+            }
+        });
+    }
+
+    // Gestion responsive
     window.addEventListener('resize', () => {
         if (window.innerWidth <= 900) {
             const panel = document.getElementById('conversationsPanel');
