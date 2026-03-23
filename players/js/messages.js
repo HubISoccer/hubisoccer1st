@@ -1193,7 +1193,3 @@ window.closeUserInfoModal = closeUserInfoModal;
 window.unblockUser = unblockUser;
 
 document.addEventListener('DOMContentLoaded', init);
-
-
-
-
