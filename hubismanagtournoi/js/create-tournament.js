@@ -1,136 +1,178 @@
 // ===== GESTION DE LA CRÉATION DE TOURNOI =====
+// ===== ÉLÉMENTS DOM =====
+const form = document.getElementById('createTournamentForm');
+const backBtn = document.getElementById('backBtn');
+const cancelBtn = document.getElementById('cancelBtn');
+const sportSelect = document.getElementById('sportId');
+const typeSelect = document.getElementById('tournamentType');
+const tournamentName = document.getElementById('tournamentName');
+const registrationCode = document.getElementById('registrationCode');
+const description = document.getElementById('description');
+const startDate = document.getElementById('startDate');
+const endDate = document.getElementById('endDate');
+const location = document.getElementById('location');
+const prizePool = document.getElementById('prizePool');
+const requiresFirstPas = document.getElementById('requiresFirstPas');
+const rules = document.getElementById('rules');
+const streamUrl = document.getElementById('streamUrl');
 
-let tournamentTypes = [];
-let sports = [];
-let currentType = null;
-
-async function loadFormData() {
-    try {
-        const [typesRes, sportsRes] = await Promise.all([
-            supabaseGestionTournoi.from('gestionnairetournoi_types').select('id, name, label, requires_payment'),
-            supabaseGestionTournoi.from('gestionnairetournoi_sports').select('id, name').order('name')
-        ]);
-        if (typesRes.error) throw typesRes.error;
-        if (sportsRes.error) throw sportsRes.error;
-        tournamentTypes = typesRes.data;
-        sports = sportsRes.data;
-
-        const typeSelect = document.getElementById('tournamentType');
-        typeSelect.innerHTML = '<option value="">Sélectionnez un type</option>';
-        tournamentTypes.forEach(t => {
-            const option = document.createElement('option');
-            option.value = t.id;
-            option.textContent = t.label;
-            typeSelect.appendChild(option);
-        });
-
-        const sportSelect = document.getElementById('sport');
-        sportSelect.innerHTML = '<option value="">Sélectionnez un sport</option>';
-        sports.forEach(s => {
-            const option = document.createElement('option');
-            option.value = s.id;
-            option.textContent = s.name;
-            sportSelect.appendChild(option);
-        });
-    } catch (error) {
+// ===== CHARGEMENT DES SPORTS ET TYPES =====
+async function loadSports() {
+    const { data, error } = await supabaseGestionTournoi
+        .from('gestionnairetournoi_sports')
+        .select('id, name')
+        .order('name');
+    if (error) {
         console.error(error);
-        showToast('Erreur lors du chargement des données', 'error');
-    }
-}
-
-function onTypeChange() {
-    const typeId = parseInt(document.getElementById('tournamentType').value);
-    currentType = tournamentTypes.find(t => t.id === typeId);
-    const requiresPayment = currentType ? currentType.requires_payment : false;
-    const paymentInfo = document.getElementById('paymentInfo');
-    if (requiresPayment) {
-        paymentInfo.classList.add('active');
-    } else {
-        paymentInfo.classList.remove('active');
-    }
-}
-
-async function createTournament(event) {
-    event.preventDefault();
-    const submitBtn = document.querySelector('.btn-submit');
-    submitBtn.disabled = true;
-
-    const typeId = parseInt(document.getElementById('tournamentType').value);
-    const sportId = parseInt(document.getElementById('sport').value);
-    const name = document.getElementById('name').value.trim();
-    const description = document.getElementById('description').value.trim();
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
-    const location = document.getElementById('location').value.trim();
-    const rules = document.getElementById('rules').value.trim();
-    const registrationCode = document.getElementById('registrationCode').value.trim();
-    const prizePool = parseFloat(document.getElementById('prizePool').value) || 0;
-    const streamUrl = document.getElementById('streamUrl').value.trim();
-    const requiresFirstPas = document.getElementById('requiresFirstPas')?.checked || false;
-    const hasAgreedToRules = document.getElementById('hasAgreedToRules')?.checked || false;
-
-    if (!typeId || !sportId || !name || !startDate || !endDate || !location) {
-        showToast('Veuillez remplir tous les champs obligatoires', 'warning');
-        submitBtn.disabled = false;
+        showToast('Erreur chargement des sports', 'error');
         return;
     }
+    sportSelect.innerHTML = '<option value="">-- Sélectionner un sport --</option>';
+    data.forEach(sport => {
+        const option = document.createElement('option');
+        option.value = sport.id;
+        option.textContent = sport.name;
+        sportSelect.appendChild(option);
+    });
+}
 
-    if (new Date(startDate) > new Date(endDate)) {
-        showToast('La date de fin doit être postérieure à la date de début', 'warning');
-        submitBtn.disabled = false;
+async function loadTournamentTypes() {
+    const { data, error } = await supabaseGestionTournoi
+        .from('gestionnairetournoi_types')
+        .select('id, name, label, requires_payment')
+        .order('name');
+    if (error) {
+        console.error(error);
+        showToast('Erreur chargement des types', 'error');
+        return;
+    }
+    typeSelect.innerHTML = '<option value="">-- Sélectionner un type --</option>';
+    data.forEach(type => {
+        const option = document.createElement('option');
+        option.value = type.id;
+        option.textContent = type.label || type.name;
+        option.setAttribute('data-requires-payment', type.requires_payment);
+        typeSelect.appendChild(option);
+    });
+}
+
+// ===== VÉRIFICATION DU PAIEMENT POUR LES TOURNOIS PRIVÉS SIMPLES =====
+let requiresPayment = false;
+typeSelect.addEventListener('change', () => {
+    const selectedOption = typeSelect.options[typeSelect.selectedIndex];
+    const paymentRequired = selectedOption?.getAttribute('data-requires-payment') === 'true';
+    if (paymentRequired) {
+        // Afficher une modale de paiement (simplifié ici)
+        if (confirm('Les tournois privés simples nécessitent un paiement. Voulez-vous procéder au paiement après la création ?')) {
+            requiresPayment = true;
+        } else {
+            typeSelect.value = '';
+            requiresPayment = false;
+            showToast('Vous devez accepter le paiement pour créer un tournoi privé simple', 'warning');
+        }
+    } else {
+        requiresPayment = false;
+    }
+});
+
+// ===== SOUMISSION DU FORMULAIRE =====
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    // Validation
+    if (!tournamentName.value.trim()) {
+        showToast('Le nom du tournoi est obligatoire', 'error');
+        return;
+    }
+    if (!sportSelect.value) {
+        showToast('Veuillez choisir un sport', 'error');
+        return;
+    }
+    if (!typeSelect.value) {
+        showToast('Veuillez choisir un type de tournoi', 'error');
+        return;
+    }
+    if (!startDate.value || !endDate.value) {
+        showToast('Les dates de début et de fin sont obligatoires', 'error');
+        return;
+    }
+    if (new Date(startDate.value) >= new Date(endDate.value)) {
+        showToast('La date de fin doit être postérieure à la date de début', 'error');
         return;
     }
 
     const tournamentData = {
-        type_id: typeId,
-        sport_id: sportId,
-        name,
-        description,
-        start_date: startDate,
-        end_date: endDate,
-        location,
-        rules,
-        registration_code: registrationCode || null,
-        prize_pool: prizePool,
-        stream_url: streamUrl || null,
-        requires_first_pas: requiresFirstPas,
-        has_agreed_to_rules: hasAgreedToRules,
-        created_by: null, // à remplacer par l'UUID de l'utilisateur connecté
-        is_active: true
+        name: tournamentName.value.trim(),
+        sport_id: parseInt(sportSelect.value),
+        type_id: parseInt(typeSelect.value),
+        description: description.value.trim() || null,
+        start_date: startDate.value,
+        end_date: endDate.value,
+        location: location.value.trim() || null,
+        registration_code: registrationCode.value.trim() || null,
+        prize_pool: parseFloat(prizePool.value) || 0,
+        requires_first_pas: requiresFirstPas.value === 'true',
+        rules: rules.value.trim() || null,
+        stream_url: streamUrl.value.trim() || null,
+        is_active: true,
+        created_by: null // sera rempli par RLS ou par l'utilisateur connecté
     };
 
-    try {
-        // Si c'est un tournoi privé simple, on doit d'abord vérifier le paiement
-        if (currentType && currentType.name === 'private_simple') {
-            // Ici, intégration du paiement (Stripe, etc.)
-            // Pour l'exemple, on simule un paiement réussi
-            const paymentSuccess = true; // À remplacer par une vraie intégration
-            if (!paymentSuccess) {
-                showToast('Le paiement a échoué. Veuillez réessayer.', 'error');
-                submitBtn.disabled = false;
-                return;
-            }
-        }
+    // Récupérer l'utilisateur connecté (si possible)
+    let currentUser = null;
+    if (window.supabaseAuthPrive) {
+        const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
+        if (!error && user) currentUser = user;
+    }
+    if (currentUser) {
+        tournamentData.created_by = currentUser.id;
+    }
 
-        const { data, error } = await supabaseGestionTournoi
+    try {
+        // 1. Créer le tournoi
+        const { data: tournament, error: tournamentError } = await supabaseGestionTournoi
             .from('gestionnairetournoi_tournaments')
             .insert(tournamentData)
-            .select();
-        if (error) throw error;
+            .select()
+            .single();
 
-        showToast('Tournoi créé avec succès !', 'success');
-        setTimeout(() => {
-            window.location.href = `tournament-details.html?id=${data[0].id}`;
-        }, 1500);
-    } catch (error) {
-        console.error(error);
-        showToast('Erreur lors de la création du tournoi', 'error');
-        submitBtn.disabled = false;
+        if (tournamentError) throw tournamentError;
+
+        // 2. Si paiement requis, créer une entrée dans la table des paiements (simulé)
+        if (requiresPayment) {
+            const { error: paymentError } = await supabaseGestionTournoi
+                .from('gestionnairetournoi_payments')
+                .insert({
+                    tournament_id: tournament.id,
+                    user_id: currentUser?.id || null,
+                    amount: 0, // À définir selon un forfait
+                    status: 'pending'
+                });
+            if (paymentError) console.error(paymentError);
+            showToast('Tournoi créé. Le paiement sera traité ultérieurement.', 'info');
+        } else {
+            showToast('Tournoi créé avec succès !', 'success');
+        }
+
+        // Redirection vers la page de détail
+        window.location.href = `tournament-details.html?id=${tournament.id}`;
+
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur lors de la création du tournoi : ' + err.message, 'error');
     }
-}
+});
 
+// ===== BOUTONS DE NAVIGATION =====
+backBtn.addEventListener('click', () => {
+    window.location.href = 'accueil_hubisgst.html';
+});
+cancelBtn.addEventListener('click', () => {
+    window.location.href = 'accueil_hubisgst.html';
+});
+
+// ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', () => {
-    loadFormData();
-    document.getElementById('tournamentType').addEventListener('change', onTypeChange);
-    document.getElementById('createForm').addEventListener('submit', createTournament);
+    loadSports();
+    loadTournamentTypes();
 });
