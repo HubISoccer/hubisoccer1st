@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Gestion des sports – HubISoccer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/hubismanagtournoi.css">
+    <style>
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .admin-header h1 {
+            font-size: 2rem;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sports-table {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            width: 100%;
+        }
+        .sports-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .sports-table th,
+        .sports-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--light-gray);
+        }
+        .sports-table th {
+            background: var(--bg-light);
+            font-weight: 600;
+            color: var(--primary);
+        }
+        .sports-table tr:hover {
+            background: rgba(85,27,140,0.02);
+        }
+        .btn-edit, .btn-delete {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            margin: 0 5px;
+            transition: var(--transition);
+        }
+        .btn-edit {
+            color: var(--primary);
+        }
+        .btn-edit:hover {
+            color: var(--primary-dark);
+        }
+        .btn-delete {
+            color: var(--danger);
+        }
+        .btn-delete:hover {
+            color: #c82333;
+        }
+        .btn-add {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+        }
+        .btn-add:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: var(--shadow-hover);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-header h2 {
+            color: var(--primary);
+        }
+        .close-modal {
+            font-size: 28px;
+            cursor: pointer;
+            color: var(--gray);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--light-gray);
+            border-radius: 8px;
+            font-family: 'Poppins', sans-serif;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .btn-save {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+        }
+        .btn-cancel {
+            background: var(--light-gray);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1><i class="fas fa-futbol"></i> Gestion des sports</h1>
+            <button class="btn-add" id="addSportBtn"><i class="fas fa-plus"></i> Ajouter un sport</button>
+        </div>
+        <div class="sports-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nom du sport</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="sportsTableBody">
+                    <tr><td colspan="3" class="loader">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal Ajouter / Modifier -->
+    <div id="sportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Ajouter un sport</h2>
+                <span class="close-modal" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="sportForm">
+                <input type="hidden" id="sportId">
+                <div class="form-group">
+                    <label>Nom du sport *</label>
+                    <input type="text" id="sportName" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Annuler</button>
+                    <button type="submit" class="btn-save">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../js/supabase-client.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        const supabase = supabaseGestionTournoi;
+        let currentEditId = null;
+
+        async function loadSports() {
+            const { data, error } = await supabase
+                .from('gestionnairetournoi_sports')
+                .select('id, name')
+                .order('name');
+            const tbody = document.getElementById('sportsTableBody');
+            if (error) {
+                tbody.innerHTML = '<tr><td colspan="3">Erreur de chargement</td></tr>';
+                return;
+            }
+            if (!data.length) {
+                tbody.innerHTML = '<tr><td colspan="3">Aucun sport enregistré</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map(sport => `
+                <tr>
+                    <td>${sport.id}</td>
+                    <td>${escapeHtml(sport.name)}</td>
+                    <td>
+                        <button class="btn-edit" onclick="openEditModal(${sport.id}, '${escapeHtml(sport.name).replace(/'/g, "\\'")}')"><i class="fas fa-edit"></i></button>
+                        <button class="btn-delete" onclick="deleteSport(${sport.id})"><i class="fas fa-trash-alt"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openAddModal() {
+            currentEditId = null;
+            document.getElementById('modalTitle').innerText = 'Ajouter un sport';
+            document.getElementById('sportId').value = '';
+            document.getElementById('sportName').value = '';
+            document.getElementById('sportModal').style.display = 'flex';
+        }
+
+        function openEditModal(id, name) {
+            currentEditId = id;
+            document.getElementById('modalTitle').innerText = 'Modifier un sport';
+            document.getElementById('sportId').value = id;
+            document.getElementById('sportName').value = name;
+            document.getElementById('sportModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('sportModal').style.display = 'none';
+        }
+
+        async function deleteSport(id) {
+            if (!confirm('Supprimer ce sport ? Tous les tournois liés seront également supprimés.')) return;
+            const { error } = await supabase
+                .from('gestionnairetournoi_sports')
+                .delete()
+                .eq('id', id);
+            if (error) {
+                showToast('Erreur : ' + error.message, 'error');
+            } else {
+                showToast('Sport supprimé', 'success');
+                loadSports();
+            }
+        }
+
+        document.getElementById('sportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('sportName').value.trim();
+            if (!name) {
+                showToast('Veuillez saisir un nom', 'warning');
+                return;
+            }
+            const id = document.getElementById('sportId').value;
+            let error = null;
+            if (id) {
+                const { error: updateError } = await supabase
+                    .from('gestionnairetournoi_sports')
+                    .update({ name })
+                    .eq('id', id);
+                error = updateError;
+            } else {
+                const { error: insertError } = await supabase
+                    .from('gestionnairetournoi_sports')
+                    .insert({ name });
+                error = insertError;
+            }
+            if (error) {
+                showToast('Erreur : ' + error.message, 'error');
+            } else {
+                showToast(id ? 'Sport modifié' : 'Sport ajouté', 'success');
+                closeModal();
+                loadSports();
+            }
+        });
+
+        document.getElementById('addSportBtn').addEventListener('click', openAddModal);
+        window.closeModal = closeModal;
+        loadSports();
+    </script>
+</body>
+</html>
