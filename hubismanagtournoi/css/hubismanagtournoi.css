@@ -941,3 +941,33 @@ body {
     padding: 4px 12px;
     border-radius: 20px;
 }
+
+
+.live-stream-container {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+.stream-player {
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+.stream-info {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    text-align: center;
+}
+.stream-info-content h3 {
+    color: var(--primary);
+    margin-bottom: 8px;
+}
+.no-stream {
+    text-align: center;
+    padding: 60px 20px;
+    background: var(--bg-light);
+    border-radius: var(--border-radius);
+    color: var(--gray);
+}
