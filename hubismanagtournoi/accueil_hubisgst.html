@@ -14,86 +14,51 @@
     <div class="tournoi-container">
         <header class="tournoi-header">
             <div class="header-content">
-                <h1>
-                    <i class="fas fa-trophy"></i>
-                    Gestion des tournois
-                </h1>
-                <button id="createTournamentBtn" class="btn-primary">
-                    <i class="fas fa-plus"></i>
-                    Créer un tournoi
-                </button>
+                <h1><i class="fas fa-trophy"></i> Gestion des tournois</h1>
+                <button id="createTournamentBtn" class="btn-primary"><i class="fas fa-plus"></i> Créer un tournoi</button>
             </div>
-            <p class="subtitle">
-                Participez, organisez et suivez vos compétitions sportives
-            </p>
+            <p class="subtitle">Participez, organisez et suivez vos compétitions sportives</p>
         </header>
+
         <div class="filters-bar">
             <div class="filter-group">
-                <label>
-                    <i class="fas fa-filter"></i>
-                    Sport
-                </label>
-                <select id="sportFilter">
-                    <option value="all">
-                        Tous les sports
-                    </option>
-                </select>
+                <label><i class="fas fa-filter"></i> Sport</label>
+                <select id="sportFilter"><option value="all">Tous les sports</option></select>
             </div>
             <div class="filter-group">
-                <label>
-                    <i class="fas fa-calendar-alt"></i>
-                    Période
-                </label>
+                <label><i class="fas fa-calendar-alt"></i> Période</label>
                 <select id="periodFilter">
-                    <option value="all">
-                        Tous
-                    </option>
-                    <option value="upcoming">
-                        À venir
-                    </option>
-                    <option value="ongoing">
-                        En cours
-                    </option>
-                    <option value="past">
-                        Terminés
-                    </option>
+                    <option value="all">Tous</option>
+                    <option value="upcoming">À venir</option>
+                    <option value="ongoing">En cours</option>
+                    <option value="past">Terminés</option>
                 </select>
             </div>
             <div class="filter-group">
-                <label>
-                    <i class="fas fa-tag"></i>
-                    Type
-                </label>
-                <select id="typeFilter">
-                    <option value="all">
-                        Tous
-                    </option>
-                </select>
+                <label><i class="fas fa-tag"></i> Type</label>
+                <select id="typeFilter"><option value="all">Tous</option></select>
             </div>
         </div>
+
         <div class="tournaments-grid" id="tournamentsGrid">
-            <div class="loader" id="loader">
-                <i class="fas fa-spinner fa-pulse"></i>
-                Chargement...
-            </div>
+            <div class="loader" id="loader"><i class="fas fa-spinner fa-pulse"></i> Chargement...</div>
         </div>
     </div>
+
     <script src="js/supabase-client.js"></script>
-    <script src="js/tournaments.js"></script>
     <script src="js/utils.js"></script>
     <script>
-        // Récupération de l'instance Supabase
-        const supabaseHubISoccer = supabaseGestionTournoi;
+        // Utilisation directe de l'instance définie dans supabase-client.js
+        // Ne pas redéclarer supabase ici !
 
         let allTournaments = [];
         let sportsMap = {};
         let typesMap = {};
 
-        // Chargement des sports et types pour les filtres
         async function loadFilters() {
             const [sportsRes, typesRes] = await Promise.all([
-                supabase.from('gestionnairetournoi_sports').select('id, name').order('name'),
-                supabase.from('gestionnairetournoi_types').select('id, name, label')
+                supabaseGestionTournoi.from('gestionnairetournoi_sports').select('id, name').order('name'),
+                supabaseGestionTournoi.from('gestionnairetournoi_types').select('id, name, label')
             ]);
             if (sportsRes.error) {
                 console.error('Erreur chargement sports', sportsRes.error);
@@ -121,9 +86,8 @@
             }
         }
 
-        // Chargement des tournois
         async function loadTournaments() {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseGestionTournoi
                 .from('gestionnairetournoi_tournaments')
                 .select(`
                     id,
@@ -136,7 +100,6 @@
                     prize_pool,
                     stream_url,
                     requires_first_pas,
-                    has_agreed_to_rules,
                     type:type_id (name, label),
                     sport:sport_id (name)
                 `)
@@ -158,7 +121,6 @@
                 prize_pool: t.prize_pool,
                 stream_url: t.stream_url,
                 requires_first_pas: t.requires_first_pas,
-                has_agreed_to_rules: t.has_agreed_to_rules,
                 type: t.type.name,
                 typeLabel: t.type.label,
                 sport: t.sport.name
@@ -166,19 +128,14 @@
             applyFilters();
         }
 
-        // Filtrage des tournois
         function applyFilters() {
             const sport = document.getElementById('sportFilter').value;
             const period = document.getElementById('periodFilter').value;
             const type = document.getElementById('typeFilter').value;
             const now = new Date();
             let filtered = [...allTournaments];
-            if (sport !== 'all') {
-                filtered = filtered.filter(t => t.sport === sport);
-            }
-            if (type !== 'all') {
-                filtered = filtered.filter(t => t.type === type);
-            }
+            if (sport !== 'all') filtered = filtered.filter(t => t.sport === sport);
+            if (type !== 'all') filtered = filtered.filter(t => t.type === type);
             if (period !== 'all') {
                 filtered = filtered.filter(t => {
                     const start = new Date(t.start_date);
@@ -192,7 +149,6 @@
             renderTournaments(filtered);
         }
 
-        // Affichage des cartes
         function renderTournaments(tournaments) {
             const grid = document.getElementById('tournamentsGrid');
             grid.innerHTML = '';
@@ -211,33 +167,18 @@
                 else if (t.type === 'private_hubisoccer') badgeClass = 'badge-private';
                 else if (t.type === 'private_simple') badgeClass = 'badge-simple';
                 card.innerHTML = `
-                    <div class="card-badge ${badgeClass}">
-                        ${t.typeLabel}
-                    </div>
-                    <div class="card-sport">
-                        <i class="fas fa-futbol"></i>
-                        ${t.sport}
-                    </div>
-                    <h3 class="card-title">
-                        ${escapeHtml(t.name)}
-                    </h3>
-                    <div class="card-date">
-                        <i class="fas fa-calendar-alt"></i>
-                        ${start} - ${end}
-                    </div>
-                    <div class="card-location">
-                        <i class="fas fa-map-marker-alt"></i>
-                        ${escapeHtml(t.location)}
-                    </div>
+                    <div class="card-badge ${badgeClass}">${t.typeLabel}</div>
+                    <div class="card-sport"><i class="fas fa-futbol"></i> ${t.sport}</div>
+                    <h3 class="card-title">${escapeHtml(t.name)}</h3>
+                    <div class="card-date"><i class="fas fa-calendar-alt"></i> ${start} - ${end}</div>
+                    <div class="card-location"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(t.location)}</div>
                     ${t.prize_pool ? `<div class="card-prize"><i class="fas fa-trophy"></i> ${t.prize_pool.toLocaleString()} FCFA</div>` : ''}
-                    <button class="btn-details" data-id="${t.id}">
-                        Voir les détails
-                    </button>
+                    <button class="btn-details" data-id="${t.id}">Voir les détails</button>
                 `;
                 grid.appendChild(card);
             });
             document.querySelectorAll('.btn-details').forEach(btn => {
-                btn.addEventListener('click', (e) => {
+                btn.addEventListener('click', () => {
                     const id = btn.getAttribute('data-id');
                     window.location.href = `tournament-details.html?id=${id}`;
                 });
@@ -254,7 +195,6 @@
             });
         }
 
-        // Initialisation
         document.addEventListener('DOMContentLoaded', async () => {
             await loadFilters();
             await loadTournaments();
