@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Exporter rapport de match | HubISoccer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/hubismanagtournoi.css">
+    <link rel="stylesheet" href="css/match-report-export.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+    <div class="export-container">
+        <div class="page-header">
+            <button class="btn-back" id="backBtn">
+                <i class="fas fa-arrow-left"></i>
+                Retour
+            </button>
+            <h1>
+                <i class="fas fa-file-export"></i>
+                Exporter rapport de match
+            </h1>
+        </div>
+
+        <div id="matchInfo" class="match-info">
+            <div class="match-teams" id="matchTeams">Chargement...</div>
+            <div class="match-date" id="matchDate">-</div>
+            <div class="match-location" id="matchLocation">-</div>
+        </div>
+
+        <div class="reports-list" id="reportsList">
+            <div class="loader"><i class="fas fa-spinner fa-pulse"></i> Chargement des rapports...</div>
+        </div>
+
+        <div id="exportButtons" class="export-buttons" style="display: none;">
+            <button id="exportWordBtn" class="btn-export"><i class="fas fa-file-word"></i> Exporter en Word</button>
+            <button id="exportExcelBtn" class="btn-export"><i class="fas fa-file-excel"></i> Exporter en Excel</button>
+            <button id="exportPdfBtn" class="btn-export"><i class="fas fa-file-pdf"></i> Exporter en PDF</button>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="js/supabase-client.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/match-report-export.js"></script>
+</body>
+</html>
