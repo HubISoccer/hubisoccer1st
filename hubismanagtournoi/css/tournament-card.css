@@ -1,0 +1,99 @@
+.tournament-card {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    position: relative;
+    border: 1px solid var(--light-gray);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.tournament-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-hover);
+}
+
+.card-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-show {
+    background: var(--primary);
+    color: white;
+}
+
+.badge-detection {
+    background: var(--gold);
+    color: black;
+}
+
+.badge-private {
+    background: var(--gray);
+    color: white;
+}
+
+.badge-simple {
+    background: var(--warning);
+    color: black;
+}
+
+.card-sport {
+    font-size: 0.8rem;
+    color: var(--gray);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.card-sport i {
+    color: var(--primary);
+}
+
+.card-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin: 5px 0;
+}
+
+.card-date,
+.card-location,
+.card-prize {
+    font-size: 0.85rem;
+    color: var(--gray);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.card-prize {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.btn-details {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 30px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-top: 10px;
+}
+
+.btn-details:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
