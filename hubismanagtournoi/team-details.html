@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Détails de l'équipe | HubISoccer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/hubismanagtournoi.css">
+    <link rel="stylesheet" href="css/team-details.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="team-detail-container">
+        <div class="page-header">
+            <button class="btn-back" id="backBtn">
+                <i class="fas fa-arrow-left"></i>
+                Retour
+            </button>
+            <h1 id="teamName">Chargement...</h1>
+        </div>
+
+        <div class="team-info-card">
+            <div class="team-logo" id="teamLogo">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="team-meta">
+                <div class="meta-row"><i class="fas fa-tag"></i> Catégorie : <span id="teamCategory">-</span></div>
+                <div class="meta-row"><i class="fas fa-futbol"></i> Sport : <span id="teamSport">-</span></div>
+                <div class="meta-row"><i class="fas fa-user"></i> Créateur : <span id="teamCreator">-</span></div>
+                <div class="meta-row"><i class="fas fa-calendar-alt"></i> Créée le : <span id="teamCreated">-</span></div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="players">Joueurs</button>
+            <button class="tab-btn" data-tab="stats">Statistiques</button>
+            <button class="tab-btn" data-tab="matches">Matchs</button>
+        </div>
+
+        <!-- Onglet Joueurs -->
+        <div id="playersTab" class="tab-content active">
+            <div class="players-header">
+                <h2><i class="fas fa-users"></i> Effectif</h2>
+                <button id="addPlayerBtn" class="btn-primary" style="display: none;">
+                    <i class="fas fa-plus"></i> Ajouter un joueur
+                </button>
+            </div>
+            <div id="playersList" class="players-list">
+                <div class="loader"><i class="fas fa-spinner fa-pulse"></i> Chargement...</div>
+            </div>
+        </div>
+
+        <!-- Onglet Statistiques -->
+        <div id="statsTab" class="tab-content">
+            <div class="stats-section">
+                <h2><i class="fas fa-chart-line"></i> Statistiques du tournoi</h2>
+                <div id="tournamentSelect" class="tournament-selector">
+                    <label>Sélectionner un tournoi :</label>
+                    <select id="tournamentStatsSelect"></select>
+                </div>
+                <div id="teamStats" class="team-stats">
+                    <div class="loader"><i class="fas fa-spinner fa-pulse"></i> Chargement...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Onglet Matchs -->
+        <div id="matchesTab" class="tab-content">
+            <div class="matches-section">
+                <h2><i class="fas fa-calendar-week"></i> Matchs disputés</h2>
+                <div id="teamMatchesList" class="matches-list">
+                    <div class="loader"><i class="fas fa-spinner fa-pulse"></i> Chargement...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Ajouter joueur -->
+    <div id="addPlayerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Ajouter un joueur</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="addPlayerForm">
+                    <div class="form-group">
+                        <label>Rechercher un joueur</label>
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="playerSearch" placeholder="Nom du joueur...">
+                        </div>
+                    </div>
+                    <div id="playerSearchResults" class="player-search-results"></div>
+                    <div class="form-group">
+                        <label>Numéro de maillot</label>
+                        <input type="number" id="playerJersey" placeholder="Ex: 10">
+                    </div>
+                    <div class="form-group">
+                        <label>Poste</label>
+                        <input type="text" id="playerPosition" placeholder="Ex: Attaquant, Milieu">
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="playerIsCaptain">
+                        <label>Capitaine</label>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn-cancel">Annuler</button>
+                        <button type="submit" class="btn-confirm">Ajouter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="js/supabase-client.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/team-details.js"></script>
+</body>
+</html>
