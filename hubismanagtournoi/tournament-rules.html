@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Règlement du tournoi | HubISoccer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/hubismanagtournoi.css">
+    <link rel="stylesheet" href="css/tournament-rules.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="rules-container">
+        <div class="page-header">
+            <button class="btn-back" id="backBtn">
+                <i class="fas fa-arrow-left"></i>
+                Retour
+            </button>
+            <h1>
+                <i class="fas fa-file-contract"></i>
+                Règlement du tournoi
+            </h1>
+        </div>
+
+        <div class="rules-card">
+            <div id="tournamentInfo" class="tournament-info">
+                <h2 id="tournamentName">Chargement...</h2>
+                <p id="tournamentDates">-</p>
+            </div>
+
+            <div class="rules-content" id="rulesContent">
+                <div class="loader"><i class="fas fa-spinner fa-pulse"></i> Chargement...</div>
+            </div>
+
+            <div id="signatureBlock" class="signature-block" style="display: none;">
+                <h3><i class="fas fa-pen-fancy"></i> Signature électronique</h3>
+                <p>Je déclare avoir lu et accepté l’intégralité du règlement ci-dessus.</p>
+                <div class="signature-pad">
+                    <canvas id="signatureCanvas" width="400" height="200" style="border: 2px solid var(--light-gray); border-radius: 12px; background: white;"></canvas>
+                    <div class="signature-actions">
+                        <button id="clearSignatureBtn" class="btn-secondary">Effacer</button>
+                        <button id="acceptRulesBtn" class="btn-primary">Accepter et signer</button>
+                    </div>
+                </div>
+                <p class="signature-info">En signant, vous confirmez votre consentement électronique.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="js/supabase-client.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/tournament-rules.js"></script>
+</body>
+</html>
