@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Gestion des quotas – HubISoccer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/hubismanagtournoi.css">
+    <style>
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .admin-header h1 {
+            font-size: 2rem;
+            color: var(--primary-dark);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .tournament-select {
+            margin-bottom: 30px;
+        }
+        .tournament-select select {
+            padding: 10px 20px;
+            border-radius: 40px;
+            border: 1px solid var(--light-gray);
+            font-family: 'Poppins', sans-serif;
+            width: 100%;
+            max-width: 400px;
+        }
+        .quotas-table {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            width: 100%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--light-gray);
+        }
+        th {
+            background: var(--bg-light);
+            font-weight: 600;
+            color: var(--primary);
+        }
+        .quota-input {
+            width: 80px;
+            padding: 5px;
+            border: 1px solid var(--light-gray);
+            border-radius: 8px;
+            text-align: center;
+        }
+        .btn-save {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--gray);
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1><i class="fas fa-chart-line"></i> Gestion des quotas (tournois de détection)</h1>
+        </div>
+        <div class="tournament-select">
+            <select id="tournamentSelect"></select>
+        </div>
+        <div class="quotas-table" id="quotasContainer"></div>
+    </div>
+
+    <script src="../js/supabase-client.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        const supabase = supabaseGestionTournoi;
+        let tournaments = [];
+
+        async function loadTournaments() {
+            const { data, error } = await supabase
+                .from('gestionnairetournoi_tournaments')
+                .select('id, name, type_id, registration_quota')
+                .eq('is_active', true);
+            if (error) return;
+            tournaments = data.filter(t => t.type_id === 2); // 2 = public_detection
+            const select = document.getElementById('tournamentSelect');
+            select.innerHTML = '<option value="">-- Sélectionnez un tournoi --</option>';
+            tournaments.forEach(t => {
+                const option = document.createElement('option');
+                option.value = t.id;
+                option.textContent = t.name;
+                select.appendChild(option);
+            });
+            if (tournaments.length) select.value = tournaments[0].id;
+            loadQuotas();
+        }
+
+        async function loadQuotas() {
+            const tournamentId = document.getElementById('tournamentSelect').value;
+            const container = document.getElementById('quotasContainer');
+            if (!tournamentId) {
+                container.innerHTML = '<div class="empty-state">Sélectionnez un tournoi</div>';
+                return;
+            }
+            // Pour l'instant, les quotas sont stockés dans le champ registration_quota de la table tournois
+            const tournament = tournaments.find(t => t.id == tournamentId);
+            container.innerHTML = `
+                <div style="padding: 20px;">
+                    <p>Quota total : <input type="number" id="totalQuota" class="quota-input" value="${tournament.registration_quota || ''}"></p>
+                    <button class="btn-save" onclick="saveQuota(${tournamentId})">Enregistrer le quota</button>
+                </div>
+            `;
+        }
+
+        async function saveQuota(tournamentId) {
+            const quota = parseInt(document.getElementById('totalQuota').value, 10);
+            const { error } = await supabase
+                .from('gestionnairetournoi_tournaments')
+                .update({ registration_quota: quota || null })
+                .eq('id', tournamentId);
+            if (error) showToast('Erreur : ' + error.message, 'error');
+            else {
+                showToast('Quota mis à jour', 'success');
+                const t = tournaments.find(t => t.id == tournamentId);
+                if (t) t.registration_quota = quota;
+            }
+        }
+
+        document.getElementById('tournamentSelect').addEventListener('change', loadQuotas);
+        window.saveQuota = saveQuota;
+        loadTournaments();
+    </script>
+</body>
+</html>
