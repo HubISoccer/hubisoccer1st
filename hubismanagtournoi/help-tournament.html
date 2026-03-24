@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Aide | HubISoccer – Gestion des tournois</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #551B8C;
+            --primary-light: #7e3db0;
+            --primary-dark: #3d1266;
+            --gold: #ffcc00;
+            --gold-dark: #e6b800;
+            --bg-light: #F0F8FF;
+            --white: #ffffff;
+            --dark: #1a1a1a;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --shadow: 0 10px 30px rgba(0,0,0,0.05);
+            --transition: all 0.3s ease;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        .help-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .page-header {
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        .page-header h1 {
+            font-size: 2.5rem;
+            color: var(--primary-dark);
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .page-header h1 i {
+            color: var(--gold);
+        }
+        .page-header p {
+            color: var(--gray);
+            margin-top: 10px;
+        }
+        .btn-back {
+            background: transparent;
+            border: none;
+            color: var(--primary);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+            margin-bottom: 20px;
+        }
+        .btn-back:hover {
+            color: var(--primary-dark);
+            transform: translateX(-3px);
+        }
+        .help-card {
+            background: white;
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--light-gray);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+        .help-section {
+            padding: 30px;
+            border-bottom: 1px solid var(--light-gray);
+        }
+        .help-section:last-child {
+            border-bottom: none;
+        }
+        .help-section h2 {
+            color: var(--primary);
+            font-size: 1.6rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .help-section h2 i {
+            color: var(--gold);
+        }
+        .help-section h3 {
+            font-size: 1.2rem;
+            margin: 20px 0 10px;
+            color: var(--dark);
+        }
+        .help-section p {
+            margin-bottom: 15px;
+            color: var(--gray);
+        }
+        .help-section ul, .help-section ol {
+            margin: 15px 0 15px 30px;
+            color: var(--gray);
+        }
+        .help-section li {
+            margin-bottom: 8px;
+        }
+        .highlight {
+            background: var(--bg-light);
+            padding: 20px;
+            border-radius: 16px;
+            border-left: 4px solid var(--gold);
+            margin: 20px 0;
+        }
+        .step {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .step-content {
+            flex: 1;
+        }
+        .step-content h4 {
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+        .faq-item {
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--light-gray);
+            padding-bottom: 15px;
+        }
+        .faq-question {
+            font-weight: 600;
+            color: var(--primary);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .faq-question i {
+            transition: transform 0.3s;
+        }
+        .faq-answer {
+            margin-top: 10px;
+            color: var(--gray);
+            display: none;
+        }
+        .faq-answer.show {
+            display: block;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+        }
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        .footer-note {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin-top: 30px;
+        }
+        @media (max-width: 768px) {
+            .help-container {
+                padding: 20px;
+            }
+            .help-section {
+                padding: 20px;
+            }
+            .page-header h1 {
+                font-size: 1.8rem;
+            }
+            .step {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .step-number {
+                align-self: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="help-container">
+        <button class="btn-back" onclick="window.location.href='accueil_hubisgst.html'">
+            <i class="fas fa-arrow-left"></i> Retour
+        </button>
+
+        <div class="page-header">
+            <h1><i class="fas fa-question-circle"></i> Aide – Gestion des tournois</h1>
+            <p>Guide complet pour organiser, gérer et participer aux tournois sur HubISoccer</p>
+        </div>
+
+        <div class="help-card">
+            <div class="help-section">
+                <h2><i class="fas fa-trophy"></i> 1. Créer un tournoi</h2>
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Choisir le type de tournoi</h4>
+                        <p>Sur la page d’accueil du module, cliquez sur <strong>“Créer un tournoi”</strong>. Sélectionnez le type :<br>
+                        - <strong>Public Show You</strong> : accessible à tous (code d’accès public).<br>
+                        - <strong>Public Détection</strong> : réservé aux joueurs ayant validé le premier‑pas.<br>
+                        - <strong>Privé HubISoccer</strong> : pour les membres de l’espace privé.<br>
+                        - <strong>Privé Simple</strong> : nécessite un paiement forfaitaire (pour les organisateurs externes).</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Remplir les informations générales</h4>
+                        <p>Nom du tournoi, sport, dates, lieu, description, montant de la prime éventuelle, code d’accès (pour les publics). Vous pouvez également ajouter un flux vidéo (YouTube, Twitch) pour la retransmission.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Définir le règlement</h4>
+                        <p>Ajoutez un règlement spécifique (facultatif). Pour les tournois privés simples, un règlement est obligatoire et doit être accepté par les participants avant inscription.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>Valider la création</h4>
+                        <p>Le tournoi apparaît alors dans la liste des tournois. Les inscriptions sont ouvertes selon les modalités choisies.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="help-section">
+                <h2><i class="fas fa-clipboard-list"></i> 2. Gérer les inscriptions</h2>
+                <p>Depuis votre tableau de bord (<strong>“Mes tournois”</strong> puis <strong>“Gérer”</strong>), vous pouvez :</p>
+                <ul>
+                    <li>Visualiser la liste des demandes d’inscription (en attente).</li>
+                    <li>Approuver ou rejeter chaque demande.</li>
+                    <li>Inviter directement des équipes ou des joueurs (onglet <strong>“Inviter”</strong>).</li>
+                    <li>Exporter la liste des participants (CSV).</li>
+                </ul>
+                <div class="highlight">
+                    <i class="fas fa-lightbulb"></i> <strong>Astuce :</strong> Pour les tournois publics avec code d’accès, assurez-vous de communiquer le code aux personnes concernées. Pour les tournois privés simples, le paiement du forfait est requis avant validation.
+                </div>
+            </div>
+
+            <div class="help-section">
+                <h2><i class="fas fa-calendar-week"></i> 3. Organiser les matchs</h2>
+                <p>Une fois les inscriptions validées, vous pouvez créer les rencontres :</p>
+                <ol>
+                    <li>Dans la gestion du tournoi, onglet <strong>“Matchs”</strong> → <strong>“Ajouter un match”</strong>.</li>
+                    <li>Sélectionnez les deux équipes, la date, le lieu, et éventuellement l’URL du streaming.</li>
+                    <li>Les matchs apparaissent dans le calendrier du tournoi et dans la page détail.</li>
+                    <li>Pendant le match, vous (ou les officiels désignés) pouvez saisir les événements (buts, cartons, etc.) depuis l’onglet <strong>“Rapports”</strong>.</li>
+                </ol>
+                <p>Les statistiques sont automatiquement mises à jour à partir des événements saisis.</p>
+            </div>
+
+            <div class="help-section">
+                <h2><i class="fas fa-file-alt"></i> 4. Saisir les rapports de match</h2>
+                <p>Chaque match peut être accompagné de trois types de rapports :</p>
+                <ul>
+                    <li><strong>Rapport arbitre</strong> : score, cartons, incidents.</li>
+                    <li><strong>Rapport commissaire</strong> : affluence, organisation, observations.</li>
+                    <li><strong>Rapport médical</strong> : blessures, interventions.</li>
+                </ul>
+                <p>Pour accéder au formulaire, cliquez sur <strong>“Saisir rapport”</strong> dans les détails du match. Les rapports sont ensuite consultables et exportables (PDF, Excel).</p>
+            </div>
+
+            <div class="help-section">
+                <h2><i class="fas fa-chart-line"></i> 5. Suivre les classements et statistiques</h2>
+                <p>Les classements sont calculés automatiquement à partir des résultats et sont visibles dans l’onglet <strong>“Classement”</strong> de la page du tournoi. Vous y trouverez :</p>
+                <ul>
+                    <li>Classement général des équipes (points, victoires, etc.)</li>
+                    <li>Meilleurs buteurs, passeurs</li>
+                    <li>Statistiques par joueur (cartons, matchs joués)</li>
+                </ul>
+                <p>Les statistiques individuelles alimentent le profil des joueurs sur la plateforme.</p>
+            </div>
+
+            <div class="help-section">
+                <h2><i class="fas fa-money-bill-wave"></i> 6. Gestion des primes</h2>
+                <p>Si votre tournoi prévoit une prime, vous pouvez l’attribuer à une équipe ou à un joueur dans l’onglet <strong>“Primes”</strong> de la gestion du tournoi. Les primes peuvent être versées via la plateforme (intégration à venir) ou en direct selon les modalités définies.</p>
+            </div>
+
+            <div class="help-section">
+                <h2><i class="fas fa-question-circle"></i> 7. Foire aux questions (FAQ)</h2>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        Comment modifier les informations d’un tournoi après sa création ?
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">
+                        Rendez-vous dans <strong>“Mes tournois”</strong>, cliquez sur <strong>“Gérer”</strong> puis sur l’onglet <strong>“Informations”</strong>. Vous pourrez y modifier le nom, les dates, le lieu, la prime, etc.
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        Que faire si une équipe se désiste en cours de tournoi ?
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">
+                        Vous pouvez déclarer le forfait dans la gestion des matchs concernés. Le classement sera ajusté automatiquement. Pour les tournois avec primes, l’équipe forfaitaire peut perdre ses droits.
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        Puis-je ajouter un flux vidéo après la création du tournoi ?
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">
+                        Oui, modifiez les informations du tournoi et renseignez l’URL du flux. Celui-ci sera alors visible dans la page du tournoi et dans la page dédiée <strong>“Live Stream”</strong>.
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        Comment exporter les résultats du tournoi ?
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">
+                        Dans la page du tournoi, un bouton <strong>“Exporter”</strong> (en cours de développement) permettra de télécharger les classements, les statistiques et les rapports de match au format CSV ou Excel.
+                    </div>
+                </div>
+            </div>
+
+            <div class="help-section">
+                <h2><i class="fas fa-headset"></i> 8. Besoin d’aide supplémentaire ?</h2>
+                <p>Si vous rencontrez un problème technique ou une question non traitée ici, vous pouvez :</p>
+                <ul>
+                    <li>Contacter le support via le formulaire dans <strong>“Support”</strong> (accessible depuis la navbar).</li>
+                    <li>Consulter le <a href="rules-hubisoccer.html" style="color: var(--primary);">Règlement général</a> pour les aspects juridiques.</li>
+                    <li>Rejoindre la communauté sur le <strong>“Feed”</strong> pour échanger avec d’autres organisateurs.</li>
+                </ul>
+                <button class="btn-primary" onclick="window.location.href='accueil_hubisgst.html'">
+                    <i class="fas fa-home"></i> Retour à l’accueil
+                </button>
+            </div>
+        </div>
+
+        <div class="footer-note">
+            © 2026 HubISoccer – Version 1.0 – Dernière mise à jour : 24 mars 2026
+        </div>
+    </div>
+
+    <script>
+        function toggleFAQ(element) {
+            const answer = element.nextElementSibling;
+            answer.classList.toggle('show');
+            const icon = element.querySelector('i');
+            if (answer.classList.contains('show')) {
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+    </script>
+</body>
+</html>
