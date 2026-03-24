@@ -12,92 +12,97 @@
 </head>
 <body>
     <div class="create-tournament-container">
-        <h1>
-            <i class="fas fa-plus-circle"></i>
-            Créer un tournoi
-        </h1>
-        <form id="createForm" class="tournament-form">
-            <div class="form-group">
-                <label for="tournamentType">Type de tournoi *</label>
-                <select id="tournamentType" required>
-                    <option value="">Chargement...</option>
-                </select>
-                <div class="info-text">
-                    Les tournois privés simples nécessitent un paiement pour être créés.
+        <div class="form-header">
+            <button class="btn-back" id="backBtn">
+                <i class="fas fa-arrow-left"></i>
+                Retour
+            </button>
+            <h1>Créer un tournoi</h1>
+        </div>
+
+        <form id="createTournamentForm" class="tournament-form">
+            <div class="form-section">
+                <h2>Informations générales</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="tournamentName">Nom du tournoi *</label>
+                        <input type="text" id="tournamentName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="sportId">Sport *</label>
+                        <select id="sportId" required></select>
+                    </div>
                 </div>
-            </div>
-            <div class="form-group">
-                <label for="sport">Sport *</label>
-                <select id="sport" required>
-                    <option value="">Chargement...</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="name">Nom du tournoi *</label>
-                <input type="text" id="name" required>
-            </div>
-            <div class="form-group">
-                <label for="description">Description</label>
-                <textarea id="description" rows="4"></textarea>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="startDate">Date de début *</label>
-                    <input type="datetime-local" id="startDate" required>
-                </div>
-                <div class="form-group">
-                    <label for="endDate">Date de fin *</label>
-                    <input type="datetime-local" id="endDate" required>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="location">Lieu *</label>
-                <input type="text" id="location" required>
-            </div>
-            <div class="form-group">
-                <label for="rules">Règlement du tournoi</label>
-                <textarea id="rules" rows="6"></textarea>
-                <div class="info-text">
-                    Ce règlement sera affiché aux participants et devra être accepté lors de l'inscription.
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="registrationCode">Code d'inscription (optionnel)</label>
-                    <input type="text" id="registrationCode" placeholder="ex: FOOT2026">
-                    <div class="info-text">
-                        Si renseigné, les participants devront fournir ce code pour s'inscrire.
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="tournamentType">Type de tournoi *</label>
+                        <select id="tournamentType" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="registrationCode">Code d'inscription (pour tournois publics)</label>
+                        <input type="text" id="registrationCode" placeholder="Laisser vide si non utilisé">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="prizePool">Prime totale (FCFA)</label>
-                    <input type="number" id="prizePool" step="1000" min="0">
+                    <label for="description">Description</label>
+                    <textarea id="description" rows="4"></textarea>
                 </div>
             </div>
-            <div class="form-group">
-                <label for="streamUrl">Lien de diffusion (YouTube, Twitch, etc.)</label>
-                <input type="url" id="streamUrl" placeholder="https://...">
-            </div>
-            <div class="form-row">
+
+            <div class="form-section">
+                <h2>Dates et lieu</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="startDate">Date de début *</label>
+                        <input type="datetime-local" id="startDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="endDate">Date de fin *</label>
+                        <input type="datetime-local" id="endDate" required>
+                    </div>
+                </div>
                 <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="requiresFirstPas">
-                        Ce tournoi nécessite d'avoir validé le PREMIER-PAS
-                    </label>
+                    <label for="location">Lieu</label>
+                    <input type="text" id="location">
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2>Récompenses et conditions</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="prizePool">Prix total (FCFA)</label>
+                        <input type="number" id="prizePool" min="0" step="1000" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="requiresFirstPas">Nécessite premier‑pas</label>
+                        <select id="requiresFirstPas">
+                            <option value="false">Non</option>
+                            <option value="true">Oui</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="hasAgreedToRules" required>
-                        J'accepte les conditions d'utilisation de HubISoccer pour l'organisation de tournois
-                    </label>
+                    <label for="rules">Règlement (optionnel)</label>
+                    <textarea id="rules" rows="4"></textarea>
                 </div>
             </div>
-            <div id="paymentInfo" class="payment-info">
-                <p><i class="fas fa-credit-card"></i> Un paiement est requis pour créer ce tournoi. Vous serez redirigé après validation.</p>
+
+            <div class="form-section">
+                <h2>Streaming (optionnel)</h2>
+                <div class="form-group">
+                    <label for="streamUrl">URL du stream (YouTube, Twitch, etc.)</label>
+                    <input type="url" id="streamUrl" placeholder="https://...">
+                </div>
             </div>
-            <button type="submit" class="btn-submit">Créer le tournoi</button>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="cancelBtn">Annuler</button>
+                <button type="submit" class="btn-primary">Créer le tournoi</button>
+            </div>
         </form>
     </div>
+
     <script src="js/supabase-client.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/create-tournament.js"></script>
