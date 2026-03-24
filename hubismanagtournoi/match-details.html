@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Détails du match | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/hubismanagtournoi.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar et sidebars identiques à tournament-details.html (copier-coller depuis tournament-details.html) -->
+    <nav class="dashboard-nav">...</nav>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="sidebar left-sidebar" id="leftSidebar">...</div>
+    <div class="sidebar right-sidebar" id="rightSidebar">...</div>
+
+    <main class="dashboard-main">
+        <div class="tournament-container">
+            <div id="matchDetail">
+                <div class="match-header">
+                    <h1 id="matchTitle">Chargement...</h1>
+                    <div id="matchMeta"></div>
+                </div>
+                <div class="match-scoreboard">
+                    <div class="team home-team">
+                        <span id="homeTeamName">-</span>
+                        <span id="homeScore" class="score">0</span>
+                    </div>
+                    <div class="match-status" id="matchStatus"></div>
+                    <div class="team away-team">
+                        <span id="awayTeamName">-</span>
+                        <span id="awayScore" class="score">0</span>
+                    </div>
+                </div>
+                <div class="match-stream" id="matchStream"></div>
+                <div class="match-events">
+                    <h3>Événements du match</h3>
+                    <div id="matchEvents"></div>
+                </div>
+                <div class="match-reports">
+                    <h3>Rapports</h3>
+                    <div id="matchReports"></div>
+                </div>
+                <div class="match-actions">
+                    <button id="refreshBtn" class="btn-secondary">Rafraîchir</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <footer class="dashboard-footer">...</footer>
+
+    <script src="js/supabase-client.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/match-details.js"></script>
+</body>
+</html>
