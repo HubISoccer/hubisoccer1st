@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Gestion des tournois | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Styles communs du tableau de bord -->
+    <link rel="stylesheet" href="../players/css/dashboard.css">
+    <!-- Styles spécifiques au module tournoi -->
+    <link rel="stylesheet" href="css/hubismanagtournoi.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- NAVBAR -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="../players/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Gestion des tournois</span>
+        </div>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+                <option value="lin">🇨🇬 Lingala</option>
+                <option value="wol">🇸🇳 Wolof</option>
+                <option value="diou">🇨🇮 Dioula</option>
+                <option value="ha">🇳🇬 Hausa</option>
+                <option value="sw">🇰🇪 Kiswahili</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="pt">🇵🇹 Português</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="ar">🇸🇦 العربية</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="ja">🇯🇵 日本語</option>
+                <option value="tr">🇹🇷 Türkçe</option>
+                <option value="ko">🇰🇷 한국어</option>
+                <option value="hi">🇮🇳 हिन्दी</option>
+                <option value="nl">🇳🇱 Nederlands</option>
+                <option value="pl">🇵🇱 Polski</option>
+                <option value="vi">🇻🇳 Tiếng Việt</option>
+            </select>
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="../players/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="../players/profile-edit.html"><i class="fas fa-user"></i> Mon profil</a>
+                    <a href="#" id="historyBtn"><i class="fas fa-history"></i> Mon historique</a>
+                    <a href="../players/support.html"><i class="fas fa-cog"></i> Paramètres</a>
+                    <a href="#" id="languageLink">Langue (Français)</a>
+                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+        </div>
+    </nav>
+
+    <!-- SIDEBAR GAUCHE (menu du module) -->
+    <div class="sidebar left-sidebar" id="leftSidebar">
+        <div class="sidebar-header">
+            <h3>Menu Tournois</h3>
+            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="accueil_hubisgst.html" class="active"><i class="fas fa-tachometer-alt"></i> Accueil tournois</a>
+            <a href="my-tournaments.html"><i class="fas fa-trophy"></i> Mes tournois</a>
+            <a href="my-registrations.html"><i class="fas fa-list"></i> Mes inscriptions</a>
+            <a href="create-tournament.html"><i class="fas fa-plus-circle"></i> Créer un tournoi</a>
+            <a href="rankings.html"><i class="fas fa-chart-line"></i> Classements</a>
+            <hr>
+            <a href="#" id="showPrivateTournaments"><i class="fas fa-lock"></i> Tournois privés</a>
+            <a href="#" id="showPublicTournaments"><i class="fas fa-globe"></i> Tournois publics</a>
+        </nav>
+    </div>
+
+    <!-- SIDEBAR DROITE (communauté) -->
+    <div class="sidebar right-sidebar" id="rightSidebar">
+        <div class="sidebar-header">
+            <h3>Communauté</h3>
+            <button class="close-sidebar" id="closeRightSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="sidebar-content">
+            <div class="community-section"><h4><i class="fas fa-users"></i> Abonnés</h4><ul class="followers-list" id="followersList"></ul><a href="#" class="view-all">Voir tous</a></div>
+            <div class="community-section"><h4><i class="fas fa-user-friends"></i> Abonnements</h4><ul class="following-list" id="followingList"></ul><a href="#" class="view-all">Voir tous</a></div>
+            <div class="community-section"><h4><i class="fas fa-chart-line"></i> Insights</h4><div class="insights" id="insights"><p>Portée cette semaine : <strong id="insightReach">0</strong></p><p>Engagement : <strong id="insightEngagement">0%</strong></p><p>Nouveaux abonnés : <strong id="insightNewFollowers">+0</strong></p></div></div>
+            <div class="community-section"><h4><i class="fas fa-user-plus"></i> Suggestions</h4><ul class="suggestions-list" id="suggestionsList"></ul><a href="#" class="view-all">Voir plus</a></div>
+            <div class="community-section"><h4><i class="fas fa-fire"></i> Tendances</h4><ul class="trends-list" id="trendsList"></ul><a href="#" class="view-all">Voir plus</a></div>
+        </div>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- CONTENU PRINCIPAL -->
+    <main class="dashboard-main">
+        <div class="feed-container">
+            <h1><i class="fas fa-trophy"></i> Tournois & Compétitions</h1>
+            <p>Participez, organisez ou suivez les tournois HubISoccer.</p>
+
+            <!-- FILTRES RAPIDES -->
+            <div class="filter-tabs">
+                <button class="filter-btn active" data-filter="all">Tous</button>
+                <button class="filter-btn" data-filter="public">Publics</button>
+                <button class="filter-btn" data-filter="private">Privés</button>
+                <button class="filter-btn" data-filter="mine">Mes tournois</button>
+            </div>
+
+            <!-- GRILLE DES TOURNOIS -->
+            <div class="tournaments-grid" id="tournamentsGrid">
+                <!-- Les tournois seront chargés dynamiquement ici -->
+                <div class="loader-wrapper"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODALE D'INSCRIPTION À UN TOURNOI PUBLIC (code) -->
+    <div id="publicRegisterModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Inscription au tournoi</h2>
+                <span class="close-modal" onclick="closePublicRegisterModal()">×</span>
+            </div>
+            <div class="modal-body">
+                <p>Veuillez saisir le code d’accès fourni par l’organisateur :</p>
+                <input type="text" id="tournamentCode" placeholder="Code d'accès">
+                <button class="btn-confirm" onclick="submitPublicRegistration()">Vérifier et s'inscrire</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOASTS -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- FOOTER -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/supabase-client.js"></script>
+    <script src="js/tournaments.js"></script>
+    <script src="js/registrations.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        // Initialisation de la page
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initTournamentsPage();
+        });
+    </script>
+</body>
+</html>
