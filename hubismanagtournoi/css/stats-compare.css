@@ -1,0 +1,203 @@
+.compare-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.page-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.btn-back {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition);
+}
+
+.btn-back:hover {
+    color: var(--primary-dark);
+    transform: translateX(-3px);
+}
+
+.page-header h1 {
+    font-size: 2rem;
+    color: var(--primary-dark);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.page-header h1 i {
+    color: var(--gold);
+}
+
+.tournament-selector {
+    background: white;
+    border-radius: 60px;
+    padding: 15px 25px;
+    margin-bottom: 30px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.tournament-selector label {
+    font-weight: 600;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tournament-selector select {
+    padding: 10px 20px;
+    border: 1px solid var(--light-gray);
+    border-radius: 40px;
+    background: white;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    flex: 1;
+    min-width: 200px;
+}
+
+.type-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    justify-content: center;
+}
+
+.type-btn {
+    background: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    padding: 10px 30px;
+    border-radius: 40px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.type-btn.active {
+    background: var(--primary);
+    color: white;
+}
+
+.selectors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+    margin-bottom: 40px;
+    justify-content: center;
+}
+
+.selector-item {
+    flex: 1;
+    min-width: 250px;
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+}
+
+.selector-item label {
+    display: block;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 10px;
+}
+
+.selector-item select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--light-gray);
+    border-radius: 12px;
+    font-family: 'Poppins', sans-serif;
+    background: white;
+}
+
+.comparison-results {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--light-gray);
+}
+
+.comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.comparison-table th,
+.comparison-table td {
+    padding: 15px;
+    text-align: center;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+.comparison-table th {
+    background: var(--bg-light);
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.comparison-table td:first-child {
+    font-weight: 600;
+    text-align: left;
+    background: var(--bg-light);
+}
+
+.comparison-table .winner {
+    font-weight: 700;
+    color: var(--gold);
+}
+
+.comparison-table .value {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--gray);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+@media (max-width: 768px) {
+    .tournament-selector {
+        flex-direction: column;
+        align-items: stretch;
+        border-radius: 20px;
+    }
+    .selectors {
+        flex-direction: column;
+    }
+    .comparison-table th,
+    .comparison-table td {
+        padding: 10px;
+        font-size: 0.85rem;
+    }
+}
