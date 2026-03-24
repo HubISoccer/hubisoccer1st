@@ -1,175 +1,156 @@
+// ===== RÉCUPÉRATION DE L'UTILISATEUR CONNECTÉ =====
 let currentUser = null;
-let currentProfile = null;
 let registrations = [];
 
-async function checkSession() {
-    const { data: { session }, error } = await supabaseGestionTournoi.auth.getSession();
-    if (error || !session) {
-        window.location.href = '../auth/login.html';
-        return null;
+async function getCurrentUser() {
+    if (window.supabaseAuthPrive) {
+        const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
+        if (!error && user) return user;
     }
-    currentUser = session.user;
-    return currentUser;
+    return null;
 }
 
-async function loadProfile() {
-    const { data, error } = await supabaseGestionTournoi
-        .from('profiles')
-        .select('*')
-        .eq('id', currentUser.id)
-        .single();
-    if (error) {
-        console.error('Erreur chargement profil:', error);
-        showToast('Impossible de charger votre profil', 'error');
-        return null;
-    }
-    currentProfile = data;
-    document.getElementById('userName').textContent = data.full_name || 'Joueur';
-    document.getElementById('userAvatar').src = data.avatar_url || '../public/img/user-default.jpg';
-    return currentProfile;
-}
+// ===== CHARGEMENT DES INSCRIPTIONS =====
+async function loadMyRegistrations() {
+    if (!currentUser) return;
 
-async function loadRegistrations() {
-    showLoader(true);
-    try {
-        // Récupérer l'ID du joueur correspondant à l'utilisateur connecté
-        const { data: player, error: playerError } = await supabaseGestionTournoi
-            .from('gestionnairetournoi_players')
-            .select('id')
-            .eq('user_id', currentProfile.id)
-            .maybeSingle();
+    // 1. Récupérer l'ID du joueur dans gestionnairetournoi_players
+    const { data: player, error: playerError } = await supabaseGestionTournoi
+        .from('gestionnairetournoi_players')
+        .select('id')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
 
-        if (playerError || !player) {
-            registrations = [];
-            renderRegistrations();
-            showLoader(false);
-            return;
-        }
-
-        const statusFilter = document.getElementById('statusFilter')?.value || 'all';
-        const searchTerm = document.getElementById('searchTournament')?.value.trim().toLowerCase() || '';
-
-        let query = supabaseGestionTournoi
-            .from('gestionnairetournoi_registrations')
-            .select(`
-                *,
-                tournament:gestionnairetournoi_tournaments(
-                    id, name, start_date, end_date, location,
-                    sport:gestionnairetournoi_sports(name),
-                    type:gestionnairetournoi_types(name, label)
-                )
-            `)
-            .eq('player_id', player.id)
-            .order('registration_date', { ascending: false });
-
-        if (statusFilter !== 'all') {
-            query = query.eq('status', statusFilter);
-        }
-
-        const { data, error } = await query;
-        if (error) throw error;
-
-        let registrationsData = data || [];
-
-        if (searchTerm) {
-            registrationsData = registrationsData.filter(r =>
-                r.tournament?.name?.toLowerCase().includes(searchTerm) ||
-                (r.tournament?.location && r.tournament.location.toLowerCase().includes(searchTerm))
-            );
-        }
-
-        registrations = registrationsData;
-        renderRegistrations();
-    } catch (error) {
-        console.error('Erreur chargement inscriptions:', error);
-        showToast('Erreur lors du chargement de vos inscriptions', 'error');
-    } finally {
-        showLoader(false);
-    }
-}
-
-function renderRegistrations() {
-    const container = document.getElementById('registrationsList');
-    if (!container) return;
-
-    if (registrations.length === 0) {
-        container.innerHTML = '<p class="no-data">Vous n’êtes inscrit à aucun tournoi pour le moment.</p>';
+    if (playerError || !player) {
+        document.getElementById('registrationsList').innerHTML = '<div class="empty-state"><i class="fas fa-info-circle"></i><p>Vous n’avez aucune inscription.</p></div>';
         return;
     }
 
-    const getStatusLabel = (status) => {
-        if (status === 'pending') return 'En attente';
-        if (status === 'approved') return 'Approuvé ✅';
-        if (status === 'rejected') return 'Rejeté ❌';
-        return status;
-    };
-    const getStatusClass = (status) => {
-        if (status === 'pending') return 'status-pending';
-        if (status === 'approved') return 'status-approved';
-        if (status === 'rejected') return 'status-rejected';
-        return '';
-    };
+    // 2. Récupérer les inscriptions
+    const { data: regs, error: regError } = await supabaseGestionTournoi
+        .from('gestionnairetournoi_registrations')
+        .select(`
+            id,
+            status,
+            registration_date,
+            tournament:tournament_id (
+                id,
+                name,
+                start_date,
+                end_date,
+                location,
+                type:type_id (name, label),
+                sport:sport_id (name)
+            )
+        `)
+        .eq('player_id', player.id)
+        .order('registration_date', { ascending: false });
 
-    const getTypeLabel = (type) => {
-        if (type?.name === 'public_show') return 'Public Show You';
-        if (type?.name === 'public_detection') return 'Détection de talents';
-        if (type?.name === 'private_hubisoccer') return 'Privé HubISoccer';
-        if (type?.name === 'private_simple') return 'Privé simple';
-        return 'Tournoi';
-    };
+    if (regError) {
+        console.error(regError);
+        showToast('Erreur lors du chargement des inscriptions', 'error');
+        return;
+    }
 
-    container.innerHTML = registrations.map(r => `
-        <div class="tournament-card" data-id="${r.tournament?.id}">
-            <div class="tournament-banner">
-                <span class="tournament-type">${getTypeLabel(r.tournament?.type)}</span>
-                <span class="tournament-sport">${r.tournament?.sport?.name || 'Sport'}</span>
+    registrations = regs || [];
+    applyFilters();
+}
+
+// ===== FILTRAGE =====
+function applyFilters() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const periodFilter = document.getElementById('periodFilter').value;
+    const now = new Date();
+
+    let filtered = [...registrations];
+
+    if (statusFilter !== 'all') {
+        filtered = filtered.filter(r => r.status === statusFilter);
+    }
+
+    if (periodFilter !== 'all') {
+        filtered = filtered.filter(r => {
+            const start = new Date(r.tournament.start_date);
+            const end = new Date(r.tournament.end_date);
+            if (periodFilter === 'upcoming') return start > now;
+            if (periodFilter === 'ongoing') return start <= now && end >= now;
+            if (periodFilter === 'past') return end < now;
+            return true;
+        });
+    }
+
+    renderRegistrations(filtered);
+}
+
+// ===== AFFICHAGE =====
+function renderRegistrations(registrationsList) {
+    const container = document.getElementById('registrationsList');
+    if (!registrationsList.length) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-times"></i><p>Aucune inscription correspondante</p></div>';
+        return;
+    }
+
+    container.innerHTML = registrationsList.map(reg => {
+        const statusClass = reg.status === 'pending' ? 'status-pending' : (reg.status === 'approved' ? 'status-approved' : 'status-rejected');
+        const statusText = reg.status === 'pending' ? 'En attente' : (reg.status === 'approved' ? 'Approuvé' : 'Rejeté');
+        const start = new Date(reg.tournament.start_date).toLocaleDateString('fr-FR');
+        const end = new Date(reg.tournament.end_date).toLocaleDateString('fr-FR');
+        return `
+            <div class="registration-card" data-id="${reg.id}">
+                <div class="registration-info">
+                    <div class="registration-name">${escapeHtml(reg.tournament.name)}</div>
+                    <div class="registration-dates">
+                        <i class="fas fa-calendar-alt"></i>
+                        ${start} - ${end}
+                    </div>
+                    <div class="registration-location">
+                        <i class="fas fa-map-marker-alt"></i>
+                        ${escapeHtml(reg.tournament.location || 'Lieu non précisé')}
+                    </div>
+                    <div class="registration-status ${statusClass}">${statusText}</div>
+                </div>
+                <div class="registration-actions">
+                    <a href="tournament-details.html?id=${reg.tournament.id}" class="btn-view">
+                        <i class="fas fa-eye"></i> Voir le tournoi
+                    </a>
+                    ${reg.status === 'pending' ? `<button class="btn-unregister" data-id="${reg.id}"><i class="fas fa-times"></i> Annuler</button>` : ''}
+                </div>
             </div>
-            <div class="tournament-info">
-                <div class="tournament-name">${escapeHtml(r.tournament?.name || 'Tournoi')}</div>
-                <div class="tournament-dates">
-                    <i class="fas fa-calendar-alt"></i> ${r.tournament?.start_date ? new Date(r.tournament.start_date).toLocaleDateString() : ''} - ${r.tournament?.end_date ? new Date(r.tournament.end_date).toLocaleDateString() : ''}
-                </div>
-                <div class="tournament-location">
-                    <i class="fas fa-map-marker-alt"></i> ${escapeHtml(r.tournament?.location || 'Lieu non spécifié')}
-                </div>
-                <div class="tournament-stats">
-                    <span><i class="fas fa-tag"></i> Statut : <span class="${getStatusClass(r.status)}">${getStatusLabel(r.status)}</span></span>
-                    <span><i class="fas fa-calendar-check"></i> Inscrit le ${new Date(r.registration_date).toLocaleDateString()}</span>
-                </div>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
-    document.querySelectorAll('.tournament-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const tournamentId = card.dataset.id;
-            if (tournamentId) {
-                window.location.href = `tournament-details.html?id=${tournamentId}`;
+    // Gestion de l'annulation d'inscription
+    document.querySelectorAll('.btn-unregister').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const regId = btn.getAttribute('data-id');
+            if (confirm('Voulez-vous vraiment annuler votre inscription ?')) {
+                const { error } = await supabaseGestionTournoi
+                    .from('gestionnairetournoi_registrations')
+                    .delete()
+                    .eq('id', regId);
+                if (error) {
+                    showToast('Erreur lors de l\'annulation', 'error');
+                } else {
+                    showToast('Inscription annulée', 'success');
+                    loadMyRegistrations();
+                }
             }
         });
     });
 }
 
-function initMyRegistrations() {
-    checkSession().then(async (user) => {
-        if (!user) return;
-        await loadProfile();
-        await loadRegistrations();
+// ===== INITIALISATION =====
+document.addEventListener('DOMContentLoaded', async () => {
+    currentUser = await getCurrentUser();
+    if (!currentUser) {
+        window.location.href = '../auth/login.html';
+        return;
+    }
+    await loadMyRegistrations();
 
-        const statusFilter = document.getElementById('statusFilter');
-        const searchInput = document.getElementById('searchTournament');
-
-        if (statusFilter) statusFilter.addEventListener('change', loadRegistrations);
-        if (searchInput) searchInput.addEventListener('input', loadRegistrations);
+    document.getElementById('statusFilter').addEventListener('change', applyFilters);
+    document.getElementById('periodFilter').addEventListener('change', applyFilters);
+    document.getElementById('backBtn').addEventListener('click', () => {
+        window.location.href = 'accueil_hubisgst.html';
     });
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
-}
+});
