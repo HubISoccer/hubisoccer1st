@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Validation des transferts – HubISoccer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/hubismanagtournoi.css">
+    <style>
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .admin-header h1 {
+            font-size: 2rem;
+            color: var(--primary-dark);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .transfer-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--light-gray);
+        }
+        .transfer-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .transfer-details {
+            flex: 1;
+        }
+        .transfer-details p {
+            margin: 5px 0;
+        }
+        .transfer-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-approve, .btn-reject {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-approve {
+            background: var(--success);
+            color: white;
+        }
+        .btn-reject {
+            background: var(--danger);
+            color: white;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            color: var(--gray);
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1><i class="fas fa-exchange-alt"></i> Validation des transferts</h1>
+        </div>
+        <div id="transfersList"></div>
+    </div>
+
+    <script src="../js/supabase-client.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        const supabase = supabaseGestionTournoi;
+
+        async function loadTransfers() {
+            const { data, error } = await supabase
+                .from('gestionnairetournoi_transfers')
+                .select(`
+                    id,
+                    player_id,
+                    from_team_id,
+                    to_team_id,
+                    status,
+                    requested_at,
+                    player:gestionnairetournoi_players(user_id, profiles:user_id(full_name)),
+                    from_team:gestionnairetournoi_teams(name),
+                    to_team:gestionnairetournoi_teams(name)
+                `)
+                .eq('status', 'pending')
+                .order('requested_at', { ascending: true });
+            const container = document.getElementById('transfersList');
+            if (error) {
+                container.innerHTML = '<div class="empty-state">Erreur de chargement</div>';
+                return;
+            }
+            if (!data.length) {
+                container.innerHTML = '<div class="empty-state">Aucune demande de transfert en attente</div>';
+                return;
+            }
+            container.innerHTML = data.map(t => {
+                const playerName = t.player?.profiles?.full_name || `Joueur #${t.player_id}`;
+                const fromTeam = t.from_team?.name || 'Libre';
+                const toTeam = t.to_team?.name || 'Inconnu';
+                return `
+                    <div class="transfer-card" data-id="${t.id}">
+                        <div class="transfer-info">
+                            <div class="transfer-details">
+                                <p><strong>Joueur :</strong> ${escapeHtml(playerName)}</p>
+                                <p><strong>De :</strong> ${escapeHtml(fromTeam)}</p>
+                                <p><strong>Vers :</strong> ${escapeHtml(toTeam)}</p>
+                                <p><strong>Demandé le :</strong> ${new Date(t.requested_at).toLocaleString('fr-FR')}</p>
+                            </div>
+                            <div class="transfer-actions">
+                                <button class="btn-approve" onclick="approveTransfer(${t.id})">Approuver</button>
+                                <button class="btn-reject" onclick="rejectTransfer(${t.id})">Rejeter</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function approveTransfer(transferId) {
+            const { error } = await supabase
+                .from('gestionnairetournoi_transfers')
+                .update({ status: 'approved', approved_at: new Date().toISOString(), approved_by: (await supabase.auth.getUser()).data.user?.id })
+                .eq('id', transferId);
+            if (error) {
+                showToast('Erreur : ' + error.message, 'error');
+                return;
+            }
+            // Mettre à jour le joueur dans la table players
+            const transfer = await supabase.from('gestionnairetournoi_transfers').select('player_id, to_team_id').eq('id', transferId).single();
+            if (transfer.data) {
+                await supabase
+                    .from('gestionnairetournoi_players')
+                    .update({ team_id: transfer.data.to_team_id })
+                    .eq('id', transfer.data.player_id);
+            }
+            showToast('Transfert approuvé', 'success');
+            loadTransfers();
+        }
+
+        async function rejectTransfer(transferId) {
+            const { error } = await supabase
+                .from('gestionnairetournoi_transfers')
+                .update({ status: 'rejected' })
+                .eq('id', transferId);
+            if (error) {
+                showToast('Erreur : ' + error.message, 'error');
+                return;
+            }
+            showToast('Transfert rejeté', 'success');
+            loadTransfers();
+        }
+
+        window.approveTransfer = approveTransfer;
+        window.rejectTransfer = rejectTransfer;
+        loadTransfers();
+    </script>
+</body>
+</html>
