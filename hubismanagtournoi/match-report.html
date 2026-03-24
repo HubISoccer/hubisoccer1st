@@ -2,147 +2,130 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Rapport de match | HubISoccer</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Saisir rapport de match | HubISoccer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/hubismanagtournoi.css">
+    <link rel="stylesheet" href="css/match-report.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <nav class="dashboard-nav">
-        <div class="nav-left">
-            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
-            <span class="dashboard-title">Gestionnaire de tournois</span>
+    <div class="report-container">
+        <div class="page-header">
+            <button class="btn-back" id="backBtn">
+                <i class="fas fa-arrow-left"></i>
+                Retour
+            </button>
+            <h1>
+                <i class="fas fa-file-alt"></i>
+                Saisir rapport de match
+            </h1>
         </div>
-        <div class="nav-right">
-            <select class="lang-picker" id="langSelect">
-                <option value="fr">🇫🇷 Français</option>
-                <option value="en">🇺🇸 English</option>
-                <option value="yo">🇳🇬 Yoruba</option>
-                <option value="fon">🇧🇯 Fon</option>
-                <option value="mina">🇹🇬 Mina</option>
-                <option value="lin">🇨🇬 Lingala</option>
-                <option value="wol">🇸🇳 Wolof</option>
-                <option value="diou">🇨🇮 Dioula</option>
-                <option value="ha">🇳🇬 Hausa</option>
-                <option value="sw">🇰🇪 Kiswahili</option>
-                <option value="es">🇪🇸 Español</option>
-                <option value="pt">🇵🇹 Português</option>
-                <option value="de">🇩🇪 Deutsch</option>
-                <option value="it">🇮🇹 Italiano</option>
-                <option value="ar">🇸🇦 العربية</option>
-                <option value="zh">🇨🇳 中文</option>
-                <option value="ru">🇷🇺 Русский</option>
-                <option value="ja">🇯🇵 日本語</option>
-                <option value="tr">🇹🇷 Türkçe</option>
-                <option value="ko">🇰🇷 한국어</option>
-                <option value="hi">🇮🇳 हिन्दी</option>
-                <option value="nl">🇳🇱 Nederlands</option>
-                <option value="pl">🇵🇱 Polski</option>
-                <option value="vi">🇻🇳 Tiếng Việt</option>
-            </select>
-            <div class="notif-icon" id="notifIcon">
-                <i class="fas fa-bell"></i>
-                <span class="notif-badge" id="notifBadge">0</span>
+
+        <div class="report-card">
+            <div id="matchInfo" class="match-info">
+                <div class="match-teams" id="matchTeams">Chargement...</div>
+                <div class="match-date" id="matchDate">-</div>
+                <div class="match-location" id="matchLocation">-</div>
             </div>
-            <div class="user-menu" id="userMenu">
-                <img src="../public/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
-                <span class="user-name" id="userName">Chargement...</span>
-                <i class="fas fa-chevron-down"></i>
-                <div class="user-dropdown" id="userDropdown">
-                    <a href="../players/profile-edit.html"><i class="fas fa-user"></i> Mon profil</a>
-                    <a href="#" id="historyBtn"><i class="fas fa-history"></i> Mon historique</a>
-                    <a href="../players/support.html"><i class="fas fa-cog"></i> Paramètres</a>
-                    <a href="#" id="languageLink">Langue (Français)</a>
-                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+
+            <div class="form-group">
+                <label>Type de rapport *</label>
+                <select id="reportType" required>
+                    <option value="">Sélectionnez</option>
+                    <option value="referee">Rapport arbitre</option>
+                    <option value="commissioner">Rapport commissaire</option>
+                    <option value="medical">Rapport staff médical</option>
+                </select>
+            </div>
+
+            <!-- Contenu dynamique selon le type -->
+            <div id="refereeForm" class="report-form" style="display: none;">
+                <h3>Rapport arbitre</h3>
+                <div class="form-group">
+                    <label>Score final</label>
+                    <div class="score-input">
+                        <input type="number" id="homeScore" placeholder="Domicile" min="0">
+                        <span>-</span>
+                        <input type="number" id="awayScore" placeholder="Extérieur" min="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Cartons jaunes (équipe domicile)</label>
+                    <input type="text" id="yellowHome" placeholder="Ex: Dupont (15'), Martin (32')">
+                </div>
+                <div class="form-group">
+                    <label>Cartons jaunes (équipe extérieur)</label>
+                    <input type="text" id="yellowAway" placeholder="Ex: Diallo (45+1')">
+                </div>
+                <div class="form-group">
+                    <label>Cartons rouges</label>
+                    <input type="text" id="redCards" placeholder="Ex: Keita (78')">
+                </div>
+                <div class="form-group">
+                    <label>Remarques / incidents</label>
+                    <textarea id="refereeRemarks" rows="4"></textarea>
                 </div>
             </div>
-            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
-        </div>
-    </nav>
-    <div class="sidebar left-sidebar" id="leftSidebar">
-        <div class="sidebar-header">
-            <h3>Gestion des tournois</h3>
-            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="accueil_hubisgst.html"><i class="fas fa-tachometer-alt"></i> Accueil</a>
-            <a href="my-tournaments.html"><i class="fas fa-trophy"></i> Mes tournois</a>
-            <a href="my-registrations.html"><i class="fas fa-clipboard-list"></i> Mes inscriptions</a>
-            <a href="create-tournament.html"><i class="fas fa-plus-circle"></i> Créer un tournoi</a>
-            <a href="rankings.html"><i class="fas fa-chart-line"></i> Statistiques</a>
-            <a href="match-reports.html" class="active"><i class="fas fa-file-alt"></i> Rapports de match</a>
-            <hr>
-            <a href="#" id="showAdminPanel" style="display: none;"><i class="fas fa-shield-alt"></i> Administration</a>
-            <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
-        </nav>
-    </div>
-    <div class="sidebar right-sidebar" id="rightSidebar">
-        <div class="sidebar-header">
-            <h3>Communauté</h3>
-            <button class="close-sidebar" id="closeRightSidebar"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="sidebar-content">
-            <div class="community-section"><h4><i class="fas fa-users"></i> Abonnés</h4><ul class="followers-list" id="followersList"></ul><a href="#" class="view-all">Voir tous</a></div>
-            <div class="community-section"><h4><i class="fas fa-user-friends"></i> Abonnements</h4><ul class="following-list" id="followingList"></ul><a href="#" class="view-all">Voir tous</a></div>
-            <div class="community-section"><h4><i class="fas fa-chart-line"></i> Insights</h4><div class="insights" id="insights"><p>Portée cette semaine : <strong id="insightReach">0</strong></p><p>Engagement : <strong id="insightEngagement">0%</strong></p><p>Nouveaux abonnés : <strong id="insightNewFollowers">+0</strong></p></div></div>
-            <div class="community-section"><h4><i class="fas fa-user-plus"></i> Suggestions</h4><ul class="suggestions-list" id="suggestionsList"></ul><a href="#" class="view-all">Voir plus</a></div>
-            <div class="community-section"><h4><i class="fas fa-fire"></i> Tendances</h4><ul class="trends-list" id="trendsList"></ul><a href="#" class="view-all">Voir plus</a></div>
-            <div class="community-section"><h4><i class="fas fa-folder"></i> Mes collections</h4><ul class="collections-list" id="collectionsList"></ul><button id="createCollectionBtn" class="btn-create-collection"><i class="fas fa-plus"></i> Créer une collection</button></div>
-        </div>
-    </div>
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
-    <main class="dashboard-main">
-        <div class="tournament-container">
-            <div class="tournament-header">
-                <h1><i class="fas fa-file-alt"></i> Rapport de match</h1>
+
+            <div id="commissionerForm" class="report-form" style="display: none;">
+                <h3>Rapport commissaire</h3>
+                <div class="form-group">
+                    <label>Affluence estimée</label>
+                    <input type="number" id="attendance" placeholder="Nombre de spectateurs">
+                </div>
+                <div class="form-group">
+                    <label>Évaluation de l'organisation (1-5)</label>
+                    <select id="orgRating">
+                        <option value="1">1 - Insuffisant</option>
+                        <option value="2">2 - Moyen</option>
+                        <option value="3">3 - Bien</option>
+                        <option value="4">4 - Très bien</option>
+                        <option value="5">5 - Excellent</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Observations générales</label>
+                    <textarea id="commissionerRemarks" rows="4"></textarea>
+                </div>
             </div>
-            <div class="create-tournament-form">
-                <form id="matchReportForm">
-                    <div class="form-group">
-                        <label>Type de rapport *</label>
-                        <select id="reportType" required>
-                            <option value="referee">Arbitre</option>
-                            <option value="commissioner">Commissaire</option>
-                            <option value="medical">Médical</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Contenu (JSON ou texte structuré)</label>
-                        <textarea id="reportContent" rows="8" placeholder='Ex: {"home_score":2, "away_score":1, "events":[...]}'></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Fichier joint (PDF, image, etc.)</label>
-                        <input type="file" id="reportFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
-                    </div>
-                    <div class="form-actions">
-                        <button type="submit" class="btn-submit">Soumettre le rapport</button>
-                        <button type="button" class="btn-cancel" onclick="window.location.href='tournament-details.html?id=' + new URLSearchParams(window.location.search).get('tournament_id')">Annuler</button>
-                    </div>
-                </form>
+
+            <div id="medicalForm" class="report-form" style="display: none;">
+                <h3>Rapport staff médical</h3>
+                <div class="form-group">
+                    <label>Blessures signalées (équipe domicile)</label>
+                    <input type="text" id="injuriesHome" placeholder="Ex: Koné (coup au genou, 30')">
+                </div>
+                <div class="form-group">
+                    <label>Blessures signalées (équipe extérieur)</label>
+                    <input type="text" id="injuriesAway" placeholder="Ex: Traoré (entorse cheville, 67')">
+                </div>
+                <div class="form-group">
+                    <label>Interventions médicales sur le terrain</label>
+                    <input type="text" id="medicalInterventions" placeholder="Ex: 3 interventions">
+                </div>
+                <div class="form-group">
+                    <label>Recommandations post-match</label>
+                    <textarea id="medicalAdvice" rows="4"></textarea>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Pièce jointe (optionnel)</label>
+                <input type="file" id="reportFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                <small>Formats acceptés : PDF, images, Word</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" id="submitReport" class="btn-primary">Enregistrer le rapport</button>
+                <button type="button" id="cancelBtn" class="btn-secondary">Annuler</button>
             </div>
         </div>
-    </main>
+    </div>
+
     <div id="toastContainer" class="toast-container"></div>
-    <footer class="dashboard-footer">
-        <div class="footer-content">
-            <div class="compliance-badges">
-                <span class="badge">Conformité APDP Bénin</span>
-                <span class="badge">Règlementation FIFA</span>
-                <span class="badge">Double Projet Sport-Études</span>
-            </div>
-            <div class="contact-info">
-                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
-                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
-            </div>
-            <div class="legal">
-                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
-                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
-                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
-            </div>
-        </div>
-    </footer>
+
     <script src="js/supabase-client.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/match-report.js"></script>
