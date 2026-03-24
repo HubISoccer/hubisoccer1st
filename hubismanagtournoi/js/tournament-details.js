@@ -1,172 +1,218 @@
-// ===== tournament-details.js =====
+// ===== RÉCUPÉRATION DE L'ID DU TOURNOI =====
+const urlParams = new URLSearchParams(window.location.search);
+const tournamentId = urlParams.get('id');
+
+if (!tournamentId) {
+    window.location.href = 'accueil_hubisgst.html';
+}
+
+// ===== ÉLÉMENTS DOM =====
+const tournamentNameEl = document.getElementById('tournamentName');
+const tournamentDatesEl = document.getElementById('tournamentDates');
+const tournamentLocationEl = document.getElementById('tournamentLocation');
+const tournamentPrizeEl = document.getElementById('tournamentPrize');
+const tournamentTypeEl = document.getElementById('tournamentType');
+const tournamentSportEl = document.getElementById('tournamentSport');
+const tournamentDescriptionEl = document.getElementById('tournamentDescription');
+const teamsListEl = document.getElementById('teamsList');
+const matchesListEl = document.getElementById('matchesList');
+const standingsListEl = document.getElementById('standingsList');
+const prizeSection = document.getElementById('prizeSection');
+const prizeListEl = document.getElementById('prizeList');
+const registerBtn = document.getElementById('registerBtn');
+const registrationBlock = document.getElementById('registrationBlock');
+const registrationMessage = document.getElementById('registrationMessage');
+
+// ===== ÉTATS =====
 let currentUser = null;
-let currentProfile = null;
-let tournamentId = null;
-let tournament = null;
-let matches = [];
+let tournamentData = null;
+let teamsData = [];
+let matchesData = [];
+let standingsData = [];
+let prizesData = [];
 
-async function checkSession() {
-    const { data: { session }, error } = await supabaseGestionTournoi.auth.getSession();
-    if (error || !session) {
-        window.location.href = '../auth/login.html';
-        return null;
+// ===== FONCTIONS UTILITAIRES =====
+async function getCurrentUser() {
+    if (window.supabaseAuthPrive) {
+        const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
+        if (!error && user) return user;
     }
-    currentUser = session.user;
-    return currentUser;
+    return null;
 }
 
-async function loadProfile() {
-    const { data, error } = await supabaseGestionTournoi
-        .from('profiles')
-        .select('*')
-        .eq('id', currentUser.id)
-        .single();
-    if (error) {
-        console.error('Erreur chargement profil:', error);
-        showToast('Impossible de charger votre profil', 'error');
-        return null;
-    }
-    currentProfile = data;
-    document.getElementById('userName').textContent = data.full_name || 'Joueur';
-    document.getElementById('userAvatar').src = data.avatar_url || '../public/img/user-default.jpg';
-    return currentProfile;
+function showError(message) {
+    if (window.showToast) window.showToast(message, 'error');
+    else alert(message);
 }
 
-async function loadTournament() {
-    const urlParams = new URLSearchParams(window.location.search);
-    tournamentId = urlParams.get('id');
-    if (!tournamentId) {
-        showToast('Tournoi non spécifié', 'error');
-        setTimeout(() => window.location.href = 'accueil_hubisgst.html', 2000);
-        return;
-    }
-
-    const { data, error } = await supabaseGestionTournoi
-        .from('gestionnairetournoi_tournaments')
-        .select(`
-            *,
-            sport:gestionnairetournoi_sports(name),
-            type:gestionnairetournoi_types(name, label)
-        `)
-        .eq('id', tournamentId)
-        .single();
-
-    if (error || !data) {
-        console.error('Erreur chargement tournoi:', error);
-        showToast('Tournoi introuvable', 'error');
-        setTimeout(() => window.location.href = 'accueil_hubisgst.html', 2000);
-        return;
-    }
-    tournament = data;
-    renderTournamentDetails();
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function renderTournamentDetails() {
-    document.getElementById('tournamentName').textContent = tournament.name;
-    document.getElementById('tournamentDates').innerHTML = `<i class="fas fa-calendar-alt"></i> ${new Date(tournament.start_date).toLocaleDateString()} - ${new Date(tournament.end_date).toLocaleDateString()}`;
-    document.getElementById('tournamentLocation').innerHTML = `<i class="fas fa-map-marker-alt"></i> ${tournament.location || 'Lieu non spécifié'}`;
-    document.getElementById('tournamentSport').innerHTML = `<i class="fas fa-futbol"></i> ${tournament.sport?.name || 'Sport'}`;
-    document.getElementById('tournamentDescription').textContent = tournament.description || 'Aucune description';
-    document.getElementById('tournamentRules').innerHTML = tournament.rules ? `<p>${escapeHtml(tournament.rules)}</p>` : '<p>Aucun règlement spécifié.</p>';
-    document.getElementById('tournamentPrize').textContent = tournament.prize_pool ? `${tournament.prize_pool.toLocaleString()} FCFA` : 'Prime à définir';
+function formatDateTime(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 
-    const streamContainer = document.getElementById('streamContainer');
-    if (tournament.stream_url) {
-        const url = tournament.stream_url;
-        let embedUrl = url;
-        if (url.includes('youtube.com/watch') || url.includes('youtu.be')) {
-            const videoId = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
-            embedUrl = `https://www.youtube.com/embed/${videoId}`;
+// ===== CHARGEMENT DES DONNÉES =====
+async function loadTournamentDetails() {
+    try {
+        const { data, error } = await supabaseGestionTournoi
+            .from('gestionnairetournoi_tournaments')
+            .select(`
+                *,
+                type:type_id (name, label),
+                sport:sport_id (name)
+            `)
+            .eq('id', tournamentId)
+            .single();
+
+        if (error) throw error;
+        tournamentData = data;
+
+        tournamentNameEl.textContent = data.name;
+        tournamentDatesEl.textContent = `${formatDate(data.start_date)} - ${formatDate(data.end_date)}`;
+        tournamentLocationEl.textContent = data.location || 'Non spécifié';
+        tournamentPrizeEl.textContent = data.prize_pool ? `${data.prize_pool.toLocaleString()} FCFA` : 'Non défini';
+        tournamentTypeEl.textContent = data.type?.label || data.type?.name || 'Non spécifié';
+        tournamentSportEl.textContent = data.sport?.name || 'Non spécifié';
+        tournamentDescriptionEl.textContent = data.description || 'Aucune description';
+
+        // Afficher le bouton d'inscription si le tournoi est actif et l'utilisateur connecté
+        if (currentUser) {
+            await checkUserRegistration();
+            registrationBlock.style.display = 'block';
+        } else {
+            registrationBlock.style.display = 'none';
         }
-        streamContainer.innerHTML = `<iframe src="${embedUrl}" frameborder="0" allowfullscreen style="width:100%; height:300px; border-radius:12px;"></iframe>`;
-    } else {
-        streamContainer.innerHTML = '<p>Aucun stream disponible pour le moment.</p>';
-    }
 
-    // Vérifier si l'utilisateur est déjà inscrit
-    checkRegistrationStatus();
+    } catch (err) {
+        console.error(err);
+        showError('Erreur lors du chargement du tournoi');
+    }
 }
 
-async function checkRegistrationStatus() {
-    if (!currentProfile || !tournamentId) return;
-    // Vérifier dans gestionnairetournoi_registrations (si le joueur a un profil joueur)
+async function checkUserRegistration() {
+    if (!currentUser || !tournamentData) return;
+    // Vérifier si l'utilisateur est déjà inscrit (dans la table gestionnairetournoi_registrations)
+    const { data, error } = await supabaseGestionTournoi
+        .from('gestionnairetournoi_registrations')
+        .select('id, status')
+        .eq('tournament_id', tournamentId)
+        .eq('player_id', currentUser.id) // Il faudrait une jointure avec gestionnairetournoi_players pour trouver le player_id
+        .maybeSingle();
+
+    // Pour simplifier, on suppose qu'on a une table `gestionnairetournoi_players` avec `user_id`
+    // On va d'abord récupérer le player_id correspondant à l'utilisateur
     const { data: player, error: playerError } = await supabaseGestionTournoi
         .from('gestionnairetournoi_players')
         .select('id')
-        .eq('user_id', currentProfile.id)
+        .eq('user_id', currentUser.id)
         .maybeSingle();
 
-    if (playerError || !player) return; // pas de profil joueur, pas d'inscription
+    if (playerError || !player) {
+        // L'utilisateur n'a pas de fiche joueur, donc pas encore inscrit
+        registerBtn.disabled = false;
+        registerBtn.onclick = () => registerUser();
+        registrationMessage.textContent = '';
+        return;
+    }
 
-    const { data, error } = await supabaseGestionTournoi
+    const { data: reg, error: regError } = await supabaseGestionTournoi
         .from('gestionnairetournoi_registrations')
         .select('status')
         .eq('tournament_id', tournamentId)
         .eq('player_id', player.id)
         .maybeSingle();
 
-    if (data) {
-        const btn = document.getElementById('registerBtn');
-        if (data.status === 'approved') {
-            btn.textContent = 'Inscrit ✅';
-            btn.disabled = true;
-        } else if (data.status === 'pending') {
-            btn.textContent = 'Inscription en attente';
-            btn.disabled = true;
-        }
-    }
-}
-
-async function registerForTournament() {
-    if (!currentProfile) {
-        showToast('Veuillez vous connecter', 'warning');
+    if (regError) {
+        console.error(regError);
+        registerBtn.disabled = true;
+        registrationMessage.textContent = 'Erreur de vérification';
         return;
     }
 
-    // Créer ou récupérer le profil joueur
-    let playerId = null;
+    if (reg) {
+        if (reg.status === 'approved') {
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Inscrit ✓';
+            registrationMessage.textContent = 'Vous êtes déjà inscrit et approuvé.';
+        } else if (reg.status === 'pending') {
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'En attente';
+            registrationMessage.textContent = 'Votre inscription est en attente de validation.';
+        } else {
+            registerBtn.disabled = false;
+            registerBtn.onclick = () => registerUser();
+            registrationMessage.textContent = '';
+        }
+    } else {
+        registerBtn.disabled = false;
+        registerBtn.onclick = () => registerUser();
+        registrationMessage.textContent = '';
+    }
+}
+
+async function registerUser() {
+    if (!currentUser) {
+        window.location.href = '../auth/login.html';
+        return;
+    }
+    if (!tournamentData) return;
+
+    // 1. S'assurer que l'utilisateur a une fiche joueur dans gestionnairetournoi_players
+    let playerId;
     const { data: existingPlayer, error: playerError } = await supabaseGestionTournoi
         .from('gestionnairetournoi_players')
         .select('id')
-        .eq('user_id', currentProfile.id)
+        .eq('user_id', currentUser.id)
         .maybeSingle();
 
     if (playerError) {
-        console.error(playerError);
-        showToast('Erreur lors de l\'inscription', 'error');
+        showError('Erreur lors de la vérification de votre profil');
         return;
     }
 
     if (existingPlayer) {
         playerId = existingPlayer.id;
     } else {
-        // Créer un joueur (profil par défaut)
+        // Créer une fiche joueur basique
         const { data: newPlayer, error: createError } = await supabaseGestionTournoi
             .from('gestionnairetournoi_players')
-            .insert({ user_id: currentProfile.id })
+            .insert({
+                user_id: currentUser.id,
+                created_at: new Date().toISOString()
+            })
             .select()
             .single();
         if (createError) {
-            showToast('Erreur lors de la création du profil', 'error');
+            showError('Erreur lors de la création de votre fiche joueur');
             return;
         }
         playerId = newPlayer.id;
     }
 
-    // Vérifier si déjà inscrit
-    const { data: existingReg, error: regError } = await supabaseGestionTournoi
+    // 2. Vérifier si déjà inscrit
+    const { data: existingReg, error: regCheckError } = await supabaseGestionTournoi
         .from('gestionnairetournoi_registrations')
         .select('id')
         .eq('tournament_id', tournamentId)
         .eq('player_id', playerId)
         .maybeSingle();
 
+    if (regCheckError) {
+        showError('Erreur de vérification');
+        return;
+    }
     if (existingReg) {
-        showToast('Vous êtes déjà inscrit à ce tournoi', 'info');
+        showToast('Vous êtes déjà inscrit à ce tournoi', 'warning');
         return;
     }
 
-    // Inscription
+    // 3. Inscription
     const { error: insertError } = await supabaseGestionTournoi
         .from('gestionnairetournoi_registrations')
         .insert({
@@ -176,132 +222,229 @@ async function registerForTournament() {
         });
 
     if (insertError) {
-        showToast('Erreur lors de l\'inscription : ' + insertError.message, 'error');
-    } else {
-        showToast('Inscription enregistrée ! En attente de validation.', 'success');
-        document.getElementById('registerBtn').textContent = 'Inscription en attente';
-        document.getElementById('registerBtn').disabled = true;
+        showError('Erreur lors de l\'inscription');
+        return;
+    }
+
+    showToast('Inscription enregistrée, en attente de validation', 'success');
+    registerBtn.disabled = true;
+    registerBtn.textContent = 'En attente';
+    registrationMessage.textContent = 'Votre inscription est en attente de validation.';
+}
+
+// ===== CHARGEMENT DES ÉQUIPES =====
+async function loadTeams() {
+    try {
+        const { data, error } = await supabaseGestionTournoi
+            .from('gestionnairetournoi_teams')
+            .select(`
+                *,
+                players:gestionnairetournoi_players( id, user_id, jersey_number, position, is_captain )
+            `)
+            .eq('sport_id', tournamentData.sport_id);
+        if (error) throw error;
+        teamsData = data || [];
+        renderTeams();
+    } catch (err) {
+        console.error(err);
+        teamsListEl.innerHTML = '<div class="empty-state">Erreur chargement des équipes</div>';
     }
 }
 
-async function loadMatches() {
-    const { data, error } = await supabaseGestionTournoi
-        .from('gestionnairetournoi_matches')
-        .select(`
-            *,
-            home_team:gestionnairetournoi_teams!home_team_id(name),
-            away_team:gestionnairetournoi_teams!away_team_id(name)
-        `)
-        .eq('tournament_id', tournamentId)
-        .order('match_date', { ascending: true });
-
-    if (error) {
-        console.error('Erreur chargement matchs:', error);
-        showToast('Erreur lors du chargement des matchs', 'error');
+function renderTeams() {
+    if (!teamsData.length) {
+        teamsListEl.innerHTML = '<div class="empty-state">Aucune équipe inscrite pour le moment</div>';
         return;
     }
-    matches = data || [];
-    renderMatches();
-}
-
-function renderMatches() {
-    const container = document.getElementById('matchesList');
-    if (!container) return;
-    if (matches.length === 0) {
-        container.innerHTML = '<p>Aucun match programmé pour le moment.</p>';
-        return;
-    }
-    container.innerHTML = matches.map(m => `
-        <div class="match-card" data-match-id="${m.id}">
-            <div class="match-info">
-                <span class="match-date">${new Date(m.match_date).toLocaleString()}</span>
-                <div class="match-teams">
-                    <span class="team-name">${escapeHtml(m.home_team?.name || 'Équipe')}</span>
-                    <span class="match-score">${m.home_score ?? '?'} - ${m.away_score ?? '?'}</span>
-                    <span class="team-name">${escapeHtml(m.away_team?.name || 'Équipe')}</span>
-                </div>
-                <div class="match-status">${m.status === 'scheduled' ? 'À venir' : m.status === 'live' ? 'En direct' : 'Terminé'}</div>
+    teamsListEl.innerHTML = teamsData.map(team => `
+        <div class="team-card" onclick="window.location.href='team-details.html?id=${team.id}'">
+            <div class="team-logo">
+                ${team.logo_url ? `<img src="${team.logo_url}" alt="${team.name}">` : `<i class="fas fa-users"></i>`}
+            </div>
+            <div class="team-info">
+                <div class="team-name">${escapeHtml(team.name)}</div>
+                <div class="team-category">${team.age_category || 'Toutes catégories'}</div>
             </div>
         </div>
     `).join('');
-
-    document.querySelectorAll('.match-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const matchId = card.dataset.matchId;
-            window.location.href = `match-details.html?id=${matchId}&tournament=${tournamentId}`;
-        });
-    });
 }
 
-async function loadRankings() {
-    // Récupérer les statistiques agrégées (table gestionnairetournoi_stats)
-    const { data, error } = await supabaseGestionTournoi
-        .from('gestionnairetournoi_stats')
-        .select(`
-            *,
-            team:gestionnairetournoi_teams(name)
-        `)
-        .eq('tournament_id', tournamentId)
-        .order('points', { ascending: false })
-        .order('goals_for', { ascending: false });
-
-    if (error) {
-        console.error('Erreur chargement classement:', error);
-        showToast('Erreur lors du chargement du classement', 'error');
-        return;
+// ===== CHARGEMENT DES MATCHS =====
+async function loadMatches() {
+    try {
+        const { data, error } = await supabaseGestionTournoi
+            .from('gestionnairetournoi_matches')
+            .select(`
+                *,
+                home_team:home_team_id (id, name),
+                away_team:away_team_id (id, name)
+            `)
+            .eq('tournament_id', tournamentId)
+            .order('match_date', { ascending: true });
+        if (error) throw error;
+        matchesData = data || [];
+        renderMatches();
+    } catch (err) {
+        console.error(err);
+        matchesListEl.innerHTML = '<div class="empty-state">Erreur chargement des matchs</div>';
     }
-    renderRankings(data || []);
 }
 
-function renderRankings(rankings) {
-    const container = document.getElementById('rankingsList');
-    if (!container) return;
-    if (rankings.length === 0) {
-        container.innerHTML = '<p>Aucune donnée de classement disponible.</p>';
+function renderMatches() {
+    if (!matchesData.length) {
+        matchesListEl.innerHTML = '<div class="empty-state">Aucun match programmé pour le moment</div>';
         return;
     }
-    container.innerHTML = `
-        <table class="rankings-table">
+    const now = new Date();
+    matchesListEl.innerHTML = matchesData.map(match => {
+        const matchDate = new Date(match.match_date);
+        const isLive = matchDate <= now && matchDate > new Date(now - 2 * 60 * 60 * 1000);
+        const scoreDisplay = (match.home_score !== undefined && match.away_score !== undefined) ?
+            `${match.home_score} - ${match.away_score}` : 'vs';
+        return `
+            <div class="match-card">
+                <div class="match-date">
+                    <i class="fas fa-calendar-alt"></i> ${formatDateTime(match.match_date)}
+                </div>
+                <div class="match-teams">
+                    <span>${escapeHtml(match.home_team?.name || '?')}</span>
+                    <span class="match-score">${scoreDisplay}</span>
+                    <span>${escapeHtml(match.away_team?.name || '?')}</span>
+                </div>
+                ${isLive && match.stream_url ? `
+                    <a href="${match.stream_url}" target="_blank" class="match-stream"><i class="fas fa-video"></i> Live</a>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// ===== CHARGEMENT DU CLASSEMENT =====
+async function loadStandings() {
+    try {
+        // Récupérer les statistiques depuis gestionnairetournoi_stats
+        const { data, error } = await supabaseGestionTournoi
+            .from('gestionnairetournoi_stats')
+            .select(`
+                *,
+                team:team_id (id, name)
+            `)
+            .eq('tournament_id', tournamentId)
+            .order('points', { ascending: false })
+            .order('goals_for', { ascending: false });
+        if (error) throw error;
+        standingsData = data || [];
+        renderStandings();
+    } catch (err) {
+        console.error(err);
+        standingsListEl.innerHTML = '<div class="empty-state">Classement non disponible</div>';
+    }
+}
+
+function renderStandings() {
+    if (!standingsData.length) {
+        standingsListEl.innerHTML = '<div class="empty-state">Aucune statistique disponible</div>';
+        return;
+    }
+    let html = `
+        <table>
             <thead>
-                <tr><th>Position</th><th>Équipe</th><th>Matchs</th><th>V</th><th>N</th><th>D</th><th>BP</th><th>BC</th><th>Diff</th><th>Points</th></tr>
+                <tr>
+                    <th>#</th>
+                    <th>Équipe</th>
+                    <th>J</th>
+                    <th>V</th>
+                    <th>N</th>
+                    <th>D</th>
+                    <th>BP</th>
+                    <th>BC</th>
+                    <th>Diff</th>
+                    <th>Pts</th>
+                </tr>
             </thead>
             <tbody>
-                ${rankings.map((r, idx) => `
-                    <tr>
-                        <td>${idx+1}</td>
-                        <td>${escapeHtml(r.team?.name || 'Équipe')}</td>
-                        <td>${r.matches_played || 0}</td>
-                        <td>${r.wins || 0}</td>
-                        <td>${r.draws || 0}</td>
-                        <td>${r.losses || 0}</td>
-                        <td>${r.goals_for || 0}</td>
-                        <td>${r.goals_against || 0}</td>
-                        <td>${(r.goals_for || 0) - (r.goals_against || 0)}</td>
-                        <td>${r.points || 0}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
     `;
+    standingsData.forEach((stat, idx) => {
+        const diff = stat.goals_for - stat.goals_against;
+        html += `
+            <tr>
+                <td>${idx + 1}</td>
+                <td>${escapeHtml(stat.team?.name || 'Équipe')}</td>
+                <td>${stat.matches_played || 0}</td>
+                <td>${stat.wins || 0}</td>
+                <td>${stat.draws || 0}</td>
+                <td>${stat.losses || 0}</td>
+                <td>${stat.goals_for || 0}</td>
+                <td>${stat.goals_against || 0}</td>
+                <td>${diff}</td>
+                <td>${stat.points || 0}</td>
+            </tr>
+        `;
+    });
+    html += `</tbody></table>`;
+    standingsListEl.innerHTML = html;
 }
 
-// Gestion des onglets
-document.getElementById('viewMatchesBtn').addEventListener('click', () => {
-    document.getElementById('matchesSection').style.display = 'block';
-    document.getElementById('rankingsSection').style.display = 'none';
-    loadMatches();
-});
-document.getElementById('viewRankingsBtn').addEventListener('click', () => {
-    document.getElementById('matchesSection').style.display = 'none';
-    document.getElementById('rankingsSection').style.display = 'block';
-    loadRankings();
-});
-document.getElementById('registerBtn').addEventListener('click', registerForTournament);
+// ===== CHARGEMENT DES PRIMES =====
+async function loadPrizes() {
+    try {
+        const { data, error } = await supabaseGestionTournoi
+            .from('gestionnairetournoi_prizes')
+            .select(`
+                *,
+                team:team_id (id, name),
+                player:player_id (id, user_id)
+            `)
+            .eq('tournament_id', tournamentId)
+            .order('amount', { ascending: false });
+        if (error) throw error;
+        prizesData = data || [];
+        if (prizesData.length) {
+            prizeSection.style.display = 'block';
+            renderPrizes();
+        } else {
+            prizeSection.style.display = 'none';
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
 
-// Initialisation
+function renderPrizes() {
+    prizeListEl.innerHTML = prizesData.map(prize => {
+        let winner = '';
+        if (prize.team) winner = prize.team.name;
+        else if (prize.player) winner = 'Joueur';
+        else winner = 'Non attribué';
+        return `
+            <div class="prize-item">
+                <div class="prize-winner">
+                    <i class="fas fa-trophy"></i> ${escapeHtml(winner)}
+                </div>
+                <div class="prize-amount">${prize.amount.toLocaleString()} FCFA</div>
+                <div class="prize-reason">${prize.reason || 'Récompense'}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    const user = await checkSession();
-    if (!user) return;
-    await loadProfile();
-    await loadTournament();
+    // Récupérer l'utilisateur connecté (si existant)
+    if (window.supabaseAuthPrive) {
+        const user = await getCurrentUser();
+        currentUser = user;
+    }
+
+    // Charger les données
+    await loadTournamentDetails();
+    if (!tournamentData) return;
+    await Promise.all([
+        loadTeams(),
+        loadMatches(),
+        loadStandings(),
+        loadPrizes()
+    ]);
 });
+
+// Exporter les fonctions si nécessaires (non requis ici)
