@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Demande de carte – HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            color: #551B8C;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+        .card-category {
+            background: white;
+            border-radius: 24px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
+        .card-category:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(85,27,140,0.15);
+            border-color: #551B8C;
+        }
+        .card-category i {
+            font-size: 3rem;
+            color: #ffcc00;
+            margin-bottom: 15px;
+        }
+        .card-category h3 {
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            color: #1a1a1a;
+        }
+        .card-category p {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            color: #6c757d;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-id-card"></i> Demande de carte de tournoi</h1>
+        <div class="categories">
+            <div class="card-category" data-type="public_show">
+                <i class="fas fa-globe"></i>
+                <h3>Public Show You</h3>
+                <p>Tournoi ouvert à tous, sans prérequis</p>
+            </div>
+            <div class="card-category" data-type="public_detection">
+                <i class="fas fa-search"></i>
+                <h3>Détection HubISoccer</h3>
+                <p>Réservé aux talents ayant validé le premier‑pas</p>
+            </div>
+            <div class="card-category" data-type="private_hubisoccer">
+                <i class="fas fa-star"></i>
+                <h3>Privé HubISoccer</h3>
+                <p>Pour les membres de l'espace privé</p>
+            </div>
+            <div class="card-category" data-type="private_simple">
+                <i class="fas fa-users"></i>
+                <h3>Privé Simple</h3>
+                <p>Organisé par un utilisateur, forfait payant</p>
+            </div>
+        </div>
+        <div class="footer">
+            <p>Choisissez la catégorie de votre tournoi pour démarrer votre demande de carte</p>
+        </div>
+    </div>
+    <script>
+        document.querySelectorAll('.card-category').forEach(card => {
+            card.addEventListener('click', () => {
+                const type = card.dataset.type;
+                window.location.href = `carte-de-tournoi.html?type=${type}`;
+            });
+        });
+    </script>
+</body>
+</html>
