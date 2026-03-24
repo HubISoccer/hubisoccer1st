@@ -1,1 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Comparer | HubISoccer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/hubismanagtournoi.css">
+    <link rel="stylesheet" href="css/stats-compare.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="compare-container">
+        <div class="page-header">
+            <button class="btn-back" id="backBtn">
+                <i class="fas fa-arrow-left"></i>
+                Retour
+            </button>
+            <h1>
+                <i class="fas fa-chart-simple"></i>
+                Comparaison
+            </h1>
+        </div>
 
+        <!-- Sélecteur de tournoi -->
+        <div class="tournament-selector">
+            <label><i class="fas fa-trophy"></i> Tournoi</label>
+            <select id="tournamentSelect">
+                <option value="">Chargement...</option>
+            </select>
+        </div>
+
+        <!-- Type de comparaison -->
+        <div class="type-selector">
+            <button class="type-btn active" data-type="teams">Équipes</button>
+            <button class="type-btn" data-type="players">Joueurs</button>
+        </div>
+
+        <!-- Sélecteurs pour la comparaison -->
+        <div class="selectors">
+            <div class="selector-item">
+                <label>Premier</label>
+                <select id="firstSelect" disabled>
+                    <option value="">-- Sélectionnez --</option>
+                </select>
+            </div>
+            <div class="selector-item">
+                <label>Deuxième</label>
+                <select id="secondSelect" disabled>
+                    <option value="">-- Sélectionnez --</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Zone de résultats -->
+        <div id="comparisonResults" class="comparison-results">
+            <div class="empty-state">
+                <i class="fas fa-chart-line"></i>
+                <p>Sélectionnez un tournoi, un type et deux entités à comparer</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="js/supabase-client.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/stats-compare.js"></script>
+</body>
+</html>
