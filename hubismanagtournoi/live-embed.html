@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Live Embed | HubISoccer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #000;
+            overflow: hidden;
+            height: 100vh;
+        }
+        .embed-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+        #player {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .overlay {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(8px);
+            border-radius: 16px;
+            padding: 15px 20px;
+            min-width: 280px;
+            max-width: 350px;
+            color: white;
+            border-left: 4px solid #ffcc00;
+            pointer-events: none;
+            z-index: 10;
+            font-size: 14px;
+        }
+        .scoreboard {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .team {
+            flex: 1;
+        }
+        .team-name {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+        .score {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #ffcc00;
+        }
+        .vs {
+            font-weight: 700;
+            margin: 0 10px;
+            opacity: 0.7;
+        }
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            padding-top: 12px;
+        }
+        .stat {
+            flex: 1;
+            text-align: center;
+        }
+        .stat-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+        .stat-value {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        .events {
+            margin-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            padding-top: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .event {
+            font-size: 0.75rem;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .event-icon {
+            width: 20px;
+            text-align: center;
+        }
+        .goal { color: #28a745; }
+        .yellow { color: #ffc107; }
+        .red { color: #dc3545; }
+        .sub { color: #17a2b8; }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #ccc;
+        }
+        @media (max-width: 768px) {
+            .overlay {
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+                padding: 12px;
+            }
+            .score {
+                font-size: 1.5rem;
+            }
+            .team-name {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="embed-container">
+        <iframe id="player" allow="autoplay; fullscreen" allowfullscreen></iframe>
+        <div class="overlay" id="overlay">
+            <div class="loading">Chargement des données...</div>
+        </div>
+    </div>
+
+    <script src="js/supabase-client.js"></script>
+    <script>
+        // Récupération de l'ID du match depuis l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const matchId = urlParams.get('match');
+
+        if (!matchId) {
+            document.getElementById('overlay').innerHTML = '<div class="loading">Match non spécifié</div>';
+            throw new Error('Match ID manquant');
+        }
+
+        let matchData = null;
+        let events = [];
+        let stats = {
+            home_score: 0,
+            away_score: 0,
+            possession_home: 50,
+            possession_away: 50,
+            shots_home: 0,
+            shots_away: 0,
+            shots_on_target_home: 0,
+            shots_on_target_away: 0,
+            fouls_home: 0,
+            fouls_away: 0,
+            corners_home: 0,
+            corners_away: 0
+        };
+        let eventsSubscription = null;
+
+        // Charger les informations du match
+        async function loadMatch() {
+            const { data, error } = await supabaseGestionTournoi
+                .from('gestionnairetournoi_matches')
+                .select(`
+                    *,
+                    home_team:home_team_id (id, name, logo_url),
+                    away_team:away_team_id (id, name, logo_url),
+                    tournament:tournament_id (name)
+                `)
+                .eq('id', matchId)
+                .single();
+
+            if (error) {
+                console.error(error);
+                document.getElementById('overlay').innerHTML = `<div class="loading">Erreur chargement du match</div>`;
+                return;
+            }
+            matchData = data;
+            stats.home_score = data.home_score || 0;
+            stats.away_score = data.away_score || 0;
+
+            // Intégrer le flux vidéo
+            let streamUrl = data.stream_url;
+            if (streamUrl) {
+                let embedUrl = streamUrl;
+                if (streamUrl.includes('youtube.com/watch') || streamUrl.includes('youtu.be')) {
+                    const videoId = streamUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1];
+                    if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0`;
+                } else if (streamUrl.includes('twitch.tv')) {
+                    const channel = streamUrl.split('/').pop();
+                    embedUrl = `https://player.twitch.tv/?channel=${channel}&parent=${window.location.hostname}&autoplay=true`;
+                }
+                document.getElementById('player').src = embedUrl;
+            } else {
+                document.getElementById('player').src = '';
+                document.getElementById('overlay').innerHTML = '<div class="loading">Aucun flux disponible pour ce match</div>';
+                return;
+            }
+
+            // Charger les événements
+            await loadEvents();
+            subscribeToEvents();
+
+            // Remplir l'overlay
+            renderOverlay();
+        }
+
+        async function loadEvents() {
+            const { data, error } = await supabaseGestionTournoi
+                .from('gestionnairetournoi_match_events')
+                .select(`
+                    *,
+                    player:player_id (id, user_id, profiles:user_id (full_name))
+                `)
+                .eq('match_id', matchId)
+                .order('event_minute', { ascending: true });
+            if (error) {
+                console.error(error);
+                return;
+            }
+            events = data || [];
+            // Mettre à jour les statistiques à partir des événements (pour possession, tirs, etc. on attend des données externes)
+            // Pour l'instant on ne calcule que les buts
+            stats.home_score = matchData?.home_score || 0;
+            stats.away_score = matchData?.away_score || 0;
+            renderOverlay();
+        }
+
+        function renderOverlay() {
+            if (!matchData) return;
+            const homeName = matchData.home_team?.name || 'Domicile';
+            const awayName = matchData.away_team?.name || 'Extérieur';
+            const eventsHtml = events.slice(-10).map(e => {
+                let icon = '';
+                let cls = '';
+                let playerName = e.player?.profiles?.full_name || 'Joueur';
+                if (e.event_type === 'goal') {
+                    icon = '<i class="fas fa-futbol"></i>';
+                    cls = 'goal';
+                } else if (e.event_type === 'yellow_card') {
+                    icon = '<i class="fas fa-square"></i>';
+                    cls = 'yellow';
+                } else if (e.event_type === 'red_card') {
+                    icon = '<i class="fas fa-square"></i>';
+                    cls = 'red';
+                } else if (e.event_type === 'substitution') {
+                    icon = '<i class="fas fa-exchange-alt"></i>';
+                    cls = 'sub';
+                } else {
+                    icon = '<i class="fas fa-info-circle"></i>';
+                }
+                return `
+                    <div class="event">
+                        <div class="event-icon ${cls}">${icon}</div>
+                        <div><span class="event-time">${e.event_minute}'</span> ${escapeHtml(playerName)}</div>
+                    </div>
+                `;
+            }).join('');
+            const html = `
+                <div class="scoreboard">
+                    <div class="team">
+                        <div class="team-name">${escapeHtml(homeName)}</div>
+                        <div class="score">${stats.home_score}</div>
+                    </div>
+                    <div class="vs">VS</div>
+                    <div class="team">
+                        <div class="team-name">${escapeHtml(awayName)}</div>
+                        <div class="score">${stats.away_score}</div>
+                    </div>
+                </div>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-label">Possession</div>
+                        <div class="stat-value">${stats.possession_home}% - ${stats.possession_away}%</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Tirs</div>
+                        <div class="stat-value">${stats.shots_home} - ${stats.shots_away}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Cadrés</div>
+                        <div class="stat-value">${stats.shots_on_target_home} - ${stats.shots_on_target_away}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Fautes</div>
+                        <div class="stat-value">${stats.fouls_home} - ${stats.fouls_away}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Corners</div>
+                        <div class="stat-value">${stats.corners_home} - ${stats.corners_away}</div>
+                    </div>
+                </div>
+                <div class="events">
+                    <div class="stat-label">Événements récents</div>
+                    ${eventsHtml || '<div class="loading">Aucun événement</div>'}
+                </div>
+            `;
+            document.getElementById('overlay').innerHTML = html;
+        }
+
+        function subscribeToEvents() {
+            if (eventsSubscription) eventsSubscription.unsubscribe();
+            eventsSubscription = supabaseGestionTournoi
+                .channel(`match-events-embed:${matchId}`)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'gestionnairetournoi_match_events',
+                    filter: `match_id=eq.${matchId}`
+                }, async (payload) => {
+                    const newEvent = payload.new;
+                    // Récupérer le joueur
+                    const { data: player, error } = await supabaseGestionTournoi
+                        .from('gestionnairetournoi_players')
+                        .select('id, user_id, profiles:user_id (full_name)')
+                        .eq('id', newEvent.player_id)
+                        .single();
+                    if (!error && player) newEvent.player = player;
+                    events.push(newEvent);
+                    if (newEvent.event_type === 'goal') {
+                        // Mettre à jour le score depuis la table matches
+                        const { data: matchUpdated, error: matchError } = await supabaseGestionTournoi
+                            .from('gestionnairetournoi_matches')
+                            .select('home_score, away_score')
+                            .eq('id', matchId)
+                            .single();
+                        if (!matchError) {
+                            stats.home_score = matchUpdated.home_score;
+                            stats.away_score = matchUpdated.away_score;
+                        }
+                    }
+                    renderOverlay();
+                })
+                .subscribe();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        // Initialisation
+        loadMatch();
+    </script>
+</body>
+</html>
