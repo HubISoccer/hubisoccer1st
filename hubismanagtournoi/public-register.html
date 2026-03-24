@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Inscription publique | HubISoccer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/hubismanagtournoi.css">
+    <link rel="stylesheet" href="css/public-register.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-card">
+            <div class="register-header">
+                <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="logo">
+                <h1>Inscription à un tournoi</h1>
+                <p>Remplissez le formulaire pour participer</p>
+            </div>
+
+            <!-- Étape 1 : Saisie du code -->
+            <div id="stepCode" class="step active">
+                <div class="form-group">
+                    <label>Code d'inscription *</label>
+                    <input type="text" id="registrationCode" placeholder="Entrez le code du tournoi" required>
+                    <button id="verifyCodeBtn" class="btn-primary">Vérifier</button>
+                </div>
+                <div id="codeError" class="error-message" style="display: none;"></div>
+            </div>
+
+            <!-- Étape 2 : Formulaire d'inscription -->
+            <div id="stepForm" class="step" style="display: none;">
+                <div id="tournamentInfo" class="tournament-info"></div>
+                <form id="publicRegistrationForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nom complet *</label>
+                            <input type="text" id="playerName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email *</label>
+                            <input type="email" id="playerEmail" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Téléphone *</label>
+                            <input type="tel" id="playerPhone" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Date de naissance *</label>
+                            <input type="date" id="playerBirthDate" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Poste (optionnel)</label>
+                            <input type="text" id="playerPosition">
+                        </div>
+                        <div class="form-group">
+                            <label>Club / Équipe (optionnel)</label>
+                            <input type="text" id="playerClub">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Message (optionnel)</label>
+                        <textarea id="playerMessage" rows="3" placeholder="Ajoutez une remarque..."></textarea>
+                    </div>
+                    <div class="rules-agreement">
+                        <label>
+                            <input type="checkbox" id="agreeRules" required>
+                            J'ai lu et j'accepte le <a href="#" id="rulesLink">règlement du tournoi</a>
+                        </label>
+                    </div>
+                    <button type="submit" class="btn-primary">Soumettre ma candidature</button>
+                </form>
+            </div>
+
+            <!-- Étape 3 : Confirmation -->
+            <div id="stepSuccess" class="step" style="display: none;">
+                <div class="success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h2>Inscription enregistrée !</h2>
+                <p>Votre demande a bien été prise en compte. Elle sera examinée par l'organisation.</p>
+                <p>Un email de confirmation vous sera envoyé prochainement.</p>
+                <button id="backToHomeBtn" class="btn-primary">Retour à l'accueil</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale du règlement -->
+    <div id="rulesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Règlement du tournoi</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="rulesContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="js/supabase-client.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/public-register.js"></script>
+</body>
+</html>
