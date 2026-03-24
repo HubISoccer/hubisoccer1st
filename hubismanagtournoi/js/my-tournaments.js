@@ -1,168 +1,204 @@
+// ===== RÉCUPÉRATION DE L'UTILISATEUR CONNECTÉ =====
 let currentUser = null;
-let currentProfile = null;
-let tournaments = [];
-let sports = [];
+let allTournaments = [];
+let currentFilter = 'all';
 
-async function checkSession() {
-    const { data: { session }, error } = await supabaseGestionTournoi.auth.getSession();
-    if (error || !session) {
-        window.location.href = '../auth/login.html';
-        return null;
+async function getCurrentUser() {
+    if (window.supabaseAuthPrive) {
+        const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
+        if (!error && user) return user;
     }
-    currentUser = session.user;
-    return currentUser;
+    return null;
 }
 
-async function loadProfile() {
-    const { data, error } = await supabaseGestionTournoi
-        .from('profiles')
-        .select('*')
-        .eq('id', currentUser.id)
-        .single();
-    if (error) {
-        console.error('Erreur chargement profil:', error);
-        showToast('Impossible de charger votre profil', 'error');
-        return null;
-    }
-    currentProfile = data;
-    document.getElementById('userName').textContent = data.full_name || 'Joueur';
-    document.getElementById('userAvatar').src = data.avatar_url || '../public/img/user-default.jpg';
-    return currentProfile;
-}
+// ===== CHARGEMENT DES TOURNOIS CRÉÉS PAR L'UTILISATEUR =====
+async function loadMyTournaments() {
+    if (!currentUser) return;
 
-async function loadSports() {
     const { data, error } = await supabaseGestionTournoi
-        .from('gestionnairetournoi_sports')
-        .select('id, name')
-        .order('name');
+        .from('gestionnairetournoi_tournaments')
+        .select(`
+            id,
+            name,
+            description,
+            start_date,
+            end_date,
+            location,
+            prize_pool,
+            type:type_id (name, label),
+            sport:sport_id (name),
+            is_active
+        `)
+        .eq('created_by', currentUser.id)
+        .order('start_date', { ascending: false });
+
     if (error) {
-        console.error('Erreur chargement sports:', error);
+        console.error('Erreur chargement tournois', error);
+        document.getElementById('tournamentsList').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Erreur de chargement</p></div>';
         return;
     }
-    sports = data || [];
-    const sportFilter = document.getElementById('sportFilter');
-    if (sportFilter) {
-        sportFilter.innerHTML = '<option value="all">Tous les sports</option>' +
-            sports.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-    }
+
+    allTournaments = data.map(t => ({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        start_date: t.start_date,
+        end_date: t.end_date,
+        location: t.location,
+        prize_pool: t.prize_pool,
+        type: t.type?.label || t.type?.name || 'Tournoi',
+        sport: t.sport?.name || 'Non spécifié',
+        is_active: t.is_active,
+        status: getTournamentStatus(t.start_date, t.end_date, t.is_active)
+    }));
+
+    applyFilter();
 }
 
-async function loadTournaments() {
-    showLoader(true);
-    try {
-        const typeFilter = document.getElementById('typeFilter')?.value || 'all';
-        const sportFilterVal = document.getElementById('sportFilter')?.value || 'all';
-        const searchTerm = document.getElementById('searchTournament')?.value.trim().toLowerCase() || '';
-
-        let query = supabaseGestionTournoi
-            .from('gestionnairetournoi_tournaments')
-            .select(`
-                *,
-                sport:gestionnairetournoi_sports(name),
-                type:gestionnairetournoi_types(name, label)
-            `)
-            .eq('created_by', currentProfile.id)
-            .order('start_date', { ascending: true });
-
-        if (typeFilter !== 'all') {
-            query = query.eq('type_id', typeFilter);
-        }
-        if (sportFilterVal !== 'all') {
-            query = query.eq('sport_id', sportFilterVal);
-        }
-
-        const { data, error } = await query;
-        if (error) throw error;
-
-        tournaments = data || [];
-
-        if (searchTerm) {
-            tournaments = tournaments.filter(t =>
-                t.name.toLowerCase().includes(searchTerm) ||
-                (t.description && t.description.toLowerCase().includes(searchTerm)) ||
-                (t.location && t.location.toLowerCase().includes(searchTerm))
-            );
-        }
-
-        renderTournaments();
-    } catch (error) {
-        console.error('Erreur chargement tournois:', error);
-        showToast('Erreur lors du chargement de vos tournois', 'error');
-    } finally {
-        showLoader(false);
-    }
+function getTournamentStatus(start, end, isActive) {
+    const now = new Date();
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    if (!isActive) return 'draft';
+    if (endDate < now) return 'finished';
+    if (startDate <= now && endDate >= now) return 'active';
+    return 'draft';
 }
 
-function renderTournaments() {
+function applyFilter() {
+    let filtered = [...allTournaments];
+    if (currentFilter !== 'all') {
+        filtered = filtered.filter(t => t.status === currentFilter);
+    }
+    renderTournaments(filtered);
+}
+
+function renderTournaments(tournaments) {
     const container = document.getElementById('tournamentsList');
-    if (!container) return;
-
-    if (tournaments.length === 0) {
-        container.innerHTML = '<p class="no-data">Vous n’avez créé aucun tournoi pour le moment.</p>';
+    if (!tournaments.length) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-times"></i><p>Aucun tournoi créé</p></div>';
         return;
     }
 
-    const getTypeLabel = (type) => {
-        if (type?.name === 'public_show') return 'Public Show You';
-        if (type?.name === 'public_detection') return 'Détection de talents';
-        if (type?.name === 'private_hubisoccer') return 'Privé HubISoccer';
-        if (type?.name === 'private_simple') return 'Privé simple';
-        return 'Tournoi';
-    };
+    container.innerHTML = tournaments.map(t => {
+        let statusClass = '';
+        let statusText = '';
+        if (t.status === 'draft') {
+            statusClass = 'status-draft';
+            statusText = 'Brouillon';
+        } else if (t.status === 'active') {
+            statusClass = 'status-active';
+            statusText = 'Actif';
+        } else {
+            statusClass = 'status-finished';
+            statusText = 'Terminé';
+        }
 
-    container.innerHTML = tournaments.map(t => `
-        <div class="tournament-card" data-id="${t.id}">
-            <div class="tournament-banner">
-                <span class="tournament-type">${getTypeLabel(t.type)}</span>
-                <span class="tournament-sport">${t.sport?.name || 'Sport'}</span>
-            </div>
-            <div class="tournament-info">
-                <div class="tournament-name">${escapeHtml(t.name)}</div>
-                <div class="tournament-dates">
-                    <i class="fas fa-calendar-alt"></i> ${new Date(t.start_date).toLocaleDateString()} - ${new Date(t.end_date).toLocaleDateString()}
-                </div>
-                <div class="tournament-location">
-                    <i class="fas fa-map-marker-alt"></i> ${escapeHtml(t.location || 'Lieu non spécifié')}
-                </div>
-                <div class="tournament-stats">
-                    <span><i class="fas fa-users"></i> Inscriptions</span>
-                    <span><i class="fas fa-trophy"></i> ${t.prize_pool ? t.prize_pool.toLocaleString() + ' FCFA' : 'Prime à définir'}</span>
-                </div>
-            </div>
-        </div>
-    `).join('');
+        const startFormatted = formatDate(t.start_date);
+        const endFormatted = formatDate(t.end_date);
 
-    document.querySelectorAll('.tournament-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const tournamentId = card.dataset.id;
-            window.location.href = `tournament-details.html?id=${tournamentId}`;
+        return `
+            <div class="tournament-card" data-id="${t.id}">
+                <div class="tournament-info">
+                    <div class="tournament-name">${escapeHtml(t.name)}</div>
+                    <div class="tournament-meta">
+                        <span><i class="fas fa-calendar-alt"></i> ${startFormatted} - ${endFormatted}</span>
+                        <span><i class="fas fa-map-marker-alt"></i> ${escapeHtml(t.location || 'Lieu non défini')}</span>
+                        <span><i class="fas fa-futbol"></i> ${escapeHtml(t.sport)}</span>
+                        <span><i class="fas fa-tag"></i> ${escapeHtml(t.type)}</span>
+                        ${t.prize_pool ? `<span><i class="fas fa-trophy"></i> ${t.prize_pool.toLocaleString()} FCFA</span>` : ''}
+                    </div>
+                </div>
+                <div class="tournament-status ${statusClass}">${statusText}</div>
+                <div class="tournament-actions">
+                    <button class="action-btn view-btn" data-id="${t.id}">
+                        <i class="fas fa-eye"></i> Voir
+                    </button>
+                    <button class="action-btn manage-btn" data-id="${t.id}">
+                        <i class="fas fa-cog"></i> Gérer
+                    </button>
+                    ${t.status === 'draft' ? `
+                        <button class="action-btn publish-btn" data-id="${t.id}">
+                            <i class="fas fa-check-circle"></i> Publier
+                        </button>
+                    ` : ''}
+                    <button class="action-btn danger delete-btn" data-id="${t.id}">
+                        <i class="fas fa-trash-alt"></i> Supprimer
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Attacher les événements
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = btn.getAttribute('data-id');
+            window.location.href = `tournament-details.html?id=${id}`;
+        });
+    });
+    document.querySelectorAll('.manage-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = btn.getAttribute('data-id');
+            window.location.href = `manage-tournament.html?id=${id}`;
+        });
+    });
+    document.querySelectorAll('.publish-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = btn.getAttribute('data-id');
+            if (confirm('Publier ce tournoi ? Il deviendra visible par tous.')) {
+                await supabaseGestionTournoi
+                    .from('gestionnairetournoi_tournaments')
+                    .update({ is_active: true })
+                    .eq('id', id);
+                showToast('Tournoi publié avec succès', 'success');
+                loadMyTournaments();
+            }
+        });
+    });
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = btn.getAttribute('data-id');
+            if (confirm('Supprimer définitivement ce tournoi ? Cette action est irréversible.')) {
+                const { error } = await supabaseGestionTournoi
+                    .from('gestionnairetournoi_tournaments')
+                    .delete()
+                    .eq('id', id);
+                if (error) {
+                    showToast('Erreur lors de la suppression', 'error');
+                } else {
+                    showToast('Tournoi supprimé', 'success');
+                    loadMyTournaments();
+                }
+            }
         });
     });
 }
 
-function initMyTournaments() {
-    checkSession().then(async (user) => {
-        if (!user) return;
-        await loadProfile();
-        await loadSports();
-        await loadTournaments();
-
-        const typeFilter = document.getElementById('typeFilter');
-        const sportFilter = document.getElementById('sportFilter');
-        const searchInput = document.getElementById('searchTournament');
-
-        if (typeFilter) typeFilter.addEventListener('change', loadTournaments);
-        if (sportFilter) sportFilter.addEventListener('change', loadTournaments);
-        if (searchInput) searchInput.addEventListener('input', loadTournaments);
+// ===== GESTION DES ONGLETS =====
+function initTabs() {
+    const tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            currentFilter = tab.getAttribute('data-status');
+            applyFilter();
+        });
     });
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
+// ===== INITIALISATION =====
+document.addEventListener('DOMContentLoaded', async () => {
+    currentUser = await getCurrentUser();
+    if (!currentUser) {
+        window.location.href = '../auth/login.html';
+        return;
+    }
+    await loadMyTournaments();
+    initTabs();
+
+    document.getElementById('backBtn').addEventListener('click', () => {
+        window.history.back();
     });
-}
+});
