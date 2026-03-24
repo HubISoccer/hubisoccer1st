@@ -3,24 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Gestion des tournois | HubISoccer</title>
+    <title>Gestionnaire de tournois | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles communs du tableau de bord -->
-    <link rel="stylesheet" href="../players/css/dashboard.css">
-    <!-- Styles spécifiques au module tournoi -->
+    <!-- Styles globaux du module -->
     <link rel="stylesheet" href="css/hubismanagtournoi.css">
+    <!-- Styles pour les cartes de tournoi (optionnel) -->
+    <link rel="stylesheet" href="css/tournament-card.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- NAVBAR -->
+    <!-- Navbar -->
     <nav class="dashboard-nav">
         <div class="nav-left">
-            <img src="../players/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
-            <span class="dashboard-title">Gestion des tournois</span>
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Gestionnaire de tournois</span>
         </div>
         <div class="nav-right">
             <select class="lang-picker" id="langSelect">
+                <!-- 24 langues – copie identique à celle des autres pages -->
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
                 <option value="yo">🇳🇬 Yoruba</option>
@@ -51,7 +52,7 @@
                 <span class="notif-badge" id="notifBadge">0</span>
             </div>
             <div class="user-menu" id="userMenu">
-                <img src="../players/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <img src="../public/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
@@ -66,25 +67,29 @@
         </div>
     </nav>
 
-    <!-- SIDEBAR GAUCHE (menu du module) -->
+    <!-- Overlay pour fermer les sidebars sur mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Sidebar gauche (menu du gestionnaire) -->
     <div class="sidebar left-sidebar" id="leftSidebar">
         <div class="sidebar-header">
-            <h3>Menu Tournois</h3>
+            <h3>Gestion des tournois</h3>
             <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
         </div>
         <nav class="sidebar-nav">
-            <a href="accueil_hubisgst.html" class="active"><i class="fas fa-tachometer-alt"></i> Accueil tournois</a>
+            <a href="accueil_hubisgst.html" class="active"><i class="fas fa-tachometer-alt"></i> Accueil</a>
             <a href="my-tournaments.html"><i class="fas fa-trophy"></i> Mes tournois</a>
-            <a href="my-registrations.html"><i class="fas fa-list"></i> Mes inscriptions</a>
+            <a href="my-registrations.html"><i class="fas fa-clipboard-list"></i> Mes inscriptions</a>
             <a href="create-tournament.html"><i class="fas fa-plus-circle"></i> Créer un tournoi</a>
-            <a href="rankings.html"><i class="fas fa-chart-line"></i> Classements</a>
+            <a href="rankings.html"><i class="fas fa-chart-line"></i> Statistiques</a>
+            <a href="match-reports.html"><i class="fas fa-file-alt"></i> Rapports de match</a>
             <hr>
-            <a href="#" id="showPrivateTournaments"><i class="fas fa-lock"></i> Tournois privés</a>
-            <a href="#" id="showPublicTournaments"><i class="fas fa-globe"></i> Tournois publics</a>
+            <a href="#" id="showAdminPanel" style="display: none;"><i class="fas fa-shield-alt"></i> Administration</a>
+            <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
         </nav>
     </div>
 
-    <!-- SIDEBAR DROITE (communauté) -->
+    <!-- Sidebar droite (communauté) – identique aux autres pages -->
     <div class="sidebar right-sidebar" id="rightSidebar">
         <div class="sidebar-header">
             <h3>Communauté</h3>
@@ -96,51 +101,41 @@
             <div class="community-section"><h4><i class="fas fa-chart-line"></i> Insights</h4><div class="insights" id="insights"><p>Portée cette semaine : <strong id="insightReach">0</strong></p><p>Engagement : <strong id="insightEngagement">0%</strong></p><p>Nouveaux abonnés : <strong id="insightNewFollowers">+0</strong></p></div></div>
             <div class="community-section"><h4><i class="fas fa-user-plus"></i> Suggestions</h4><ul class="suggestions-list" id="suggestionsList"></ul><a href="#" class="view-all">Voir plus</a></div>
             <div class="community-section"><h4><i class="fas fa-fire"></i> Tendances</h4><ul class="trends-list" id="trendsList"></ul><a href="#" class="view-all">Voir plus</a></div>
+            <div class="community-section"><h4><i class="fas fa-folder"></i> Mes collections</h4><ul class="collections-list" id="collectionsList"></ul><button id="createCollectionBtn" class="btn-create-collection"><i class="fas fa-plus"></i> Créer une collection</button></div>
         </div>
     </div>
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <!-- CONTENU PRINCIPAL -->
     <main class="dashboard-main">
-        <div class="feed-container">
-            <h1><i class="fas fa-trophy"></i> Tournois & Compétitions</h1>
-            <p>Participez, organisez ou suivez les tournois HubISoccer.</p>
-
-            <!-- FILTRES RAPIDES -->
-            <div class="filter-tabs">
-                <button class="filter-btn active" data-filter="all">Tous</button>
-                <button class="filter-btn" data-filter="public">Publics</button>
-                <button class="filter-btn" data-filter="private">Privés</button>
-                <button class="filter-btn" data-filter="mine">Mes tournois</button>
+        <div class="tournament-container">
+            <div class="tournament-header">
+                <h1><i class="fas fa-trophy"></i> Tournois</h1>
+                <div class="filters">
+                    <select id="typeFilter" class="filter-select">
+                        <option value="all">Tous les tournois</option>
+                        <option value="public_show">Publics Show You</option>
+                        <option value="public_detection">Détection de talents</option>
+                        <option value="private_hubisoccer">Privés HubISoccer</option>
+                        <option value="private_simple">Privés simples</option>
+                    </select>
+                    <select id="sportFilter" class="filter-select">
+                        <option value="all">Tous les sports</option>
+                        <!-- options chargées dynamiquement -->
+                    </select>
+                    <input type="text" id="searchTournament" placeholder="Rechercher un tournoi..." class="search-input">
+                </div>
             </div>
-
-            <!-- GRILLE DES TOURNOIS -->
-            <div class="tournaments-grid" id="tournamentsGrid">
-                <!-- Les tournois seront chargés dynamiquement ici -->
-                <div class="loader-wrapper"><div class="spinner"></div></div>
+            <div id="tournamentsList" class="tournaments-grid">
+                <!-- Les tournois seront chargés dynamiquement -->
+                <div class="loader" style="text-align: center; padding: 40px;"><div class="spinner"></div></div>
             </div>
         </div>
     </main>
 
-    <!-- MODALE D'INSCRIPTION À UN TOURNOI PUBLIC (code) -->
-    <div id="publicRegisterModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Inscription au tournoi</h2>
-                <span class="close-modal" onclick="closePublicRegisterModal()">×</span>
-            </div>
-            <div class="modal-body">
-                <p>Veuillez saisir le code d’accès fourni par l’organisateur :</p>
-                <input type="text" id="tournamentCode" placeholder="Code d'accès">
-                <button class="btn-confirm" onclick="submitPublicRegistration()">Vérifier et s'inscrire</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- TOASTS -->
+    <!-- Conteneur toasts -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- FOOTER -->
+    <!-- Footer (identique) -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
@@ -160,14 +155,14 @@
         </div>
     </footer>
 
+    <!-- Scripts spécifiques au module -->
     <script src="js/supabase-client.js"></script>
-    <script src="js/tournaments.js"></script>
-    <script src="js/registrations.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/tournaments.js"></script>
     <script>
-        // Initialisation de la page
+        // Initialisation après chargement
         document.addEventListener('DOMContentLoaded', async () => {
-            await initTournamentsPage();
+            await initTournamentModule();
         });
     </script>
 </body>
