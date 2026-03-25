@@ -47,108 +47,54 @@
 
     <script src="js/supabase-client.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/tournaments.js"></script>
     <script>
-        // Utilisation directe de l'instance définie dans supabase-client.js
-        // Ne pas redéclarer supabase ici !
-
-        let allTournaments = [];
-        let sportsMap = {};
-        let typesMap = {};
-
-        async function loadFilters() {
-            const [sportsRes, typesRes] = await Promise.all([
-                supabaseGestionTournoi.from('gestionnairetournoi_sports').select('id, name').order('name'),
-                supabaseGestionTournoi.from('gestionnairetournoi_types').select('id, name, label')
-            ]);
-            if (sportsRes.error) {
-                console.error('Erreur chargement sports', sportsRes.error);
+        // Initialisation des écouteurs et du chargement
+        document.addEventListener('DOMContentLoaded', () => {
+            // Les fonctions loadSportsList, loadTournamentTypes et loadTournamentsList doivent être définies dans tournaments.js
+            if (typeof window.loadTournamentsList === 'function') {
+                window.loadTournamentsList().then(tournaments => {
+                    window.allTournaments = tournaments;
+                    renderTournaments(tournaments);
+                }).catch(console.error);
             } else {
-                const sportSelect = document.getElementById('sportFilter');
-                sportsRes.data.forEach(sport => {
-                    sportsMap[sport.id] = sport.name;
-                    const option = document.createElement('option');
-                    option.value = sport.name;
-                    option.textContent = sport.name;
-                    sportSelect.appendChild(option);
-                });
+                console.error('loadTournamentsList non définie');
             }
-            if (typesRes.error) {
-                console.error('Erreur chargement types', typesRes.error);
-            } else {
-                const typeSelect = document.getElementById('typeFilter');
-                typesRes.data.forEach(type => {
-                    typesMap[type.name] = type.label;
-                    const option = document.createElement('option');
-                    option.value = type.name;
-                    option.textContent = type.label;
-                    typeSelect.appendChild(option);
-                });
-            }
-        }
 
-        async function loadTournaments() {
-            const { data, error } = await supabaseGestionTournoi
-                .from('gestionnairetournoi_tournaments')
-                .select(`
-                    id,
-                    name,
-                    description,
-                    start_date,
-                    end_date,
-                    location,
-                    registration_code,
-                    prize_pool,
-                    stream_url,
-                    requires_first_pas,
-                    type:type_id (name, label),
-                    sport:sport_id (name)
-                `)
-                .eq('is_active', true)
-                .order('start_date', { ascending: true });
-            if (error) {
-                console.error('Erreur chargement tournois', error);
-                document.getElementById('loader').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Erreur de chargement</p></div>';
-                return;
-            }
-            allTournaments = data.map(t => ({
-                id: t.id,
-                name: t.name,
-                description: t.description,
-                start_date: t.start_date,
-                end_date: t.end_date,
-                location: t.location,
-                registration_code: t.registration_code,
-                prize_pool: t.prize_pool,
-                stream_url: t.stream_url,
-                requires_first_pas: t.requires_first_pas,
-                type: t.type.name,
-                typeLabel: t.type.label,
-                sport: t.sport.name
-            }));
-            applyFilters();
-        }
+            // Filtres
+            const sportFilter = document.getElementById('sportFilter');
+            const periodFilter = document.getElementById('periodFilter');
+            const typeFilter = document.getElementById('typeFilter');
+            if (sportFilter) sportFilter.addEventListener('change', applyFilters);
+            if (periodFilter) periodFilter.addEventListener('change', applyFilters);
+            if (typeFilter) typeFilter.addEventListener('change', applyFilters);
 
+            document.getElementById('createTournamentBtn').addEventListener('click', () => {
+                window.location.href = 'create-tournament.html';
+            });
+        });
+
+        // Fonction de filtrage (à définir ici car elle utilise allTournaments)
         function applyFilters() {
+            if (!window.allTournaments) return;
             const sport = document.getElementById('sportFilter').value;
             const period = document.getElementById('periodFilter').value;
             const type = document.getElementById('typeFilter').value;
             const now = new Date();
-            let filtered = [...allTournaments];
-            if (sport !== 'all') filtered = filtered.filter(t => t.sport === sport);
-            if (type !== 'all') filtered = filtered.filter(t => t.type === type);
-            if (period !== 'all') {
-                filtered = filtered.filter(t => {
-                    const start = new Date(t.start_date);
-                    const end = new Date(t.end_date);
-                    if (period === 'upcoming') return start > now;
-                    if (period === 'ongoing') return start <= now && end >= now;
-                    if (period === 'past') return end < now;
-                    return true;
-                });
-            }
+            let filtered = window.allTournaments.filter(t => {
+                if (sport !== 'all' && t.sport !== sport) return false;
+                if (type !== 'all' && t.type !== type) return false;
+                const start = new Date(t.start_date);
+                const end = new Date(t.end_date);
+                if (period === 'upcoming') return start > now;
+                if (period === 'ongoing') return start <= now && end >= now;
+                if (period === 'past') return end < now;
+                return true;
+            });
             renderTournaments(filtered);
         }
 
+        // Fonction d’affichage (à définir ici)
         function renderTournaments(tournaments) {
             const grid = document.getElementById('tournamentsGrid');
             grid.innerHTML = '';
@@ -179,8 +125,7 @@
             });
             document.querySelectorAll('.btn-details').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const id = btn.getAttribute('data-id');
-                    window.location.href = `tournament-details.html?id=${id}`;
+                    window.location.href = `tournament-details.html?id=${btn.dataset.id}`;
                 });
             });
         }
@@ -194,17 +139,6 @@
                 return m;
             });
         }
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            await loadFilters();
-            await loadTournaments();
-            document.getElementById('sportFilter').addEventListener('change', applyFilters);
-            document.getElementById('periodFilter').addEventListener('change', applyFilters);
-            document.getElementById('typeFilter').addEventListener('change', applyFilters);
-            document.getElementById('createTournamentBtn').addEventListener('click', () => {
-                window.location.href = 'create-tournament.html';
-            });
-        });
     </script>
 </body>
 </html>
