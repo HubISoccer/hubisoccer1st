@@ -131,7 +131,7 @@
                 else if (t.type === 'private_simple') badgeClass = 'badge-simple';
                 card.innerHTML = `
                     <div class="card-badge ${badgeClass}">${t.typeLabel}</div>
-                    <div class="card-sport"><i class="fas fa-futbol"></i> ${t.sport}</div>
+                    <div class="card-sport"><i class="fas fa-futbol"></i> ${escapeHtml(t.sport)}</div>
                     <h3 class="card-title">${escapeHtml(t.name)}</h3>
                     <div class="card-date"><i class="fas fa-calendar-alt"></i> ${start} - ${end}</div>
                     <div class="card-location"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(t.location)}</div>
@@ -144,16 +144,6 @@
                 btn.addEventListener('click', () => {
                     window.location.href = `tournament-details.html?id=${btn.dataset.id}`;
                 });
-            });
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
             });
         }
 
