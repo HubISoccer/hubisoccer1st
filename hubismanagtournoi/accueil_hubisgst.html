@@ -49,39 +49,57 @@
     <script src="js/utils.js"></script>
     <script src="js/tournaments.js"></script>
     <script>
-        // Initialisation des écouteurs et du chargement
-        document.addEventListener('DOMContentLoaded', () => {
-            // Les fonctions loadSportsList, loadTournamentTypes et loadTournamentsList doivent être définies dans tournaments.js
-            if (typeof window.loadTournamentsList === 'function') {
-                window.loadTournamentsList().then(tournaments => {
-                    window.allTournaments = tournaments;
-                    renderTournaments(tournaments);
-                }).catch(console.error);
-            } else {
-                console.error('loadTournamentsList non définie');
+        // Utilisation directe de supabaseGestionTournoi (défini dans supabase-client.js)
+        // Pas de redéclaration de supabase.
+
+        let allTournaments = [];
+        let sportsMap = {};
+        let typesMap = {};
+
+        async function loadFilters() {
+            try {
+                const sports = await loadSportsList();
+                const types = await loadTournamentTypes();
+
+                const sportSelect = document.getElementById('sportFilter');
+                sports.forEach(sport => {
+                    sportsMap[sport.id] = sport.name;
+                    const opt = document.createElement('option');
+                    opt.value = sport.name;
+                    opt.textContent = sport.name;
+                    sportSelect.appendChild(opt);
+                });
+
+                const typeSelect = document.getElementById('typeFilter');
+                types.forEach(type => {
+                    typesMap[type.name] = type.label;
+                    const opt = document.createElement('option');
+                    opt.value = type.name;
+                    opt.textContent = type.label;
+                    typeSelect.appendChild(opt);
+                });
+            } catch (err) {
+                console.error('Erreur chargement filtres', err);
             }
+        }
 
-            // Filtres
-            const sportFilter = document.getElementById('sportFilter');
-            const periodFilter = document.getElementById('periodFilter');
-            const typeFilter = document.getElementById('typeFilter');
-            if (sportFilter) sportFilter.addEventListener('change', applyFilters);
-            if (periodFilter) periodFilter.addEventListener('change', applyFilters);
-            if (typeFilter) typeFilter.addEventListener('change', applyFilters);
+        async function loadAndDisplayTournaments() {
+            try {
+                const tournaments = await loadTournamentsList(); // fonction de tournaments.js
+                allTournaments = tournaments;
+                applyFilters();
+            } catch (err) {
+                console.error('Erreur chargement tournois', err);
+                document.getElementById('loader').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Erreur de chargement</p></div>';
+            }
+        }
 
-            document.getElementById('createTournamentBtn').addEventListener('click', () => {
-                window.location.href = 'create-tournament.html';
-            });
-        });
-
-        // Fonction de filtrage (à définir ici car elle utilise allTournaments)
         function applyFilters() {
-            if (!window.allTournaments) return;
             const sport = document.getElementById('sportFilter').value;
             const period = document.getElementById('periodFilter').value;
             const type = document.getElementById('typeFilter').value;
             const now = new Date();
-            let filtered = window.allTournaments.filter(t => {
+            let filtered = allTournaments.filter(t => {
                 if (sport !== 'all' && t.sport !== sport) return false;
                 if (type !== 'all' && t.type !== type) return false;
                 const start = new Date(t.start_date);
@@ -94,7 +112,6 @@
             renderTournaments(filtered);
         }
 
-        // Fonction d’affichage (à définir ici)
         function renderTournaments(tournaments) {
             const grid = document.getElementById('tournamentsGrid');
             grid.innerHTML = '';
@@ -139,6 +156,18 @@
                 return m;
             });
         }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadFilters();
+            await loadAndDisplayTournaments();
+
+            document.getElementById('sportFilter').addEventListener('change', applyFilters);
+            document.getElementById('periodFilter').addEventListener('change', applyFilters);
+            document.getElementById('typeFilter').addEventListener('change', applyFilters);
+            document.getElementById('createTournamentBtn').addEventListener('click', () => {
+                window.location.href = 'create-tournament.html';
+            });
+        });
     </script>
 </body>
 </html>
