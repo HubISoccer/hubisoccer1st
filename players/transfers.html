@@ -3,23 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Historique des transferts | HubISoccer</title>
+    <title>Historique des transferts & Offres | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles spécifiques (autonome) -->
     <link rel="stylesheet" href="css/transfers.css">
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- Navbar -->
+    <div id="globalLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; color: white; font-size: 1.2rem;">
+        <div class="spinner"></div> Chargement...
+    </div>
+
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="dashboard-title">Espace Joueur</span>
         </div>
         <div class="nav-right">
-            <!-- Sélecteur de langue (24 langues) -->
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
@@ -51,11 +51,12 @@
                 <span class="notif-badge" id="notifBadge">0</span>
             </div>
             <div class="user-menu" id="userMenu">
-                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <div class="avatar-initials" id="userAvatarInitials" style="display: none; width: 35px; height: 35px; border-radius: 50%; background: #551B8C; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;"></div>
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar" style="display: none;">
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
-                    <a href="profile-edit.html">Mon Profil</a>
+                    <a href="profile-edit.html">Mon profil</a>
                     <a href="support.html">Paramètres</a>
                     <a href="#" id="languageLink">Langue (Français)</a>
                     <a href="#" id="logoutLink">Déconnexion</a>
@@ -67,7 +68,6 @@
         </div>
     </nav>
 
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h3>Menu Joueur</h3>
@@ -91,38 +91,79 @@
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Contenu principal -->
     <main class="transfers-main">
         <div class="transfers-container">
-            <h1 class="page-title"><i class="fas fa-exchange-alt"></i> Historique des transferts</h1>
-
-            <!-- Onglets -->
-            <div class="tabs">
-                <button class="tab-btn active" data-tab="history">Transferts effectués</button>
-                <button class="tab-btn" data-tab="offers">Offres reçues</button>
+            <div class="page-header">
+                <h1><i class="fas fa-exchange-alt"></i> Historique des transferts & Offres</h1>
+                <p>Consultez vos mouvements et répondez aux offres reçues.</p>
             </div>
 
-            <!-- Contenu des onglets -->
-            <div id="history-tab" class="tab-content active">
-                <h2>Mes transferts</h2>
-                <div class="transfers-list" id="transfersList">
-                    <!-- Les transferts seront chargés dynamiquement -->
+            <!-- Onglets pour basculer entre Historique et Offres -->
+            <div class="tabs-bar">
+                <button class="tab-btn active" data-tab="history">📋 Historique des transferts</button>
+                <button class="tab-btn" data-tab="offers">💼 Offres reçues</button>
+            </div>
+
+            <!-- Section Historique des transferts -->
+            <div id="historyTab" class="tab-content active">
+                <div class="filters-bar">
+                    <div class="filter-group">
+                        <label>Année</label>
+                        <select id="filterYear">
+                            <option value="">Toutes</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Club</label>
+                        <select id="filterClub">
+                            <option value="">Tous</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Type</label>
+                        <select id="filterType">
+                            <option value="">Tous</option>
+                            <option value="transfert">Transfert</option>
+                            <option value="pret">Prêt</option>
+                            <option value="fin_contrat">Fin de contrat</option>
+                        </select>
+                    </div>
+                    <button class="btn-reset-filters" id="resetFilters">Réinitialiser</button>
+                </div>
+
+                <div id="transfersList" class="transfers-list">
+                    <p class="empty-message">Aucun transfert enregistré.</p>
                 </div>
             </div>
 
-            <div id="offers-tab" class="tab-content">
-                <h2>Offres reçues</h2>
-                <div class="offers-list" id="offersList">
-                    <!-- Les offres seront chargées dynamiquement -->
+            <!-- Section Offres reçues -->
+            <div id="offersTab" class="tab-content">
+                <div id="offersList" class="offers-list">
+                    <p class="empty-message">Aucune offre reçue pour le moment.</p>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Toast container -->
+    <!-- Modal pour afficher les détails d'une offre -->
+    <div id="offerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Détails de l'offre</h3>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="modalOfferDetails"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-accept" id="acceptOfferBtn">Valider l'offre</button>
+                <button class="btn-ignore" id="ignoreOfferBtn">Ignorer</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- Footer -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
@@ -137,7 +178,7 @@
             <div class="legal">
                 <p>HubISoccer - The Hub of Inspiration of Soccer</p>
                 <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
-                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
             </div>
         </div>
     </footer>
