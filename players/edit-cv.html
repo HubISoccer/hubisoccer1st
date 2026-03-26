@@ -6,24 +6,29 @@
     <title>Mon CV Pro | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles spécifiques (autonome) -->
+    <!-- Quill (éditeur WYSIWYG) -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <!-- Styles spécifiques -->
     <link rel="stylesheet" href="css/edit-cv.css">
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Signature Pad -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <!-- html2pdf -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
-    <!-- Navbar -->
+    <div id="globalLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; color: white; font-size: 1.2rem;">
+        <div class="spinner"></div> Chargement...
+    </div>
+
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="dashboard-title">Espace Joueur</span>
         </div>
         <div class="nav-right">
-            <!-- Sélecteur de langue (24 langues) -->
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
@@ -55,7 +60,8 @@
                 <span class="notif-badge" id="notifBadge">0</span>
             </div>
             <div class="user-menu" id="userMenu">
-                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <div class="avatar-initials" id="userAvatarInitials" style="display: none; width: 35px; height: 35px; border-radius: 50%; background: #551B8C; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;"></div>
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar" style="display: none;">
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
@@ -71,7 +77,6 @@
         </div>
     </nav>
 
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h3>Menu Joueur</h3>
@@ -95,105 +100,56 @@
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Contenu principal -->
     <main class="cv-main">
         <div class="cv-container">
             <h1 class="page-title"><i class="fas fa-file-alt"></i> Mon Curriculum Vitæ Professionnel</h1>
             <p class="page-subtitle">Remplissez votre parcours complet. Après validation par l'équipe HubISoccer, vous pourrez exporter en PDF.</p>
 
-            <!-- Indicateur de statut de validation -->
             <div class="validation-status" id="validationStatus" style="display: none;"></div>
 
-            <!-- Formulaire principal du CV -->
             <form id="cvForm" class="cv-form">
-                <!-- En-tête (coordonnées) -->
+                <!-- Coordonnées -->
                 <section class="cv-section">
                     <h2><i class="fas fa-address-card"></i> Coordonnées</h2>
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>Nom *</label>
-                            <input type="text" id="nom" placeholder="Votre nom" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Prénom *</label>
-                            <input type="text" id="prenom" placeholder="Votre prénom" required>
-                        </div>
+                        <div class="form-group"><label>Nom *</label><input type="text" id="nom" required></div>
+                        <div class="form-group"><label>Prénom *</label><input type="text" id="prenom" required></div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>Téléphone *</label>
-                            <input type="tel" id="telephone" placeholder="+229 XX XX XX XX" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Email *</label>
-                            <input type="email" id="email" placeholder="votre@email.com" required>
-                        </div>
+                        <div class="form-group"><label>Téléphone *</label><input type="tel" id="telephone" required></div>
+                        <div class="form-group"><label>Email *</label><input type="email" id="email" required></div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>Ville de résidence *</label>
-                            <input type="text" id="ville" placeholder="Ex: Cotonou" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Lien réseau social (LinkedIn, Twitter, etc.)</label>
-                            <input type="url" id="social" placeholder="https://linkedin.com/in/...">
-                        </div>
+                        <div class="form-group"><label>Ville de résidence *</label><input type="text" id="ville" required></div>
+                        <div class="form-group"><label>Lien réseau social (LinkedIn, Twitter, etc.)</label><input type="url" id="social"></div>
                     </div>
                 </section>
 
-                <!-- Accroche / Profil -->
+                <!-- Profil professionnel (WYSIWYG) -->
                 <section class="cv-section">
                     <h2><i class="fas fa-user-tag"></i> Profil professionnel</h2>
                     <div class="form-group full-width">
-                        <textarea id="profil" rows="3" placeholder="Résumez qui vous êtes et ce que vous apportez (ex: 'Footballeur passionné, doté d'une excellente vision de jeu, en reconversion vers le coaching...')"></textarea>
+                        <div id="profilEditor" style="height: 150px;"></div>
+                        <textarea id="profil" style="display: none;"></textarea>
                     </div>
                 </section>
 
-                <!-- Informations sportives clés -->
+                <!-- Informations sportives -->
                 <section class="cv-section">
                     <h2><i class="fas fa-futbol"></i> Informations sportives</h2>
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>Taille (cm)</label>
-                            <input type="number" id="taille" placeholder="175">
-                        </div>
-                        <div class="form-group">
-                            <label>Poids (kg)</label>
-                            <input type="number" id="poids" placeholder="70">
-                        </div>
+                        <div class="form-group"><label>Taille (cm)</label><input type="number" id="taille"></div>
+                        <div class="form-group"><label>Poids (kg)</label><input type="number" id="poids"></div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>Pied fort</label>
-                            <select id="piedFort">
-                                <option value="">Sélectionnez</option>
-                                <option>Droitier</option>
-                                <option>Gaucher</option>
-                                <option>Ambidextre</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Club actuel</label>
-                            <input type="text" id="club" placeholder="Nom du club ou 'Joueur libre'">
-                        </div>
+                        <div class="form-group"><label>Pied fort</label><select id="piedFort"><option value="">Sélectionnez</option><option>Droitier</option><option>Gaucher</option><option>Ambidextre</option></select></div>
+                        <div class="form-group"><label>Club actuel</label><input type="text" id="club" placeholder="Nom du club ou 'Joueur libre'"></div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>Matchs joués (carrière)</label>
-                            <input type="number" id="matchs" placeholder="0">
-                        </div>
-                        <div class="form-group">
-                            <label>Buts marqués</label>
-                            <input type="number" id="buts" placeholder="0">
-                        </div>
-                        <div class="form-group">
-                            <label>Passes décisives</label>
-                            <input type="number" id="passes" placeholder="0">
-                        </div>
-                        <div class="form-group">
-                            <label>Valeur marchande (FCFA)</label>
-                            <input type="number" id="valeur" placeholder="0">
-                        </div>
+                        <div class="form-group"><label>Matchs joués (carrière)</label><input type="number" id="matchs"></div>
+                        <div class="form-group"><label>Buts marqués</label><input type="number" id="buts"></div>
+                        <div class="form-group"><label>Passes décisives</label><input type="number" id="passes"></div>
+                        <div class="form-group"><label>Valeur marchande (FCFA)</label><input type="number" id="valeur"></div>
                     </div>
                 </section>
 
@@ -215,14 +171,8 @@
                 <section class="cv-section">
                     <h2><i class="fas fa-cogs"></i> Compétences</h2>
                     <div class="form-row">
-                        <div class="form-group half">
-                            <label>Compétences techniques (séparées par des virgules)</label>
-                            <input type="text" id="skillsTech" placeholder="Ex: Photoshop, Excel, Analyse vidéo">
-                        </div>
-                        <div class="form-group half">
-                            <label>Savoir-être (séparés par des virgules)</label>
-                            <input type="text" id="skillsSoft" placeholder="Ex: Esprit d'équipe, Gestion du stress">
-                        </div>
+                        <div class="form-group half"><label>Compétences techniques (séparées par des virgules)</label><input type="text" id="skillsTech" placeholder="Ex: Photoshop, Excel, Analyse vidéo"></div>
+                        <div class="form-group half"><label>Savoir-être (séparés par des virgules)</label><input type="text" id="skillsSoft" placeholder="Ex: Esprit d'équipe, Gestion du stress"></div>
                     </div>
                 </section>
 
@@ -233,19 +183,21 @@
                     <button type="button" class="btn-add" id="addLangue"><i class="fas fa-plus"></i> Ajouter une langue</button>
                 </section>
 
-                <!-- Centres d'intérêt -->
+                <!-- Centres d'intérêt (WYSIWYG) -->
                 <section class="cv-section">
                     <h2><i class="fas fa-heart"></i> Centres d'intérêt</h2>
                     <div class="form-group full-width">
-                        <textarea id="interets" rows="3" placeholder="Ex: Course à pied, bénévolat, lecture, records personnels..."></textarea>
+                        <div id="interetsEditor" style="height: 120px;"></div>
+                        <textarea id="interets" style="display: none;"></textarea>
                     </div>
                 </section>
 
-                <!-- Biographie -->
+                <!-- Biographie (WYSIWYG) -->
                 <section class="cv-section">
                     <h2><i class="fas fa-pencil-alt"></i> Biographie</h2>
                     <div class="form-group full-width">
-                        <textarea id="bio" rows="4" placeholder="Racontez votre parcours, vos motivations, vos objectifs..."></textarea>
+                        <div id="bioEditor" style="height: 200px;"></div>
+                        <textarea id="bio" style="display: none;"></textarea>
                     </div>
                 </section>
 
@@ -260,16 +212,12 @@
                     <div class="signature-box">
                         <label>Signature (cliquez pour signer)</label>
                         <div class="signature-preview" id="signaturePreview" onclick="openSignatureModal()">
-                            <div class="signature-placeholder">
-                                <i class="fas fa-pen"></i>
-                                <span>Cliquez pour signer</span>
-                            </div>
+                            <div class="signature-placeholder"><i class="fas fa-pen"></i><span>Cliquez pour signer</span></div>
                             <img id="signatureImage" style="display: none; max-width: 200px; max-height: 80px;" />
                         </div>
                     </div>
                 </section>
 
-                <!-- Boutons d'action -->
                 <div class="form-actions">
                     <button type="submit" class="btn-save-cv">Enregistrer le CV</button>
                     <button type="button" class="btn-preview" id="previewBtn">Aperçu</button>
@@ -277,7 +225,6 @@
                 </div>
             </form>
 
-            <!-- Aperçu du CV -->
             <div class="cv-preview" id="cvPreview" style="display: none;">
                 <h2>Aperçu de votre CV</h2>
                 <div id="previewContent" class="preview-content"></div>
@@ -286,15 +233,19 @@
         </div>
     </main>
 
-    <!-- MODALE DE SIGNATURE -->
+    <!-- MODALE DE SIGNATURE (avec choix de couleur et épaisseur) -->
     <div id="signatureModal" class="signature-modal">
         <div class="signature-modal-content">
             <div class="signature-modal-header">
                 <h3>Signez dans le cadre</h3>
-                <span class="close-modal" onclick="closeSignatureModal()">&times;</span>
+                <span class="close-modal" onclick="closeSignatureModal()">×</span>
             </div>
             <div class="signature-modal-body">
                 <canvas id="signatureCanvasModal" width="800" height="300" style="touch-action: none; width: 100%; height: auto; border: 1px solid #ccc;"></canvas>
+                <div class="signature-styling">
+                    <label>Couleur : <input type="color" id="penColorPicker" value="#551B8C"></label>
+                    <label>Épaisseur : <input type="range" id="penWidth" min="1" max="5" step="0.5" value="2"></label>
+                </div>
                 <div class="signature-modal-actions">
                     <button type="button" class="btn-clear" id="clearSignatureModal">Effacer</button>
                     <button type="button" class="btn-lock" id="lockSignatureModal">Verrouiller</button>
@@ -305,23 +256,11 @@
         </div>
     </div>
 
-    <!-- Footer -->
     <footer class="dashboard-footer">
         <div class="footer-content">
-            <div class="compliance-badges">
-                <span class="badge">Conformité APDP Bénin</span>
-                <span class="badge">Règlementation FIFA</span>
-                <span class="badge">Double Projet Sport-Études</span>
-            </div>
-            <div class="contact-info">
-                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
-                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
-            </div>
-            <div class="legal">
-                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
-                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
-                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
-            </div>
+            <div class="compliance-badges"><span class="badge">Conformité APDP Bénin</span><span class="badge">Règlementation FIFA</span><span class="badge">Double Projet Sport-Études</span></div>
+            <div class="contact-info"><a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a><a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a></div>
+            <div class="legal"><p>HubISoccer - The Hub of Inspiration of Soccer</p><p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p><p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p></div>
         </div>
     </footer>
 
@@ -329,3 +268,4 @@
     <script src="js/edit-cv.js"></script>
 </body>
 </html>
+
