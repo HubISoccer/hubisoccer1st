@@ -8,9 +8,8 @@ let currentProfile = null;
 let transfers = [];
 let offers = [];
 let currentFilters = { year: '', club: '', type: '' };
-let currentOffer = null; // offre sélectionnée pour le modal
+let currentOffer = null;
 
-// ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -48,7 +47,6 @@ function hideLoader() {
     if (loader) loader.style.display = 'none';
 }
 
-// ===== SESSION =====
 async function checkSession() {
     showLoader();
     try {
@@ -68,7 +66,6 @@ async function checkSession() {
     }
 }
 
-// ===== PROFIL =====
 async function loadProfile() {
     if (!currentUser) return;
     showLoader();
@@ -119,13 +116,12 @@ async function loadTransfers() {
             .order('date', { ascending: false });
         if (error) throw error;
         transfers = data || [];
-        // Remplir les options des filtres (années et clubs uniques)
         const years = [...new Set(transfers.map(t => t.year).filter(y => y))];
         const clubs = [...new Set(transfers.map(t => t.club).filter(c => c))];
         const yearSelect = document.getElementById('filterYear');
         const clubSelect = document.getElementById('filterClub');
-        yearSelect.innerHTML = '<option value="">Toutes</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
-        clubSelect.innerHTML = '<option value="">Tous</option>' + clubs.map(c => `<option value="${c}">${c}</option>`).join('');
+        if (yearSelect) yearSelect.innerHTML = '<option value="">Toutes</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+        if (clubSelect) clubSelect.innerHTML = '<option value="">Tous</option>' + clubs.map(c => `<option value="${c}">${c}</option>`).join('');
         applyTransfersFilters();
     } catch (err) {
         console.error(err);
@@ -161,7 +157,7 @@ function renderTransfers(transfersList) {
             <div class="transfer-card">
                 <div class="transfer-icon"><i class="fas ${transfer.type === 'transfert' ? 'fa-exchange-alt' : transfer.type === 'pret' ? 'fa-handshake' : 'fa-file-signature'}"></i></div>
                 <div class="transfer-info">
-                    <h4>${transfer.club || 'Club non spécifié'}</h4>
+                    <h4>${escapeHtml(transfer.club || 'Club non spécifié')}</h4>
                     <p>${transfer.type === 'transfert' ? 'Transfert' : transfer.type === 'pret' ? 'Prêt' : 'Fin de contrat'} – ${transfer.year || 'Année inconnue'}</p>
                 </div>
                 <div class="transfer-amount">${amountFormatted}</div>
@@ -171,7 +167,7 @@ function renderTransfers(transfersList) {
     }).join('');
 }
 
-// ===== OFFRES =====
+// ===== OFFRES (publiques + personnelles) =====
 async function loadOffers() {
     if (!currentProfile) return;
     showLoader();
@@ -179,7 +175,7 @@ async function loadOffers() {
         const { data, error } = await supabasePlayersSpacePrive
             .from('player_offers')
             .select('*')
-            .eq('player_id', currentProfile.id)
+            .or(`player_id.eq.${currentProfile.id},and(is_public.eq.true,player_id.is.null)`)
             .order('created_at', { ascending: false });
         if (error) throw error;
         offers = data || [];
@@ -209,18 +205,18 @@ function renderOffers() {
         if (offer.type === 'transfert') icon = 'fa-exchange-alt';
         else if (offer.type === 'tournoi') icon = 'fa-trophy';
         else if (offer.type === 'recrutement') icon = 'fa-user-plus';
+
         return `
             <div class="offer-card" data-offer-id="${offer.id}">
                 <div class="offer-icon"><i class="fas ${icon}"></i></div>
                 <div class="offer-info">
-                    <h4>${offer.title || 'Offre'}</h4>
-                    <p>${offer.from_entity || 'Entité'} – ${new Date(offer.created_at).toLocaleDateString('fr-FR')}</p>
+                    <h4>${escapeHtml(offer.title || `${offer.from_entity} – ${offer.type}`)}</h4>
+                    <p>${offer.from_entity || 'HubISoccer'} – ${new Date(offer.created_at).toLocaleDateString('fr-FR')}</p>
                 </div>
                 <span class="offer-status ${offer.status}">${statusText}</span>
             </div>
         `;
     }).join('');
-    // Attacher les événements click sur les cartes
     document.querySelectorAll('.offer-card').forEach(card => {
         card.addEventListener('click', (e) => {
             const id = card.dataset.offerId;
@@ -230,17 +226,16 @@ function renderOffers() {
     });
 }
 
-// ===== MODAL DES OFFRES =====
 function openOfferModal(offer) {
     currentOffer = offer;
     const modal = document.getElementById('offerModal');
     const detailsDiv = document.getElementById('modalOfferDetails');
     detailsDiv.innerHTML = `
-        <p><strong>Titre :</strong> ${offer.title || '-'}</p>
+        <p><strong>${escapeHtml(offer.title || 'Offre')}</strong></p>
         <p><strong>Type :</strong> ${offer.type === 'transfert' ? 'Transfert' : offer.type === 'tournoi' ? 'Participation à un tournoi' : 'Recrutement'}</p>
-        <p><strong>De :</strong> ${offer.from_entity || '-'}</p>
+        <p><strong>De :</strong> ${escapeHtml(offer.from_entity || '-')}</p>
         <p><strong>Date :</strong> ${new Date(offer.created_at).toLocaleString('fr-FR')}</p>
-        <p><strong>Détails :</strong> ${offer.description || 'Aucun détail fourni.'}</p>
+        <p><strong>Description :</strong> ${offer.description ? escapeHtml(offer.description).replace(/\n/g, '<br>') : 'Aucun détail fourni.'}</p>
         ${offer.amount ? `<p><strong>Montant :</strong> ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(offer.amount)}</p>` : ''}
         ${offer.tournament_id ? `<p><strong>Tournoi :</strong> ID ${offer.tournament_id}</p>` : ''}
     `;
@@ -256,30 +251,24 @@ async function acceptOffer() {
     if (!currentOffer) return;
     showLoader();
     try {
-        // Mettre à jour le statut de l'offre
-        const { error: updateError } = await supabasePlayersSpacePrive
+        const { error } = await supabasePlayersSpacePrive
             .from('player_offers')
             .update({ status: 'accepted', responded_at: new Date() })
             .eq('id', currentOffer.id);
-        if (updateError) throw updateError;
+        if (error) throw error;
 
-        // Envoyer un message à l'administrateur (ou à l'entité) via la messagerie
-        // Ici on suppose qu'on envoie un message à un admin (id fixe ou récupéré)
-        // Pour simplifier, on ajoute une notification dans la table notifications
         await supabasePlayersSpacePrive
             .from('notifications')
             .insert([{
                 user_id: currentProfile.id,
                 type: 'offer_accepted',
-                content: `Vous avez accepté l'offre "${currentOffer.title}".`,
+                content: `Vous avez accepté l'offre "${currentOffer.title || currentOffer.from_entity}".`,
                 read: false,
                 created_at: new Date()
             }]);
 
-        // On peut aussi envoyer un message directement à l'entité si on a son ID
-        // Pour l'instant, on recharge les offres
-        showToast('Offre acceptée ! Un message a été envoyé à l\'administrateur.', 'success');
-        await loadOffers(); // recharge la liste
+        showToast('Offre acceptée !', 'success');
+        await loadOffers();
         closeModal();
     } catch (err) {
         console.error(err);
@@ -293,19 +282,18 @@ async function ignoreOffer() {
     if (!currentOffer) return;
     showLoader();
     try {
-        const { error: updateError } = await supabasePlayersSpacePrive
+        const { error } = await supabasePlayersSpacePrive
             .from('player_offers')
             .update({ status: 'rejected', responded_at: new Date() })
             .eq('id', currentOffer.id);
-        if (updateError) throw updateError;
+        if (error) throw error;
 
-        // Envoyer une notification d'ignorance
         await supabasePlayersSpacePrive
             .from('notifications')
             .insert([{
                 user_id: currentProfile.id,
                 type: 'offer_ignored',
-                content: `Vous avez ignoré l'offre "${currentOffer.title}".`,
+                content: `Vous avez ignoré l'offre "${currentOffer.title || currentOffer.from_entity}".`,
                 read: false,
                 created_at: new Date()
             }]);
@@ -327,6 +315,8 @@ function initFilters() {
     const clubSelect = document.getElementById('filterClub');
     const typeSelect = document.getElementById('filterType');
     const resetBtn = document.getElementById('resetFilters');
+
+    if (!yearSelect || !clubSelect || !typeSelect || !resetBtn) return;
 
     const apply = () => {
         currentFilters = {
@@ -359,7 +349,6 @@ function initTabs() {
             tab.classList.add('active');
             contents.forEach(c => c.classList.remove('active'));
             document.getElementById(`${target}Tab`).classList.add('active');
-            // Rafraîchir les offres si on affiche l'onglet offres
             if (target === 'offers') {
                 loadOffers();
             }
@@ -439,6 +428,16 @@ function initLogout() {
     });
 }
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Initialisation transfers');
@@ -454,15 +453,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSidebar();
     initLogout();
 
-    // Gestion du modal
     const modal = document.getElementById('offerModal');
-    const closeBtn = modal.querySelector('.modal-close');
-    closeBtn.addEventListener('click', closeModal);
+    const closeBtn = modal?.querySelector('.modal-close');
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
     window.addEventListener('click', (e) => {
         if (e.target === modal) closeModal();
     });
-    document.getElementById('acceptOfferBtn').addEventListener('click', acceptOffer);
-    document.getElementById('ignoreOfferBtn').addEventListener('click', ignoreOffer);
+    const acceptBtn = document.getElementById('acceptOfferBtn');
+    const ignoreBtn = document.getElementById('ignoreOfferBtn');
+    if (acceptBtn) acceptBtn.addEventListener('click', acceptOffer);
+    if (ignoreBtn) ignoreBtn.addEventListener('click', ignoreOffer);
 
     document.getElementById('langSelect')?.addEventListener('change', (e) => {
         showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
