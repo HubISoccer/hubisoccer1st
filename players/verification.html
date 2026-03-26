@@ -6,22 +6,21 @@
     <title>Vérification & Licence | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles spécifiques (autonome) -->
     <link rel="stylesheet" href="css/verification.css">
-    <!-- Signature Pad -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- Navbar -->
+    <div id="globalLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; color: white; font-size: 1.2rem;">
+        <div class="spinner"></div> Chargement...
+    </div>
+
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="dashboard-title">Espace Joueur</span>
         </div>
         <div class="nav-right">
-            <!-- Sélecteur de langue (24 langues) -->
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
@@ -53,7 +52,8 @@
                 <span class="notif-badge" id="notifBadge">0</span>
             </div>
             <div class="user-menu" id="userMenu">
-                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <div class="avatar-initials" id="userAvatarInitials" style="display: none; width: 35px; height: 35px; border-radius: 50%; background: #551B8C; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;"></div>
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar" style="display: none;">
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
@@ -69,7 +69,6 @@
         </div>
     </nav>
 
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h3>Menu Joueur</h3>
@@ -93,109 +92,55 @@
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Contenu principal -->
     <main class="verification-main">
         <div class="verification-container">
             <h1 class="page-title"><i class="fas fa-shield-alt"></i> Hub de vérification & licence</h1>
 
-            <!-- Section Documents requis -->
             <section class="documents-section">
                 <h2><i class="fas fa-file-alt"></i> Documents requis</h2>
                 <p class="section-subtitle">Téléversez les documents demandés par l'administration. Le statut change après vérification.</p>
-                <div class="documents-grid" id="documentsGrid">
-                    <!-- Les documents seront chargés dynamiquement -->
-                </div>
+                <div class="documents-grid" id="documentsGrid"></div>
             </section>
 
-            <!-- Section Demande de licence -->
             <section class="license-section">
                 <h2><i class="fas fa-id-card"></i> Demande de licence HubISoccer</h2>
                 <p class="section-subtitle">Remplissez ces informations pour obtenir votre carte de licence officielle.</p>
 
                 <div class="license-layout">
-                    <!-- Formulaire -->
                     <div class="license-form">
                         <form id="licenseForm">
                             <div class="form-row">
-                                <div class="form-group">
-                                    <label>Nom *</label>
-                                    <input type="text" id="nom" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Prénom *</label>
-                                    <input type="text" id="prenom" required>
-                                </div>
+                                <div class="form-group"><label>Nom *</label><input type="text" id="nom" required></div>
+                                <div class="form-group"><label>Prénom *</label><input type="text" id="prenom" required></div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group">
-                                    <label>Date de naissance *</label>
-                                    <input type="date" id="dateNaissance" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Lieu de naissance *</label>
-                                    <input type="text" id="lieuNaissance" required>
-                                </div>
+                                <div class="form-group"><label>Date de naissance *</label><input type="date" id="dateNaissance" required></div>
+                                <div class="form-group"><label>Lieu de naissance *</label><input type="text" id="lieuNaissance" required></div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group">
-                                    <label>Adresse actuelle *</label>
-                                    <input type="text" id="adresse" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Nationalité *</label>
-                                    <input type="text" id="nationalite" required>
-                                </div>
+                                <div class="form-group"><label>Adresse actuelle *</label><input type="text" id="adresse" required></div>
+                                <div class="form-group"><label>Nationalité *</label><input type="text" id="nationalite" required></div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group">
-                                    <label>Pays de résidence *</label>
-                                    <input type="text" id="pays" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Langue(s) parlée(s) *</label>
-                                    <input type="text" id="langue" placeholder="ex: Français, Anglais" required>
-                                </div>
+                                <div class="form-group"><label>Pays de résidence *</label><input type="text" id="pays" required></div>
+                                <div class="form-group"><label>Langue(s) parlée(s) *</label><input type="text" id="langue" placeholder="ex: Français, Anglais" required></div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group">
-                                    <label>Téléphone *</label>
-                                    <input type="tel" id="telephone" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Taille (cm)</label>
-                                    <input type="number" id="taille">
-                                </div>
+                                <div class="form-group"><label>Téléphone *</label><input type="tel" id="telephone" required></div>
+                                <div class="form-group"><label>Taille (cm)</label><input type="number" id="taille"></div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group">
-                                    <label>Poids (kg)</label>
-                                    <input type="number" id="poids">
-                                </div>
-                                <div class="form-group">
-                                    <label>Pied fort</label>
-                                    <select id="piedFort">
-                                        <option value="">Sélectionnez</option>
-                                        <option>Droitier</option>
-                                        <option>Gaucher</option>
-                                        <option>Ambidextre</option>
-                                    </select>
-                                </div>
+                                <div class="form-group"><label>Poids (kg)</label><input type="number" id="poids"></div>
+                                <div class="form-group"><label>Pied fort</label><select id="piedFort"><option value="">Sélectionnez</option><option>Droitier</option><option>Gaucher</option><option>Ambidextre</option></select></div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group">
-                                    <label>Club actuel</label>
-                                    <input type="text" id="club" placeholder="ou 'Joueur libre'">
-                                </div>
+                                <div class="form-group"><label>Club actuel</label><input type="text" id="club" placeholder="ou 'Joueur libre'"></div>
                             </div>
 
-                            <!-- Signature avec modale -->
                             <div class="signature-group">
                                 <label>Signature *</label>
                                 <div class="signature-preview" id="signaturePreview" onclick="openSignatureModal()">
-                                    <div class="signature-placeholder">
-                                        <i class="fas fa-pen"></i>
-                                        <span>Cliquez pour signer</span>
-                                    </div>
+                                    <div class="signature-placeholder"><i class="fas fa-pen"></i><span>Cliquez pour signer</span></div>
                                     <img id="signatureImage" style="display: none; max-width: 100%; max-height: 100px;" />
                                 </div>
                                 <p class="field-info">Cliquez sur la zone pour ouvrir le module de signature.</p>
@@ -205,72 +150,51 @@
                         </form>
                     </div>
 
-                    <!-- Aperçu de la carte (recto-verso) -->
                     <div class="license-preview">
                         <h3>Aperçu de votre carte</h3>
                         <div class="card-flip-container" id="cardPreview">
-                            <!-- Face avant -->
                             <div class="card-front">
                                 <div class="card-template">
-                                    <div class="card-header">
-                                        <h4>LICENCE HUBISOCCER</h4>
-                                        <p>Joueur</p>
-                                    </div>
+                                    <div class="card-header"><h4>LICENCE HUBISOCCER</h4><p>Joueur</p></div>
                                     <div class="card-body">
-                                        <div class="card-photo">
-                                            <i class="fas fa-user"></i>
-                                        </div>
-                                        <div class="card-info" id="cardFrontInfo">
-                                            <!-- Dynamique -->
-                                        </div>
+                                        <div class="card-photo"><i class="fas fa-user"></i></div>
+                                        <div class="card-info" id="cardFrontInfo"></div>
                                     </div>
-                                    <div class="card-footer" id="cardFrontFooter">
-                                        <!-- Dynamique -->
-                                    </div>
+                                    <div class="card-footer" id="cardFrontFooter"></div>
                                 </div>
                             </div>
-                            <!-- Face arrière -->
                             <div class="card-back">
                                 <div class="card-template">
-                                    <div class="card-header">
-                                        <h4>INFORMATIONS COMPLÉMENTAIRES</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="card-info" id="cardBackInfo">
-                                            <!-- Dynamique -->
-                                        </div>
-                                    </div>
-                                    <div class="card-footer">
-                                        <div class="stamp"><i class="fas fa-stamp"></i> Cachet officiel</div>
-                                    </div>
+                                    <div class="card-header"><h4>INFORMATIONS COMPLÉMENTAIRES</h4></div>
+                                    <div class="card-body"><div class="card-info" id="cardBackInfo"></div></div>
+                                    <div class="card-footer"><div class="stamp"><i class="fas fa-stamp"></i> Cachet officiel</div></div>
                                 </div>
                             </div>
-                            <!-- Bouton de retournement -->
                             <button class="flip-btn" id="flipCardBtn"><i class="fas fa-sync-alt"></i> Retourner</button>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Section Statut de la demande -->
             <section class="status-section" id="statusSection" style="display: none;">
                 <h2><i class="fas fa-clock"></i> Statut de votre demande</h2>
-                <div class="status-card" id="statusCard">
-                    <!-- Contenu dynamique -->
-                </div>
+                <div class="status-card" id="statusCard"></div>
             </section>
         </div>
     </main>
 
-    <!-- MODALE DE SIGNATURE -->
     <div id="signatureModal" class="signature-modal">
         <div class="signature-modal-content">
             <div class="signature-modal-header">
                 <h3>Signez dans le cadre</h3>
-                <span class="close-modal" onclick="closeSignatureModal()">&times;</span>
+                <span class="close-modal" onclick="closeSignatureModal()">×</span>
             </div>
             <div class="signature-modal-body">
                 <canvas id="signatureCanvasModal" width="800" height="300" style="touch-action: none; width: 100%; height: auto; border: 1px solid #ccc;"></canvas>
+                <div class="signature-styling">
+                    <label>Couleur : <input type="color" id="penColorPicker" value="#551B8C"></label>
+                    <label>Épaisseur : <input type="range" id="penWidth" min="1" max="5" step="0.5" value="2"></label>
+                </div>
                 <div class="signature-modal-actions">
                     <button type="button" class="btn-clear" id="clearSignatureModal">Effacer</button>
                     <button type="button" class="btn-lock" id="lockSignatureModal">Verrouiller</button>
@@ -281,7 +205,6 @@
         </div>
     </div>
 
-    <!-- Footer -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
@@ -296,7 +219,7 @@
             <div class="legal">
                 <p>HubISoccer - The Hub of Inspiration of Soccer</p>
                 <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
-                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
             </div>
         </div>
     </footer>
