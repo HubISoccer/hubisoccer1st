@@ -1,4 +1,3 @@
-// ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -104,7 +103,6 @@ function updateAvatarDisplay() {
     }
 }
 
-// ===== TRANSFERTS =====
 async function loadTransfers() {
     if (!currentProfile) return;
     showLoader();
@@ -112,12 +110,13 @@ async function loadTransfers() {
         const { data, error } = await supabasePlayersSpacePrive
             .from('player_transfers')
             .select('*')
-            .eq('player_id', currentProfile.id)
-            .order('date', { ascending: false });
+            .eq('user_id', currentProfile.id)
+            .order('date_transfert', { ascending: false });
         if (error) throw error;
         transfers = data || [];
-        const years = [...new Set(transfers.map(t => t.year).filter(y => y))];
-        const clubs = [...new Set(transfers.map(t => t.club).filter(c => c))];
+
+        const years = [...new Set(transfers.map(t => t.date_transfert ? new Date(t.date_transfert).getFullYear() : null).filter(y => y))];
+        const clubs = [...new Set(transfers.flatMap(t => [t.club_depart, t.club_arrivee]).filter(c => c))];
         const yearSelect = document.getElementById('filterYear');
         const clubSelect = document.getElementById('filterClub');
         if (yearSelect) yearSelect.innerHTML = '<option value="">Toutes</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
@@ -133,9 +132,20 @@ async function loadTransfers() {
 
 function applyTransfersFilters() {
     let filtered = transfers;
-    if (currentFilters.year) filtered = filtered.filter(t => t.year == currentFilters.year);
-    if (currentFilters.club) filtered = filtered.filter(t => t.club === currentFilters.club);
-    if (currentFilters.type) filtered = filtered.filter(t => t.type === currentFilters.type);
+    if (currentFilters.year) {
+        filtered = filtered.filter(t => {
+            if (!t.date_transfert) return false;
+            return new Date(t.date_transfert).getFullYear() == currentFilters.year;
+        });
+    }
+    if (currentFilters.club) {
+        filtered = filtered.filter(t => 
+            t.club_depart === currentFilters.club || t.club_arrivee === currentFilters.club
+        );
+    }
+    if (currentFilters.type) {
+        filtered = filtered.filter(t => t.type_transfert === currentFilters.type);
+    }
     renderTransfers(filtered);
 }
 
@@ -152,13 +162,22 @@ function renderTransfers(transfersList) {
             pending: 'En attente',
             rejected: 'Rejeté'
         }[transfer.status] || 'En attente';
-        const amountFormatted = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(transfer.amount || 0);
+        const amountFormatted = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(transfer.montant || 0);
+        let clubText = '';
+        if (transfer.club_depart && transfer.club_arrivee) {
+            clubText = `${transfer.club_depart} → ${transfer.club_arrivee}`;
+        } else if (transfer.club_arrivee) {
+            clubText = transfer.club_arrivee;
+        } else {
+            clubText = 'Club non spécifié';
+        }
+        const year = transfer.date_transfert ? new Date(transfer.date_transfert).getFullYear() : 'Année inconnue';
         return `
             <div class="transfer-card">
-                <div class="transfer-icon"><i class="fas ${transfer.type === 'transfert' ? 'fa-exchange-alt' : transfer.type === 'pret' ? 'fa-handshake' : 'fa-file-signature'}"></i></div>
+                <div class="transfer-icon"><i class="fas ${transfer.type_transfert === 'transfert' ? 'fa-exchange-alt' : transfer.type_transfert === 'pret' ? 'fa-handshake' : 'fa-file-signature'}"></i></div>
                 <div class="transfer-info">
-                    <h4>${escapeHtml(transfer.club || 'Club non spécifié')}</h4>
-                    <p>${transfer.type === 'transfert' ? 'Transfert' : transfer.type === 'pret' ? 'Prêt' : 'Fin de contrat'} – ${transfer.year || 'Année inconnue'}</p>
+                    <h4>${escapeHtml(clubText)}</h4>
+                    <p>${transfer.type_transfert === 'transfert' ? 'Transfert' : transfer.type_transfert === 'pret' ? 'Prêt' : 'Fin de contrat'} – ${year}</p>
                 </div>
                 <div class="transfer-amount">${amountFormatted}</div>
                 <span class="transfer-status ${transfer.status}">${statusText}</span>
@@ -167,7 +186,6 @@ function renderTransfers(transfersList) {
     }).join('');
 }
 
-// ===== OFFRES (publiques + personnelles) =====
 async function loadOffers() {
     if (!currentProfile) return;
     showLoader();
@@ -226,16 +244,54 @@ function renderOffers() {
     });
 }
 
+function formatDescription(desc) {
+    if (!desc) return '<p>Aucun détail fourni.</p>';
+    // Échapper le HTML pour éviter les injections, mais conserver les retours à la ligne
+    let escaped = escapeHtml(desc);
+    // Remplacer les retours chariot par des <br>
+    let html = escaped.replace(/\r\n/g, '\n').replace(/\n/g, '<br>');
+    // Améliorer les listes : détecter les lignes commençant par • ou - ou * et les convertir en <ul><li>
+    let lines = html.split('<br>');
+    let inList = false;
+    let result = [];
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+        if (line.match(/^[•\-*]\s/)) {
+            if (!inList) {
+                result.push('<ul>');
+                inList = true;
+            }
+            // enlever le caractère de puce et l'espace
+            let content = line.replace(/^[•\-*]\s/, '');
+            result.push(`<li>${content}</li>`);
+        } else {
+            if (inList) {
+                result.push('</ul>');
+                inList = false;
+            }
+            if (line !== '') {
+                result.push(`<p>${line}</p>`);
+            } else {
+                result.push('<br>');
+            }
+        }
+    }
+    if (inList) result.push('</ul>');
+    return result.join('');
+}
+
 function openOfferModal(offer) {
     currentOffer = offer;
     const modal = document.getElementById('offerModal');
     const detailsDiv = document.getElementById('modalOfferDetails');
+    const descriptionHtml = formatDescription(offer.description);
     detailsDiv.innerHTML = `
         <p><strong>${escapeHtml(offer.title || 'Offre')}</strong></p>
         <p><strong>Type :</strong> ${offer.type === 'transfert' ? 'Transfert' : offer.type === 'tournoi' ? 'Participation à un tournoi' : 'Recrutement'}</p>
         <p><strong>De :</strong> ${escapeHtml(offer.from_entity || '-')}</p>
         <p><strong>Date :</strong> ${new Date(offer.created_at).toLocaleString('fr-FR')}</p>
-        <p><strong>Description :</strong> ${offer.description ? escapeHtml(offer.description).replace(/\n/g, '<br>') : 'Aucun détail fourni.'}</p>
+        <p><strong>Description :</strong></p>
+        <div class="offer-description">${descriptionHtml}</div>
         ${offer.amount ? `<p><strong>Montant :</strong> ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(offer.amount)}</p>` : ''}
         ${offer.tournament_id ? `<p><strong>Tournoi :</strong> ID ${offer.tournament_id}</p>` : ''}
     `;
@@ -309,15 +365,12 @@ async function ignoreOffer() {
     }
 }
 
-// ===== FILTRES TRANSFERTS =====
 function initFilters() {
     const yearSelect = document.getElementById('filterYear');
     const clubSelect = document.getElementById('filterClub');
     const typeSelect = document.getElementById('filterType');
     const resetBtn = document.getElementById('resetFilters');
-
     if (!yearSelect || !clubSelect || !typeSelect || !resetBtn) return;
-
     const apply = () => {
         currentFilters = {
             year: yearSelect.value,
@@ -338,7 +391,6 @@ function initFilters() {
     });
 }
 
-// ===== ONGLETS =====
 function initTabs() {
     const tabs = document.querySelectorAll('.tab-btn');
     const contents = document.querySelectorAll('.tab-content');
@@ -356,7 +408,6 @@ function initTabs() {
     });
 }
 
-// ===== UI =====
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
@@ -438,7 +489,6 @@ function escapeHtml(str) {
     });
 }
 
-// ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Initialisation transfers');
     const user = await checkSession();
