@@ -117,6 +117,18 @@ body {
     object-fit: cover;
 }
 
+.avatar-initials {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
 .user-name {
     font-weight: 500;
     color: var(--dark);
@@ -325,6 +337,38 @@ body {
     font-size: 2.2rem;
 }
 
+/* ===== CARTE VIRTUELLE ===== */
+.virtual-card {
+    background: linear-gradient(145deg, var(--primary), var(--primary-dark));
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: var(--shadow);
+    color: white;
+    transition: var(--transition);
+}
+.virtual-card .card-front {
+    position: relative;
+    min-height: 180px;
+}
+.card-brand {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 30px;
+}
+.card-number {
+    font-size: 1.4rem;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+    font-family: monospace;
+}
+.card-holder, .card-expiry {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    margin-top: 5px;
+}
+
 /* ===== PORTEFEUILLE ===== */
 .wallet-overview {
     display: grid;
@@ -461,7 +505,7 @@ body {
     color: var(--primary);
 }
 
-/* ===== BONUS D'INSCRIPTION ===== */
+/* Bonus d'abonnés */
 .bonus-withdraw {
     margin-top: 30px;
     padding-top: 20px;
@@ -513,10 +557,30 @@ body {
     padding: 30px;
     box-shadow: var(--shadow);
 }
+.transactions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
 .transactions h2 {
     color: var(--primary);
-    margin-bottom: 20px;
+    margin: 0;
     font-size: 1.4rem;
+}
+.btn-export-csv {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.btn-export-csv:hover {
+    background: var(--primary-dark);
 }
 .transactions-list {
     display: flex;
@@ -531,6 +595,7 @@ body {
     background: var(--bg-light);
     border-radius: 10px;
     border-left: 4px solid transparent;
+    transition: var(--transition);
 }
 .transaction-item.deposit {
     border-left-color: var(--success);
@@ -577,6 +642,18 @@ body {
     font-size: 0.7rem;
     color: var(--gray);
     margin-left: 20px;
+}
+.transaction-pdf-btn {
+    background: none;
+    border: none;
+    color: var(--primary);
+    cursor: pointer;
+    font-size: 1.1rem;
+    margin-left: 10px;
+    transition: var(--transition);
+}
+.transaction-pdf-btn:hover {
+    color: var(--gold);
 }
 
 /* ===== MODALES ===== */
@@ -651,6 +728,21 @@ body {
 }
 .btn-submit:hover {
     opacity: 0.9;
+}
+
+/* ===== LOADER ===== */
+.spinner {
+    border: 4px solid rgba(255,255,255,0.3);
+    border-top: 4px solid var(--gold);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* ===== TOASTS ===== */
@@ -785,6 +877,11 @@ body {
     }
     .bonus-grid {
         grid-template-columns: 1fr 1fr;
+    }
+    .transactions-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
     }
     .nav-right {
         gap: 10px;
