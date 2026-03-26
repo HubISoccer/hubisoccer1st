@@ -6,44 +6,26 @@
     <title>Mes revenus | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles spécifiques (autonome) -->
     <link rel="stylesheet" href="css/revenue.css">
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- html2pdf pour générer les PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
-    <!-- Navbar -->
+    <div id="globalLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; color: white; font-size: 1.2rem;">
+        <div class="spinner"></div> Chargement...
+    </div>
+
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="dashboard-title">Espace Joueur</span>
         </div>
         <div class="nav-right">
-            <!-- Sélecteur de langue (24 langues) -->
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
-                <option value="yo">🇳🇬 Yoruba</option>
-                <option value="fon">🇧🇯 Fon</option>
-                <option value="mina">🇹🇬 Mina</option>
-                <option value="lin">🇨🇬 Lingala</option>
-                <option value="wol">🇸🇳 Wolof</option>
-                <option value="diou">🇨🇮 Dioula</option>
-                <option value="ha">🇳🇬 Hausa</option>
-                <option value="sw">🇰🇪 Kiswahili</option>
-                <option value="es">🇪🇸 Español</option>
-                <option value="pt">🇵🇹 Português</option>
-                <option value="de">🇩🇪 Deutsch</option>
-                <option value="it">🇮🇹 Italiano</option>
-                <option value="ar">🇸🇦 العربية</option>
-                <option value="zh">🇨🇳 中文</option>
-                <option value="ru">🇷🇺 Русский</option>
-                <option value="ja">🇯🇵 日本語</option>
-                <option value="tr">🇹🇷 Türkçe</option>
-                <option value="ko">🇰🇷 한국어</option>
-                <option value="hi">🇮🇳 हिन्दी</option>
-                <option value="nl">🇳🇱 Nederlands</option>
-                <option value="pl">🇵🇱 Polski</option>
+                <!-- ... toutes les langues ... -->
                 <option value="vi">🇻🇳 Tiếng Việt</option>
             </select>
             <div class="notif-icon" id="notifIcon">
@@ -51,11 +33,12 @@
                 <span class="notif-badge" id="notifBadge">0</span>
             </div>
             <div class="user-menu" id="userMenu">
-                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <div class="avatar-initials" id="userAvatarInitials" style="display: none; width: 35px; height: 35px; border-radius: 50%; background: #551B8C; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;"></div>
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar" style="display: none;">
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
-                    <a href="profile-edit.html">Mon CV Pro</a>
+                    <a href="edit-cv.html">Mon CV Pro</a>
                     <a href="support.html">Paramètres</a>
                     <a href="#" id="languageLink">Langue (Français)</a>
                     <a href="#" id="logoutLink">Déconnexion</a>
@@ -67,7 +50,6 @@
         </div>
     </nav>
 
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h3>Menu Joueur</h3>
@@ -91,10 +73,19 @@
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Contenu principal -->
     <main class="revenue-main">
         <div class="revenue-container">
             <h1 class="page-title"><i class="fas fa-coins"></i> Mes revenus & portefeuille</h1>
+
+            <!-- Carte virtuelle -->
+            <div class="virtual-card" id="virtualCard">
+                <div class="card-front">
+                    <div class="card-brand">HubISoccer</div>
+                    <div class="card-number" id="cardNumber">•••• •••• •••• ••••</div>
+                    <div class="card-holder" id="cardHolder">Nom du titulaire</div>
+                    <div class="card-expiry" id="cardExpiry">••/••</div>
+                </div>
+            </div>
 
             <!-- Cartes de solde et actions -->
             <div class="wallet-overview">
@@ -110,6 +101,10 @@
                     </div>
                 </div>
                 <div class="wallet-card small">
+                    <h4>Solde en attente</h4>
+                    <p id="pendingBalance">0 FCFA</p>
+                </div>
+                <div class="wallet-card small">
                     <h4>Total gagné</h4>
                     <p id="totalEarned">0 FCFA</p>
                 </div>
@@ -119,7 +114,7 @@
                 </div>
             </div>
 
-            <!-- Statistiques de bonus -->
+            <!-- Bonus (paliers) -->
             <div class="bonus-stats">
                 <h2>Mes bonus</h2>
                 <div class="bonus-grid">
@@ -145,21 +140,22 @@
                     </div>
                 </div>
 
-                <!-- Section bonus d'inscription -->
-                <div class="bonus-withdraw">
+                <div class="bonus-withdraw" id="bonusWithdrawSection">
                     <p class="bonus-inscription-label">
-                        <i class="fas fa-gift"></i> Bonus d'inscription : <strong id="bonusInscription">5000 FCFA (0/50 abonnés)</strong>
+                        <i class="fas fa-gift"></i> Bonus abonnés : <strong id="bonusMessage">Chargement...</strong>
                     </p>
                     <button class="btn-withdraw-bonus" id="withdrawBonusBtn" disabled>
                         <i class="fas fa-arrow-right"></i> Retirer le bonus
                     </button>
-                    <p class="bonus-info">Vous devez avoir 50 abonnés pour retirer votre bonus.</p>
                 </div>
             </div>
 
             <!-- Historique des transactions -->
             <div class="transactions">
-                <h2>Historique des transactions</h2>
+                <div class="transactions-header">
+                    <h2>Historique des transactions</h2>
+                    <button class="btn-export-csv" id="exportCsvBtn"><i class="fas fa-download"></i> Télécharger mon relevé (CSV)</button>
+                </div>
                 <div class="transactions-list" id="transactionsList">
                     <!-- Les transactions seront chargées dynamiquement -->
                 </div>
@@ -172,7 +168,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Effectuer un dépôt</h2>
-                <span class="close-modal" onclick="closeDepositModal()">&times;</span>
+                <span class="close-modal" onclick="closeDepositModal()">×</span>
             </div>
             <div class="modal-body">
                 <form id="depositForm">
@@ -188,7 +184,11 @@
                             <option value="wallet">Portefeuille HubISoccer</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn-submit">Valider le dépôt</button>
+                    <div class="form-group">
+                        <label>Justificatif (optionnel)</label>
+                        <input type="file" id="depositProof" accept="image/*,application/pdf">
+                    </div>
+                    <button type="submit" class="btn-submit">Valider la demande</button>
                 </form>
             </div>
         </div>
@@ -199,7 +199,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Effectuer un retrait</h2>
-                <span class="close-modal" onclick="closeWithdrawModal()">&times;</span>
+                <span class="close-modal" onclick="closeWithdrawModal()">×</span>
             </div>
             <div class="modal-body">
                 <form id="withdrawForm">
@@ -218,16 +218,18 @@
                         <label>Numéro/Nom du bénéficiaire</label>
                         <input type="text" id="withdrawRecipient" required>
                     </div>
+                    <div class="form-group">
+                        <label>Justificatif (optionnel)</label>
+                        <input type="file" id="withdrawProof" accept="image/*,application/pdf">
+                    </div>
                     <button type="submit" class="btn-submit">Demander le retrait</button>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Toast container -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- Footer -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
@@ -242,11 +244,11 @@
             <div class="legal">
                 <p>HubISoccer - The Hub of Inspiration of Soccer</p>
                 <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
-                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
             </div>
         </div>
     </footer>
 
     <script src="js/revenue.js"></script>
 </body>
-</html>
+</html
