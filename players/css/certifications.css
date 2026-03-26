@@ -18,7 +18,6 @@
     --transition: all 0.3s ease;
 }
 
-/* ===== POLICE GLOBALE ===== */
 body {
     font-family: 'Poppins', sans-serif;
     margin: 0;
@@ -26,7 +25,22 @@ body {
     background: var(--bg-light);
 }
 
-/* ===== NAVBAR ===== */
+/* Loader */
+.spinner {
+    border: 4px solid rgba(255,255,255,0.3);
+    border-top: 4px solid var(--gold);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Navbar & Sidebar (identique aux autres pages) */
 .dashboard-nav {
     display: flex;
     justify-content: space-between;
@@ -38,32 +52,27 @@ body {
     top: 0;
     z-index: 100;
 }
-
 .nav-left {
     display: flex;
     align-items: center;
     gap: 15px;
 }
-
 .logo-nav {
     height: 40px;
     cursor: pointer;
 }
-
 .dashboard-title {
     font-weight: 600;
     color: var(--primary);
     border-left: 2px solid var(--light-gray);
     padding-left: 15px;
 }
-
 .nav-right {
     display: flex;
     align-items: center;
     gap: 20px;
     flex-wrap: wrap;
 }
-
 .lang-picker {
     padding: 6px 12px;
     border-radius: 20px;
@@ -81,14 +90,12 @@ body {
 .lang-picker:focus {
     border-color: var(--gold);
 }
-
 .notif-icon {
     position: relative;
     cursor: pointer;
     font-size: 1.2rem;
     color: var(--gray);
 }
-
 .notif-badge {
     position: absolute;
     top: -5px;
@@ -101,7 +108,6 @@ body {
     min-width: 15px;
     text-align: center;
 }
-
 .user-menu {
     display: flex;
     align-items: center;
@@ -109,19 +115,27 @@ body {
     cursor: pointer;
     position: relative;
 }
-
 .user-avatar {
     width: 35px;
     height: 35px;
     border-radius: 50%;
     object-fit: cover;
 }
-
+.avatar-initials {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
 .user-name {
     font-weight: 500;
     color: var(--dark);
 }
-
 .user-dropdown {
     position: absolute;
     top: 100%;
@@ -134,11 +148,9 @@ body {
     display: none;
     z-index: 10;
 }
-
 .user-dropdown.show {
     display: block;
 }
-
 .user-dropdown a {
     display: block;
     padding: 8px 15px;
@@ -146,12 +158,10 @@ body {
     text-decoration: none;
     transition: background 0.2s;
 }
-
 .user-dropdown a:hover {
     background: rgba(85,27,140,0.05);
     color: var(--primary);
 }
-
 .menu-toggle {
     display: block;
     background: none;
@@ -161,7 +171,6 @@ body {
     color: var(--primary);
 }
 
-/* ===== SIDEBAR ===== */
 .sidebar {
     position: fixed;
     top: 0;
@@ -175,23 +184,19 @@ body {
     padding: 20px;
     overflow-y: auto;
 }
-
 .sidebar.active {
     left: 0;
 }
-
 .sidebar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 30px;
 }
-
 .sidebar-header h3 {
     color: var(--primary);
     font-size: 1.2rem;
 }
-
 .close-sidebar {
     background: none;
     border: none;
@@ -199,13 +204,11 @@ body {
     cursor: pointer;
     color: var(--gray);
 }
-
 .sidebar-nav {
     display: flex;
     flex-direction: column;
     gap: 5px;
 }
-
 .sidebar-nav a {
     display: flex;
     align-items: center;
@@ -218,32 +221,26 @@ body {
     width: 100%;
     box-sizing: border-box;
 }
-
 .sidebar-nav a i {
     width: 20px;
     color: var(--primary);
 }
-
 .sidebar-nav a:hover {
     background: rgba(85,27,140,0.05);
     color: var(--primary);
 }
-
 .sidebar-nav a.active {
     background: var(--primary);
     color: white;
 }
-
 .sidebar-nav a.active i {
     color: white;
 }
-
 .sidebar-nav hr {
     margin: 15px 0;
     border: 0;
     border-top: 1px solid var(--light-gray);
 }
-
 .sidebar-overlay {
     display: none;
     position: fixed;
@@ -254,12 +251,9 @@ body {
     background: rgba(0,0,0,0.5);
     z-index: 999;
 }
-
 .sidebar-overlay.active {
     display: block;
 }
-
-/* ===== POIGNÉE DE MENU ===== */
 .menu-handle {
     position: fixed;
     top: 50%;
@@ -277,13 +271,11 @@ body {
     justify-content: center;
     transition: all 0.2s ease;
 }
-
 .menu-handle:hover {
     width: 12px;
     background: white;
     box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
 }
-
 .menu-handle span {
     display: block;
     width: 4px;
@@ -292,25 +284,22 @@ body {
     border-radius: 4px;
     opacity: 0.7;
 }
-
 @media (min-width: 901px) {
     .menu-handle {
         display: none;
     }
 }
 
-/* ===== MAIN CONTENT (spécifique certifications) ===== */
+/* MAIN CONTENT (spécifique certifications) */
 .certifications-main {
     min-height: calc(100vh - 70px);
     padding: 40px 5%;
     background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
 }
-
 .certifications-container {
     max-width: 1200px;
     margin: 0 auto;
 }
-
 .page-header {
     margin-bottom: 30px;
 }
@@ -330,14 +319,12 @@ body {
     font-weight: 300;
 }
 
-/* ===== GRILLE ===== */
 .cert-grid {
     display: grid;
     grid-template-columns: 1fr 350px;
     gap: 30px;
 }
 
-/* ===== LISTE DES CERTIFICATS ===== */
 .cert-list {
     background: white;
     border-radius: 20px;
@@ -360,7 +347,6 @@ body {
     flex-direction: column;
     gap: 15px;
 }
-
 .cert-card {
     display: flex;
     align-items: center;
@@ -383,7 +369,6 @@ body {
 .cert-card.rejected {
     border-left-color: var(--danger);
 }
-
 .cert-icon {
     width: 50px;
     height: 50px;
@@ -396,7 +381,6 @@ body {
     color: var(--primary);
     border: 2px solid var(--gold);
 }
-
 .cert-info {
     flex: 1;
 }
@@ -409,7 +393,6 @@ body {
     font-size: 0.8rem;
     color: var(--gray);
 }
-
 .cert-status {
     padding: 5px 12px;
     border-radius: 20px;
@@ -429,14 +412,12 @@ body {
     background: var(--danger);
     color: white;
 }
-
 .empty-message {
     color: var(--gray);
     text-align: center;
     padding: 20px;
 }
 
-/* ===== FORMULAIRE D'AJOUT ===== */
 .cert-upload {
     background: white;
     border-radius: 20px;
@@ -444,7 +425,6 @@ body {
     box-shadow: var(--shadow);
     align-self: start;
 }
-
 .upload-card h3 {
     color: var(--primary);
     margin-bottom: 20px;
@@ -453,7 +433,6 @@ body {
     gap: 8px;
     font-size: 1.2rem;
 }
-
 .form-group {
     margin-bottom: 20px;
 }
@@ -482,7 +461,6 @@ body {
     grid-template-columns: 1fr 1fr;
     gap: 15px;
 }
-
 .file-drop-area {
     border: 2px dashed var(--primary);
     border-radius: 10px;
@@ -505,7 +483,6 @@ body {
     color: var(--gray);
     font-size: 0.9rem;
 }
-
 .btn-submit {
     width: 100%;
     padding: 14px;
@@ -522,7 +499,7 @@ body {
     box-shadow: 0 5px 15px rgba(85,27,140,0.3);
 }
 
-/* ===== TOASTS ===== */
+/* Toasts */
 .toast-container {
     position: fixed;
     top: 20px;
@@ -533,7 +510,6 @@ body {
     gap: 10px;
     pointer-events: none;
 }
-
 .toast {
     min-width: 250px;
     background: white;
@@ -560,7 +536,6 @@ body {
 .toast.warning {
     border-left-color: var(--warning);
 }
-
 .toast-icon {
     font-size: 1.2rem;
 }
@@ -576,13 +551,11 @@ body {
 .toast.warning .toast-icon {
     color: var(--warning);
 }
-
 .toast-content {
     flex: 1;
     font-size: 0.9rem;
     color: var(--dark);
 }
-
 .toast-close {
     background: none;
     border: none;
@@ -590,7 +563,6 @@ body {
     cursor: pointer;
     font-size: 1rem;
 }
-
 @keyframes slideIn {
     to { transform: translateX(0); }
 }
@@ -598,20 +570,18 @@ body {
     to { opacity: 0; transform: translateX(400px); }
 }
 
-/* ===== FOOTER ===== */
+/* Footer */
 .dashboard-footer {
     background: #050505;
     color: white;
     padding: 40px 5%;
     margin-top: 50px;
 }
-
 .footer-content {
     max-width: 1200px;
     margin: 0 auto;
     text-align: center;
 }
-
 .compliance-badges {
     display: flex;
     justify-content: center;
@@ -619,7 +589,6 @@ body {
     flex-wrap: wrap;
     margin-bottom: 20px;
 }
-
 .badge {
     background: rgba(255,255,255,0.1);
     padding: 6px 12px;
@@ -627,24 +596,21 @@ body {
     font-size: 0.8rem;
     color: var(--gold);
 }
-
 .contact-info {
     margin-bottom: 15px;
 }
-
 .contact-info a {
     color: var(--gold);
     text-decoration: none;
     margin: 0 15px;
 }
-
 .legal p {
     font-size: 0.8rem;
     opacity: 0.7;
     margin: 5px 0;
 }
 
-/* ===== RESPONSIVE ===== */
+/* Responsive */
 @media (max-width: 900px) {
     .cert-grid {
         grid-template-columns: 1fr;
@@ -660,7 +626,6 @@ body {
         padding: 4px 8px;
     }
 }
-
 @media (max-width: 600px) {
     .form-row {
         grid-template-columns: 1fr;
@@ -672,7 +637,6 @@ body {
         max-width: 120px;
     }
 }
-
 @media (max-width: 400px) {
     .nav-right {
         gap: 5px;
