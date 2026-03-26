@@ -88,7 +88,6 @@ async function loadProfile() {
         currentProfile = data;
         document.getElementById('userName').textContent = currentProfile.full_name || 'Joueur';
         updateAvatarDisplay();
-        // Mettre à jour la carte virtuelle
         document.getElementById('cardHolder').textContent = currentProfile.full_name || 'Titulaire';
     } catch (err) {
         console.error(err);
@@ -130,7 +129,6 @@ async function loadOrCreateWallet() {
         if (wallets && wallets.length > 0) {
             wallet = wallets[0];
         } else {
-            // Créer un nouveau portefeuille avec un numéro de compte unique
             const { data: newWallet, error: insertError } = await supabasePlayersSpacePrive
                 .from('player_wallets')
                 .insert([{
@@ -143,7 +141,6 @@ async function loadOrCreateWallet() {
                 .single();
             if (insertError) throw insertError;
             wallet = newWallet;
-            // Générer un numéro de compte après insertion
             const accountNumber = `HUB${String(wallet.id).padStart(8, '0')}`;
             const { error: updateError } = await supabasePlayersSpacePrive
                 .from('player_wallets')
@@ -152,7 +149,6 @@ async function loadOrCreateWallet() {
             if (updateError) console.error('Erreur mise à jour account_number:', updateError);
             else wallet.account_number = accountNumber;
         }
-        // Mettre à jour l'affichage de la carte
         const cardNumberElem = document.getElementById('cardNumber');
         if (cardNumberElem && wallet.account_number) {
             const masked = wallet.account_number.replace(/(.{4})/g, '$1 ').trim();
@@ -216,7 +212,6 @@ function renderTransactions() {
         const sign = (t.type === 'deposit' || t.type === 'bonus') ? '+' : '-';
         const amountClass = (t.type === 'deposit' || t.type === 'bonus') ? 'positive' : 'negative';
         const icon = t.type === 'deposit' ? 'fa-arrow-down' : (t.type === 'withdraw' ? 'fa-arrow-up' : 'fa-gift');
-        const statusClass = t.status === 'approved' ? 'approved' : (t.status === 'rejected' ? 'rejected' : 'pending');
         const statusText = {
             pending: 'En attente',
             approved: 'Approuvé',
@@ -232,27 +227,25 @@ function renderTransactions() {
                 </div>
                 <div class="transaction-amount ${amountClass}">${sign}${t.amount} FCFA</div>
                 <div class="transaction-date">${date}</div>
-                <button class="transaction-pdf-btn" data-transaction='${JSON.stringify(t)}' title="Télécharger le reçu PDF"><i class="fas fa-file-pdf"></i></button>
+                <button class="transaction-pdf-btn" data-id="${t.id}" title="Télécharger le reçu PDF"><i class="fas fa-file-pdf"></i></button>
             </div>
         `;
     }).join('');
 
-    // Attacher les écouteurs pour les boutons PDF
     document.querySelectorAll('.transaction-pdf-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const transaction = JSON.parse(btn.dataset.transaction);
-            downloadTransactionPDF(transaction);
+            const id = parseInt(btn.dataset.id);
+            const transaction = transactions.find(t => t.id === id);
+            if (transaction) downloadTransactionPDF(transaction);
         });
     });
 }
 
 async function downloadTransactionPDF(transaction) {
-    // Récupérer le solde avant/après s'ils existent
-    let balanceBefore = transaction.balance_before || 'N/A';
-    let balanceAfter = transaction.balance_after || 'N/A';
+    const balanceBefore = transaction.balance_before ?? 'N/A';
+    const balanceAfter = transaction.balance_after ?? 'N/A';
 
-    // Créer un élément temporaire pour générer le PDF
     const element = document.createElement('div');
     element.style.padding = '20px';
     element.style.fontFamily = 'Poppins, sans-serif';
@@ -345,12 +338,10 @@ async function loadBonusTiers() {
 
 async function updateBonusUI() {
     if (!bonusTiers.length) return;
-    // Trouver le palier non encore réclamé le plus élevé atteint
     let eligibleTier = null;
     for (let i = bonusTiers.length - 1; i >= 0; i--) {
         const tier = bonusTiers[i];
         if (followersCount >= tier.min_followers && (tier.max_followers === null || followersCount <= tier.max_followers)) {
-            // Vérifier si déjà réclamé
             const { data: claim, error } = await supabasePlayersSpacePrive
                 .from('player_bonus_claims')
                 .select('id')
@@ -372,7 +363,6 @@ async function updateBonusUI() {
         withdrawBtn.dataset.tierId = eligibleTier.id;
         withdrawBtn.dataset.amount = eligibleTier.amount;
     } else {
-        // Vérifier si un palier a été atteint mais déjà réclamé, ou non atteint
         const nextTier = bonusTiers.find(t => followersCount < t.min_followers);
         if (nextTier) {
             bonusMsg.textContent = `Prochain bonus à ${nextTier.min_followers} abonnés : ${nextTier.amount} FCFA (actuellement ${followersCount})`;
@@ -389,14 +379,13 @@ async function claimBonus(tierId, amount) {
     if (!tierId) return;
     showLoader();
     try {
-        // Créer une transaction de bonus
         const { error: transError } = await supabasePlayersSpacePrive
             .from('player_transactions')
             .insert([{
                 player_id: currentProfile.id,
                 type: 'bonus',
                 amount: amount,
-                status: 'pending', // bonus à valider par admin
+                status: 'pending',
                 description: `Bonus pour ${followersCount} abonnés`,
                 reference: `BONUS-${Date.now()}-${currentProfile.id}`,
                 balance_before: wallet.balance,
@@ -404,7 +393,6 @@ async function claimBonus(tierId, amount) {
             }]);
         if (transError) throw transError;
 
-        // Marquer le palier comme réclamé
         const { error: claimError } = await supabasePlayersSpacePrive
             .from('player_bonus_claims')
             .insert([{
@@ -414,8 +402,8 @@ async function claimBonus(tierId, amount) {
         if (claimError) throw claimError;
 
         showToast('Demande de bonus envoyée. En attente de validation.', 'success');
-        await loadTransactions(); // recharger pour voir la nouvelle transaction
-        updateBonusUI(); // mettre à jour l'affichage
+        await loadTransactions();
+        updateBonusUI();
     } catch (err) {
         console.error(err);
         showToast('Erreur lors de la demande de bonus', 'error');
@@ -424,7 +412,6 @@ async function claimBonus(tierId, amount) {
     }
 }
 
-// Upload de justificatif
 async function uploadProof(file, type) {
     if (!file) return null;
     const fileExt = file.name.split('.').pop();
@@ -443,7 +430,6 @@ async function uploadProof(file, type) {
     return urlData.publicUrl;
 }
 
-// Formulaires
 document.getElementById('depositForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const amount = parseInt(document.getElementById('depositAmount').value);
@@ -562,7 +548,6 @@ document.getElementById('withdrawBonusBtn').addEventListener('click', () => {
 
 document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
 
-// UI functions
 function openDepositModal() { document.getElementById('depositModal').style.display = 'block'; }
 function closeDepositModal() { document.getElementById('depositModal').style.display = 'none'; }
 function openWithdrawModal() { document.getElementById('withdrawModal').style.display = 'block'; }
@@ -654,8 +639,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('withdrawBtn').addEventListener('click', openWithdrawModal);
     window.closeDepositModal = closeDepositModal;
     window.closeWithdrawModal = closeWithdrawModal;
-    window.openDepositModal = openDepositModal;
-    window.openWithdrawModal = openWithdrawModal;
 
     addMenuHandle();
     initUserMenu();
