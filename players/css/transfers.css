@@ -692,6 +692,7 @@ body {
         max-width: 120px;
     }
 }
+
 @media (max-width: 400px) {
     .nav-right {
         gap: 5px;
