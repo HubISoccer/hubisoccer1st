@@ -784,3 +784,38 @@ body {
         display: none;
     }
 }
+
+/* Loader */
+.spinner {
+    border: 4px solid rgba(255,255,255,0.3);
+    border-top: 4px solid var(--gold);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Avatar initials */
+.avatar-initials {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+#uploadProgress {
+    margin: 10px 0;
+}
+#progressBar {
+    transition: width 0.2s ease;
+}
