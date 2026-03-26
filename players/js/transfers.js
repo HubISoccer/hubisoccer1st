@@ -246,11 +246,14 @@ function renderOffers() {
 
 function formatDescription(desc) {
     if (!desc) return '<p>Aucun détail fourni.</p>';
-    // Échapper le HTML pour éviter les injections, mais conserver les retours à la ligne
-    let escaped = escapeHtml(desc);
+    let text = desc;
+    // Remplacer les séquences littérales \n par de vrais retours à la ligne
+    text = text.replace(/\\n/g, '\n');
+    // Échapper le HTML pour éviter les injections
+    let escaped = escapeHtml(text);
     // Remplacer les retours chariot par des <br>
     let html = escaped.replace(/\r\n/g, '\n').replace(/\n/g, '<br>');
-    // Améliorer les listes : détecter les lignes commençant par • ou - ou * et les convertir en <ul><li>
+    // Diviser en lignes
     let lines = html.split('<br>');
     let inList = false;
     let result = [];
@@ -261,7 +264,6 @@ function formatDescription(desc) {
                 result.push('<ul>');
                 inList = true;
             }
-            // enlever le caractère de puce et l'espace
             let content = line.replace(/^[•\-*]\s/, '');
             result.push(`<li>${content}</li>`);
         } else {
