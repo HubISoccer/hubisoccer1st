@@ -1,16 +1,19 @@
-// ===== CONFIGURATION SUPABASE =====
-// Utilisation de l'instance globale définie dans auth.js
-const supabaseClient = window.supabaseAuthPrive;
-if (!supabaseClient) {
-    console.error('❌ supabaseAuthPrive non défini. Vérifiez que auth.js est chargé.');
+// ===== VÉRIFICATION DU CLIENT SUPABASE =====
+if (!window.supabaseAuthPrive) {
+    console.error('❌ supabaseAuthPrive non défini');
+    showToast('Erreur de connexion à la base de données. Veuillez recharger la page.', 'error');
 }
 
-// ===== ÉTAT GLOBAL =====
+const supabaseClient = window.supabaseAuthPrive;
+
 let currentUser = null;
 let playerProfile = null;
 let cvData = null;
 let cvValidationStatus = 'pending';
 let signatureDataURL = null;
+
+// Éditeurs Quill
+let profilQuill, interetsQuill, bioQuill;
 
 // ===== TOAST =====
 function showToast(message, type = 'info', duration = 3000) {
@@ -28,7 +31,7 @@ function showToast(message, type = 'info', duration = 3000) {
         <div class="toast-content">${message}</div>
         <button class="toast-close"><i class="fas fa-times"></i></button>
     `;
-    container.appendChild(toast);
+    document.body.appendChild(toast);
     toast.querySelector('.toast-close').addEventListener('click', () => {
         toast.style.animation = 'fadeOut 0.3s forwards';
         setTimeout(() => toast.remove(), 300);
@@ -41,8 +44,19 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
-// ===== VÉRIFICATION DE SESSION =====
+function showLoader() {
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.style.display = 'flex';
+}
+function hideLoader() {
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.style.display = 'none';
+}
+
+// ===== SESSION =====
 async function checkSession() {
+    if (!supabaseClient) return null;
+    showLoader();
     try {
         const { data: { session }, error } = await supabaseClient.auth.getSession();
         if (error || !session) {
@@ -50,60 +64,67 @@ async function checkSession() {
             return null;
         }
         currentUser = session.user;
-        console.log('✅ Utilisateur connecté :', currentUser.email, 'ID:', currentUser.id);
         return currentUser;
     } catch (err) {
-        console.error('❌ Erreur checkSession :', err);
+        console.error(err);
         window.location.href = '../auth/login.html';
         return null;
+    } finally {
+        hideLoader();
     }
 }
 
-// ===== CHARGEMENT DU PROFIL DEPUIS LA TABLE `profiles` =====
+// ===== PROFIL =====
 async function loadPlayerProfile() {
-    if (!currentUser?.id) {
-        console.error('currentUser.id manquant');
-        showToast('Erreur de session. Veuillez vous reconnecter.', 'error');
-        return;
-    }
+    if (!currentUser?.id || !supabaseClient) return;
+    showLoader();
     try {
         const { data, error } = await supabaseClient
             .from('profiles')
             .select('*')
             .eq('id', currentUser.id)
             .maybeSingle();
-
-        if (error) {
-            console.error('Erreur chargement profil:', error);
-            showToast('Erreur lors du chargement du profil', 'error');
-            playerProfile = null;
-        } else {
-            playerProfile = data;
-            document.getElementById('userName').textContent = playerProfile?.full_name || 'Joueur';
-            document.getElementById('userAvatar').src = playerProfile?.avatar_url || 'img/user-default.jpg';
-        }
-        console.log('✅ Profil utilisé :', playerProfile);
+        if (error) throw error;
+        playerProfile = data;
+        document.getElementById('userName').textContent = playerProfile?.full_name || 'Joueur';
+        updateAvatarDisplay();
     } catch (err) {
-        console.error('❌ Exception loadPlayerProfile :', err);
-        showToast('Erreur lors du chargement du profil', 'error');
+        console.error(err);
+        showToast('Erreur chargement profil', 'error');
         playerProfile = null;
+    } finally {
+        hideLoader();
     }
 }
 
-// ===== CHARGEMENT DU CV DEPUIS LA BASE =====
+function updateAvatarDisplay() {
+    const userAvatar = document.getElementById('userAvatar');
+    const userInitials = document.getElementById('userAvatarInitials');
+    if (playerProfile?.avatar_url) {
+        userAvatar.src = playerProfile.avatar_url;
+        userAvatar.style.display = 'block';
+        if (userInitials) userInitials.style.display = 'none';
+    } else {
+        const initials = (playerProfile?.full_name || 'J').charAt(0).toUpperCase();
+        if (userInitials) {
+            userInitials.textContent = initials;
+            userInitials.style.display = 'flex';
+        }
+        userAvatar.style.display = 'none';
+    }
+}
+
+// ===== CV =====
 async function loadCV() {
-    if (!playerProfile?.id) return;
+    if (!playerProfile?.id || !supabaseClient) return;
+    showLoader();
     try {
         const { data, error } = await supabaseClient
             .from('player_cv')
             .select('*')
             .eq('player_id', playerProfile.id)
             .maybeSingle();
-
-        if (error) {
-            console.error('Erreur chargement CV:', error);
-            return;
-        }
+        if (error) throw error;
         if (data) {
             cvData = data.data;
             cvValidationStatus = data.validation_status || 'pending';
@@ -111,11 +132,12 @@ async function loadCV() {
         }
         updateValidationStatus();
     } catch (err) {
-        console.error('❌ Exception loadCV :', err);
+        console.error(err);
+    } finally {
+        hideLoader();
     }
 }
 
-// ===== MISE À JOUR DE L'AFFICHAGE DU STATUT =====
 function updateValidationStatus() {
     const statusDiv = document.getElementById('validationStatus');
     const exportBtn = document.getElementById('exportBtn');
@@ -130,20 +152,18 @@ function updateValidationStatus() {
     }
 }
 
-// ===== PRÉ-REMPLISSAGE AVEC LE PROFIL =====
+// ===== PRÉ-REMPLISSAGE =====
 function populateFromProfile() {
     if (!playerProfile) return;
     const nameParts = (playerProfile.full_name || '').split(' ');
     const prenom = nameParts[0] || '';
     const nom = nameParts.slice(1).join(' ') || '';
-
     document.getElementById('nom').value = nom;
     document.getElementById('prenom').value = prenom;
     document.getElementById('telephone').value = playerProfile.phone || '';
     document.getElementById('email').value = playerProfile.email || '';
 }
 
-// ===== REMPLIR LE FORMULAIRE AVEC LES DONNÉES EXISTANTES =====
 function populateForm(data) {
     if (!data) return;
     document.getElementById('nom').value = data.nom || '';
@@ -152,7 +172,7 @@ function populateForm(data) {
     document.getElementById('email').value = data.email || '';
     document.getElementById('ville').value = data.ville || '';
     document.getElementById('social').value = data.social || '';
-    document.getElementById('profil').value = data.profil || '';
+    if (profilQuill) profilQuill.root.innerHTML = data.profil || '';
     document.getElementById('taille').value = data.taille || '';
     document.getElementById('poids').value = data.poids || '';
     document.getElementById('piedFort').value = data.piedFort || '';
@@ -163,12 +183,13 @@ function populateForm(data) {
     document.getElementById('valeur').value = data.valeur || '';
     document.getElementById('skillsTech').value = data.skillsTech || '';
     document.getElementById('skillsSoft').value = data.skillsSoft || '';
-    document.getElementById('interets').value = data.interets || '';
-    document.getElementById('bio').value = data.bio || '';
+    if (interetsQuill) interetsQuill.root.innerHTML = data.interets || '';
+    if (bioQuill) bioQuill.root.innerHTML = data.bio || '';
     document.getElementById('dateSignature').value = data.dateSignature || '';
     document.getElementById('lieuSignature').value = data.lieuSignature || '';
 
     // Expériences
+    document.getElementById('experiences-container').innerHTML = '';
     if (data.experiences && Array.isArray(data.experiences)) {
         data.experiences.forEach(exp => addExperienceItem(exp));
     } else {
@@ -176,6 +197,7 @@ function populateForm(data) {
     }
 
     // Formations
+    document.getElementById('formations-container').innerHTML = '';
     if (data.formations && Array.isArray(data.formations)) {
         data.formations.forEach(formation => addFormationItem(formation));
     } else {
@@ -183,6 +205,7 @@ function populateForm(data) {
     }
 
     // Langues
+    document.getElementById('langues-container').innerHTML = '';
     if (data.langues && Array.isArray(data.langues)) {
         data.langues.forEach(lang => addLangueItem(lang));
     } else {
@@ -199,7 +222,7 @@ function populateForm(data) {
     }
 }
 
-// ===== GESTION DES ÉLÉMENTS DYNAMIQUES =====
+// ===== ÉLÉMENTS DYNAMIQUES =====
 function addExperienceItem(data = {}) {
     const container = document.getElementById('experiences-container');
     const item = document.createElement('div');
@@ -207,31 +230,44 @@ function addExperienceItem(data = {}) {
     item.innerHTML = `
         <button type="button" class="btn-remove" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
         <div class="form-row">
-            <div class="form-group">
-                <label>Poste / Titre</label>
-                <input type="text" class="exp-poste" value="${escapeHtml(data.poste || '')}" placeholder="Ex: Joueur, Coach, Stagiaire">
-            </div>
-            <div class="form-group">
-                <label>Employeur / Club</label>
-                <input type="text" class="exp-employeur" value="${escapeHtml(data.employeur || '')}" placeholder="Nom du club ou entreprise">
-            </div>
+            <div class="form-group"><label>Poste / Titre</label><input type="text" class="exp-poste" value="${escapeHtml(data.poste || '')}" placeholder="Ex: Joueur, Coach, Stagiaire"></div>
+            <div class="form-group"><label>Employeur / Club</label><input type="text" class="exp-employeur" value="${escapeHtml(data.employeur || '')}" placeholder="Nom du club ou entreprise"></div>
         </div>
         <div class="form-row">
-            <div class="form-group">
-                <label>Date début</label>
-                <input type="month" class="exp-debut" value="${escapeHtml(data.debut || '')}">
-            </div>
-            <div class="form-group">
-                <label>Date fin</label>
-                <input type="month" class="exp-fin" value="${escapeHtml(data.fin || '')}">
-            </div>
+            <div class="form-group"><label>Date début</label><input type="month" class="exp-debut" value="${escapeHtml(data.debut || '')}"></div>
+            <div class="form-group"><label>Date fin</label><input type="month" class="exp-fin" value="${escapeHtml(data.fin || '')}"></div>
+        </div>
+        <div class="current-checkbox">
+            <input type="checkbox" class="exp-current" ${data.current ? 'checked' : ''}>
+            <label>En cours (toujours actuel)</label>
         </div>
         <div class="form-group full-width">
             <label>Description (missions, réalisations)</label>
-            <textarea class="exp-description" rows="2">${escapeHtml(data.description || '')}</textarea>
+            <div class="exp-description-editor" style="height: 120px;"></div>
+            <textarea class="exp-description" style="display: none;">${escapeHtml(data.description || '')}</textarea>
         </div>
     `;
     container.appendChild(item);
+    // Initialiser Quill pour cette description
+    const editorDiv = item.querySelector('.exp-description-editor');
+    const textarea = item.querySelector('.exp-description');
+    const quill = new Quill(editorDiv, { theme: 'snow', placeholder: 'Décrivez vos missions et réalisations...' });
+    quill.root.innerHTML = textarea.value;
+    quill.on('text-change', () => {
+        textarea.value = quill.root.innerHTML;
+    });
+    // Gérer la case "En cours"
+    const currentCheckbox = item.querySelector('.exp-current');
+    const finInput = item.querySelector('.exp-fin');
+    currentCheckbox.addEventListener('change', () => {
+        if (currentCheckbox.checked) {
+            finInput.disabled = true;
+            finInput.value = '';
+        } else {
+            finInput.disabled = false;
+        }
+    });
+    if (currentCheckbox.checked) finInput.disabled = true;
 }
 
 function addFormationItem(data = {}) {
@@ -241,20 +277,11 @@ function addFormationItem(data = {}) {
     item.innerHTML = `
         <button type="button" class="btn-remove" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
         <div class="form-row">
-            <div class="form-group">
-                <label>Diplôme / Certification</label>
-                <input type="text" class="formation-diplome" value="${escapeHtml(data.diplome || '')}" placeholder="Ex: Bac S, Licence STAPS">
-            </div>
-            <div class="form-group">
-                <label>Établissement</label>
-                <input type="text" class="formation-etablissement" value="${escapeHtml(data.etablissement || '')}" placeholder="Nom de l'école ou université">
-            </div>
+            <div class="form-group"><label>Diplôme / Certification</label><input type="text" class="formation-diplome" value="${escapeHtml(data.diplome || '')}" placeholder="Ex: Bac S, Licence STAPS"></div>
+            <div class="form-group"><label>Établissement</label><input type="text" class="formation-etablissement" value="${escapeHtml(data.etablissement || '')}" placeholder="Nom de l'école ou université"></div>
         </div>
         <div class="form-row">
-            <div class="form-group">
-                <label>Date d'obtention</label>
-                <input type="month" class="formation-date" value="${escapeHtml(data.date || '')}">
-            </div>
+            <div class="form-group"><label>Date d'obtention</label><input type="month" class="formation-date" value="${escapeHtml(data.date || '')}"></div>
         </div>
     `;
     container.appendChild(item);
@@ -267,30 +294,23 @@ function addLangueItem(data = {}) {
     item.innerHTML = `
         <button type="button" class="btn-remove" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
         <div class="form-row">
-            <div class="form-group">
-                <label>Langue</label>
-                <input type="text" class="langue-nom" value="${escapeHtml(data.nom || '')}" placeholder="Ex: Français">
-            </div>
-            <div class="form-group">
-                <label>Niveau (compréhension écrite/orale)</label>
-                <input type="text" class="langue-niveau" value="${escapeHtml(data.niveau || '')}" placeholder="Ex: Courant, Intermédiaire">
-            </div>
+            <div class="form-group"><label>Langue</label><input type="text" class="langue-nom" value="${escapeHtml(data.nom || '')}" placeholder="Ex: Français"></div>
+            <div class="form-group"><label>Niveau (compréhension écrite/orale)</label><input type="text" class="langue-niveau" value="${escapeHtml(data.niveau || '')}" placeholder="Ex: Courant, Intermédiaire"></div>
         </div>
     `;
     container.appendChild(item);
 }
 
-// ===== COLLECTE DES DONNÉES DU FORMULAIRE =====
+// ===== COLLECTE DES DONNÉES =====
 function collectFormData() {
     const data = {};
-
     data.nom = document.getElementById('nom').value;
     data.prenom = document.getElementById('prenom').value;
     data.telephone = document.getElementById('telephone').value;
     data.email = document.getElementById('email').value;
     data.ville = document.getElementById('ville').value;
     data.social = document.getElementById('social').value;
-    data.profil = document.getElementById('profil').value;
+    data.profil = profilQuill ? profilQuill.root.innerHTML : '';
     data.taille = document.getElementById('taille').value;
     data.poids = document.getElementById('poids').value;
     data.piedFort = document.getElementById('piedFort').value;
@@ -301,8 +321,8 @@ function collectFormData() {
     data.valeur = document.getElementById('valeur').value;
     data.skillsTech = document.getElementById('skillsTech').value;
     data.skillsSoft = document.getElementById('skillsSoft').value;
-    data.interets = document.getElementById('interets').value;
-    data.bio = document.getElementById('bio').value;
+    data.interets = interetsQuill ? interetsQuill.root.innerHTML : '';
+    data.bio = bioQuill ? bioQuill.root.innerHTML : '';
     data.dateSignature = document.getElementById('dateSignature').value;
     data.lieuSignature = document.getElementById('lieuSignature').value;
 
@@ -313,6 +333,7 @@ function collectFormData() {
             employeur: item.querySelector('.exp-employeur')?.value || '',
             debut: item.querySelector('.exp-debut')?.value || '',
             fin: item.querySelector('.exp-fin')?.value || '',
+            current: item.querySelector('.exp-current')?.checked || false,
             description: item.querySelector('.exp-description')?.value || ''
         });
     });
@@ -337,59 +358,152 @@ function collectFormData() {
     return data;
 }
 
-// ===== UPLOAD DE LA SIGNATURE =====
+// ===== VALIDATION =====
+function validateCVForm() {
+    const required = ['nom', 'prenom', 'telephone', 'email', 'ville'];
+    for (let id of required) {
+        const field = document.getElementById(id);
+        if (!field.value.trim()) {
+            showToast(`Veuillez remplir le champ ${field.previousElementSibling.innerText}`, 'warning');
+            field.focus();
+            return false;
+        }
+    }
+    return true;
+}
+
+// ===== SIGNATURE =====
+let signaturePadModal = null;
+let signatureLocked = false;
+
+function openSignatureModal() {
+    const modal = document.getElementById('signatureModal');
+    modal.style.display = 'block';
+
+    if (!signaturePadModal) {
+        const canvas = document.getElementById('signatureCanvasModal');
+        canvas.width = canvas.offsetWidth || 800;
+        canvas.height = canvas.offsetHeight || 300;
+        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#551B8C';
+        signaturePadModal = new SignaturePad(canvas, {
+            backgroundColor: 'white',
+            penColor: primaryColor,
+            throttle: 16,
+            minWidth: 1,
+            maxWidth: 2.5
+        });
+        if (signatureDataURL && signatureDataURL.startsWith('data:')) {
+            signaturePadModal.fromDataURL(signatureDataURL);
+        }
+
+        const colorPicker = document.getElementById('penColorPicker');
+        const widthSlider = document.getElementById('penWidth');
+        if (colorPicker) {
+            colorPicker.addEventListener('input', (e) => {
+                if (!signatureLocked) signaturePadModal.penColor = e.target.value;
+            });
+        }
+        if (widthSlider) {
+            widthSlider.addEventListener('input', (e) => {
+                if (!signatureLocked) {
+                    const val = parseFloat(e.target.value);
+                    signaturePadModal.minWidth = val * 0.5;
+                    signaturePadModal.maxWidth = val;
+                }
+            });
+        }
+
+        document.getElementById('clearSignatureModal').addEventListener('click', () => {
+            signaturePadModal.clear();
+            document.getElementById('signatureStatus').textContent = '';
+        });
+        document.getElementById('lockSignatureModal').addEventListener('click', (e) => {
+            if (signaturePadModal.isEmpty()) {
+                showToast('Veuillez d\'abord signer.', 'warning');
+                return;
+            }
+            signatureLocked = !signatureLocked;
+            e.target.textContent = signatureLocked ? 'Déverrouiller' : 'Verrouiller';
+            e.target.classList.toggle('locked', signatureLocked);
+            if (signatureLocked) signaturePadModal.off();
+            else signaturePadModal.on();
+        });
+        document.getElementById('saveSignatureModal').addEventListener('click', () => {
+            if (signaturePadModal.isEmpty()) {
+                showToast('Veuillez signer avant de valider.', 'warning');
+                return;
+            }
+            signatureDataURL = signaturePadModal.toDataURL('image/png');
+            const previewImg = document.getElementById('signatureImage');
+            previewImg.src = signatureDataURL;
+            previewImg.style.display = 'block';
+            document.querySelector('.signature-placeholder').style.display = 'none';
+            closeSignatureModal();
+            showToast('Signature enregistrée', 'success');
+        });
+        canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+    }
+}
+
+function closeSignatureModal() {
+    document.getElementById('signatureModal').style.display = 'none';
+}
+
+window.openSignatureModal = openSignatureModal;
+window.closeSignatureModal = closeSignatureModal;
+
 async function uploadSignatureIfNeeded(dataURL) {
     if (!dataURL || dataURL.startsWith('http')) return dataURL;
     if (!dataURL.startsWith('data:image')) return null;
-
     try {
         const blob = await (await fetch(dataURL)).blob();
         const fileName = `${currentUser.id}_signature_${Date.now()}.png`;
         const filePath = `signatures/${fileName}`;
-
         const { error: uploadError } = await supabaseClient.storage
             .from('documents')
             .upload(filePath, blob);
         if (uploadError) throw uploadError;
-
         const { data: urlData } = supabaseClient.storage
             .from('documents')
             .getPublicUrl(filePath);
         return urlData.publicUrl;
     } catch (err) {
-        console.error('Erreur upload signature:', err);
+        console.error(err);
         showToast('Erreur lors de l\'upload de la signature', 'error');
         return null;
     }
 }
 
-// ===== SAUVEGARDE DU CV =====
+// ===== SAUVEGARDE =====
 async function saveCV() {
+    if (!supabaseClient) {
+        showToast('Erreur de connexion à la base de données', 'error');
+        return;
+    }
+    if (!validateCVForm()) return;
     if (!playerProfile?.id) {
         showToast('Profil joueur non chargé', 'error');
         return;
     }
-
-    const formData = collectFormData();
-
-    let signatureUrl = signatureDataURL;
-    if (signatureDataURL && signatureDataURL.startsWith('data:')) {
-        signatureUrl = await uploadSignatureIfNeeded(signatureDataURL);
-        if (!signatureUrl) return;
-    }
-    formData.signature_url = signatureUrl || null;
-
+    showLoader();
     try {
+        const formData = collectFormData();
+        let signatureUrl = signatureDataURL;
+        if (signatureDataURL && signatureDataURL.startsWith('data:')) {
+            signatureUrl = await uploadSignatureIfNeeded(signatureDataURL);
+            if (!signatureUrl) return;
+        }
+        formData.signature_url = signatureUrl || null;
+
         const { data: existing, error: selectError } = await supabaseClient
             .from('player_cv')
             .select('id')
             .eq('player_id', playerProfile.id)
             .maybeSingle();
-
         if (selectError) throw selectError;
 
         if (existing) {
-            const result = await supabaseClient
+            await supabaseClient
                 .from('player_cv')
                 .update({
                     data: formData,
@@ -397,9 +511,8 @@ async function saveCV() {
                     updated_at: new Date()
                 })
                 .eq('player_id', playerProfile.id);
-            if (result.error) throw result.error;
         } else {
-            const result = await supabaseClient
+            await supabaseClient
                 .from('player_cv')
                 .insert([{
                     player_id: playerProfile.id,
@@ -408,67 +521,39 @@ async function saveCV() {
                     created_at: new Date(),
                     updated_at: new Date()
                 }]);
-            if (result.error) throw result.error;
         }
-
         showToast('CV enregistré avec succès ! En attente de validation.', 'success');
         cvValidationStatus = 'pending';
         updateValidationStatus();
     } catch (err) {
-        showToast('Erreur lors de la sauvegarde : ' + err.message, 'error');
+        showToast('Erreur : ' + err.message, 'error');
+    } finally {
+        hideLoader();
     }
 }
 
-// ===== APERÇU ET EXPORT =====
+// ===== APERÇU =====
+function formatMonthYear(dateStr) {
+    if (!dateStr) return '';
+    const [year, month] = dateStr.split('-');
+    if (!year || !month) return dateStr;
+    const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    return `${months[parseInt(month)-1]} ${year}`;
+}
+
 function generatePreview() {
     const data = collectFormData();
-    const previewDiv = document.getElementById('previewContent');
     const avatarUrl = playerProfile?.avatar_url || 'img/user-default.jpg';
 
-    // Compétences
-    const skillsTech = data.skillsTech ? data.skillsTech.split(',').map(s => s.trim()).filter(s => s) : [];
-    const skillsSoft = data.skillsSoft ? data.skillsSoft.split(',').map(s => s.trim()).filter(s => s) : [];
-    const allSkills = [...skillsTech, ...skillsSoft];
-
-    // Formations
-    const formationsHtml = data.formations.map(f => `
-        <div class="cv-item">
-            <div class="cv-item-date">${escapeHtml(f.date || '')}</div>
-            <div class="cv-item-title">${escapeHtml(f.diplome || '')}</div>
-            <div class="cv-item-subtitle">${escapeHtml(f.etablissement || '')}</div>
-        </div>
-    `).join('');
-
-    // Expériences
-    const experiencesHtml = data.experiences.map(e => `
-        <div class="cv-item">
-            <div class="cv-item-date">${escapeHtml(e.debut || '')} – ${escapeHtml(e.fin || '')}</div>
-            <div class="cv-item-title">${escapeHtml(e.poste || '')}</div>
-            <div class="cv-item-subtitle">${escapeHtml(e.employeur || '')}</div>
-            <div class="cv-item-description">${escapeHtml(e.description || '')}</div>
-        </div>
-    `).join('');
-
-    // Langues
-    const languesHtml = data.langues.map(l => `
-        <div class="cv-lang-item">
-            <span class="cv-lang-name">${escapeHtml(l.nom || '')}</span>
-            <span class="cv-lang-level">${escapeHtml(l.niveau || '')}</span>
-        </div>
-    `).join('');
-
-    // Compétences liste
-    const skillsListHtml = allSkills.map(skill => `<li>${escapeHtml(skill)}</li>`).join('');
-
-    // Coordonnées
+    const fullName = `${data.prenom} ${data.nom}`.trim();
     const contactHtml = `
+        <div class="cv-name">${escapeHtml(fullName || 'Prénom Nom')}</div>
         ${data.telephone ? `<div class="cv-contact-item"><i class="fas fa-phone"></i> ${escapeHtml(data.telephone)}</div>` : ''}
         ${data.email ? `<div class="cv-contact-item"><i class="fas fa-envelope"></i> ${escapeHtml(data.email)}</div>` : ''}
         ${data.ville ? `<div class="cv-contact-item"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(data.ville)}</div>` : ''}
         ${data.social ? `<div class="cv-contact-item"><i class="fas fa-link"></i> ${escapeHtml(data.social)}</div>` : ''}
     `;
 
-    // Informations sportives
     const sportInfoHtml = `
         <div class="cv-sport-info">
             ${data.taille ? `<span><i class="fas fa-ruler"></i> ${escapeHtml(data.taille)} cm</span>` : ''}
@@ -484,34 +569,52 @@ function generatePreview() {
         </div>
     `;
 
+    const formationsHtml = data.formations.map(f => `
+        <div class="cv-item">
+            <div class="cv-item-date">${escapeHtml(formatMonthYear(f.date) || 'Date non précisée')}</div>
+            <div class="cv-item-title">${escapeHtml(f.diplome || 'Diplôme non précisé')}</div>
+            <div class="cv-item-subtitle">${escapeHtml(f.etablissement || 'Établissement non précisé')}</div>
+        </div>
+    `).join('');
+
+    const experiencesHtml = data.experiences.map(e => {
+        const dateRange = e.current ? `${formatMonthYear(e.debut)} – Aujourd'hui` : (e.debut && e.fin ? `${formatMonthYear(e.debut)} – ${formatMonthYear(e.fin)}` : 'Dates non précisées');
+        return `
+            <div class="cv-item">
+                <div class="cv-item-date">${escapeHtml(dateRange)}</div>
+                <div class="cv-item-title">${escapeHtml(e.poste || 'Poste non précisé')}</div>
+                <div class="cv-item-subtitle">${escapeHtml(e.employeur || 'Employeur non précisé')}</div>
+                <div class="cv-item-description">${e.description || ''}</div>
+            </div>
+        `;
+    }).join('');
+
+    const skillsTech = data.skillsTech ? data.skillsTech.split(',').map(s => s.trim()).filter(s => s) : [];
+    const skillsSoft = data.skillsSoft ? data.skillsSoft.split(',').map(s => s.trim()).filter(s => s) : [];
+    const allSkills = [...skillsTech, ...skillsSoft];
+    const skillsListHtml = allSkills.map(skill => `<li>${escapeHtml(skill)}</li>`).join('');
+
+    const languesHtml = data.langues.map(l => `
+        <div class="cv-lang-item">
+            <span class="cv-lang-name">${escapeHtml(l.nom || 'Langue non précisée')}</span>
+            <span class="cv-lang-level">${escapeHtml(l.niveau || 'Niveau non précisé')}</span>
+        </div>
+    `).join('');
+
     const html = `
         <div class="cv-two-columns">
             <div class="cv-left">
-                <div class="cv-photo">
-                    <img src="${escapeHtml(avatarUrl)}" alt="Photo">
-                </div>
+                <div class="cv-photo"><img src="${escapeHtml(avatarUrl)}" alt="Photo"></div>
                 <div class="cv-section">
                     <div class="cv-section-title"><i class="fas fa-graduation-cap"></i> Formation</div>
                     ${formationsHtml || '<p>Aucune formation renseignée.</p>'}
                 </div>
                 <div class="cv-section">
                     <div class="cv-section-title"><i class="fas fa-cogs"></i> Compétences</div>
-                    <ul class="cv-skills-list">
-                        ${skillsListHtml || '<li>Aucune compétence renseignée.</li>'}
-                    </ul>
+                    <ul class="cv-skills-list">${skillsListHtml || '<li>Aucune compétence renseignée.</li>'}</ul>
                 </div>
-                ${languesHtml ? `
-                <div class="cv-section">
-                    <div class="cv-section-title"><i class="fas fa-language"></i> Langues</div>
-                    ${languesHtml}
-                </div>
-                ` : ''}
-                ${data.interets ? `
-                <div class="cv-section">
-                    <div class="cv-section-title"><i class="fas fa-heart"></i> Centres d'intérêt</div>
-                    <p class="cv-interets">${escapeHtml(data.interets)}</p>
-                </div>
-                ` : ''}
+                ${languesHtml ? `<div class="cv-section"><div class="cv-section-title"><i class="fas fa-language"></i> Langues</div>${languesHtml}</div>` : ''}
+                ${data.interets ? `<div class="cv-section"><div class="cv-section-title"><i class="fas fa-heart"></i> Centres d'intérêt</div><div class="cv-interets">${data.interets}</div></div>` : ''}
             </div>
             <div class="cv-right">
                 <div class="cv-section">
@@ -524,11 +627,11 @@ function generatePreview() {
                 </div>
                 <div class="cv-section">
                     <div class="cv-section-title"><i class="fas fa-user-tag"></i> Profil professionnel</div>
-                    <p>${escapeHtml(data.profil || 'Non renseigné')}</p>
+                    <div class="cv-profil">${data.profil || 'Non renseigné'}</div>
                 </div>
                 <div class="cv-section">
                     <div class="cv-section-title"><i class="fas fa-pencil-alt"></i> Biographie</div>
-                    <p class="cv-bio">${escapeHtml(data.bio || 'Non renseigné')}</p>
+                    <div class="cv-bio">${data.bio || 'Non renseigné'}</div>
                 </div>
                 <div class="cv-section">
                     <div class="cv-section-title"><i class="fas fa-briefcase"></i> Expériences professionnelles</div>
@@ -537,110 +640,39 @@ function generatePreview() {
             </div>
         </div>
         <div class="cv-footer">
-            <div class="signature-info">
-                Fait le ${escapeHtml(data.dateSignature || '...')} à ${escapeHtml(data.lieuSignature || '...')}
-            </div>
+            <div class="signature-info">Fait le ${escapeHtml(data.dateSignature ? new Date(data.dateSignature).toLocaleDateString('fr-FR') : '...')} à ${escapeHtml(data.lieuSignature || '...')}</div>
             ${signatureDataURL ? `<img src="${escapeHtml(signatureDataURL)}" alt="Signature">` : ''}
         </div>
     `;
 
-    previewDiv.innerHTML = html;
+    document.getElementById('previewContent').innerHTML = html;
     document.getElementById('cvPreview').style.display = 'block';
 }
 
 function exportPDF() {
+    generatePreview(); // s'assurer que l'aperçu est à jour
     const element = document.getElementById('previewContent');
     const opt = {
-        margin:       0.5,
-        filename:     `CV_${playerProfile?.full_name || 'joueur'}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        margin: 0.5,
+        filename: `CV_${playerProfile?.full_name || 'joueur'}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
     html2pdf().set(opt).from(element).save();
 }
 
-// ===== MODALE DE SIGNATURE =====
-let signaturePadModal = null;
-let signatureLocked = false;
-
-function openSignatureModal() {
-    const modal = document.getElementById('signatureModal');
-    modal.style.display = 'block';
-
-    if (!signaturePadModal) {
-        const canvas = document.getElementById('signatureCanvasModal');
-        canvas.width = canvas.offsetWidth || 800;
-        canvas.height = canvas.offsetHeight || 300;
-
-        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#551B8C';
-        signaturePadModal = new SignaturePad(canvas, {
-            backgroundColor: 'white',
-            penColor: primaryColor,
-            throttle: 16,
-            minWidth: 1,
-            maxWidth: 2.5
-        });
-
-        if (signatureDataURL && signatureDataURL.startsWith('data:')) {
-            signaturePadModal.fromDataURL(signatureDataURL);
-        }
-
-        document.getElementById('clearSignatureModal').addEventListener('click', () => {
-            signaturePadModal.clear();
-            document.getElementById('signatureStatus').textContent = '';
-        });
-
-        document.getElementById('lockSignatureModal').addEventListener('click', (e) => {
-            if (signaturePadModal.isEmpty()) {
-                showToast('Veuillez d\'abord signer.', 'warning');
-                return;
-            }
-            signatureLocked = !signatureLocked;
-            e.target.textContent = signatureLocked ? 'Déverrouiller' : 'Verrouiller';
-            e.target.classList.toggle('locked', signatureLocked);
-            if (signatureLocked) {
-                signaturePadModal.off();
-            } else {
-                signaturePadModal.on();
-            }
-        });
-
-        document.getElementById('saveSignatureModal').addEventListener('click', () => {
-            if (signaturePadModal.isEmpty()) {
-                showToast('Veuillez signer avant de valider.', 'warning');
-                return;
-            }
-            signatureDataURL = signaturePadModal.toDataURL('image/png');
-            const previewImg = document.getElementById('signatureImage');
-            previewImg.src = signatureDataURL;
-            previewImg.style.display = 'block';
-            document.querySelector('.signature-placeholder').style.display = 'none';
-            closeSignatureModal();
-            showToast('Signature enregistrée', 'success');
-        });
-
-        canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-    }
-}
-
-function closeSignatureModal() {
-    document.getElementById('signatureModal').style.display = 'none';
-}
-
-window.openSignatureModal = openSignatureModal;
-window.closeSignatureModal = closeSignatureModal;
-
-// ===== FONCTIONS UI =====
+// ===== UI =====
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
-    if (!userMenu || !dropdown) return;
-    userMenu.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle('show');
-    });
-    document.addEventListener('click', () => dropdown.classList.remove('show'));
+    if (userMenu && dropdown) {
+        userMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+        document.addEventListener('click', () => dropdown.classList.remove('show'));
+    }
 }
 
 function initSidebar() {
@@ -664,28 +696,19 @@ function initSidebar() {
     if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
     if (overlay) overlay.addEventListener('click', closeSidebarFunc);
 
-    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+    let touchStartX = 0, touchStartY = 0;
     const swipeThreshold = 50;
-
     document.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
     }, { passive: true });
-
     document.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        const diffX = touchEndX - touchStartX;
+        const diffX = e.changedTouches[0].screenX - touchStartX;
         const diffY = e.changedTouches[0].screenY - touchStartY;
-
         if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
-            if (e.cancelable) {
-                e.preventDefault();
-            }
-            if (diffX > 0 && touchStartX < 50) {
-                openSidebar();
-            } else if (diffX < 0) {
-                closeSidebarFunc();
-            }
+            if (e.cancelable) e.preventDefault();
+            if (diffX > 0 && touchStartX < 50) openSidebar();
+            else if (diffX < 0) closeSidebarFunc();
         }
     }, { passive: false });
 }
@@ -713,16 +736,23 @@ function initLogout() {
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation de la page edit-cv');
-
+    console.log('🚀 Initialisation edit-cv');
     const user = await checkSession();
     if (!user) return;
-
     await loadPlayerProfile();
     if (!playerProfile) {
-        showToast('Profil non trouvé. Veuillez compléter votre inscription.', 'error');
+        showToast('Profil non trouvé.', 'error');
         return;
     }
+
+    // Initialiser les éditeurs Quill
+    profilQuill = new Quill('#profilEditor', { theme: 'snow', placeholder: 'Rédigez votre profil professionnel...' });
+    interetsQuill = new Quill('#interetsEditor', { theme: 'snow', placeholder: 'Vos centres d’intérêt...' });
+    bioQuill = new Quill('#bioEditor', { theme: 'snow', placeholder: 'Racontez votre parcours...' });
+
+    profilQuill.on('text-change', () => { document.getElementById('profil').value = profilQuill.root.innerHTML; });
+    interetsQuill.on('text-change', () => { document.getElementById('interets').value = interetsQuill.root.innerHTML; });
+    bioQuill.on('text-change', () => { document.getElementById('bio').value = bioQuill.root.innerHTML; });
 
     await loadCV();
 
@@ -748,15 +778,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     initLogout();
 
     document.getElementById('langSelect')?.addEventListener('change', (e) => {
-        const lang = e.target.value;
         showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
     });
-
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
         showToast('Changement de langue bientôt disponible', 'info');
     });
-
     console.log('✅ Initialisation terminée');
 });
 
