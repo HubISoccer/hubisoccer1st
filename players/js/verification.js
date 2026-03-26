@@ -1,19 +1,16 @@
-// ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===== ÉTAT GLOBAL =====
 let currentUser = null;
 let playerProfile = null;
-let playerCV = null;           // données de player_cv
+let playerCV = null;
 let documentsList = [];
 let licenseRequest = null;
 let signaturePadModal = null;
 let signatureLocked = false;
 let signatureDataURL = null;
 
-// ===== TOAST (inchangé) =====
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -42,8 +39,17 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
-// ===== VÉRIFICATION DE SESSION =====
+function showLoader() {
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.style.display = 'flex';
+}
+function hideLoader() {
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.style.display = 'none';
+}
+
 async function checkSession() {
+    showLoader();
     try {
         const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
         if (error || !session) {
@@ -51,117 +57,97 @@ async function checkSession() {
             return null;
         }
         currentUser = session.user;
-        console.log('✅ Utilisateur connecté :', currentUser.email, 'ID:', currentUser.id);
         return currentUser;
     } catch (err) {
-        console.error('❌ Erreur checkSession :', err);
+        console.error(err);
         window.location.href = '../auth/login.html';
         return null;
+    } finally {
+        hideLoader();
     }
 }
 
-// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
 async function loadPlayerProfile() {
-    if (!currentUser?.id) {
-        console.error('currentUser.id manquant');
-        showToast('Erreur de session. Veuillez vous reconnecter.', 'error');
-        return;
-    }
+    if (!currentUser?.id) return;
+    showLoader();
     try {
-        // 1. Charger les infos de base depuis profiles
         const { data: profile, error: profileError } = await supabasePlayersSpacePrive
             .from('profiles')
             .select('id, full_name, email, phone, date_of_birth, country, avatar_url')
             .eq('id', currentUser.id)
             .single();
-
-        if (profileError) {
-            console.error('Erreur chargement profil:', profileError);
-            showToast('Erreur lors du chargement du profil', 'error');
-            playerProfile = null;
-            return;
-        }
+        if (profileError) throw profileError;
         playerProfile = profile;
 
-        // 2. Charger les données sportives depuis player_cv
         const { data: cv, error: cvError } = await supabasePlayersSpacePrive
             .from('player_cv')
             .select('data')
             .eq('player_id', currentUser.id)
             .maybeSingle();
-        if (cvError) {
-            console.error('Erreur chargement player_cv:', cvError);
-        }
+        if (cvError) console.error(cvError);
         playerCV = cv?.data || {};
 
-        // Mettre à jour la navbar
         document.getElementById('userName').textContent = playerProfile.full_name || 'Joueur';
-        document.getElementById('userAvatar').src = playerProfile.avatar_url || 'img/user-default.jpg';
-        console.log('✅ Profil chargé :', playerProfile);
-        console.log('✅ Données sportives :', playerCV);
+        updateAvatarDisplay();
     } catch (err) {
-        console.error('❌ Exception loadPlayerProfile :', err);
-        showToast('Erreur lors du chargement du profil', 'error');
-        playerProfile = null;
+        console.error(err);
+        showToast('Erreur chargement profil', 'error');
+    } finally {
+        hideLoader();
     }
 }
 
-// ===== CHARGEMENT DES DOCUMENTS =====
-async function loadDocuments() {
-    try {
-        const requiredDocs = [
-            { id: 'id_card', name: 'Pièce d\'identité (CNI/Passeport)', type: 'identity' },
-            { id: 'photo', name: 'Photo d\'identité', type: 'photo' },
-            { id: 'certificat_medical', name: 'Certificat médical', type: 'medical' },
-            { id: 'diplome', name: 'Diplôme (si étudiant)', type: 'diploma' },
-            { id: 'justificatif_domicile', name: 'Justificatif de domicile', type: 'address' }
-        ];
-
-        if (playerProfile?.id) {
-            const { data: existingDocs, error } = await supabasePlayersSpacePrive
-                .from('document_requests')
-                .select('*')
-                .eq('player_id', playerProfile.id);
-
-            if (!error && existingDocs) {
-                documentsList = requiredDocs.map(doc => {
-                    const existing = existingDocs.find(d => d.document_type === doc.id);
-                    return {
-                        ...doc,
-                        status: existing?.status || 'pending',
-                        file_url: existing?.file_url || null,
-                        file_name: existing?.file_name || null,
-                        request_id: existing?.id || null
-                    };
-                });
-                renderDocuments();
-                return;
-            }
+function updateAvatarDisplay() {
+    const userAvatar = document.getElementById('userAvatar');
+    const userInitials = document.getElementById('userAvatarInitials');
+    if (playerProfile?.avatar_url) {
+        userAvatar.src = playerProfile.avatar_url;
+        userAvatar.style.display = 'block';
+        if (userInitials) userInitials.style.display = 'none';
+    } else {
+        const initials = (playerProfile?.full_name || 'J').charAt(0).toUpperCase();
+        if (userInitials) {
+            userInitials.textContent = initials;
+            userInitials.style.display = 'flex';
         }
-        documentsList = requiredDocs.map(doc => ({ ...doc, status: 'pending', file_url: null, file_name: null, request_id: null }));
-        renderDocuments();
-    } catch (err) {
-        console.error('❌ Exception loadDocuments :', err);
-        showToast('Erreur lors du chargement des documents', 'error');
+        userAvatar.style.display = 'none';
     }
 }
 
-// ===== AFFICHAGE DES DOCUMENTS =====
+async function loadDocuments() {
+    const requiredDocs = [
+        { id: 'id_card', name: "Pièce d'identité (CNI/Passeport)", type: 'identity' },
+        { id: 'photo', name: "Photo d'identité", type: 'photo' },
+        { id: 'certificat_medical', name: 'Certificat médical', type: 'medical' },
+        { id: 'diplome', name: 'Diplôme (si étudiant)', type: 'diploma' },
+        { id: 'justificatif_domicile', name: 'Justificatif de domicile', type: 'address' }
+    ];
+    if (playerProfile?.id) {
+        const { data: existingDocs, error } = await supabasePlayersSpacePrive
+            .from('document_requests')
+            .select('*')
+            .eq('player_id', playerProfile.id);
+        if (!error && existingDocs) {
+            documentsList = requiredDocs.map(doc => {
+                const existing = existingDocs.find(d => d.document_type === doc.id);
+                return { ...doc, status: existing?.status || 'pending', file_url: existing?.file_url || null, file_name: existing?.file_name || null, request_id: existing?.id || null };
+            });
+            renderDocuments();
+            return;
+        }
+    }
+    documentsList = requiredDocs.map(doc => ({ ...doc, status: 'pending', file_url: null, file_name: null, request_id: null }));
+    renderDocuments();
+}
+
 function renderDocuments() {
     const grid = document.getElementById('documentsGrid');
     if (!grid) return;
     grid.innerHTML = '';
-
     documentsList.forEach(doc => {
         const card = document.createElement('div');
         card.className = `document-card ${doc.status}`;
-
-        const statusText = {
-            pending: 'En attente',
-            approved: 'Validé',
-            rejected: 'Rejeté'
-        }[doc.status] || 'En attente';
-
+        const statusText = { pending: 'En attente', approved: 'Validé', rejected: 'Rejeté' }[doc.status] || 'En attente';
         card.innerHTML = `
             <div class="document-header">
                 <span class="document-name">${doc.name}</span>
@@ -175,7 +161,6 @@ function renderDocuments() {
         `;
         grid.appendChild(card);
     });
-
     document.querySelectorAll('.btn-upload').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const docId = e.target.dataset.docId;
@@ -184,10 +169,9 @@ function renderDocuments() {
     });
 }
 
-// ===== UPLOAD D'UN DOCUMENT =====
 async function uploadDocument(docId) {
     if (!currentUser || !playerProfile) {
-        showToast('Utilisateur non connecté ou profil manquant', 'error');
+        showToast('Utilisateur non connecté', 'error');
         return;
     }
     const input = document.createElement('input');
@@ -196,21 +180,15 @@ async function uploadDocument(docId) {
     input.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
+        showLoader();
         try {
             const fileExt = file.name.split('.').pop();
             const fileName = `${currentUser.id}_${docId}_${Date.now()}.${fileExt}`;
             const filePath = `player_docs/${fileName}`;
-
             const { error: uploadError } = await supabasePlayersSpacePrive.storage
                 .from('documents')
                 .upload(filePath, file);
-
-            if (uploadError) {
-                showToast('Erreur upload : ' + uploadError.message, 'error');
-                return;
-            }
-
+            if (uploadError) throw uploadError;
             const { data: urlData } = supabasePlayersSpacePrive.storage
                 .from('documents')
                 .getPublicUrl(filePath);
@@ -218,43 +196,33 @@ async function uploadDocument(docId) {
 
             const doc = documentsList.find(d => d.id === docId);
             if (doc.request_id) {
-                const { error: updateError } = await supabasePlayersSpacePrive
+                await supabasePlayersSpacePrive
                     .from('document_requests')
                     .update({ file_url: publicUrl, file_name: file.name, status: 'pending' })
                     .eq('id', doc.request_id);
-                if (updateError) throw updateError;
             } else {
-                const { error: insertError } = await supabasePlayersSpacePrive
+                await supabasePlayersSpacePrive
                     .from('document_requests')
-                    .insert([{
-                        player_id: playerProfile.id,
-                        document_type: docId,
-                        file_url: publicUrl,
-                        file_name: file.name,
-                        status: 'pending'
-                    }]);
-                if (insertError) throw insertError;
+                    .insert([{ player_id: playerProfile.id, document_type: docId, file_url: publicUrl, file_name: file.name, status: 'pending' }]);
             }
-
-            showToast('Document téléversé avec succès ! En attente de validation.', 'success');
-            loadDocuments();
+            showToast('Document téléversé, en attente de validation.', 'success');
+            await loadDocuments();
         } catch (err) {
-            showToast('Erreur : ' + err.message, 'error');
+            showToast('Erreur upload : ' + err.message, 'error');
+        } finally {
+            hideLoader();
         }
     };
     input.click();
 }
 
-// ===== GESTION DE LA MODALE DE SIGNATURE =====
 function openSignatureModal() {
     const modal = document.getElementById('signatureModal');
     modal.style.display = 'block';
-
     if (!signaturePadModal) {
         const canvas = document.getElementById('signatureCanvasModal');
         canvas.width = canvas.offsetWidth || 800;
         canvas.height = canvas.offsetHeight || 300;
-
         const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#551B8C';
         signaturePadModal = new SignaturePad(canvas, {
             backgroundColor: 'white',
@@ -263,16 +231,29 @@ function openSignatureModal() {
             minWidth: 1,
             maxWidth: 2.5
         });
+        if (signatureDataURL) signaturePadModal.fromDataURL(signatureDataURL);
 
-        if (signatureDataURL) {
-            signaturePadModal.fromDataURL(signatureDataURL);
+        const colorPicker = document.getElementById('penColorPicker');
+        const widthSlider = document.getElementById('penWidth');
+        if (colorPicker) {
+            colorPicker.addEventListener('input', (e) => {
+                if (!signatureLocked) signaturePadModal.penColor = e.target.value;
+            });
+        }
+        if (widthSlider) {
+            widthSlider.addEventListener('input', (e) => {
+                if (!signatureLocked) {
+                    const val = parseFloat(e.target.value);
+                    signaturePadModal.minWidth = val * 0.5;
+                    signaturePadModal.maxWidth = val;
+                }
+            });
         }
 
         document.getElementById('clearSignatureModal').addEventListener('click', () => {
             signaturePadModal.clear();
             document.getElementById('signatureStatus').textContent = '';
         });
-
         document.getElementById('lockSignatureModal').addEventListener('click', (e) => {
             if (signaturePadModal.isEmpty()) {
                 showToast('Veuillez d\'abord signer.', 'warning');
@@ -281,29 +262,22 @@ function openSignatureModal() {
             signatureLocked = !signatureLocked;
             e.target.textContent = signatureLocked ? 'Déverrouiller' : 'Verrouiller';
             e.target.classList.toggle('locked', signatureLocked);
-            if (signatureLocked) {
-                signaturePadModal.off();
-            } else {
-                signaturePadModal.on();
-            }
+            if (signatureLocked) signaturePadModal.off();
+            else signaturePadModal.on();
         });
-
         document.getElementById('saveSignatureModal').addEventListener('click', () => {
             if (signaturePadModal.isEmpty()) {
                 showToast('Veuillez signer avant de valider.', 'warning');
                 return;
             }
             signatureDataURL = signaturePadModal.toDataURL('image/png');
-
             const previewImg = document.getElementById('signatureImage');
             previewImg.src = signatureDataURL;
             previewImg.style.display = 'block';
             document.querySelector('.signature-placeholder').style.display = 'none';
-
             closeSignatureModal();
             showToast('Signature enregistrée', 'success');
         });
-
         canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
     }
 }
@@ -315,43 +289,49 @@ function closeSignatureModal() {
 window.openSignatureModal = openSignatureModal;
 window.closeSignatureModal = closeSignatureModal;
 
-// ===== PRÉ-REMPLISSAGE DU FORMULAIRE AVEC LE PROFIL =====
 function populateFormFromProfile() {
     if (!playerProfile) return;
-
-    // Extraire nom et prénom depuis full_name
     const nameParts = (playerProfile.full_name || '').split(' ');
     const prenom = nameParts[0] || '';
     const nom = nameParts.slice(1).join(' ') || '';
-
     document.getElementById('nom').value = nom;
     document.getElementById('prenom').value = prenom;
     document.getElementById('dateNaissance').value = playerProfile.date_of_birth || '';
     document.getElementById('nationalite').value = playerProfile.country || '';
     document.getElementById('telephone').value = playerProfile.phone || '';
-    // Champs provenant de player_cv
     if (playerCV) {
         document.getElementById('taille').value = playerCV.taille || '';
         document.getElementById('poids').value = playerCV.poids || '';
         document.getElementById('piedFort').value = playerCV.piedFort || '';
         document.getElementById('club').value = playerCV.club || '';
     }
-    // L'email n'est pas dans le formulaire, mais on peut l'utiliser ailleurs si besoin
 }
 
-// ===== SOUMISSION DE LA DEMANDE DE LICENCE =====
-async function submitLicense(e) {
-    e.preventDefault();
-
+function validateLicenseForm() {
+    const required = ['nom', 'prenom', 'dateNaissance', 'lieuNaissance', 'adresse', 'nationalite', 'pays', 'langue', 'telephone'];
+    for (let id of required) {
+        const field = document.getElementById(id);
+        if (!field.value.trim()) {
+            showToast(`Veuillez remplir le champ ${field.previousElementSibling.innerText}`, 'warning');
+            field.focus();
+            return false;
+        }
+    }
     if (!signatureDataURL) {
         showToast('Veuillez signer avant de soumettre.', 'warning');
-        return;
+        return false;
     }
+    return true;
+}
+
+async function submitLicense(e) {
+    e.preventDefault();
+    if (!validateLicenseForm()) return;
     if (!currentUser || !playerProfile) {
         showToast('Données utilisateur manquantes', 'error');
         return;
     }
-
+    showLoader();
     try {
         const formData = {
             nom: document.getElementById('nom').value,
@@ -366,26 +346,21 @@ async function submitLicense(e) {
             taille: document.getElementById('taille').value || null,
             poids: document.getElementById('poids').value || null,
             pied_fort: document.getElementById('piedFort').value || null,
-            club: document.getElementById('club').value || null,
+            club: document.getElementById('club').value || null
         };
-
-        // Upload de la signature
         const signatureBlob = await (await fetch(signatureDataURL)).blob();
         const signatureFileName = `${currentUser.id}_signature_${Date.now()}.png`;
         const signaturePath = `signatures/${signatureFileName}`;
-
         const { error: uploadError } = await supabasePlayersSpacePrive.storage
             .from('documents')
             .upload(signaturePath, signatureBlob);
         if (uploadError) throw uploadError;
-
         const { data: urlData } = supabasePlayersSpacePrive.storage
             .from('documents')
             .getPublicUrl(signaturePath);
         const signatureUrl = urlData.publicUrl;
 
-        // Insertion dans license_requests
-        const { data, error } = await supabasePlayersSpacePrive
+        const { error } = await supabasePlayersSpacePrive
             .from('license_requests')
             .insert([{
                 player_id: playerProfile.id,
@@ -393,29 +368,24 @@ async function submitLicense(e) {
                 signature_url: signatureUrl,
                 status: 'admin_pending',
                 created_at: new Date()
-            }])
-            .select()
-            .single();
-
+            }]);
         if (error) throw error;
 
-        showToast('Demande soumise avec succès ! Elle sera traitée sous 0 à 100h.', 'success');
-        licenseRequest = data;
-
-        // Nettoyer
+        showToast('Demande soumise avec succès !', 'success');
         sessionStorage.removeItem('licenseFormData');
         signatureDataURL = null;
         document.getElementById('signatureImage').style.display = 'none';
         document.querySelector('.signature-placeholder').style.display = 'block';
-
         document.getElementById('licenseForm').reset();
-        checkLicenseStatus();
+        populateFormFromProfile();
+        await checkLicenseStatus();
     } catch (err) {
-        showToast('Erreur lors de la soumission : ' + err.message, 'error');
+        showToast('Erreur : ' + err.message, 'error');
+    } finally {
+        hideLoader();
     }
 }
 
-// ===== VÉRIFICATION DU STATUT =====
 async function checkLicenseStatus() {
     if (!playerProfile || !playerProfile.id) return;
     try {
@@ -426,16 +396,11 @@ async function checkLicenseStatus() {
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
-
-        if (error) {
-            console.error('Erreur checkLicenseStatus:', error);
-            return;
-        }
-
+        if (error) throw error;
+        const statusSection = document.getElementById('statusSection');
+        const statusCard = document.getElementById('statusCard');
         if (data) {
             licenseRequest = data;
-            const statusSection = document.getElementById('statusSection');
-            const statusCard = document.getElementById('statusCard');
             if (statusSection) statusSection.style.display = 'block';
             if (statusCard) {
                 if (data.status === 'approved' && data.carte_url) {
@@ -461,13 +426,14 @@ async function checkLicenseStatus() {
                     `;
                 }
             }
+        } else {
+            if (statusSection) statusSection.style.display = 'none';
         }
     } catch (err) {
-        console.error('Erreur checkLicenseStatus:', err);
+        console.error(err);
     }
 }
 
-// ===== MISE À JOUR DE L'APERÇU (RECTO-VERSO) =====
 function updateCardPreview() {
     const nom = document.getElementById('nom')?.value || '---';
     const prenom = document.getElementById('prenom')?.value || '---';
@@ -478,14 +444,12 @@ function updateCardPreview() {
     const club = document.getElementById('club')?.value || 'Libre';
     const adresse = document.getElementById('adresse')?.value || '---';
     const pays = document.getElementById('pays')?.value || '---';
-
     let dateFormatted = dateNaissance;
     if (dateNaissance && dateNaissance !== '---') {
         const d = new Date(dateNaissance);
         dateFormatted = d.toLocaleDateString('fr-FR');
     }
 
-    // Face avant
     const frontInfo = document.getElementById('cardFrontInfo');
     if (frontInfo) {
         frontInfo.innerHTML = `
@@ -501,19 +465,13 @@ function updateCardPreview() {
     if (frontFooter) {
         frontFooter.innerHTML = `
             <div class="signatures">
-                <div class="signature-box">
-                    <span class="signature-label">Signature joueur</span>
-                </div>
-                <div class="signature-box">
-                    <span class="stamp"><i class="fas fa-stamp"></i></span>
-                    <span class="signature-label">Cachet officiel</span>
-                </div>
+                <div class="signature-box"><span class="signature-label">Signature joueur</span></div>
+                <div class="signature-box"><span class="stamp"><i class="fas fa-stamp"></i></span><span class="signature-label">Cachet officiel</span></div>
             </div>
             <div class="id-number">ID: ${playerProfile?.hubisoccer_id || '---'}</div>
         `;
     }
 
-    // Face arrière
     const backInfo = document.getElementById('cardBackInfo');
     if (backInfo) {
         backInfo.innerHTML = `
@@ -526,27 +484,24 @@ function updateCardPreview() {
     }
 }
 
-// ===== GESTION DU FLIP DE LA CARTE =====
 function initCardFlip() {
     const container = document.querySelector('.card-flip-container');
     const btn = document.getElementById('flipCardBtn');
     if (container && btn) {
-        btn.addEventListener('click', () => {
-            container.classList.toggle('flipped');
-        });
+        btn.addEventListener('click', () => container.classList.toggle('flipped'));
     }
 }
 
-// ===== FONCTIONS UI =====
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
-    if (!userMenu || !dropdown) return;
-    userMenu.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle('show');
-    });
-    document.addEventListener('click', () => dropdown.classList.remove('show'));
+    if (userMenu && dropdown) {
+        userMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+        document.addEventListener('click', () => dropdown.classList.remove('show'));
+    }
 }
 
 function initSidebar() {
@@ -608,13 +563,10 @@ function initLogout() {
     });
 }
 
-// ===== SAUVEGARDE / RESTAURATION DU FORMULAIRE =====
 function saveFormToSession() {
     const inputs = document.querySelectorAll('#licenseForm input, #licenseForm select');
     const formData = {};
-    inputs.forEach(inp => {
-        formData[inp.id] = inp.value;
-    });
+    inputs.forEach(inp => { formData[inp.id] = inp.value; });
     sessionStorage.setItem('licenseFormData', JSON.stringify(formData));
 }
 
@@ -627,39 +579,23 @@ function restoreFormFromSession() {
                 const input = document.getElementById(key);
                 if (input) input.value = data[key];
             }
-        } catch (e) {
-            console.warn('Erreur de parsing sessionStorage', e);
-        }
+        } catch (e) { console.warn(e); }
     }
 }
 
-// ===== INITIALISATION PRINCIPALE =====
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation de la page verification');
-
     const user = await checkSession();
     if (!user) return;
-
     await loadPlayerProfile();
     if (!playerProfile) {
-        showToast('Profil non trouvé. Veuillez compléter votre inscription.', 'error');
-        // On ne retourne pas tout de suite car le formulaire peut encore être utilisé ?
+        showToast('Profil non trouvé.', 'error');
         return;
     }
-
     await loadDocuments();
     await checkLicenseStatus();
-
     const form = document.getElementById('licenseForm');
-    if (form) {
-        form.addEventListener('submit', submitLicense);
-    } else {
-        console.error('Formulaire #licenseForm introuvable');
-    }
-
-    // Pré-remplir le formulaire avec les données du profil
+    if (form) form.addEventListener('submit', submitLicense);
     populateFormFromProfile();
-
     const inputs = document.querySelectorAll('#licenseForm input, #licenseForm select');
     inputs.forEach(input => {
         input.addEventListener('input', () => {
@@ -667,25 +603,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             saveFormToSession();
         });
     });
-
     restoreFormFromSession();
     updateCardPreview();
     initCardFlip();
-
     addMenuHandle();
     initUserMenu();
     initSidebar();
     initLogout();
-
     document.getElementById('langSelect')?.addEventListener('change', (e) => {
-        const lang = e.target.value;
         showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
     });
-
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
         showToast('Changement de langue bientôt disponible', 'info');
     });
-
-    console.log('✅ Initialisation terminée');
 });
