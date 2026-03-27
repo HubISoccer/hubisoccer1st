@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Devenir acteur | HubISoccer</title>
-    <meta name="description" content="Devenez acteur HubISoccer : soutenez des sportifs, des tournois ou des infrastructures, ou postulez pour devenir agent, coach, académie, club, staff, formateur ou parrain.">
-    <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://hubisoccer.github.io/hubisoccer1st/acteurs.html">
+    <meta name="description" content="Soutenez les talents et contribuez au développement du football. Devenez acteur : parrain, coach, agent, académie, club...">
     <meta property="og:title" content="Devenir acteur | HubISoccer">
-    <meta property="og:description" content="Devenez acteur HubISoccer : soutenez des sportifs, des tournois ou des infrastructures, ou postulez pour devenir agent, coach, académie, club, staff, formateur ou parrain.">
+    <meta property="og:description" content="Soutenez les talents et contribuez au développement du football.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://hubisoccer.github.io/hubisoccer1st/acteurs.html">
     <meta property="og:image" content="https://hubisoccer.github.io/hubisoccer1st/public/img/stade-cotonou.jpg">
@@ -68,45 +66,44 @@
         </div>
     </nav>
 
-    <main class="acteurs-container">
-        <header class="acteurs-header" style="background: linear-gradient(rgba(0,0,0,0.6), rgba(85,27,140,0.8)), url('public/img/stade-cotonou.jpg') center/cover no-repeat;">
-            <h1>Devenez <span class="highlight">Acteur</span></h1>
-            <p>Soutenez les talents, devenez agent, coach, académie, club, staff, formateur ou parrain.</p>
-        </header>
+    <header class="acteur-header" style="background: linear-gradient(rgba(0,0,0,0.6), rgba(85,27,140,0.8)), url('public/img/stade-cotonou.jpg') center/cover no-repeat;">
+        <h1>Devenez <span class="highlight">Acteur</span></h1>
+        <p>Soutenez les talents et contribuez au développement du football.</p>
+    </header>
 
-        <div class="filters-section">
-            <div class="filter-group">
-                <select id="filterType">
-                    <option value="all">Tous les besoins</option>
-                    <option value="sportif">Sportifs</option>
-                    <option value="tournoi">Tournois & événements</option>
-                    <option value="infra">Infrastructures</option>
-                </select>
-                <select id="filterSport">
-                    <option value="all">Tous les sports</option>
-                    <option value="football">Football</option>
-                    <option value="basketball">Basketball</option>
-                    <option value="tennis">Tennis</option>
-                    <option value="athletisme">Athlétisme</option>
-                    <option value="handball">Handball</option>
-                    <option value="volleyball">Volley-ball</option>
-                    <option value="rugby">Rugby</option>
-                    <option value="natation">Natation</option>
-                    <option value="arts_martiaux">Arts martiaux</option>
-                    <option value="cyclisme">Cyclisme</option>
-                </select>
-                <select id="filterRegion">
-                    <option value="all">Toutes les régions</option>
-                    <option value="Bénin">Bénin</option>
-                    <option value="Togo">Togo</option>
-                    <option value="Côte d'Ivoire">Côte d'Ivoire</option>
-                    <option value="Sénégal">Sénégal</option>
-                </select>
-                <input type="text" id="searchInput" placeholder="Rechercher...">
-                <button class="btn-filter" id="applyFilters"><i class="fas fa-filter"></i> Filtrer</button>
-            </div>
+    <div class="filters-section">
+        <div class="filter-group">
+            <select id="filterType">
+                <option value="all">Tous les besoins</option>
+                <option value="sportif">Sportifs</option>
+                <option value="don">Appels aux dons</option>
+            </select>
+            <select id="filterSport">
+                <option value="all">Tous les sports</option>
+                <option value="football">Football</option>
+                <option value="basketball">Basketball</option>
+                <option value="tennis">Tennis</option>
+                <option value="athletisme">Athlétisme</option>
+                <option value="handball">Handball</option>
+                <option value="volleyball">Volley‑ball</option>
+                <option value="rugby">Rugby</option>
+                <option value="natation">Natation</option>
+                <option value="arts_martiaux">Arts martiaux</option>
+                <option value="cyclisme">Cyclisme</option>
+            </select>
+            <select id="filterRegion">
+                <option value="all">Toutes les régions</option>
+                <option value="Bénin">Bénin</option>
+                <option value="Togo">Togo</option>
+                <option value="Côte d'Ivoire">Côte d'Ivoire</option>
+                <option value="Sénégal">Sénégal</option>
+            </select>
+            <input type="text" id="searchInput" placeholder="Rechercher...">
+            <button class="btn-filter" id="applyFilters"><i class="fas fa-filter"></i> Filtrer</button>
         </div>
+    </div>
 
+    <main class="acteur-container">
         <section class="besoins-section">
             <h2><i class="fas fa-futbol"></i> Sportifs à soutenir</h2>
             <div class="cards-grid" id="sportifsGrid"></div>
@@ -119,93 +116,44 @@
 
         <section class="devenir-acteur">
             <h2><i class="fas fa-users"></i> Devenir acteur</h2>
-            <div class="acteur-options">
-                <div class="acteur-card">
-                    <i class="fas fa-hand-holding-usd"></i>
-                    <h3>Parrain</h3>
-                    <p>Soutenez un sportif, un tournoi ou une infrastructure.</p>
-                    <button class="btn-acteur" data-role="parrain">Devenir parrain</button>
-                </div>
-                <div class="acteur-card">
-                    <i class="fas fa-user-md"></i>
-                    <h3>Staff médical</h3>
-                    <p>Proposez vos services médicaux aux sportifs.</p>
-                    <button class="btn-acteur" data-role="staff">Devenir staff médical</button>
-                </div>
-                <div class="acteur-card">
-                    <i class="fas fa-chalkboard-teacher"></i>
-                    <h3>Coach</h3>
-                    <p>Entraînez et guidez les talents.</p>
-                    <button class="btn-acteur" data-role="coach">Devenir coach</button>
-                </div>
-                <div class="acteur-card">
-                    <i class="fas fa-user-tie"></i>
-                    <h3>Agent</h3>
-                    <p>Représentez des sportifs professionnels.</p>
-                    <button class="btn-acteur" data-role="agent">Devenir agent</button>
-                </div>
-                <div class="acteur-card">
-                    <i class="fas fa-school"></i>
-                    <h3>Académie</h3>
-                    <p>Accueillez et formez des jeunes talents.</p>
-                    <button class="btn-acteur" data-role="academie">Devenir académie</button>
-                </div>
-                <div class="acteur-card">
-                    <i class="fas fa-building"></i>
-                    <h3>Club</h3>
-                    <p>Recrutez des sportifs pour votre équipe.</p>
-                    <button class="btn-acteur" data-role="club">Devenir club</button>
-                </div>
-                <div class="acteur-card">
-                    <i class="fas fa-chalkboard"></i>
-                    <h3>Formateur</h3>
-                    <p>Formez et accompagnez les sportifs dans leur développement.</p>
-                    <button class="btn-acteur" data-role="formateur">Devenir formateur</button>
-                </div>
-                <div class="acteur-card">
-                    <i class="fas fa-tshirt"></i>
-                    <h3>Marque / Partenaire</h3>
-                    <p>Proposez des équipements ou des sponsoring.</p>
-                    <button class="btn-acteur" data-role="partenaire">Devenir partenaire</button>
-                </div>
+            <div class="acteur-options" id="acteurOptions">
+                <!-- Les boutons seront générés dynamiquement en JS ou en dur -->
+                <!-- On peut les laisser en dur pour l'instant, mais le JS les utilisera pour ouvrir le bon formulaire -->
             </div>
         </section>
 
         <section class="temoignages">
-            <h2><i class="fas fa-quote-right"></i> Ils ont rejoint l'aventure</h2>
-            <div class="temoignages-grid" id="temoignagesList"></div>
+            <h2><i class="fas fa-quote-right"></i> Ils ont parrainé</h2>
+            <div class="cards-grid" id="temoignagesGrid"></div>
         </section>
     </main>
 
-    <!-- MODALE D'ADHÉSION (pour devenir acteur) -->
-    <div id="adhesionModal" class="modal">
+    <!-- MODALE D'ADHÉSION (devenir acteur) -->
+    <div id="inscriptionModal" class="modal">
         <div class="modal-content large">
-            <span class="close-modal" onclick="closeAdhesionModal()">×</span>
-            <h3 id="adhesionModalTitle">Devenir <span id="adhesionRoleLabel">acteur</span></h3>
-            <form id="adhesionForm">
-                <input type="hidden" id="adhesionRole" value="">
+            <span class="close-modal" onclick="closeInscriptionModal()">×</span>
+            <h3 id="inscriptionModalTitle">Devenir acteur</h3>
+            <form id="inscriptionForm">
+                <input type="hidden" id="inscriptionRole" value="">
                 <div class="form-group">
                     <label>Nom complet *</label>
-                    <input type="text" id="adhesionNom" required>
+                    <input type="text" id="inscriptionFullName" required>
                 </div>
                 <div class="form-group">
                     <label>Email *</label>
-                    <input type="email" id="adhesionEmail" required>
+                    <input type="email" id="inscriptionEmail" required>
                 </div>
                 <div class="form-group">
                     <label>Téléphone *</label>
-                    <input type="tel" id="adhesionPhone" required>
+                    <input type="tel" id="inscriptionPhone" required>
                 </div>
+                <div class="form-group" id="roleSpecificFields"></div>
                 <div class="form-group">
-                    <label>Message / Motivation *</label>
-                    <textarea id="adhesionMessage" rows="4" required></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Justificatif (CV, licence, etc.) *</label>
-                    <div class="file-upload-box" id="upload-document">
+                    <label>Justificatif (CV, diplôme, licence…) *</label>
+                    <div class="file-upload-box" id="uploadJustificatif">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <span>Cliquez pour télécharger (PDF, JPG, PNG)</span>
-                        <input type="file" id="documentFile" accept=".jpg,.png,.pdf" required>
+                        <input type="file" id="inscriptionFile" accept=".jpg,.png,.pdf" required>
                         <div class="progress-indicator" style="display: none;">
                             <svg class="progress-circle" width="40" height="40">
                                 <circle class="progress-bg" cx="20" cy="20" r="18" stroke="#e9ecef" stroke-width="3" fill="none"/>
@@ -215,24 +163,19 @@
                         </div>
                     </div>
                 </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="adhesionCertifie" required>
-                    <label for="adhesionCertifie">Je certifie l'exactitude des informations fournies. Toute fraude entraînera une exclusion définitive.</label>
-                </div>
-                <button type="submit" class="btn-submit">Soumettre ma candidature</button>
+                <button type="submit" class="btn-submit" id="submitInscriptionBtn"><i class="fas fa-paper-plane"></i> Soumettre ma candidature</button>
             </form>
         </div>
     </div>
 
-    <!-- MODALE DE CONTACT (pour contacter un sportif / appel aux dons) -->
+    <!-- MODALE DE CONTACT (pour contacter un sportif ou un appel aux dons) -->
     <div id="contactModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeContactModal()">×</span>
             <h3 id="contactModalTitle">Contacter</h3>
             <form id="contactForm">
-                <input type="hidden" id="contactType">
+                <input type="hidden" id="contactTargetType">
                 <input type="hidden" id="contactTargetId">
-                <input type="hidden" id="contactTargetTitle">
                 <div class="form-group">
                     <label>Votre nom</label>
                     <input type="text" id="contactName" required>
@@ -247,6 +190,30 @@
                 </div>
                 <button type="submit" class="btn-submit">Envoyer</button>
             </form>
+        </div>
+    </div>
+
+    <!-- MODALE DE SUCCÈS (affichage de l'ID PP COPIABLE) -->
+    <div id="successModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close-modal" onclick="closeSuccessModal()">×</span>
+                <i class="fas fa-check-circle success-icon" style="font-size: 3rem; color: var(--success);"></i>
+                <h2>Inscription envoyée !</h2>
+            </div>
+            <div class="modal-body">
+                <p>Votre demande a bien été enregistrée.</p>
+                <p>Votre identifiant unique :</p>
+                <div class="tracking-link-box">
+                    <span id="trackingId"></span>
+                    <button id="copyTrackingBtn" class="btn-copy-link"><i class="fas fa-copy"></i> Copier</button>
+                </div>
+                <p class="info-note">Conservez précieusement cet identifiant pour suivre votre demande.</p>
+                <p><a href="suivi-acteur.html?id=" id="trackingLink" target="_blank">Accéder au suivi</a></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-close-modal" onclick="closeSuccessModal()">Fermer</button>
+            </div>
         </div>
     </div>
 
