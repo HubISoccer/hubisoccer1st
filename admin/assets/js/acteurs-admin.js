@@ -4,7 +4,9 @@ const supabaseSpacePublic = window.supabase.createClient(SUPABASE_URL, SUPABASE_
 
 let currentCandidature = null;
 let candMessageQuill = null;
-let currentTab = 'candidatures';
+let sportifsList = [];
+let donsList = [];
+let temoignagesList = [];
 
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
@@ -53,7 +55,7 @@ function hideLoader() {
     if (loader) loader.style.display = 'none';
 }
 
-// ========== CHARGEMENT DES DONNÉES ==========
+// ========== CANDIDATURES ==========
 async function loadCandidatures() {
     showLoader();
     try {
@@ -100,128 +102,6 @@ function renderCandidatures(list) {
     }).join('');
 }
 
-async function loadSportifs() {
-    showLoader();
-    try {
-        const { data, error } = await supabaseSpacePublic
-            .from('acteur_sportifs')
-            .select('*')
-            .order('created_at', { ascending: false });
-        if (error) throw error;
-        renderSportifs(data || []);
-    } catch (err) {
-        console.error(err);
-        showToast('Erreur chargement sportifs', 'error');
-    } finally {
-        hideLoader();
-    }
-}
-
-function renderSportifs(list) {
-    const container = document.getElementById('sportifsList');
-    if (!container) return;
-    if (list.length === 0) {
-        container.innerHTML = '<p class="empty-message">Aucun sportif.</p>';
-        return;
-    }
-    container.innerHTML = list.map(s => `
-        <div class="list-item" data-id="${s.id}">
-            <div class="info">
-                <strong>${escapeHtml(s.full_name)}</strong>
-                <div class="details">
-                    <span>${escapeHtml(s.sport)}</span>
-                    <span>${escapeHtml(s.region || '')}</span>
-                </div>
-            </div>
-            <div class="actions">
-                <button class="edit" onclick="editSportif('${s.id}')" title="Modifier"><i class="fas fa-edit"></i></button>
-                <button class="delete" onclick="deleteSportif('${s.id}')" title="Supprimer"><i class="fas fa-trash"></i></button>
-            </div>
-        </div>
-    `).join('');
-}
-
-async function loadDons() {
-    showLoader();
-    try {
-        const { data, error } = await supabaseSpacePublic
-            .from('acteur_dons')
-            .select('*')
-            .order('created_at', { ascending: false });
-        if (error) throw error;
-        renderDons(data || []);
-    } catch (err) {
-        console.error(err);
-        showToast('Erreur chargement dons', 'error');
-    } finally {
-        hideLoader();
-    }
-}
-
-function renderDons(list) {
-    const container = document.getElementById('donsList');
-    if (!container) return;
-    if (list.length === 0) {
-        container.innerHTML = '<p class="empty-message">Aucun appel aux dons.</p>';
-        return;
-    }
-    container.innerHTML = list.map(d => `
-        <div class="list-item" data-id="${d.id}">
-            <div class="info">
-                <strong>${escapeHtml(d.title)}</strong>
-                <div class="details">
-                    <span>${escapeHtml(d.region || '')}</span>
-                </div>
-            </div>
-            <div class="actions">
-                <button class="edit" onclick="editDon('${d.id}')" title="Modifier"><i class="fas fa-edit"></i></button>
-                <button class="delete" onclick="deleteDon('${d.id}')" title="Supprimer"><i class="fas fa-trash"></i></button>
-            </div>
-        </div>
-    `).join('');
-}
-
-async function loadTemoignages() {
-    showLoader();
-    try {
-        const { data, error } = await supabaseSpacePublic
-            .from('acteur_temoignages')
-            .select('*')
-            .order('created_at', { ascending: false });
-        if (error) throw error;
-        renderTemoignages(data || []);
-    } catch (err) {
-        console.error(err);
-        showToast('Erreur chargement témoignages', 'error');
-    } finally {
-        hideLoader();
-    }
-}
-
-function renderTemoignages(list) {
-    const container = document.getElementById('temoignagesList');
-    if (!container) return;
-    if (list.length === 0) {
-        container.innerHTML = '<p class="empty-message">Aucun témoignage.</p>';
-        return;
-    }
-    container.innerHTML = list.map(t => `
-        <div class="list-item" data-id="${t.id}">
-            <div class="info">
-                <strong>${escapeHtml(t.author)}</strong>
-                <div class="details">
-                    <span>${escapeHtml(t.content.substring(0, 50))}...</span>
-                </div>
-            </div>
-            <div class="actions">
-                <button class="edit" onclick="editTemoignage('${t.id}')" title="Modifier"><i class="fas fa-edit"></i></button>
-                <button class="delete" onclick="deleteTemoignage('${t.id}')" title="Supprimer"><i class="fas fa-trash"></i></button>
-            </div>
-        </div>
-    `).join('');
-}
-
-// ========== GESTION DES CANDIDATURES ==========
 window.viewCandidature = async (id) => {
     currentCandidature = id;
     await loadCandidatureDetails(id);
@@ -242,6 +122,7 @@ async function loadCandidatureDetails(id) {
             .single();
         if (error) throw error;
         displayCandidatureDetails(cand);
+        populateEditCandForm(cand);
         await loadCandMessages(id);
         if (!candMessageQuill) {
             candMessageQuill = new Quill('#candMessageEditor', { theme: 'snow', placeholder: 'Écrivez votre message...' });
@@ -279,6 +160,14 @@ function displayCandidatureDetails(cand) {
         </div>
         ${cand.admin_notes ? `<div class="admin-notes"><strong>Notes admin :</strong><br>${escapeHtml(cand.admin_notes)}</div>` : ''}
     `;
+}
+
+function populateEditCandForm(cand) {
+    document.getElementById('editCandFullName').value = cand.full_name || '';
+    document.getElementById('editCandEmail').value = cand.email || '';
+    document.getElementById('editCandPhone').value = cand.phone || '';
+    document.getElementById('editCandRole').value = cand.role || 'PR';
+    document.getElementById('editCandAdminNotes').value = cand.admin_notes || '';
 }
 
 async function loadCandMessages(inscriptionId) {
@@ -387,7 +276,77 @@ window.deleteCandidature = async (id) => {
     }
 };
 
-// ========== GESTION DES SPORTIFS ==========
+document.getElementById('editCandidatureForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentCandidature) return;
+    const updated = {
+        full_name: document.getElementById('editCandFullName').value.trim(),
+        email: document.getElementById('editCandEmail').value.trim(),
+        phone: document.getElementById('editCandPhone').value.trim(),
+        role: document.getElementById('editCandRole').value,
+        admin_notes: document.getElementById('editCandAdminNotes').value.trim()
+    };
+    showLoader();
+    try {
+        const { error } = await supabaseSpacePublic
+            .from('deveniracteur')
+            .update(updated)
+            .eq('id', currentCandidature);
+        if (error) throw error;
+        showToast('Candidature modifiée', 'success');
+        await loadCandidatureDetails(currentCandidature);
+        await loadCandidatures();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur modification', 'error');
+    } finally {
+        hideLoader();
+    }
+});
+
+// ========== SPORTIFS ==========
+async function loadSportifs() {
+    showLoader();
+    try {
+        const { data, error } = await supabaseSpacePublic
+            .from('acteur_sportifs')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        sportifsList = data || [];
+        renderSportifs();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur chargement sportifs', 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
+function renderSportifs() {
+    const container = document.getElementById('sportifsList');
+    if (!container) return;
+    if (sportifsList.length === 0) {
+        container.innerHTML = '<p class="empty-message">Aucun sportif.</p>';
+        return;
+    }
+    container.innerHTML = sportifsList.map(s => `
+        <div class="list-item" data-id="${s.id}">
+            <div class="info">
+                <strong>${escapeHtml(s.full_name)}</strong>
+                <div class="details">
+                    <span>${escapeHtml(s.sport)}</span>
+                    <span>${escapeHtml(s.region || '')}</span>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="edit" onclick="editSportif('${s.id}')" title="Modifier"><i class="fas fa-edit"></i></button>
+                <button class="delete" onclick="deleteSportif('${s.id}')" title="Supprimer"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
 window.editSportif = (id) => {
     const sportif = sportifsList.find(s => s.id == id);
     if (!sportif) return;
@@ -420,7 +379,48 @@ window.deleteSportif = async (id) => {
     }
 };
 
-// ========== GESTION DES DONS ==========
+// ========== DONS ==========
+async function loadDons() {
+    showLoader();
+    try {
+        const { data, error } = await supabaseSpacePublic
+            .from('acteur_dons')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        donsList = data || [];
+        renderDons();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur chargement dons', 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
+function renderDons() {
+    const container = document.getElementById('donsList');
+    if (!container) return;
+    if (donsList.length === 0) {
+        container.innerHTML = '<p class="empty-message">Aucun appel aux dons.</p>';
+        return;
+    }
+    container.innerHTML = donsList.map(d => `
+        <div class="list-item" data-id="${d.id}">
+            <div class="info">
+                <strong>${escapeHtml(d.title)}</strong>
+                <div class="details">
+                    <span>${escapeHtml(d.region || '')}</span>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="edit" onclick="editDon('${d.id}')" title="Modifier"><i class="fas fa-edit"></i></button>
+                <button class="delete" onclick="deleteDon('${d.id}')" title="Supprimer"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
 window.editDon = (id) => {
     const don = donsList.find(d => d.id == id);
     if (!don) return;
@@ -452,7 +452,48 @@ window.deleteDon = async (id) => {
     }
 };
 
-// ========== GESTION DES TÉMOIGNAGES ==========
+// ========== TÉMOIGNAGES ==========
+async function loadTemoignages() {
+    showLoader();
+    try {
+        const { data, error } = await supabaseSpacePublic
+            .from('acteur_temoignages')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        temoignagesList = data || [];
+        renderTemoignages();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur chargement témoignages', 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
+function renderTemoignages() {
+    const container = document.getElementById('temoignagesList');
+    if (!container) return;
+    if (temoignagesList.length === 0) {
+        container.innerHTML = '<p class="empty-message">Aucun témoignage.</p>';
+        return;
+    }
+    container.innerHTML = temoignagesList.map(t => `
+        <div class="list-item" data-id="${t.id}">
+            <div class="info">
+                <strong>${escapeHtml(t.author)}</strong>
+                <div class="details">
+                    <span>${escapeHtml(t.content.substring(0, 50))}...</span>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="edit" onclick="editTemoignage('${t.id}')" title="Modifier"><i class="fas fa-edit"></i></button>
+                <button class="delete" onclick="deleteTemoignage('${t.id}')" title="Supprimer"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
 window.editTemoignage = (id) => {
     const temoignage = temoignagesList.find(t => t.id == id);
     if (!temoignage) return;
@@ -637,23 +678,23 @@ document.getElementById('refreshSportifsBtn').addEventListener('click', loadSpor
 document.getElementById('refreshDonsBtn').addEventListener('click', loadDons);
 document.getElementById('refreshTemoignagesBtn').addEventListener('click', loadTemoignages);
 
-// ========== ONGLETS ==========
+// ========== ONGLETS PRINCIPAUX ==========
 function switchTab(tabId) {
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(`tab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`).classList.add('active');
     document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
-    currentTab = tabId;
     if (tabId === 'candidatures') loadCandidatures();
     else if (tabId === 'sportifs') loadSportifs();
     else if (tabId === 'dons') loadDons();
     else if (tabId === 'temoignages') loadTemoignages();
 }
-document.querySelectorAll('.tab-btn').forEach(btn => {
+document.querySelectorAll('.admin-tabs .tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         switchTab(btn.dataset.tab);
     });
 });
+// Onglets internes de la modale
 document.querySelectorAll('#candidatureModal .tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         const tab = btn.dataset.tab;
@@ -671,40 +712,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('click', (e) => {
         if (e.target === modal) closeModal();
     });
+    // Déconnexion
+    document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (confirm('Déconnexion ?')) {
+            window.location.href = '../../index.html';
+        }
+    });
 });
-
-// Déclarer les variables globales pour les listes (pour les éditions)
-let sportifsList = [];
-let donsList = [];
-let temoignagesList = [];
-
-// Surcharger les fonctions de chargement pour mettre à jour les listes globales
-const originalLoadSportifs = loadSportifs;
-loadSportifs = async () => {
-    await originalLoadSportifs();
-    const { data } = await supabaseSpacePublic.from('acteur_sportifs').select('*');
-    sportifsList = data || [];
-};
-const originalLoadDons = loadDons;
-loadDons = async () => {
-    await originalLoadDons();
-    const { data } = await supabaseSpacePublic.from('acteur_dons').select('*');
-    donsList = data || [];
-};
-const originalLoadTemoignages = loadTemoignages;
-loadTemoignages = async () => {
-    await originalLoadTemoignages();
-    const { data } = await supabaseSpacePublic.from('acteur_temoignages').select('*');
-    temoignagesList = data || [];
-};
-
-// Réattacher les fonctions
-window.loadSportifs = loadSportifs;
-window.loadDons = loadDons;
-window.loadTemoignages = loadTemoignages;
-window.loadCandidatures = loadCandidatures;
-
-// Démarrer
-loadSportifs();
-loadDons();
-loadTemoignages();
