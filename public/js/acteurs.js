@@ -1,4 +1,3 @@
-// ===== CONFIGURATION SUPABASE =====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabaseSpacePublic = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -8,8 +7,6 @@ let dons = [];
 let temoignages = [];
 let currentFilters = { type: 'all', sport: 'all', region: 'all', search: '' };
 let currentRole = '';
-let currentUploadBox = null;
-let currentInscriptionId = null;
 
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
@@ -155,6 +152,7 @@ function renderSportifs() {
     }
     container.innerHTML = filtered.map(s => `
         <div class="card">
+            ${s.image_url ? `<img src="${s.image_url}" class="card-image" alt="${escapeHtml(s.full_name)}">` : '<div class="card-image" style="background:#e9ecef; display:flex; align-items:center; justify-content:center;"><i class="fas fa-user-circle" style="font-size:3rem; color:#ccc;"></i></div>'}
             <div class="card-content">
                 <h3 class="card-title">${escapeHtml(s.full_name)}</h3>
                 <p class="card-desc">${escapeHtml(s.sport)} • ${escapeHtml(s.region)}</p>
@@ -178,6 +176,7 @@ function renderDons() {
     }
     container.innerHTML = filtered.map(d => `
         <div class="card">
+            ${d.image_url ? `<img src="${d.image_url}" class="card-image" alt="${escapeHtml(d.title)}">` : '<div class="card-image" style="background:#e9ecef; display:flex; align-items:center; justify-content:center;"><i class="fas fa-hand-holding-heart" style="font-size:3rem; color:#ccc;"></i></div>'}
             <div class="card-content">
                 <h3 class="card-title">${escapeHtml(d.title)}</h3>
                 <p class="card-desc">${escapeHtml(d.description || '')}</p>
@@ -254,7 +253,7 @@ async function sendContactMessage(e) {
         const { error } = await supabaseSpacePublic
             .from('acteurmsg')
             .insert([{
-                inscription_id: null, // pas de candidature associée, juste un message
+                inscription_id: null,
                 sender: 'candidate',
                 content: `Nom: ${name}\nEmail: ${email}\nType: ${targetType}\nID: ${targetId}\n\n${message}`
             }]);
@@ -307,29 +306,12 @@ function openInscriptionModal(roleCode) {
     document.getElementById('inscriptionModalTitle').textContent = `Devenir ${roleName}`;
     document.getElementById('inscriptionForm').reset();
     const roleFieldsDiv = document.getElementById('roleSpecificFields');
-    roleFieldsDiv.innerHTML = '';
-    if (roleCode === 'CO') {
-        roleFieldsDiv.innerHTML = `
-            <div class="form-group">
-                <label>Diplôme / Certifications</label>
-                <textarea id="role_data" rows="3" placeholder="Listez vos diplômes, expériences..."></textarea>
-            </div>
-        `;
-    } else if (roleCode === 'AG') {
-        roleFieldsDiv.innerHTML = `
-            <div class="form-group">
-                <label>Agrément / Licence</label>
-                <textarea id="role_data" rows="3" placeholder="Numéro de licence, agrément..."></textarea>
-            </div>
-        `;
-    } else {
-        roleFieldsDiv.innerHTML = `
-            <div class="form-group">
-                <label>Informations complémentaires</label>
-                <textarea id="role_data" rows="3" placeholder="Détails sur votre motivation, expérience..."></textarea>
-            </div>
-        `;
-    }
+    roleFieldsDiv.innerHTML = `
+        <div class="form-group">
+            <label>Informations complémentaires</label>
+            <textarea id="role_data" rows="3" placeholder="Détails sur votre motivation, expérience..."></textarea>
+        </div>
+    `;
     document.getElementById('inscriptionModal').classList.add('active');
 }
 
@@ -504,7 +486,6 @@ function initLangSelector() {
     if (langSelect) {
         langSelect.addEventListener('change', (e) => {
             showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
-            // Pour l'instant, pas de traduction complète
         });
     }
 }
