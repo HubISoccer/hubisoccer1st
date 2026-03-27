@@ -1,107 +1,218 @@
-// ===== INITIALISATION SUPABASE =====
-const supabaseUrl = 'https://wxlpcflanihqwumjwpjs.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+const supabaseSpacePublic = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Récupérer l'ID depuis l'URL
-const urlParams = new URLSearchParams(window.location.search);
-const inscriptionId = urlParams.get('id');
+let currentId = null;
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const container = document.getElementById('inscriptionDetails');
-    if (!inscriptionId) {
-        container.innerHTML = '<p class="error-message">❌ Aucun identifiant de suivi fourni.</p>';
+function showToast(message, type = 'info', duration = 3000) {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i></div>
+        <div class="toast-content">${escapeHtml(message)}</div>
+        <button class="toast-close"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(toast);
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.style.animation = 'fadeOut 0.3s forwards';
+        setTimeout(() => toast.remove(), 300);
+    });
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.animation = 'fadeOut 0.3s forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+function showLoader() {
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.style.display = 'flex';
+}
+function hideLoader() {
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.style.display = 'none';
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+async function checkStatus(id) {
+    if (!id || id.trim() === '') {
+        showToast('Veuillez saisir un identifiant.', 'warning');
         return;
     }
 
-    // Récupérer les données de l'inscription
-    const { data: inscription, error } = await supabaseClient
-        .from('inscriptions')
-        .select('*')
-        .eq('id', inscriptionId)
-        .single();
+    showLoader();
+    try {
+        const { data, error } = await supabaseSpacePublic
+            .from('inscriptions')
+            .select('*')
+            .eq('id', id)
+            .single();
 
-    if (error || !inscription) {
-        container.innerHTML = '<p class="error-message">❌ Aucune inscription trouvée.</p>';
-        return;
+        if (error || !data) {
+            showToast('Identifiant introuvable. Vérifiez le code saisi.', 'error');
+            document.getElementById('resultCard').style.display = 'none';
+            return;
+        }
+
+        displayResult(data);
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur lors de la vérification.', 'error');
+        document.getElementById('resultCard').style.display = 'none';
+    } finally {
+        hideLoader();
     }
+}
 
-    // Récupérer les messages pour ce joueur
-    const { data: messages, error: msgError } = await supabaseClient
-        .from('player_messages')
-        .select('*')
-        .eq('playerid', inscriptionId)
-        .order('date', { ascending: false });
+function displayResult(inscription) {
+    const statusMap = {
+        pending: { label: 'En attente de validation', class: 'pending' },
+        approved: { label: 'Approuvé', class: 'approved' },
+        rejected: { label: 'Rejeté', class: 'rejected' }
+    };
+    const status = statusMap[inscription.status] || statusMap.pending;
 
-    if (msgError) console.error('Erreur chargement messages:', msgError);
+    document.getElementById('statusBadge').textContent = status.label;
+    document.getElementById('statusBadge').className = `status-badge ${status.class}`;
+    document.getElementById('applicantName').textContent = inscription.full_name || 'Candidat';
 
-    const dateNaissance = inscription.datenaissance ? new Date(inscription.datenaissance).toLocaleDateString('fr-FR') : 'Non renseignée';
-    const dateSoumission = inscription.datesoumission ? new Date(inscription.datesoumission).toLocaleString('fr-FR') : 'Non renseignée';
-    const statut = inscription.statut || 'en_attente';
-    const statutTexte = {
-        'en_attente': 'En attente de vérification',
-        'valide': '✅ Validé',
-        'refuse': '❌ Refusé'
-    }[statut] || statut;
-
-    const documents = `${inscription.diplomefilename ? '✅ Diplôme' : '❌ Diplôme'} | ${inscription.piecefilename ? '✅ Pièce' : '❌ Pièce'}`;
-
-    // Générer le HTML des messages
-    let messagesHtml = '';
-    if (messages && messages.length > 0) {
-        messagesHtml = '<h3>📩 Messages de l\'administrateur</h3>';
-        messages.forEach(msg => {
-            const dateMsg = new Date(msg.date).toLocaleString('fr-FR');
-            messagesHtml += `
-                <div class="message-item ${msg.type}">
-                    <p>${msg.message}</p>
-                    <small>${dateMsg}</small>
-                </div>
-            `;
-        });
-    } else {
-        messagesHtml = '<p class="no-messages">Aucun message pour le moment.</p>';
-    }
-
-    const html = `
-        <div class="suivi-card">
-            <div class="suivi-header">
-                <h1>Suivi de votre inscription</h1>
-                <span class="status-badge ${statut}">${statutTexte}</span>
-            </div>
-            <div class="info-grid">
-                <div class="info-item"><span class="label">ID :</span> <span class="value">${inscription.id}</span></div>
-                <div class="info-item"><span class="label">Nom :</span> <span class="value">${inscription.nom}</span></div>
-                <div class="info-item"><span class="label">Date naissance :</span> <span class="value">${dateNaissance}</span></div>
-                <div class="info-item"><span class="label">Poste :</span> <span class="value">${inscription.poste}</span></div>
-                <div class="info-item"><span class="label">Téléphone :</span> <span class="value">${inscription.telephone}</span></div>
-                <div class="info-item"><span class="label">Diplôme :</span> <span class="value">${inscription.diplome}</span></div>
-                <div class="info-item"><span class="label">Code tournoi :</span> <span class="value">${inscription.codetournoi || '-'}</span></div>
-                <div class="info-item"><span class="label">Documents :</span> <span class="value">${documents}</span></div>
-                <div class="info-item"><span class="label">Affilié :</span> <span class="value">${inscription.affilié || '-'}</span></div>
-                <div class="info-item"><span class="label">Date soumission :</span> <span class="value">${dateSoumission}</span></div>
-            </div>
-            <div class="messages-section">
-                ${messagesHtml}
-            </div>
-            <div class="actions">
-                <button id="copyLinkBtn" class="btn-copy"><i class="fas fa-copy"></i> Copier le lien de suivi</button>
-            </div>
-        </div>
+    const infoGrid = document.getElementById('infoGrid');
+    infoGrid.innerHTML = `
+        <div class="info-item"><strong>ID candidature</strong><span>${escapeHtml(inscription.id)}</span></div>
+        <div class="info-item"><strong>Sport</strong><span>${escapeHtml(inscription.sport)}</span></div>
+        <div class="info-item"><strong>Date de soumission</strong><span>${formatDate(inscription.created_at)}</span></div>
+        <div class="info-item"><strong>Téléphone</strong><span>${escapeHtml(inscription.phone)}</span></div>
+        <div class="info-item"><strong>Diplôme / formation</strong><span>${escapeHtml(inscription.diploma_title)}</span></div>
+        ${inscription.parent_name ? `<div class="info-item"><strong>Parent / tuteur</strong><span>${escapeHtml(inscription.parent_name)}</span></div>` : ''}
     `;
 
-    container.innerHTML = html;
+    // Affichage des données spécifiques au sport
+    const sportDataDiv = document.getElementById('sportData');
+    if (inscription.sport_data && Object.keys(inscription.sport_data).length > 0) {
+        let sportHtml = `<h3>Informations sportives</h3><div class="sport-data-grid">`;
+        for (const [key, value] of Object.entries(inscription.sport_data)) {
+            if (value) {
+                sportHtml += `<div class="info-item"><strong>${formatSportKey(key)}</strong><span>${escapeHtml(value)}</span></div>`;
+            }
+        }
+        sportHtml += `</div>`;
+        sportDataDiv.innerHTML = sportHtml;
+        sportDataDiv.style.display = 'block';
+    } else {
+        sportDataDiv.style.display = 'none';
+    }
 
-    // Attacher l'événement de copie
-    const copyBtn = document.getElementById('copyLinkBtn');
-    if (copyBtn) {
-        copyBtn.addEventListener('click', () => {
-            const link = window.location.href;
-            navigator.clipboard.writeText(link).then(() => {
-                alert('✅ Lien copié !');
-            }).catch(() => {
-                alert('❌ Erreur de copie');
-            });
+    // Notes admin
+    const adminNotesDiv = document.getElementById('adminNotes');
+    if (inscription.admin_notes) {
+        adminNotesDiv.innerHTML = `<strong><i class="fas fa-comment"></i> Message de l'équipe :</strong><br>${escapeHtml(inscription.admin_notes)}`;
+        adminNotesDiv.style.display = 'block';
+    } else {
+        adminNotesDiv.style.display = 'none';
+    }
+
+    document.getElementById('resultCard').style.display = 'block';
+}
+
+function formatSportKey(key) {
+    const labels = {
+        poste: 'Poste',
+        piedDominant: 'Pied dominant',
+        taille: 'Taille',
+        poids: 'Poids',
+        statistiques: 'Statistiques',
+        club: 'Club',
+        anneesPratique: 'Années de pratique',
+        niveau: 'Niveau',
+        mainDominante: 'Main dominante',
+        envergure: 'Envergure',
+        detente: 'Détente',
+        typeJeu: 'Type de jeu',
+        coupDroit: 'Coup droit',
+        revers: 'Revers',
+        classement: 'Classement',
+        surfacePref: 'Surface préférée',
+        meilleurResultat: 'Meilleur résultat',
+        vitesseService: 'Vitesse de service',
+        discipline: 'Discipline',
+        meilleurePerf: 'Meilleure performance',
+        record100: 'Record 100m',
+        record10k: 'Record 10km',
+        entrainementsSemaine: 'Entraînements/semaine',
+        blessures: 'Blessures',
+        vitesseTir: 'Vitesse de tir',
+        detenteAttaque: 'Détente attaque',
+        detenteContre: 'Détente contre',
+        vitesse40: 'Vitesse 40m',
+        plaquage: 'Plaquage',
+        matchsSaison: 'Matchs saison',
+        nage: 'Nage',
+        meilleur50: 'Meilleur 50m',
+        meilleur100: 'Meilleur 100m',
+        meilleur200: 'Meilleur 200m',
+        chrono50: 'Chrono 50m',
+        grade: 'Grade / Ceinture',
+        poidsCompetition: 'Poids compétition',
+        palmares: 'Palmarès',
+        specialite: 'Spécialité technique',
+        preparationPhysique: 'Préparation physique',
+        ftp: 'FTP (watts)',
+        fcm: 'Fréquence cardiaque max',
+        kmSemaine: 'Km/semaine'
+    };
+    return labels[key] || key;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const idFromUrl = urlParams.get('id');
+    const input = document.getElementById('trackingId');
+    const checkBtn = document.getElementById('checkBtn');
+
+    if (idFromUrl) {
+        input.value = idFromUrl;
+        checkStatus(idFromUrl);
+    }
+
+    checkBtn.addEventListener('click', () => {
+        checkStatus(input.value.trim());
+    });
+
+    // Menu mobile (identique à premier-pas)
+    const menuToggle = document.getElementById('menuToggle');
+    const navLinks = document.getElementById('navLinks');
+    if (menuToggle && navLinks) {
+        menuToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+            menuToggle.classList.toggle('open');
+        });
+        document.addEventListener('click', (e) => {
+            if (!navLinks.contains(e.target) && !menuToggle.contains(e.target)) {
+                navLinks.classList.remove('active');
+                menuToggle.classList.remove('open');
+            }
         });
     }
 });
