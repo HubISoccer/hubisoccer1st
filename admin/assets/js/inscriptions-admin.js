@@ -46,6 +46,13 @@ function escapeHtml(str) {
     });
 }
 
+function stripHtml(html) {
+    if (!html) return '';
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return div.textContent || div.innerText || '';
+}
+
 function showLoader() {
     const loader = document.getElementById('globalLoader');
     if (loader) loader.style.display = 'flex';
@@ -235,14 +242,17 @@ function renderMessages(messages) {
         container.innerHTML = '<p class="empty-message">Aucun message.</p>';
         return;
     }
-    container.innerHTML = messages.map(msg => `
-        <div class="message ${msg.sender}">
-            <div class="message-bubble">
-                <div>${escapeHtml(msg.content)}</div>
-                <div class="message-time">${new Date(msg.created_at).toLocaleString('fr-FR')}</div>
+    container.innerHTML = messages.map(msg => {
+        const content = msg.sender === 'admin' ? stripHtml(msg.content) : msg.content;
+        return `
+            <div class="message ${msg.sender}">
+                <div class="message-bubble">
+                    <div>${content}</div>
+                    <div class="message-time">${new Date(msg.created_at).toLocaleString('fr-FR')}</div>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
     container.scrollTop = container.scrollHeight;
 }
 
@@ -254,6 +264,10 @@ async function sendMessage() {
         return;
     }
     showLoader();
+    const sendBtn = document.getElementById('sendMessageBtn');
+    const originalText = sendBtn.innerHTML;
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi...';
     try {
         const { error } = await supabaseSpacePublic
             .from('premierpasuivi_messages')
@@ -265,10 +279,13 @@ async function sendMessage() {
         if (error) throw error;
         messageQuill.root.innerHTML = '';
         await loadMessages(currentInscriptionId);
+        showToast('Message envoyé', 'success');
     } catch (err) {
         console.error(err);
         showToast('Erreur envoi message', 'error');
     } finally {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = originalText;
         hideLoader();
     }
 }
@@ -350,6 +367,10 @@ document.getElementById('editInscriptionForm').addEventListener('submit', async 
     const diploma_title = diplomaQuill ? diplomaQuill.root.innerHTML : '';
 
     showLoader();
+    const submitBtn = e.target.querySelector('.btn-submit');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
     try {
         const { error } = await supabaseSpacePublic
             .from('inscriptions')
@@ -371,6 +392,8 @@ document.getElementById('editInscriptionForm').addEventListener('submit', async 
         console.error(err);
         showToast('Erreur lors de l\'enregistrement', 'error');
     } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
         hideLoader();
     }
 });
