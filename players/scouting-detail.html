@@ -3,26 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Scouting détaillé | HubISoccer</title>
+    <title>Détail scouting | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles spécifiques (autonome) -->
     <link rel="stylesheet" href="css/scouting-detail.css">
-    <!-- Chart.js pour le radar -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
+            }
+        }
+    </script>
 </head>
 <body>
-    <!-- Navbar -->
+    <div id="globalLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; color: white; font-size: 1.2rem;">
+        <div class="spinner"></div> Chargement...
+    </div>
+
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="dashboard-title">Espace Joueur</span>
         </div>
         <div class="nav-right">
-            <!-- Sélecteur de langue (24 langues) -->
             <select class="lang-picker" id="langSelect">
+                <!-- 24 langues -->
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
                 <option value="yo">🇳🇬 Yoruba</option>
@@ -53,12 +59,13 @@
                 <span class="notif-badge" id="notifBadge">0</span>
             </div>
             <div class="user-menu" id="userMenu">
-                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <div class="avatar-initials" id="userAvatarInitials" style="display: none; width: 35px; height: 35px; border-radius: 50%; background: #551B8C; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;"></div>
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar" style="display: none;">
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
-                    <a href="profile-edit.html">Mon profil</a>
-                    <a href="support.html">Support</a>
+                    <a href="edit-cv.html">Mon CV Pro</a>
+                    <a href="support.html">Paramètres</a>
                     <a href="#" id="languageLink">Langue (Français)</a>
                     <a href="#" id="logoutLink">Déconnexion</a>
                 </div>
@@ -69,7 +76,6 @@
         </div>
     </nav>
 
-    <!-- Sidebar Menu du Joueur-->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h3>Menu Joueur</h3>
@@ -88,82 +94,90 @@
             <a href="revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
             <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
             <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="scouting.html"><i class="fas fa-eye"></i> Scouting</a>
+            <a href="scouting-detail.html" class="active"><i class="fas fa-file-alt"></i> Détail scouting</a>
             <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
         </nav>
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Contenu principal -->
-    <main class="scouting-main">
-        <div class="scouting-container">
-            <h1 class="page-title"><i class="fas fa-chart-pie"></i> Scouting détaillé</h1>
+    <main class="scouting-detail-main">
+        <div class="detail-container">
+            <div class="detail-header">
+                <h1><i class="fas fa-file-alt"></i> Rapport de scouting</h1>
+                <button class="btn-voir-plus" id="voirPlusBtn"><i class="fas fa-cube"></i> Voir plus (3D)</button>
+            </div>
 
-            <!-- En-tête avec postes et pieds -->
-            <div class="scouting-header">
-                <div class="positions">
-                    <span class="position-badge" id="primaryPosition">-</span>
-                    <span class="position-badge secondary" id="secondaryPositions">-</span>
-                </div>
-                <div class="foot-stats">
-                    <div class="foot-item">
-                        <span class="foot-label">Pied gauche</span>
-                        <div class="foot-bar-container">
-                            <div class="foot-bar" id="leftFootBar" style="width: 0%;"></div>
-                        </div>
-                        <span class="foot-value" id="leftFootLabel">-</span>
-                    </div>
-                    <div class="foot-item">
-                        <span class="foot-label">Pied droit</span>
-                        <div class="foot-bar-container">
-                            <div class="foot-bar" id="rightFootBar" style="width: 0%;"></div>
-                        </div>
-                        <span class="foot-value" id="rightFootLabel">-</span>
-                    </div>
+            <!-- Informations générales -->
+            <div class="info-card">
+                <h2>Informations générales</h2>
+                <div class="info-grid">
+                    <div><strong>Nom :</strong> <span id="playerName">-</span></div>
+                    <div><strong>Âge :</strong> <span id="playerAge">-</span></div>
+                    <div><strong>Poste :</strong> <span id="playerPosition">-</span></div>
+                    <div><strong>Club :</strong> <span id="playerClub">-</span></div>
+                    <div><strong>Nationalité :</strong> <span id="playerNationality">-</span></div>
+                    <div><strong>Taille :</strong> <span id="playerHeight">-</span> cm</div>
+                    <div><strong>Poids :</strong> <span id="playerWeight">-</span> kg</div>
+                    <div><strong>Pied fort :</strong> <span id="playerFoot">-</span></div>
                 </div>
             </div>
 
-            <!-- Graphique radar (octogone) -->
-            <div class="radar-container">
-                <canvas id="skillsRadar"></canvas>
+            <!-- État de forme -->
+            <div class="condition-card">
+                <h2>État de forme</h2>
+                <div class="condition-indicator" id="conditionIndicator">
+                    <span class="condition-label">Statut :</span>
+                    <span class="condition-badge" id="conditionBadge">Chargement...</span>
+                </div>
+                <div class="condition-details" id="conditionDetails"></div>
             </div>
 
-            <!-- Dates clés -->
-            <div class="key-dates">
-                <h3><i class="fas fa-calendar-alt"></i> Dates clés</h3>
-                <div class="dates-grid">
-                    <div class="date-item">
-                        <span class="date-label">Expiration contrat</span>
-                        <span class="date-value" id="contractExpiry">-</span>
-                    </div>
-                    <div class="date-item">
-                        <span class="date-label">Prochain rapport</span>
-                        <span class="date-value" id="nextReport">-</span>
-                    </div>
-                    <div class="date-item">
-                        <span class="date-label">Dernière mise à jour</span>
-                        <span class="date-value" id="lastUpdate">-</span>
-                    </div>
+            <!-- Santé et physique -->
+            <div class="health-card">
+                <h2>Informations médicales & physiques</h2>
+                <div class="health-grid" id="healthGrid">
+                    <!-- Rempli dynamiquement -->
                 </div>
             </div>
 
-            <!-- Points forts / Points faibles -->
-            <div class="strengths-weaknesses">
-                <div class="strengths">
-                    <h3><i class="fas fa-thumbs-up"></i> Points forts</h3>
-                    <p id="strengths">Aucun atout exceptionnel</p>
-                </div>
-                <div class="weaknesses">
-                    <h3><i class="fas fa-thumbs-down"></i> Points faibles</h3>
-                    <p id="weaknesses">Aucune faiblesse exceptionnelle</p>
+            <!-- Rapport scouting -->
+            <div class="scouting-report">
+                <h2>Rapport du recruteur</h2>
+                <div class="report-content" id="reportContent">
+                    <!-- Contenu du rapport -->
                 </div>
             </div>
         </div>
-
-        <!-- Toast container -->
-        <div id="toastContainer" class="toast-container"></div>
     </main>
 
-    <!-- Footer -->
+    <!-- MODALE 3D -->
+    <div id="modal3d" class="modal-3d">
+        <div class="modal-3d-content">
+            <div class="modal-header">
+                <h2>Visualisation 3D du joueur</h2>
+                <span class="close-modal" id="closeModal3d">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="threeCanvas" style="width: 100%; height: 400px; background: #1a1a1a;"></div>
+                <div class="qualities-list">
+                    <h3>Les 7 qualités essentielles</h3>
+                    <ul>
+                        <li><strong>Qualité N°1 :</strong> Avoir de la passion et de la détermination</li>
+                        <li><strong>Qualité N°2 :</strong> Avoir une très bonne condition physique et de santé</li>
+                        <li><strong>Qualité N°3 :</strong> Une force mentale et résilience en béton</li>
+                        <li><strong>Qualité N°4 :</strong> Être bon techniquement</li>
+                        <li><strong>Qualité N°5 :</strong> Savoir travailler en équipe et développer un leadership</li>
+                        <li><strong>Qualité N°6 :</strong> Connaître la stratégie et avoir une excellente connaissance du Football</li>
+                        <li><strong>Qualité N°7 :</strong> Avoir un très bon professionnalisme et de l’éthique de travail</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
@@ -178,11 +192,11 @@
             <div class="legal">
                 <p>HubISoccer - The Hub of Inspiration of Soccer</p>
                 <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
-                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
             </div>
         </div>
     </footer>
 
-    <script src="js/scouting-detail.js"></script>
+    <script type="module" src="js/scouting-detail.js"></script>
 </body>
 </html>
