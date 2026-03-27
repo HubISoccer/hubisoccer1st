@@ -14,7 +14,6 @@
     --transition: all 0.2s ease;
 }
 
-/* ===== RESET ===== */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -31,7 +30,21 @@ body {
     font-family: 'Poppins', sans-serif;
 }
 
-/* ===== CONTENEUR ===== */
+/* Loader */
+.spinner {
+    border: 4px solid rgba(255,255,255,0.3);
+    border-top: 4px solid var(--gold);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 .card-container {
     max-width: 800px;
     width: 100%;
@@ -93,8 +106,8 @@ body {
     display: block;
 }
 
-/* Assurer que les deux faces aient la même hauteur minimale */
-.recto, .verso {
+/* Correction des sélecteurs pour les faces */
+#recto, #verso {
     min-height: 500px;
     display: flex;
     flex-direction: column;
@@ -195,8 +208,8 @@ body {
     object-fit: contain;
 }
 
-/* ===== VERSO ===== */
-.verso {
+/* Verso */
+#verso {
     background-color: rgba(85,27,140,0.03);
     border-left: 5px solid var(--primary);
 }
@@ -241,12 +254,12 @@ body {
     margin: 20px 0;
 }
 
-.qr-code img {
+.qr-code canvas, .qr-code img {
     width: 100px;
     height: 100px;
+    display: inline-block;
 }
 
-/* ===== PIED DE CARTE ===== */
 .card-footer {
     padding: 15px;
     background: var(--bg-light);
@@ -275,13 +288,13 @@ body {
     color: var(--white);
 }
 
-/* ===== STYLES D'IMPRESSION ===== */
+/* Impression */
 @media print {
     body {
         background: white;
         padding: 0;
     }
-    .card-header, .card-footer, .btn-print {
+    .card-header, .card-footer, .btn-print, #globalLoader {
         display: none;
     }
     .card {
@@ -294,11 +307,15 @@ body {
         page-break-inside: avoid;
         margin-bottom: 20px;
     }
-    .recto, .verso {
+    #recto, #verso {
         min-height: auto;
+        background-color: white;
     }
-    .verso {
-        background-color: rgba(85,27,140,0.03);
+    #verso {
+        background-color: #f8f9fa;
         border-left: 5px solid var(--primary);
+    }
+    .qr-code canvas, .qr-code img {
+        print-color-adjust: exact;
     }
 }
