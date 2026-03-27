@@ -1,16 +1,24 @@
-// ===== CONFIGURATION SUPABASE SCOUTING VIEW=====
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===== ÉTAT GLOBAL =====
 let currentUser = null;
-let playerProfile = null;     // données de profiles
-let playerCV = null;          // données de player_cv
+let currentProfile = null;
 let scoutingData = null;
-let radarChart = null;
+let requests = [];
+let offers = [];
+let currentFilter = 'all';
 
-// ===== TOAST =====
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -23,7 +31,7 @@ function showToast(message, type = 'info', duration = 3000) {
     toast.className = `toast ${type}`;
     toast.innerHTML = `
         <div class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i></div>
-        <div class="toast-content">${message}</div>
+        <div class="toast-content">${escapeHtml(message)}</div>
         <button class="toast-close"><i class="fas fa-times"></i></button>
     `;
     container.appendChild(toast);
@@ -39,8 +47,17 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
-// ===== VÉRIFICATION DE SESSION =====
+function showLoader() {
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.style.display = 'flex';
+}
+function hideLoader() {
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.style.display = 'none';
+}
+
 async function checkSession() {
+    showLoader();
     try {
         const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
         if (error || !session) {
@@ -50,277 +67,313 @@ async function checkSession() {
         currentUser = session.user;
         return currentUser;
     } catch (err) {
-        console.error('❌ Erreur checkSession :', err);
+        console.error(err);
         window.location.href = '../auth/login.html';
         return null;
+    } finally {
+        hideLoader();
     }
 }
 
-// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
-async function loadPlayerProfile() {
+async function loadProfile() {
+    if (!currentUser) return;
+    showLoader();
     try {
         const { data, error } = await supabasePlayersSpacePrive
             .from('profiles')
             .select('id, full_name, avatar_url')
             .eq('id', currentUser.id)
             .single();
-        if (error) {
-            console.error('Erreur chargement profil:', error);
-            showToast('Erreur chargement profil', 'error');
-            return null;
-        }
-        playerProfile = data;
-        document.getElementById('userName').textContent = playerProfile.full_name || 'Joueur';
-        document.getElementById('userAvatar').src = playerProfile.avatar_url || 'img/user-default.jpg';
-        return playerProfile;
+        if (error) throw error;
+        currentProfile = data;
+        document.getElementById('userName').textContent = currentProfile.full_name || 'Joueur';
+        updateAvatarDisplay();
     } catch (err) {
-        console.error('❌ Exception loadPlayerProfile:', err);
-        return null;
+        console.error(err);
+        showToast('Erreur chargement profil', 'error');
+    } finally {
+        hideLoader();
     }
 }
 
-// ===== CHARGEMENT DES DONNÉES SPORTIVES (player_cv) =====
-async function loadPlayerCV() {
-    try {
-        const { data, error } = await supabasePlayersSpacePrive
-            .from('player_cv')
-            .select('data')
-            .eq('player_id', currentUser.id)
-            .maybeSingle();
-        if (error) {
-            console.error('Erreur chargement player_cv:', error);
-            return;
+function updateAvatarDisplay() {
+    const userAvatar = document.getElementById('userAvatar');
+    const userInitials = document.getElementById('userAvatarInitials');
+    if (currentProfile?.avatar_url) {
+        userAvatar.src = currentProfile.avatar_url;
+        userAvatar.style.display = 'block';
+        if (userInitials) userInitials.style.display = 'none';
+    } else {
+        const initials = (currentProfile?.full_name || 'J').charAt(0).toUpperCase();
+        if (userInitials) {
+            userInitials.textContent = initials;
+            userInitials.style.display = 'flex';
         }
-        playerCV = data?.data || {};
-    } catch (err) {
-        console.error('❌ Exception loadPlayerCV:', err);
+        userAvatar.style.display = 'none';
     }
 }
 
-// ===== CHARGEMENT DES DONNÉES DE SCOUTING =====
 async function loadScoutingData() {
+    if (!currentProfile) return;
+    showLoader();
     try {
         const { data, error } = await supabasePlayersSpacePrive
             .from('player_scouting')
             .select('*')
-            .eq('player_id', currentUser.id)
+            .eq('player_id', currentProfile.id)
             .maybeSingle();
-        if (error) {
-            console.error('Erreur chargement scouting:', error);
-            showToast('Erreur chargement données', 'error');
-            return;
-        }
-        if (!data) {
-            // Créer une ligne par défaut
-            const { data: newData, error: insertError } = await supabasePlayersSpacePrive
-                .from('player_scouting')
-                .insert([{ player_id: currentUser.id }])
-                .select()
-                .single();
-            if (insertError) {
-                console.error('Erreur création scouting:', insertError);
-                showToast('Erreur initialisation', 'error');
-                return;
-            }
-            scoutingData = newData;
-        } else {
-            scoutingData = data;
-        }
-        updateUI();
+        if (error) throw error;
+        scoutingData = data;
+        renderStats();
     } catch (err) {
-        console.error('❌ Exception loadScoutingData:', err);
+        console.error(err);
+        showToast('Erreur chargement données scouting', 'error');
+    } finally {
+        hideLoader();
     }
 }
 
-// ===== FONCTIONS DE CALCUL DES 8 COMPÉTENCES =====
-function computeSkills() {
-    const def = average([
-        scoutingData.technique_marquage,
-        scoutingData.mental_agressivite,
-        scoutingData.mental_anticipation,
-        scoutingData.physique_puissance
-    ]);
-    const mental = average([
-        scoutingData.mental_agressivite,
-        scoutingData.mental_anticipation,
-        scoutingData.mental_appels_de_balle,
-        scoutingData.mental_concentration,
-        scoutingData.mental_courage,
-        scoutingData.mental_decisions,
-        scoutingData.mental_determination,
-        scoutingData.mental_inspiration,
-        scoutingData.mental_jeu_collectif,
-        scoutingData.mental_leadership,
-        scoutingData.mental_placement,
-        scoutingData.mental_sang_froid,
-        scoutingData.mental_vision_du_jeu,
-        scoutingData.mental_volume_de_jeu
-    ]);
-    const phys = average([
-        scoutingData.physique_acceleration,
-        scoutingData.physique_agilite,
-        scoutingData.physique_detente_verticale,
-        scoutingData.physique_endurance,
-        scoutingData.physique_equilibre,
-        scoutingData.physique_puissance,
-        scoutingData.physique_qualites_physiques_nat,
-        scoutingData.physique_vitesse
-    ]);
-    const aerien = average([
-        scoutingData.technique_jeu_de_tete,
-        scoutingData.physique_detente_verticale
-    ]);
-    const vitesse = average([
-        scoutingData.physique_vitesse,
-        scoutingData.physique_acceleration
-    ]);
-    const technique = average([
-        scoutingData.technique_centres,
-        scoutingData.technique_controle_balle,
-        scoutingData.technique_corners,
-        scoutingData.technique_coups_francs,
-        scoutingData.technique_dribbles,
-        scoutingData.technique_finition,
-        scoutingData.technique_jeu_de_tete,
-        scoutingData.technique_marquage,
-        scoutingData.technique_passes,
-        scoutingData.technique_penalty,
-        scoutingData.technique_tactics,
-        scoutingData.technique_technique,
-        scoutingData.technique_tirs_de_loin,
-        scoutingData.technique_touches_longues
-    ]);
-    const vision = average([
-        scoutingData.mental_vision_du_jeu,
-        scoutingData.technique_passes,
-        scoutingData.technique_tactics
-    ]);
-    const attaque = average([
-        scoutingData.technique_finition,
-        scoutingData.technique_dribbles,
-        scoutingData.technique_tirs_de_loin
-    ]);
-
-    return {
-        defense: def,
-        mental: mental,
-        physique: phys,
-        aerien: aerien,
-        vitesse: vitesse,
-        technique: technique,
-        vision: vision,
-        attaque: attaque
-    };
+function renderStats() {
+    if (!scoutingData) return;
+    document.getElementById('statMatchs').textContent = scoutingData.matchs || 0;
+    document.getElementById('statButs').textContent = scoutingData.buts || 0;
+    document.getElementById('statPasses').textContent = scoutingData.passes || 0;
+    const value = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(scoutingData.valeur_marche || 0);
+    document.getElementById('statValeur').textContent = value;
+    document.getElementById('statVues').textContent = scoutingData.scouting_views || 0;
+    document.getElementById('statFavoris').textContent = scoutingData.recruiter_favs || 0;
 }
 
-function average(arr) {
-    const valid = arr.filter(v => v != null && !isNaN(v));
-    if (valid.length === 0) return 0;
-    return Math.round(valid.reduce((a, b) => a + b, 0) / valid.length);
+async function loadRequests() {
+    if (!currentProfile) return;
+    showLoader();
+    try {
+        const { data, error } = await supabasePlayersSpacePrive
+            .from('scouting_requests')
+            .select('*')
+            .eq('player_id', currentProfile.id)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        requests = data || [];
+        renderRequests();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur chargement demandes', 'error');
+    } finally {
+        hideLoader();
+    }
 }
 
-// ===== MISE À JOUR DE L'INTERFACE =====
-function updateUI() {
-    if (!playerProfile || !scoutingData) return;
-
-    // Postes (depuis player_cv)
-    const position = playerCV.position || 'Non renseigné';
-    document.getElementById('primaryPosition').textContent = position;
-    document.getElementById('secondaryPositions').textContent = scoutingData.secondary_positions || 'Non renseigné';
-
-    // Pieds
-    let leftRating = scoutingData.left_foot_rating || 0;
-    let rightRating = scoutingData.right_foot_rating || 0;
-    if (leftRating === 0 && rightRating === 0) {
-        // Valeurs par défaut basées sur le pied fort (depuis player_cv)
-        const foot = playerCV.piedFort || 'Droitier';
-        if (foot.includes('Gauche')) {
-            leftRating = 85;
-            rightRating = 30;
-        } else {
-            leftRating = 30;
-            rightRating = 85;
-        }
+function renderRequests() {
+    const container = document.getElementById('requestsList');
+    if (!container) return;
+    const filtered = currentFilter === 'all' ? requests : requests.filter(r => r.status === currentFilter);
+    if (filtered.length === 0) {
+        container.innerHTML = '<p class="empty-message">Aucune demande de scouting.</p>';
+        return;
     }
-    document.getElementById('leftFootFill').style.width = leftRating + '%';
-    document.getElementById('rightFootFill').style.width = rightRating + '%';
-    document.getElementById('leftFootLabel').textContent = leftRating >= 70 ? 'Très fort' : (leftRating >= 40 ? 'Moyen' : 'Faible');
-    document.getElementById('rightFootLabel').textContent = rightRating >= 70 ? 'Très fort' : (rightRating >= 40 ? 'Moyen' : 'Faible');
+    container.innerHTML = filtered.map(req => {
+        const statusText = {
+            pending: 'En attente',
+            approved: 'Approuvée',
+            rejected: 'Rejetée'
+        }[req.status] || 'En attente';
+        return `
+            <div class="request-card ${req.status}">
+                <div class="card-header">
+                    <div class="card-title">${escapeHtml(req.recruiter_name || 'Recruteur')}</div>
+                    <span class="card-status ${req.status}">${statusText}</span>
+                </div>
+                <div class="card-details">
+                    <p>${escapeHtml(req.message || 'Aucun message')}</p>
+                    <p><small>${new Date(req.created_at).toLocaleDateString('fr-FR')}</small></p>
+                </div>
+                <div class="card-actions">
+                    ${req.status === 'pending' ? `
+                        <button class="btn-accept" data-id="${req.id}" data-type="request">Accepter</button>
+                        <button class="btn-reject" data-id="${req.id}" data-type="request">Refuser</button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
 
-    // Dates clés (si présentes)
-    if (scoutingData.contract_expiry) {
-        document.getElementById('date1').textContent = new Date(scoutingData.contract_expiry).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
-    }
-    if (scoutingData.next_evaluation) {
-        document.getElementById('date2').textContent = new Date(scoutingData.next_evaluation).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
-    }
-    // La troisième date peut être personnalisée
-
-    // Points forts/faibles
-    document.getElementById('strengthsText').textContent = scoutingData.strengths || 'Aucun atout exceptionnel';
-    document.getElementById('weaknessesText').textContent = scoutingData.weaknesses || 'Aucune faiblesse exceptionnelle';
-
-    // Radar
-    const skills = computeSkills();
-    updateRadar(skills);
-    // Mettre à jour les valeurs textuelles
-    document.getElementById('val_defense').textContent = skills.defense;
-    document.getElementById('val_mental').textContent = skills.mental;
-    document.getElementById('val_physique').textContent = skills.physique;
-    document.getElementById('val_aerien').textContent = skills.aerien;
-    document.getElementById('val_vitesse').textContent = skills.vitesse;
-    document.getElementById('val_technique').textContent = skills.technique;
-    document.getElementById('val_vision').textContent = skills.vision;
-    document.getElementById('val_attaque').textContent = skills.attaque;
-}
-
-// ===== CRÉATION DU RADAR =====
-function updateRadar(skills) {
-    const ctx = document.getElementById('skillsRadar').getContext('2d');
-    if (radarChart) radarChart.destroy();
-
-    radarChart = new Chart(ctx, {
-        type: 'radar',
-        data: {
-            labels: ['Défense', 'Mental', 'Physique', 'Jeu aérien', 'Vitesse', 'Technique', 'Vision du jeu', 'Attaque'],
-            datasets: [{
-                label: 'Compétences',
-                data: [
-                    skills.defense,
-                    skills.mental,
-                    skills.physique,
-                    skills.aerien,
-                    skills.vitesse,
-                    skills.technique,
-                    skills.vision,
-                    skills.attaque
-                ],
-                backgroundColor: 'rgba(85,27,140,0.2)',
-                borderColor: '#551B8C',
-                pointBackgroundColor: '#ffcc00',
-                pointBorderColor: '#fff',
-                pointHoverBackgroundColor: '#fff',
-                pointHoverBorderColor: '#551B8C'
-            }]
-        },
-        options: {
-            scales: {
-                r: {
-                    beginAtZero: true,
-                    max: 100,
-                    ticks: {
-                        stepSize: 20
-                    }
-                }
-            },
-            plugins: {
-                legend: { display: false }
+    document.querySelectorAll('.btn-accept, .btn-reject').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = btn.dataset.id;
+            const type = btn.dataset.type;
+            const action = btn.classList.contains('btn-accept') ? 'accept' : 'reject';
+            if (type === 'request') {
+                if (action === 'accept') acceptRequest(id);
+                else rejectRequest(id);
+            } else {
+                if (action === 'accept') acceptOffer(id);
+                else rejectOffer(id);
             }
-        }
+        });
     });
 }
 
-// ===== FONCTIONS UI =====
+async function loadOffers() {
+    if (!currentProfile) return;
+    showLoader();
+    try {
+        const { data, error } = await supabasePlayersSpacePrive
+            .from('scouting_offers')
+            .select('*')
+            .eq('player_id', currentProfile.id)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        offers = data || [];
+        renderOffers();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur chargement offres', 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
+function renderOffers() {
+    const container = document.getElementById('offersList');
+    if (!container) return;
+    const filtered = currentFilter === 'all' ? offers : offers.filter(o => o.status === currentFilter);
+    if (filtered.length === 0) {
+        container.innerHTML = '<p class="empty-message">Aucune offre de scouting.</p>';
+        return;
+    }
+    container.innerHTML = filtered.map(off => {
+        const statusText = {
+            pending: 'En attente',
+            approved: 'Approuvée',
+            rejected: 'Rejetée'
+        }[off.status] || 'En attente';
+        return `
+            <div class="offer-card ${off.status}">
+                <div class="card-header">
+                    <div class="card-title">${escapeHtml(off.recruiter_name || 'Recruteur')}</div>
+                    <span class="card-status ${off.status}">${statusText}</span>
+                </div>
+                <div class="card-details">
+                    <p>${escapeHtml(off.message || 'Aucun message')}</p>
+                    ${off.amount ? `<p><strong>Montant :</strong> ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(off.amount)}</p>` : ''}
+                    <p><small>${new Date(off.created_at).toLocaleDateString('fr-FR')}</small></p>
+                </div>
+                <div class="card-actions">
+                    ${off.status === 'pending' ? `
+                        <button class="btn-accept" data-id="${off.id}" data-type="offer">Accepter</button>
+                        <button class="btn-reject" data-id="${off.id}" data-type="offer">Refuser</button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    document.querySelectorAll('.btn-accept, .btn-reject').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = btn.dataset.id;
+            const type = btn.dataset.type;
+            const action = btn.classList.contains('btn-accept') ? 'accept' : 'reject';
+            if (type === 'request') {
+                if (action === 'accept') acceptRequest(id);
+                else rejectRequest(id);
+            } else {
+                if (action === 'accept') acceptOffer(id);
+                else rejectOffer(id);
+            }
+        });
+    });
+}
+
+async function acceptRequest(requestId) {
+    if (!confirm('Confirmez-vous l’acceptation de cette demande ?')) return;
+    showLoader();
+    try {
+        const { error } = await supabasePlayersSpacePrive
+            .from('scouting_requests')
+            .update({ status: 'approved' })
+            .eq('id', requestId);
+        if (error) throw error;
+        showToast('Demande acceptée', 'success');
+        await loadRequests();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur lors de l’acceptation', 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function rejectRequest(requestId) {
+    if (!confirm('Confirmez-vous le rejet de cette demande ?')) return;
+    showLoader();
+    try {
+        const { error } = await supabasePlayersSpacePrive
+            .from('scouting_requests')
+            .update({ status: 'rejected' })
+            .eq('id', requestId);
+        if (error) throw error;
+        showToast('Demande rejetée', 'success');
+        await loadRequests();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur lors du rejet', 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function acceptOffer(offerId) {
+    if (!confirm('Confirmez-vous l’acceptation de cette offre ?')) return;
+    showLoader();
+    try {
+        const { error } = await supabasePlayersSpacePrive
+            .from('scouting_offers')
+            .update({ status: 'approved' })
+            .eq('id', offerId);
+        if (error) throw error;
+        showToast('Offre acceptée', 'success');
+        await loadOffers();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur lors de l’acceptation', 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function rejectOffer(offerId) {
+    if (!confirm('Confirmez-vous le rejet de cette offre ?')) return;
+    showLoader();
+    try {
+        const { error } = await supabasePlayersSpacePrive
+            .from('scouting_offers')
+            .update({ status: 'rejected' })
+            .eq('id', offerId);
+        if (error) throw error;
+        showToast('Offre rejetée', 'success');
+        await loadOffers();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur lors du rejet', 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
+function initFilters() {
+    const filters = document.querySelectorAll('.filter-btn');
+    filters.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filters.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            renderRequests();
+            renderOffers();
+        });
+    });
+}
+
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
@@ -364,29 +417,19 @@ function initSidebar() {
     if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
     if (overlay) overlay.addEventListener('click', closeSidebarFunc);
 
-    // Swipe avec correction
-    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+    let touchStartX = 0, touchStartY = 0;
     const swipeThreshold = 50;
-
     document.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
     }, { passive: true });
-
     document.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        const diffX = touchEndX - touchStartX;
+        const diffX = e.changedTouches[0].screenX - touchStartX;
         const diffY = e.changedTouches[0].screenY - touchStartY;
-
         if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
-            if (e.cancelable) {
-                e.preventDefault();
-            }
-            if (diffX > 0 && touchStartX < 50) {
-                openSidebar();
-            } else if (diffX < 0 && sidebar.classList.contains('active')) {
-                closeSidebarFunc();
-            }
+            if (e.cancelable) e.preventDefault();
+            if (diffX > 0 && touchStartX < 50) openSidebar();
+            else if (diffX < 0) closeSidebarFunc();
         }
     }, { passive: false });
 }
@@ -395,36 +438,34 @@ function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabasePlayersSpacePrive.auth.signOut().then(() => window.location.href = '../index.html');
+            supabasePlayersSpacePrive.auth.signOut().then(() => {
+                window.location.href = '../index.html';
+            });
         });
     });
 }
 
-// ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initialisation scouting.js');
-
+    console.log('🚀 Initialisation scouting');
     const user = await checkSession();
     if (!user) return;
-
-    await loadPlayerProfile();
-    if (!playerProfile) return;
-
-    await loadPlayerCV();
+    await loadProfile();
+    if (!currentProfile) return;
     await loadScoutingData();
-
+    await loadRequests();
+    await loadOffers();
+    initFilters();
     addMenuHandle();
     initUserMenu();
     initSidebar();
     initLogout();
 
     document.getElementById('langSelect')?.addEventListener('change', (e) => {
-        const lang = e.target.value;
         showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
     });
-
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
         showToast('Changement de langue bientôt disponible', 'info');
     });
+    console.log('✅ Initialisation terminée');
 });
