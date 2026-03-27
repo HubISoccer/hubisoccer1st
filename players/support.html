@@ -6,20 +6,20 @@
     <title>Support | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Styles spécifiques (autonome) -->
     <link rel="stylesheet" href="css/support.css">
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- Navbar -->
+    <div id="globalLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; color: white; font-size: 1.2rem;">
+        <div class="spinner"></div> Chargement...
+    </div>
+
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="dashboard-title">Espace Joueur</span>
         </div>
         <div class="nav-right">
-            <!-- Sélecteur de langue (24 langues) -->
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
@@ -51,11 +51,12 @@
                 <span class="notif-badge" id="notifBadge">0</span>
             </div>
             <div class="user-menu" id="userMenu">
-                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <div class="avatar-initials" id="userAvatarInitials" style="display: none; width: 35px; height: 35px; border-radius: 50%; background: #551B8C; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;"></div>
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar" style="display: none;">
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
-                    <a href="profile-edit.html">Mon profil</a>
+                    <a href="edit-cv.html">Mon CV Pro</a>
                     <a href="support.html">Support</a>
                     <a href="#" id="languageLink">Langue (Français)</a>
                     <a href="#" id="logoutLink">Déconnexion</a>
@@ -67,7 +68,6 @@
         </div>
     </nav>
 
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h3>Menu Joueur</h3>
@@ -91,12 +91,10 @@
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Contenu principal -->
     <main class="support-main">
         <div class="support-container">
             <h1 class="page-title"><i class="fas fa-headset"></i> Centre d'aide & Support</h1>
 
-            <!-- Cartes de contact rapide -->
             <div class="contact-cards">
                 <div class="contact-card">
                     <i class="fas fa-envelope"></i>
@@ -110,18 +108,13 @@
                     <p>+229 01 97 20 81 88</p>
                     <a href="tel:+2290197208188">Appeler maintenant</a>
                 </div>
-                <!-- Chat retiré car non fonctionnel -->
             </div>
 
-            <!-- FAQ -->
             <section class="faq-section">
                 <h2><i class="fas fa-question-circle"></i> Foire aux questions</h2>
-                <div class="faq-list" id="faqList">
-                    <!-- FAQ items chargés dynamiquement -->
-                </div>
+                <div class="faq-list" id="faqList"></div>
             </section>
 
-            <!-- Formulaire de ticket -->
             <section class="ticket-section">
                 <h2><i class="fas fa-ticket-alt"></i> Ouvrir un ticket</h2>
                 <form id="ticketForm">
@@ -145,7 +138,7 @@
                         <textarea id="ticketDescription" rows="5" required></textarea>
                     </div>
                     <div class="form-group">
-                        <label>Pièce jointe (optionnel)</label>
+                        <label>Pièce jointe (optionnel, max 5 Mo)</label>
                         <input type="file" id="ticketAttachment" accept=".jpg,.jpeg,.png,.pdf">
                     </div>
                     <button type="submit" class="btn-submit-ticket">Envoyer la demande</button>
@@ -154,10 +147,8 @@
         </div>
     </main>
 
-    <!-- Toast container -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- Footer -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
@@ -172,7 +163,7 @@
             <div class="legal">
                 <p>HubISoccer - The Hub of Inspiration of Soccer</p>
                 <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
-                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
             </div>
         </div>
     </footer>
