@@ -1,15 +1,24 @@
-// ===== CONFIGURATION SUPABASE =====
+import * as THREE from 'three';
+
 const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabasePlayersSpacePrive = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===== ÉTAT GLOBAL =====
 let currentUser = null;
-let playerProfile = null;
-let playerCV = null;
-let scoutingData = null;
+let currentProfile = null;
+let scoutingDetail = null; // données du rapport
+let playerData = null; // données du joueur (profil + santé)
 
-// ===== TOAST =====
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -22,7 +31,7 @@ function showToast(message, type = 'info', duration = 3000) {
     toast.className = `toast ${type}`;
     toast.innerHTML = `
         <div class="toast-icon"><i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i></div>
-        <div class="toast-content">${message}</div>
+        <div class="toast-content">${escapeHtml(message)}</div>
         <button class="toast-close"><i class="fas fa-times"></i></button>
     `;
     container.appendChild(toast);
@@ -38,8 +47,17 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
-// ===== VÉRIFICATION DE SESSION =====
+function showLoader() {
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.style.display = 'flex';
+}
+function hideLoader() {
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.style.display = 'none';
+}
+
 async function checkSession() {
+    showLoader();
     try {
         const { data: { session }, error } = await supabasePlayersSpacePrive.auth.getSession();
         if (error || !session) {
@@ -49,260 +67,278 @@ async function checkSession() {
         currentUser = session.user;
         return currentUser;
     } catch (err) {
-        console.error('❌ Erreur checkSession :', err);
+        console.error(err);
         window.location.href = '../auth/login.html';
         return null;
+    } finally {
+        hideLoader();
     }
 }
 
-// ===== CHARGEMENT DU PROFIL (depuis profiles) =====
 async function loadProfile() {
+    if (!currentUser) return;
+    showLoader();
     try {
         const { data, error } = await supabasePlayersSpacePrive
             .from('profiles')
             .select('id, full_name, avatar_url')
             .eq('id', currentUser.id)
             .single();
-        if (error) {
-            console.error('Erreur chargement profil:', error);
-            return null;
-        }
-        playerProfile = data;
-        document.getElementById('userName').textContent = playerProfile.full_name || 'Joueur';
-        document.getElementById('userAvatar').src = playerProfile.avatar_url || 'img/user-default.jpg';
-        return playerProfile;
+        if (error) throw error;
+        currentProfile = data;
+        document.getElementById('userName').textContent = currentProfile.full_name || 'Joueur';
+        updateAvatarDisplay();
     } catch (err) {
-        console.error('❌ Exception loadProfile:', err);
-        return null;
+        console.error(err);
+        showToast('Erreur chargement profil', 'error');
+    } finally {
+        hideLoader();
     }
 }
 
-// ===== CHARGEMENT DES DONNÉES SPORTIVES (player_cv) =====
-async function loadPlayerCV() {
-    try {
-        const { data, error } = await supabasePlayersSpacePrive
-            .from('player_cv')
-            .select('data')
-            .eq('player_id', currentUser.id)
-            .maybeSingle();
-        if (error) {
-            console.error('Erreur chargement player_cv:', error);
-            return;
+function updateAvatarDisplay() {
+    const userAvatar = document.getElementById('userAvatar');
+    const userInitials = document.getElementById('userAvatarInitials');
+    if (currentProfile?.avatar_url) {
+        userAvatar.src = currentProfile.avatar_url;
+        userAvatar.style.display = 'block';
+        if (userInitials) userInitials.style.display = 'none';
+    } else {
+        const initials = (currentProfile?.full_name || 'J').charAt(0).toUpperCase();
+        if (userInitials) {
+            userInitials.textContent = initials;
+            userInitials.style.display = 'flex';
         }
-        playerCV = data?.data || {};
-    } catch (err) {
-        console.error('❌ Exception loadPlayerCV:', err);
+        userAvatar.style.display = 'none';
     }
 }
 
-// ===== CHARGEMENT DES DONNÉES DE SCOUTING =====
-async function loadScoutingData() {
-    if (!playerProfile) return;
+// Récupérer les données du joueur (pour l'affichage du rapport)
+async function loadPlayerData(playerId) {
+    // Dans un vrai scénario, playerId serait passé en paramètre d'URL.
+    // Pour la démo, on utilise l'ID de l'utilisateur connecté.
+    if (!currentUser) return;
+    showLoader();
     try {
-        const { data, error } = await supabasePlayersSpacePrive
+        // Récupérer les infos de base
+        const { data: profile, error: profileError } = await supabasePlayersSpacePrive
+            .from('profiles')
+            .select('*')
+            .eq('id', currentUser.id)
+            .single();
+        if (profileError) throw profileError;
+        playerData = profile;
+
+        // Récupérer les données scouting (ex: depuis player_scouting)
+        const { data: scouting, error: scoutingError } = await supabasePlayersSpacePrive
             .from('player_scouting')
             .select('*')
             .eq('player_id', currentUser.id)
             .maybeSingle();
-        if (error) {
-            console.error('Erreur chargement scouting:', error);
-            return;
-        }
-        scoutingData = data || {};
-        renderPage();
+        if (scoutingError) throw scoutingError;
+        scoutingDetail = scouting;
+
+        // Récupérer les données santé/physique (table à créer : player_health)
+        // Pour l'exemple, on utilise des données factices
+        const healthData = {
+            skin_color: 'Métissé',
+            morphology: 'Athlétique, corps compact',
+            physical_strengths: 'Explosivité, endurance, puissance',
+            physiology: 'Endomorphique, bonne récupération',
+            health_status: 'Aucune blessure, apte à 100%',
+            condition: 'excellente' // excellente, normale, incertaine, blessure, piteuse
+        };
+        // Si une table player_health existe, on pourrait la charger ici
+
+        renderUI(healthData);
     } catch (err) {
-        console.error('❌ Exception loadScoutingData:', err);
+        console.error(err);
+        showToast('Erreur chargement données joueur', 'error');
+    } finally {
+        hideLoader();
     }
 }
 
-// ===== CALCUL DES 8 COMPÉTENCES CLÉS =====
-function computeSkills() {
-    const defense = average([
-        scoutingData.technique_marquage,
-        scoutingData.mental_agressivite,
-        scoutingData.mental_anticipation,
-        scoutingData.physique_puissance
-    ]);
+function renderUI(healthData) {
+    // Informations générales
+    document.getElementById('playerName').textContent = playerData.full_name || '-';
+    if (playerData.date_of_birth) {
+        const age = new Date().getFullYear() - new Date(playerData.date_of_birth).getFullYear();
+        document.getElementById('playerAge').textContent = age;
+    } else {
+        document.getElementById('playerAge').textContent = '-';
+    }
+    document.getElementById('playerPosition').textContent = playerData.position || '-';
+    document.getElementById('playerClub').textContent = playerData.club || '-';
+    document.getElementById('playerNationality').textContent = playerData.nationality || '-';
+    document.getElementById('playerHeight').textContent = playerData.height || '-';
+    document.getElementById('playerWeight').textContent = playerData.weight || '-';
+    document.getElementById('playerFoot').textContent = playerData.preferred_foot || '-';
 
-    const mental = average([
-        scoutingData.mental_agressivite,
-        scoutingData.mental_anticipation,
-        scoutingData.mental_appels_de_balle,
-        scoutingData.mental_concentration,
-        scoutingData.mental_courage,
-        scoutingData.mental_decisions,
-        scoutingData.mental_determination,
-        scoutingData.mental_inspiration,
-        scoutingData.mental_jeu_collectif,
-        scoutingData.mental_leadership,
-        scoutingData.mental_placement,
-        scoutingData.mental_sang_froid,
-        scoutingData.mental_vision_du_jeu,
-        scoutingData.mental_volume_de_jeu
-    ]);
-
-    const physique = average([
-        scoutingData.physique_acceleration,
-        scoutingData.physique_agilite,
-        scoutingData.physique_detente_verticale,
-        scoutingData.physique_endurance,
-        scoutingData.physique_equilibre,
-        scoutingData.physique_puissance,
-        scoutingData.physique_qualites_physiques_nat,
-        scoutingData.physique_vitesse
-    ]);
-
-    const aerien = average([
-        scoutingData.technique_jeu_de_tete,
-        scoutingData.physique_detente_verticale
-    ]);
-
-    const vitesse = average([
-        scoutingData.physique_vitesse,
-        scoutingData.physique_acceleration
-    ]);
-
-    const technique = average([
-        scoutingData.technique_centres,
-        scoutingData.technique_controle_balle,
-        scoutingData.technique_corners,
-        scoutingData.technique_coups_francs,
-        scoutingData.technique_dribbles,
-        scoutingData.technique_finition,
-        scoutingData.technique_jeu_de_tete,
-        scoutingData.technique_marquage,
-        scoutingData.technique_passes,
-        scoutingData.technique_penalty,
-        scoutingData.technique_tactics,
-        scoutingData.technique_technique,
-        scoutingData.technique_tirs_de_loin,
-        scoutingData.technique_touches_longues
-    ]);
-
-    const vision = average([
-        scoutingData.mental_vision_du_jeu,
-        scoutingData.technique_passes,
-        scoutingData.technique_tactics
-    ]);
-
-    const attaque = average([
-        scoutingData.technique_finition,
-        scoutingData.technique_dribbles,
-        scoutingData.technique_tirs_de_loin
-    ]);
-
-    return {
-        defense, mental, physique, aerien, vitesse, technique, vision, attaque
+    // État de forme
+    const condition = healthData.condition;
+    const conditionMap = {
+        excellente: { label: 'Forme excellente ⬆️', class: 'excellente' },
+        normale: { label: 'Forme normale ➡️', class: 'normale' },
+        incertaine: { label: 'Forme incertaine ℹ️', class: 'incertaine' },
+        blessure: { label: 'Blessure (arrêt maladie) ➕', class: 'blessure' },
+        piteuse: { label: 'Forme piteuse ⬇️', class: 'piteuse' }
     };
+    const conditionInfo = conditionMap[condition] || conditionMap.normale;
+    const badge = document.getElementById('conditionBadge');
+    badge.textContent = conditionInfo.label;
+    badge.className = `condition-badge ${conditionInfo.class}`;
+    document.getElementById('conditionDetails').innerHTML = `<i class="fas fa-notes-medical"></i> Détails : ${healthData.health_status || 'Non renseigné'}`;
+
+    // Informations médicales & physiques
+    const healthGrid = document.getElementById('healthGrid');
+    healthGrid.innerHTML = `
+        <div class="health-item"><strong>Couleur de peau :</strong> ${healthData.skin_color}</div>
+        <div class="health-item"><strong>Physionomie :</strong> ${healthData.morphology}</div>
+        <div class="health-item"><strong>Forces physiques :</strong> ${healthData.physical_strengths}</div>
+        <div class="health-item"><strong>Physiologie :</strong> ${healthData.physiology}</div>
+        <div class="health-item"><strong>État de santé :</strong> ${healthData.health_status}</div>
+    `;
+
+    // Rapport scouting (contenu existant ou exemple)
+    const reportContent = document.getElementById('reportContent');
+    reportContent.innerHTML = scoutingDetail?.rapport_recruteurs || 'Aucun rapport disponible pour le moment.';
 }
 
-function average(arr) {
-    const valid = arr.filter(v => v != null && !isNaN(v));
-    if (valid.length === 0) return 0;
-    const sum = valid.reduce((a, b) => a + b, 0);
-    return Math.round(sum / valid.length);
+// Three.js : créer un modèle 3D simple (sphère avec texture)
+let scene, camera, renderer, model;
+
+function init3D(avatarUrl) {
+    const container = document.getElementById('threeCanvas');
+    if (!container) return;
+
+    // Nettoyer l'ancien renderer si présent
+    if (renderer) {
+        renderer.dispose();
+        container.innerHTML = '';
+    }
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a1a);
+
+    camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(0, 1.5, 3);
+    camera.lookAt(0, 1, 0);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+
+    // Lumière
+    const ambientLight = new THREE.AmbientLight(0x404060);
+    scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(1, 2, 1);
+    scene.add(directionalLight);
+    const backLight = new THREE.PointLight(0xccaa88, 0.5);
+    backLight.position.set(0, 2, -2);
+    scene.add(backLight);
+
+    // Corps (sphère + cylindre pour le torse)
+    const bodyGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c }); // peau claire par défaut
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 0.5;
+    scene.add(body);
+
+    // Tête (sphère)
+    const headGeo = new THREE.SphereGeometry(0.4, 32, 32);
+    const headMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c });
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.y = 1.1;
+    scene.add(head);
+
+    // Yeux
+    const eyeGeo = new THREE.SphereGeometry(0.08, 16, 16);
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+    leftEye.position.set(-0.15, 1.2, 0.4);
+    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+    rightEye.position.set(0.15, 1.2, 0.4);
+    scene.add(leftEye);
+    scene.add(rightEye);
+    const pupilGeo = new THREE.SphereGeometry(0.04, 16, 16);
+    const pupilMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+    const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
+    leftPupil.position.set(-0.15, 1.2, 0.45);
+    const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
+    rightPupil.position.set(0.15, 1.2, 0.45);
+    scene.add(leftPupil);
+    scene.add(rightPupil);
+
+    // Optionnel : charger une texture d'avatar sur la tête
+    if (avatarUrl && avatarUrl !== '') {
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load(avatarUrl, (texture) => {
+            headMat.map = texture;
+            headMat.needsUpdate = true;
+            // Ajuster la couleur du corps pour correspondre (simple simulation)
+            bodyMat.color.setHex(0xcca37e);
+        }, undefined, (err) => console.error(err));
+    }
+
+    // Animation
+    function animate() {
+        requestAnimationFrame(animate);
+        head.rotation.y += 0.005;
+        leftEye.rotation.y += 0.005;
+        rightEye.rotation.y += 0.005;
+        leftPupil.rotation.y += 0.005;
+        rightPupil.rotation.y += 0.005;
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    // Gérer le redimensionnement
+    window.addEventListener('resize', onWindowResize, false);
+    function onWindowResize() {
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height);
+    }
 }
 
-// ===== RENDU DE LA PAGE =====
-function renderPage() {
-    if (!playerProfile) return;
+// Gestion de la modale 3D
+document.getElementById('voirPlusBtn').addEventListener('click', () => {
+    const modal = document.getElementById('modal3d');
+    modal.style.display = 'block';
+    // Initialiser Three.js si ce n'est pas déjà fait
+    const avatarUrl = playerData?.avatar_url || '';
+    init3D(avatarUrl);
+});
 
-    // Postes (depuis player_cv)
-    const primary = playerCV.position || 'Non renseigné';
-    document.getElementById('primaryPosition').textContent = primary;
-    const secondary = scoutingData.secondary_positions || 'Non renseigné';
-    document.getElementById('secondaryPositions').textContent = secondary;
+document.getElementById('closeModal3d').addEventListener('click', () => {
+    const modal = document.getElementById('modal3d');
+    modal.style.display = 'none';
+    // Nettoyer le canvas pour éviter les fuites mémoire
+    if (renderer) {
+        renderer.dispose();
+        const canvas = document.querySelector('#threeCanvas canvas');
+        if (canvas) canvas.remove();
+    }
+});
 
-    // Pieds
-    const preferredFoot = playerCV.piedFort || 'Droitier';
-    let leftRating = scoutingData.left_foot_rating || 0;
-    let rightRating = scoutingData.right_foot_rating || 0;
-    if (leftRating === 0 && rightRating === 0) {
-        if (preferredFoot.toLowerCase().includes('gauche')) {
-            leftRating = 85;
-            rightRating = 30;
-        } else if (preferredFoot.toLowerCase().includes('droit')) {
-            leftRating = 30;
-            rightRating = 85;
-        } else {
-            leftRating = 50;
-            rightRating = 50;
+// Fermer la modale en cliquant à l'extérieur
+window.addEventListener('click', (e) => {
+    const modal = document.getElementById('modal3d');
+    if (e.target === modal) {
+        modal.style.display = 'none';
+        if (renderer) {
+            renderer.dispose();
+            const canvas = document.querySelector('#threeCanvas canvas');
+            if (canvas) canvas.remove();
         }
     }
-    document.getElementById('leftFootBar').style.width = leftRating + '%';
-    document.getElementById('rightFootBar').style.width = rightRating + '%';
-    document.getElementById('leftFootLabel').textContent = leftRating >= 70 ? 'Très fort' : (leftRating >= 40 ? 'Moyen' : 'Faible');
-    document.getElementById('rightFootLabel').textContent = rightRating >= 70 ? 'Très fort' : (rightRating >= 40 ? 'Moyen' : 'Faible');
+});
 
-    // Dates clés
-    const expiry = scoutingData.expire_le ? new Date(scoutingData.expire_le).toLocaleDateString('fr-FR') : 'Non renseigné';
-    document.getElementById('contractExpiry').textContent = expiry;
-    document.getElementById('nextReport').textContent = 'mars 2025'; // exemple
-    document.getElementById('lastUpdate').textContent = scoutingData.updated_at ? new Date(scoutingData.updated_at).toLocaleDateString('fr-FR') : '-';
-
-    // Points forts/faibles
-    document.getElementById('strengths').textContent = scoutingData.strengths || 'Aucun atout exceptionnel';
-    document.getElementById('weaknesses').textContent = scoutingData.weaknesses || 'Aucune faiblesse exceptionnelle';
-
-    // Graphique radar
-    const skills = computeSkills();
-    const ctx = document.getElementById('skillsRadar').getContext('2d');
-    new Chart(ctx, {
-        type: 'radar',
-        data: {
-            labels: ['Défense', 'Mental', 'Physique', 'Jeu aérien', 'Vitesse', 'Technique', 'Vision du jeu', 'Attaque'],
-            datasets: [{
-                label: 'Niveau',
-                data: [
-                    skills.defense,
-                    skills.mental,
-                    skills.physique,
-                    skills.aerien,
-                    skills.vitesse,
-                    skills.technique,
-                    skills.vision,
-                    skills.attaque
-                ],
-                backgroundColor: 'rgba(85, 27, 140, 0.2)',
-                borderColor: '#551B8C',
-                pointBackgroundColor: '#ffcc00',
-                pointBorderColor: '#fff',
-                pointHoverBackgroundColor: '#fff',
-                pointHoverBorderColor: '#551B8C',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            scales: {
-                r: {
-                    beginAtZero: true,
-                    max: 100,
-                    ticks: {
-                        stepSize: 20,
-                        color: '#6c757d'
-                    },
-                    grid: {
-                        color: '#e9ecef'
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        label: (context) => `${context.raw}/100`
-                    }
-                }
-            }
-        }
-    });
-}
-
-// ===== FONCTIONS UI =====
+// UI commun
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
@@ -346,28 +382,19 @@ function initSidebar() {
     if (closeBtn) closeBtn.addEventListener('click', closeSidebarFunc);
     if (overlay) overlay.addEventListener('click', closeSidebarFunc);
 
-    let touchStartX = 0, touchStartY = 0, touchEndX = 0;
+    let touchStartX = 0, touchStartY = 0;
     const swipeThreshold = 50;
-
     document.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
     }, { passive: true });
-
     document.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        const diffX = touchEndX - touchStartX;
+        const diffX = e.changedTouches[0].screenX - touchStartX;
         const diffY = e.changedTouches[0].screenY - touchStartY;
-
         if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
-            if (e.cancelable) {
-                e.preventDefault();
-            }
-            if (diffX > 0 && touchStartX < 50) {
-                openSidebar();
-            } else if (diffX < 0 && sidebar.classList.contains('active')) {
-                closeSidebarFunc();
-            }
+            if (e.cancelable) e.preventDefault();
+            if (diffX > 0 && touchStartX < 50) openSidebar();
+            else if (diffX < 0) closeSidebarFunc();
         }
     }, { passive: false });
 }
@@ -376,33 +403,31 @@ function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            supabasePlayersSpacePrive.auth.signOut().then(() => window.location.href = '../index.html');
+            supabasePlayersSpacePrive.auth.signOut().then(() => {
+                window.location.href = '../index.html';
+            });
         });
     });
 }
 
-// ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Initialisation scouting-detail');
     const user = await checkSession();
     if (!user) return;
     await loadProfile();
-    if (!playerProfile) return;
-    await loadPlayerCV();
-    await loadScoutingData();
-
+    if (!currentProfile) return;
+    await loadPlayerData(currentUser.id);
     addMenuHandle();
     initUserMenu();
     initSidebar();
     initLogout();
 
     document.getElementById('langSelect')?.addEventListener('change', (e) => {
-        const lang = e.target.value;
         showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
     });
-
     document.getElementById('languageLink')?.addEventListener('click', (e) => {
         e.preventDefault();
         showToast('Changement de langue bientôt disponible', 'info');
     });
+    console.log('✅ Initialisation terminée');
 });
