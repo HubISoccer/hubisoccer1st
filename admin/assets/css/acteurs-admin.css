@@ -186,7 +186,6 @@
 .list-item .actions .edit:hover { color: var(--primary); }
 .list-item .actions .delete:hover { color: var(--danger); }
 
-/* Styles modale */
 .modal-details {
     max-height: 400px;
     overflow-y: auto;
@@ -332,93 +331,7 @@
     transform: translateY(-2px);
     filter: brightness(0.95);
 }
-.edit-form .form-group {
-    margin-bottom: 20px;
-}
-.edit-form label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 5px;
-    color: var(--dark);
-}
-.edit-form input,
-.edit-form select,
-.edit-form textarea {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid var(--light-gray);
-    border-radius: 12px;
-    font-family: 'Poppins', sans-serif;
-}
-.btn-submit {
-    width: 100%;
-    padding: 14px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    color: white;
-    border: none;
-    border-radius: 50px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: var(--transition);
-}
-.btn-submit:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(85,27,140,0.2);
-}
-.toast-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-.toast {
-    background: white;
-    border-radius: 8px;
-    padding: 12px 20px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border-left: 4px solid;
-    animation: slideIn 0.3s forwards;
-}
-.toast.success { border-left-color: var(--success); }
-.toast.error { border-left-color: var(--danger); }
-.toast.info { border-left-color: var(--primary); }
-.toast.warning { border-left-color: var(--warning); }
-.toast-icon { font-size: 1.2rem; }
-.toast.success .toast-icon { color: var(--success); }
-.toast.error .toast-icon { color: var(--danger); }
-.toast.info .toast-icon { color: var(--primary); }
-.toast.warning .toast-icon { color: var(--warning); }
-.toast-content {
-    flex: 1;
-    font-size: 0.9rem;
-    color: var(--dark);
-}
-.toast-close {
-    background: none;
-    border: none;
-    color: var(--gray);
-    cursor: pointer;
-    font-size: 1rem;
-}
-@keyframes slideIn {
-    to { transform: translateX(0); }
-}
-@keyframes fadeOut {
-    to { opacity: 0; transform: translateX(400px); }
-}
-.admin-footer {
-    text-align: center;
-    margin-top: 40px;
-    padding: 20px;
-    color: var(--gray);
-    border-top: 1px solid var(--light-gray);
-}
+
 @media (max-width: 768px) {
     .admin-tabs {
         flex-direction: column;
