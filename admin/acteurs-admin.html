@@ -93,7 +93,7 @@
         </div>
     </div>
 
-    <!-- MODALE POUR CANDIDATURE (détails + messages + modification) -->
+    <!-- MODALE POUR CANDIDATURE (détails + messages + édition) -->
     <div id="candidatureModal" class="admin-modal">
         <div class="modal-content large">
             <span class="close" onclick="closeModal()">×</span>
@@ -103,7 +103,6 @@
                 <button class="tab-btn" data-tab="candMessages">💬 Messages</button>
                 <button class="tab-btn" data-tab="candEdit">✏️ Modifier</button>
             </div>
-            <!-- Panneau Détails -->
             <div id="candDetailsTab" class="tab-pane active">
                 <div id="candidatureDetails" class="modal-details scrollable"></div>
                 <div class="modal-actions">
@@ -113,7 +112,6 @@
                     <button class="btn-delete" id="deleteCandidatureBtn">🗑 Supprimer</button>
                 </div>
             </div>
-            <!-- Panneau Messages -->
             <div id="candMessagesTab" class="tab-pane">
                 <div id="candMessagesContainer" class="messages-container scrollable"></div>
                 <div class="message-compose">
@@ -121,7 +119,6 @@
                     <button id="sendCandMessageBtn" class="btn-send">Envoyer</button>
                 </div>
             </div>
-            <!-- Panneau Modifier -->
             <div id="candEditTab" class="tab-pane">
                 <form id="editCandidatureForm" class="edit-form">
                     <div class="form-group">
