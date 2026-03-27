@@ -3,13 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mon Suivi | HubISoccer</title>
+    <title>Suivi de candidature | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="public/css/style.css">
     <link rel="stylesheet" href="public/css/suivi.css">
 </head>
 <body>
+    <div id="globalLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; color: white; font-size: 1.2rem;">
+        <div class="spinner"></div> Chargement...
+    </div>
+
     <nav>
         <a href="index.html" class="logo-link">
             <img src="public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav">
@@ -18,16 +21,15 @@
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
-                <!-- autres langues -->
+                <!-- autres langues (24) -->
             </select>
-            <button class="menu-toggle" id="menuToggle">
-                <span></span><span></span><span></span>
-            </button>
+            <button class="menu-toggle" id="menuToggle"><span></span><span></span><span></span></button>
             <div class="nav-links" id="navLinks">
                 <a href="index.html">Accueil</a>
                 <a href="scouting.html">Scouting</a>
                 <a href="processus.html">Processus</a>
                 <a href="affiliation.html">Affiliation</a>
+                <a href="acceder-suivi.html">SUIVI</a>
                 <a href="parrain.html">Parrain</a>
                 <a href="tournoi.html">Tournois</a>
                 <a href="hub-community.html">Community</a>
@@ -38,52 +40,28 @@
         </div>
     </nav>
 
-    <main class="suivi-container" id="suiviContainer">
-        <!-- Conteneur pour les détails de l'inscription -->
-        <div id="inscriptionDetails">
-            <div class="loading">Chargement de votre dossier...</div>
+    <main class="suivi-main">
+        <div class="suivi-container">
+            <h1 class="page-title"><i class="fas fa-search"></i> Suivi de candidature</h1>
+            <p class="page-subtitle">Saisissez l'identifiant que vous avez reçu après votre inscription.</p>
+
+            <div class="search-box">
+                <input type="text" id="trackingId" placeholder="Ex: a5-VA-032714-HubIS-FT-123-00001">
+                <button id="checkBtn" class="btn-check"><i class="fas fa-arrow-right"></i> Vérifier</button>
+            </div>
+
+            <div id="resultCard" class="result-card" style="display: none;">
+                <div class="status-badge" id="statusBadge"></div>
+                <h2 id="applicantName"></h2>
+                <div class="info-grid" id="infoGrid"></div>
+                <div class="sport-data" id="sportData"></div>
+                <div class="admin-notes" id="adminNotes"></div>
+                <div class="contact-support">
+                    <i class="fas fa-headset"></i> Une question ? <a href="contact.html">Contactez le support</a>
+                </div>
+            </div>
         </div>
     </main>
-
-    <!-- Modale d'édition -->
-    <div id="editModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeEditModal()">&times;</span>
-            <h3>Modifier mes informations</h3>
-            <form id="editForm">
-                <input type="hidden" id="editId">
-                <div class="form-group">
-                    <label>Nom complet</label>
-                    <input type="text" id="editNom" required>
-                </div>
-                <div class="form-group">
-                    <label>Date de naissance</label>
-                    <input type="date" id="editDateNaissance" required>
-                </div>
-                <div class="form-group">
-                    <label>Poste</label>
-                    <select id="editPoste" required>
-                        <option value="">-- Choisir --</option>
-                        <option>Gardien de But</option>
-                        <option>Défenseur Central</option>
-                        <option>Latéral</option>
-                        <option>Milieu Défensif</option>
-                        <option>Milieu Offensif</option>
-                        <option>Attaquant / Ailier</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Diplôme / Formation</label>
-                    <input type="text" id="editDiplome" required>
-                </div>
-                <div class="form-group">
-                    <label>Téléphone</label>
-                    <input type="tel" id="editTelephone" required>
-                </div>
-                <button type="submit" class="btn-submit">Enregistrer</button>
-            </form>
-        </div>
-    </div>
 
     <footer>
         <div class="compliance-badges">
@@ -98,13 +76,13 @@
         <div class="legal">
             <p><strong>HubISoccer - The Hub of Inspiration of Soccer</strong></p>
             <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
-            <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
         </div>
     </footer>
 
-    <!-- Scripts : CDN Supabase en premier -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="public/js/main.js"></script>
     <script src="public/js/suivi.js"></script>
 </body>
 </html>
