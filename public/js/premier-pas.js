@@ -459,6 +459,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function generatePPId(sportCode) {
+        const randomPart = String.fromCharCode(97 + Math.floor(Math.random() * 26)) +
+                           String(Math.floor(Math.random() * 1000)).padStart(3, '0') +
+                           String.fromCharCode(97 + Math.floor(Math.random() * 26)) +
+                           String.fromCharCode(97 + Math.floor(Math.random() * 26));
+        const now = new Date();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hour = String(now.getHours()).padStart(2, '0');
+        const vaPart = `VA-${month}${day}${hour}`;
+        const secondsPart = String(now.getSeconds()).padStart(3, '0');
+        const counter = String(Math.floor(Math.random() * 100000)).padStart(5, '0');
+        return `${randomPart}-${vaPart}-HubIS-${sportCode}-${secondsPart}-${counter}`;
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -496,7 +511,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ]);
 
             const sportKey = sport;
-            const roleCode = sportFields[sportKey]?.roleCode || 'GEN';
+            const sportCode = sportFields[sportKey]?.roleCode || 'GEN';
             const sportData = {};
             if (sportFields[sportKey]) {
                 sportFields[sportKey].fields.forEach(field => {
@@ -505,9 +520,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
+            const ppId = generatePPId(sportCode);
+
             const { data: inserted, error: insertError } = await supabaseSpacePublic
                 .from('inscriptions')
                 .insert([{
+                    id: ppId,
                     sport: sportKey,
                     role_type: 'joueur',
                     definition,
@@ -528,11 +546,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 .single();
 
             if (insertError) throw insertError;
-            const ppId = inserted.id;
+            const ppIdResult = inserted.id;
 
             const modal = document.getElementById('successModal');
             const trackingSpan = document.getElementById('trackingId');
-            trackingSpan.textContent = ppId;
+            trackingSpan.textContent = ppIdResult;
             modal.classList.add('active');
 
             form.reset();
