@@ -108,7 +108,6 @@ function displayResult(inscription) {
         ${inscription.parent_name ? `<div class="info-item"><strong>Parent / tuteur</strong><span>${escapeHtml(inscription.parent_name)}</span></div>` : ''}
     `;
 
-    // Affichage des données spécifiques au sport
     const sportDataDiv = document.getElementById('sportData');
     if (inscription.sport_data && Object.keys(inscription.sport_data).length > 0) {
         let sportHtml = `<h3>Informations sportives</h3><div class="sport-data-grid">`;
@@ -124,7 +123,6 @@ function displayResult(inscription) {
         sportDataDiv.style.display = 'none';
     }
 
-    // Notes admin
     const adminNotesDiv = document.getElementById('adminNotes');
     if (inscription.admin_notes) {
         adminNotesDiv.innerHTML = `<strong><i class="fas fa-comment"></i> Message de l'équipe :</strong><br>${escapeHtml(inscription.admin_notes)}`;
@@ -200,7 +198,6 @@ document.addEventListener('DOMContentLoaded', () => {
         checkStatus(input.value.trim());
     });
 
-    // Menu mobile (identique à premier-pas)
     const menuToggle = document.getElementById('menuToggle');
     const navLinks = document.getElementById('navLinks');
     if (menuToggle && navLinks) {
