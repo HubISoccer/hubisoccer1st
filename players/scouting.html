@@ -6,22 +6,20 @@
     <title>Scouting | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <!-- Styles spécifiques (autonome) -->
     <link rel="stylesheet" href="css/scouting.css">
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- Navbar -->
+    <div id="globalLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; color: white; font-size: 1.2rem;">
+        <div class="spinner"></div> Chargement...
+    </div>
+
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="dashboard-title">Espace Joueur</span>
         </div>
         <div class="nav-right">
-            <!-- Sélecteur de langue (24 langues) -->
             <select class="lang-picker" id="langSelect">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇺🇸 English</option>
@@ -53,11 +51,12 @@
                 <span class="notif-badge" id="notifBadge">0</span>
             </div>
             <div class="user-menu" id="userMenu">
-                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <div class="avatar-initials" id="userAvatarInitials" style="display: none; width: 35px; height: 35px; border-radius: 50%; background: #551B8C; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;"></div>
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar" style="display: none;">
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
-                    <a href="profile-edit.html">Mon profil</a>
+                    <a href="edit-cv.html">Mon CV Pro</a>
                     <a href="support.html">Paramètres</a>
                     <a href="#" id="languageLink">Langue (Français)</a>
                     <a href="#" id="logoutLink">Déconnexion</a>
@@ -69,7 +68,6 @@
         </div>
     </nav>
 
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h3>Menu Joueur</h3>
@@ -88,86 +86,80 @@
             <a href="revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
             <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
             <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="scouting.html" class="active"><i class="fas fa-eye"></i> Scouting</a>
             <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
         </nav>
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Contenu principal -->
     <main class="scouting-main">
         <div class="scouting-container">
-            <h1 class="page-title"><i class="fas fa-chart-pie"></i> Scouting & Analyse</h1>
+            <h1 class="page-title"><i class="fas fa-eye"></i> Scouting & Recrutement</h1>
 
-            <!-- Ligne postes et pieds -->
-            <div class="player-synthesis">
-                <div class="positions">
-                    <span class="position-badge" id="primaryPosition">-</span>
-                    <span class="position-badge" id="secondaryPositions">-</span>
-                </div>
-                <div class="foot-stats">
-                    <div class="foot-item">
-                        <span class="foot-label">Pied gauche</span>
-                        <div class="foot-bar">
-                            <div class="foot-fill" id="leftFootFill" style="width: 0%;"></div>
-                        </div>
-                        <span class="foot-value" id="leftFootLabel">-</span>
+            <!-- Statistiques du joueur -->
+            <div class="scouting-stats">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <i class="fas fa-futbol"></i>
+                        <span class="stat-label">Matchs</span>
+                        <span class="stat-value" id="statMatchs">0</span>
                     </div>
-                    <div class="foot-item">
-                        <span class="foot-label">Pied droit</span>
-                        <div class="foot-bar">
-                            <div class="foot-fill" id="rightFootFill" style="width: 0%;"></div>
-                        </div>
-                        <span class="foot-value" id="rightFootLabel">-</span>
+                    <div class="stat-card">
+                        <i class="fas fa-bullseye"></i>
+                        <span class="stat-label">Buts</span>
+                        <span class="stat-value" id="statButs">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-person-running"></i>
+                        <span class="stat-label">Passes décisives</span>
+                        <span class="stat-value" id="statPasses">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-coins"></i>
+                        <span class="stat-label">Valeur marchande</span>
+                        <span class="stat-value" id="statValeur">0 FCFA</span>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-eye"></i>
+                        <span class="stat-label">Vues scouting</span>
+                        <span class="stat-value" id="statVues">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-star"></i>
+                        <span class="stat-label">Favoris recruteurs</span>
+                        <span class="stat-value" id="statFavoris">0</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Radar des 8 compétences -->
-            <div class="radar-section">
-                <h2><i class="fas fa-chart-line"></i> Profil du joueur</h2>
-                <div class="radar-container">
-                    <canvas id="skillsRadar" width="400" height="400"></canvas>
-                </div>
-                <!-- Légende des valeurs (affichées en pourcentage) -->
-                <div class="radar-values">
-                    <div><span class="value-label">Défense:</span> <span id="val_defense">0</span>%</div>
-                    <div><span class="value-label">Mental:</span> <span id="val_mental">0</span>%</div>
-                    <div><span class="value-label">Physique:</span> <span id="val_physique">0</span>%</div>
-                    <div><span class="value-label">Jeu aérien:</span> <span id="val_aerien">0</span>%</div>
-                    <div><span class="value-label">Vitesse:</span> <span id="val_vitesse">0</span>%</div>
-                    <div><span class="value-label">Technique:</span> <span id="val_technique">0</span>%</div>
-                    <div><span class="value-label">Vision du jeu:</span> <span id="val_vision">0</span>%</div>
-                    <div><span class="value-label">Attaque:</span> <span id="val_attaque">0</span>%</div>
+            <!-- Filtres (optionnels) -->
+            <div class="filter-tabs" id="filterTabs">
+                <button class="filter-btn active" data-filter="all">Toutes</button>
+                <button class="filter-btn" data-filter="pending">En attente</button>
+                <button class="filter-btn" data-filter="approved">Approuvées</button>
+                <button class="filter-btn" data-filter="rejected">Rejetées</button>
+            </div>
+
+            <!-- Demandes de scouting -->
+            <div class="scouting-requests">
+                <h2><i class="fas fa-file-alt"></i> Demandes de scouting</h2>
+                <div id="requestsList" class="requests-grid">
+                    <!-- Les demandes seront chargées dynamiquement -->
                 </div>
             </div>
 
-            <!-- Dates clés -->
-            <div class="key-dates">
-                <h3><i class="fas fa-calendar-alt"></i> Échéances</h3>
-                <div class="dates-list">
-                    <span class="date-badge" id="date1">mars 2024</span>
-                    <span class="date-badge" id="date2">mars 2025</span>
-                    <span class="date-badge" id="date3">mars 2026</span>
-                </div>
-            </div>
-
-            <!-- Points forts / points faibles -->
-            <div class="strengths-weaknesses">
-                <div class="strengths">
-                    <h4><i class="fas fa-thumbs-up"></i> Points forts</h4>
-                    <p id="strengthsText">Aucun atout exceptionnel</p>
-                </div>
-                <div class="weaknesses">
-                    <h4><i class="fas fa-thumbs-down"></i> Points faibles</h4>
-                    <p id="weaknessesText">Aucune faiblesse exceptionnelle</p>
+            <!-- Offres de scouting -->
+            <div class="scouting-offers">
+                <h2><i class="fas fa-handshake"></i> Offres de scouting</h2>
+                <div id="offersList" class="offers-grid">
+                    <!-- Les offres seront chargées dynamiquement -->
                 </div>
             </div>
         </div>
-        <!-- Toast container -->
-        <div id="toastContainer" class="toast-container"></div>
     </main>
 
-    <!-- Footer -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
@@ -182,7 +174,7 @@
             <div class="legal">
                 <p>HubISoccer - The Hub of Inspiration of Soccer</p>
                 <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
-                <p>&copy; 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
             </div>
         </div>
     </footer>
