@@ -2,10 +2,9 @@ const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabaseSpacePublic = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let currentCandidatureId = null;
-let currentRoleData = {};
-let roleDataQuill = null;
-let messageQuill = null;
+let currentCandidature = null;
+let candMessageQuill = null;
+let currentTab = 'candidatures';
 
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
@@ -54,6 +53,7 @@ function hideLoader() {
     if (loader) loader.style.display = 'none';
 }
 
+// ========== CHARGEMENT DES DONNÉES ==========
 async function loadCandidatures() {
     showLoader();
     try {
@@ -62,7 +62,7 @@ async function loadCandidatures() {
             .select('*')
             .order('created_at', { ascending: false });
         if (error) throw error;
-        renderCandidaturesList(data || []);
+        renderCandidatures(data || []);
     } catch (err) {
         console.error(err);
         showToast('Erreur chargement candidatures', 'error');
@@ -71,43 +71,28 @@ async function loadCandidatures() {
     }
 }
 
-function renderCandidaturesList(candidatures) {
+function renderCandidatures(list) {
     const container = document.getElementById('candidaturesList');
     if (!container) return;
-    if (candidatures.length === 0) {
-        container.innerHTML = '<p class="no-data">Aucune candidature.</p>';
+    if (list.length === 0) {
+        container.innerHTML = '<p class="empty-message">Aucune candidature.</p>';
         return;
     }
-
-    const roleLabels = {
-        PR: 'Parrain', ST: 'Staff médical', CO: 'Coach', AG: 'Agent',
-        AC: 'Académie', CL: 'Club', FO: 'Formateur'
-    };
-
-    container.innerHTML = candidatures.map(c => {
-        const statusMap = {
-            pending: { class: 'en_attente', text: 'En attente' },
-            approved: { class: 'valide', text: 'Validé' },
-            rejected: { class: 'refuse', text: 'Refusé' },
-            suspended: { class: 'en_attente', text: 'Suspendu' }
-        };
-        const status = statusMap[c.status] || statusMap.pending;
+    container.innerHTML = list.map(c => {
+        const statusClass = { pending: 'pending', approved: 'approved', rejected: 'rejected', suspended: 'suspended' }[c.status] || 'pending';
+        const statusText = { pending: 'En attente', approved: 'Validé', rejected: 'Rejeté', suspended: 'Suspendu' }[c.status] || c.status;
         return `
             <div class="list-item" data-id="${c.id}">
                 <div class="info">
                     <strong>${escapeHtml(c.full_name)}</strong>
                     <div class="details">
-                        <span>${roleLabels[c.role] || c.role}</span>
+                        <span>${escapeHtml(c.role)}</span>
                         <span>${escapeHtml(c.email)}</span>
-                        <span>${escapeHtml(c.phone)}</span>
                     </div>
-                    <span class="status ${status.class}">${status.text}</span>
+                    <span class="status ${statusClass}">${statusText}</span>
                 </div>
                 <div class="actions">
                     <button class="view" onclick="viewCandidature('${c.id}')" title="Voir détails"><i class="fas fa-eye"></i></button>
-                    <button class="valid" onclick="updateStatus('${c.id}', 'approved')" title="Valider"><i class="fas fa-check"></i></button>
-                    <button class="reject" onclick="updateStatus('${c.id}', 'rejected')" title="Rejeter"><i class="fas fa-times"></i></button>
-                    <button class="edit" onclick="openEditTab('${c.id}')" title="Modifier"><i class="fas fa-edit"></i></button>
                     <button class="delete" onclick="deleteCandidature('${c.id}')" title="Supprimer"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
@@ -115,28 +100,152 @@ function renderCandidaturesList(candidatures) {
     }).join('');
 }
 
+async function loadSportifs() {
+    showLoader();
+    try {
+        const { data, error } = await supabaseSpacePublic
+            .from('acteur_sportifs')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        renderSportifs(data || []);
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur chargement sportifs', 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
+function renderSportifs(list) {
+    const container = document.getElementById('sportifsList');
+    if (!container) return;
+    if (list.length === 0) {
+        container.innerHTML = '<p class="empty-message">Aucun sportif.</p>';
+        return;
+    }
+    container.innerHTML = list.map(s => `
+        <div class="list-item" data-id="${s.id}">
+            <div class="info">
+                <strong>${escapeHtml(s.full_name)}</strong>
+                <div class="details">
+                    <span>${escapeHtml(s.sport)}</span>
+                    <span>${escapeHtml(s.region || '')}</span>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="edit" onclick="editSportif('${s.id}')" title="Modifier"><i class="fas fa-edit"></i></button>
+                <button class="delete" onclick="deleteSportif('${s.id}')" title="Supprimer"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function loadDons() {
+    showLoader();
+    try {
+        const { data, error } = await supabaseSpacePublic
+            .from('acteur_dons')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        renderDons(data || []);
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur chargement dons', 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
+function renderDons(list) {
+    const container = document.getElementById('donsList');
+    if (!container) return;
+    if (list.length === 0) {
+        container.innerHTML = '<p class="empty-message">Aucun appel aux dons.</p>';
+        return;
+    }
+    container.innerHTML = list.map(d => `
+        <div class="list-item" data-id="${d.id}">
+            <div class="info">
+                <strong>${escapeHtml(d.title)}</strong>
+                <div class="details">
+                    <span>${escapeHtml(d.region || '')}</span>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="edit" onclick="editDon('${d.id}')" title="Modifier"><i class="fas fa-edit"></i></button>
+                <button class="delete" onclick="deleteDon('${d.id}')" title="Supprimer"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function loadTemoignages() {
+    showLoader();
+    try {
+        const { data, error } = await supabaseSpacePublic
+            .from('acteur_temoignages')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        renderTemoignages(data || []);
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur chargement témoignages', 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
+function renderTemoignages(list) {
+    const container = document.getElementById('temoignagesList');
+    if (!container) return;
+    if (list.length === 0) {
+        container.innerHTML = '<p class="empty-message">Aucun témoignage.</p>';
+        return;
+    }
+    container.innerHTML = list.map(t => `
+        <div class="list-item" data-id="${t.id}">
+            <div class="info">
+                <strong>${escapeHtml(t.author)}</strong>
+                <div class="details">
+                    <span>${escapeHtml(t.content.substring(0, 50))}...</span>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="edit" onclick="editTemoignage('${t.id}')" title="Modifier"><i class="fas fa-edit"></i></button>
+                <button class="delete" onclick="deleteTemoignage('${t.id}')" title="Supprimer"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ========== GESTION DES CANDIDATURES ==========
 window.viewCandidature = async (id) => {
-    currentCandidatureId = id;
+    currentCandidature = id;
     await loadCandidatureDetails(id);
     document.getElementById('candidatureModal').classList.add('active');
-    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('tabDetails').classList.add('active');
-    document.querySelector('.tab-btn[data-tab="details"]').classList.add('active');
+    document.querySelectorAll('#candidatureModal .tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('#candidatureModal .tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('candDetailsTab').classList.add('active');
+    document.querySelector('#candidatureModal .tab-btn[data-tab="candDetails"]').classList.add('active');
 };
 
 async function loadCandidatureDetails(id) {
     showLoader();
     try {
-        const { data, error } = await supabaseSpacePublic
+        const { data: cand, error } = await supabaseSpacePublic
             .from('deveniracteur')
             .select('*')
             .eq('id', id)
             .single();
         if (error) throw error;
-        displayDetails(data);
-        loadMessages(id);
-        populateEditForm(data);
+        displayCandidatureDetails(cand);
+        await loadCandMessages(id);
+        if (!candMessageQuill) {
+            candMessageQuill = new Quill('#candMessageEditor', { theme: 'snow', placeholder: 'Écrivez votre message...' });
+        }
     } catch (err) {
         console.error(err);
         showToast('Erreur chargement détails', 'error');
@@ -145,21 +254,16 @@ async function loadCandidatureDetails(id) {
     }
 }
 
-function displayDetails(cand) {
-    const modalDetails = document.getElementById('modalDetails');
+function displayCandidatureDetails(cand) {
+    const container = document.getElementById('candidatureDetails');
     const submitDate = cand.created_at ? new Date(cand.created_at).toLocaleString('fr-FR') : '-';
-
+    const fileUrl = cand.document_file ? `https://wxlpcflanihqwumjwpjs.supabase.co/storage/v1/object/public/documents/${cand.document_file}` : null;
     const roleLabels = {
         PR: 'Parrain', ST: 'Staff médical', CO: 'Coach', AG: 'Agent',
         AC: 'Académie', CL: 'Club', FO: 'Formateur'
     };
     const roleName = roleLabels[cand.role] || cand.role;
-
-    const fileUrl = cand.document_file ? `https://wxlpcflanihqwumjwpjs.supabase.co/storage/v1/object/public/documents/${cand.document_file}` : null;
-
-    const roleDataHtml = cand.role_data ? Object.entries(cand.role_data).map(([k, v]) => `<div class="detail-item"><span class="detail-icon">📄</span> <strong>${k.replace(/_/g, ' ')} :</strong> ${escapeHtml(v)}</div>`).join('') : '';
-
-    modalDetails.innerHTML = `
+    container.innerHTML = `
         <div class="modal-details-grid">
             <div class="detail-item"><span class="detail-icon">🆔</span> <strong>ID :</strong> ${escapeHtml(cand.id)}</div>
             <div class="detail-item"><span class="detail-icon">👤</span> <strong>Nom :</strong> ${escapeHtml(cand.full_name)}</div>
@@ -169,44 +273,31 @@ function displayDetails(cand) {
             <div class="detail-item"><span class="detail-icon">📄</span> <strong>Justificatif :</strong> ${fileUrl ? `<a href="${fileUrl}" target="_blank">Télécharger</a>` : 'Aucun'}</div>
             <div class="detail-item"><span class="detail-icon">⏰</span> <strong>Soumission :</strong> ${submitDate}</div>
         </div>
-        ${roleDataHtml ? `<div class="role-data-section"><strong>Informations complémentaires :</strong><div class="modal-details-grid">${roleDataHtml}</div></div>` : ''}
+        ${cand.role_data?.additional_info ? `<div class="detail-item"><strong>Informations :</strong> ${escapeHtml(cand.role_data.additional_info)}</div>` : ''}
         <div class="detail-status">
-            <strong>Statut :</strong> <span class="status-badge ${cand.status === 'approved' ? 'valide' : cand.status === 'rejected' ? 'refuse' : 'en_attente'}">${cand.status === 'approved' ? 'Validé' : cand.status === 'rejected' ? 'Refusé' : cand.status === 'suspended' ? 'Suspendu' : 'En attente'}</span>
+            <strong>Statut :</strong> <span class="status-badge ${cand.status === 'approved' ? 'valide' : cand.status === 'rejected' ? 'refuse' : cand.status === 'suspended' ? 'en_attente' : 'en_attente'}">${cand.status === 'approved' ? 'Validé' : cand.status === 'rejected' ? 'Refusé' : cand.status === 'suspended' ? 'Suspendu' : 'En attente'}</span>
         </div>
         ${cand.admin_notes ? `<div class="admin-notes"><strong>Notes admin :</strong><br>${escapeHtml(cand.admin_notes)}</div>` : ''}
     `;
 }
 
-function populateEditForm(cand) {
-    document.getElementById('editFullName').value = cand.full_name || '';
-    document.getElementById('editEmail').value = cand.email || '';
-    document.getElementById('editPhone').value = cand.phone || '';
-    document.getElementById('editRole').value = cand.role || 'PR';
-    document.getElementById('editAdminNotes').value = cand.admin_notes || '';
-
-    currentRoleData = cand.role_data || {};
-    if (roleDataQuill) {
-        roleDataQuill.root.innerHTML = JSON.stringify(currentRoleData, null, 2);
-    }
-}
-
-async function loadMessages(candidatureId) {
+async function loadCandMessages(inscriptionId) {
     try {
-        const { data, error } = await supabaseSpacePublic
+        const { data: messages, error } = await supabaseSpacePublic
             .from('acteurmsg')
             .select('*')
-            .eq('inscription_id', candidatureId)
+            .eq('inscription_id', inscriptionId)
             .order('created_at', { ascending: true });
         if (error) throw error;
-        renderMessages(data || []);
+        renderCandMessages(messages || []);
     } catch (err) {
         console.error(err);
         showToast('Erreur chargement messages', 'error');
     }
 }
 
-function renderMessages(messages) {
-    const container = document.getElementById('messagesContainer');
+function renderCandMessages(messages) {
+    const container = document.getElementById('candMessagesContainer');
     if (!container) return;
     if (messages.length === 0) {
         container.innerHTML = '<p class="empty-message">Aucun message.</p>';
@@ -215,7 +306,7 @@ function renderMessages(messages) {
     container.innerHTML = messages.map(msg => `
         <div class="message ${msg.sender}">
             <div class="message-bubble">
-                <div>${escapeHtml(msg.content)}</div>
+                <div>${msg.content}</div>
                 <div class="message-time">${new Date(msg.created_at).toLocaleString('fr-FR')}</div>
             </div>
         </div>
@@ -223,51 +314,45 @@ function renderMessages(messages) {
     container.scrollTop = container.scrollHeight;
 }
 
-async function sendMessage() {
-    if (!currentCandidatureId || !messageQuill) return;
-    const content = messageQuill.root.innerHTML.trim();
+async function sendCandMessage() {
+    if (!currentCandidature || !candMessageQuill) return;
+    const content = candMessageQuill.root.innerHTML.trim();
     if (!content || content === '<p><br></p>') {
         showToast('Message vide', 'warning');
         return;
     }
     showLoader();
-    const sendBtn = document.getElementById('sendMessageBtn');
-    const originalText = sendBtn.innerHTML;
-    sendBtn.disabled = true;
-    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi...';
     try {
         const { error } = await supabaseSpacePublic
             .from('acteurmsg')
             .insert([{
-                inscription_id: currentCandidatureId,
+                inscription_id: currentCandidature,
                 sender: 'admin',
                 content: content
             }]);
         if (error) throw error;
-        messageQuill.root.innerHTML = '';
-        await loadMessages(currentCandidatureId);
+        candMessageQuill.root.innerHTML = '';
+        await loadCandMessages(currentCandidature);
         showToast('Message envoyé', 'success');
     } catch (err) {
         console.error(err);
         showToast('Erreur envoi message', 'error');
     } finally {
-        sendBtn.disabled = false;
-        sendBtn.innerHTML = originalText;
         hideLoader();
     }
 }
 
-window.updateStatus = async (id, newStatus) => {
-    if (!confirm(`Passer cette candidature en "${newStatus === 'approved' ? 'Validé' : newStatus === 'rejected' ? 'Refusé' : 'Suspendu'}" ?`)) return;
+window.updateCandidatureStatus = async (id, status) => {
+    if (!confirm(`Passer cette candidature en "${status === 'approved' ? 'Validé' : status === 'rejected' ? 'Refusé' : 'Suspendu'}" ?`)) return;
     showLoader();
     try {
         const { error } = await supabaseSpacePublic
             .from('deveniracteur')
-            .update({ status: newStatus })
+            .update({ status: status })
             .eq('id', id);
         if (error) throw error;
         showToast('Statut mis à jour', 'success');
-        if (id === currentCandidatureId) await loadCandidatureDetails(id);
+        if (id === currentCandidature) await loadCandidatureDetails(id);
         await loadCandidatures();
     } catch (err) {
         console.error(err);
@@ -286,15 +371,13 @@ window.deleteCandidature = async (id) => {
             .delete()
             .eq('inscription_id', id);
         if (delMsgs) console.warn(delMsgs);
-
         const { error: delCand } = await supabaseSpacePublic
             .from('deveniracteur')
             .delete()
             .eq('id', id);
         if (delCand) throw delCand;
-
         showToast('Candidature supprimée', 'success');
-        if (currentCandidatureId === id) closeModal();
+        if (currentCandidature === id) closeModal();
         await loadCandidatures();
     } catch (err) {
         console.error(err);
@@ -304,121 +387,284 @@ window.deleteCandidature = async (id) => {
     }
 };
 
-window.openEditTab = async (id) => {
-    await viewCandidature(id);
-    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('tabEdit').classList.add('active');
-    document.querySelector('.tab-btn[data-tab="edit"]').classList.add('active');
+// ========== GESTION DES SPORTIFS ==========
+window.editSportif = (id) => {
+    const sportif = sportifsList.find(s => s.id == id);
+    if (!sportif) return;
+    document.getElementById('sportifId').value = sportif.id;
+    document.getElementById('sportifFullName').value = sportif.full_name;
+    document.getElementById('sportifSport').value = sportif.sport;
+    document.getElementById('sportifRegion').value = sportif.region || '';
+    document.getElementById('sportifDescription').value = sportif.description || '';
+    document.getElementById('sportifImageUrl').value = sportif.image_url || '';
+    document.getElementById('sportifModalTitle').textContent = 'Modifier le sportif';
+    document.getElementById('sportifModal').classList.add('active');
 };
 
-document.getElementById('editForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const id = currentCandidatureId;
-    if (!id) return;
-
-    const full_name = document.getElementById('editFullName').value.trim();
-    const email = document.getElementById('editEmail').value.trim();
-    const phone = document.getElementById('editPhone').value.trim();
-    const role = document.getElementById('editRole').value;
-    const admin_notes = document.getElementById('editAdminNotes').value.trim();
-    let role_data = currentRoleData;
-    try {
-        if (roleDataQuill && roleDataQuill.root.innerHTML.trim()) {
-            role_data = JSON.parse(roleDataQuill.root.innerHTML);
-        }
-    } catch (e) {
-        showToast('Format JSON invalide pour les données spécifiques', 'error');
-        return;
-    }
-
+window.deleteSportif = async (id) => {
+    if (!confirm('Supprimer ce sportif ?')) return;
     showLoader();
-    const submitBtn = e.target.querySelector('.btn-submit');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
     try {
         const { error } = await supabaseSpacePublic
-            .from('deveniracteur')
-            .update({
-                full_name,
-                email,
-                phone,
-                role,
-                admin_notes,
-                role_data
-            })
+            .from('acteur_sportifs')
+            .delete()
             .eq('id', id);
         if (error) throw error;
-        showToast('Modifications enregistrées', 'success');
-        await loadCandidatureDetails(id);
-        await loadCandidatures();
+        showToast('Sportif supprimé', 'success');
+        await loadSportifs();
     } catch (err) {
         console.error(err);
-        showToast('Erreur lors de l\'enregistrement', 'error');
+        showToast('Erreur suppression', 'error');
     } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
+        hideLoader();
+    }
+};
+
+// ========== GESTION DES DONS ==========
+window.editDon = (id) => {
+    const don = donsList.find(d => d.id == id);
+    if (!don) return;
+    document.getElementById('donId').value = don.id;
+    document.getElementById('donTitle').value = don.title;
+    document.getElementById('donDescription').value = don.description || '';
+    document.getElementById('donRegion').value = don.region || '';
+    document.getElementById('donImageUrl').value = don.image_url || '';
+    document.getElementById('donModalTitle').textContent = 'Modifier l\'appel aux dons';
+    document.getElementById('donModal').classList.add('active');
+};
+
+window.deleteDon = async (id) => {
+    if (!confirm('Supprimer cet appel aux dons ?')) return;
+    showLoader();
+    try {
+        const { error } = await supabaseSpacePublic
+            .from('acteur_dons')
+            .delete()
+            .eq('id', id);
+        if (error) throw error;
+        showToast('Appel aux dons supprimé', 'success');
+        await loadDons();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur suppression', 'error');
+    } finally {
+        hideLoader();
+    }
+};
+
+// ========== GESTION DES TÉMOIGNAGES ==========
+window.editTemoignage = (id) => {
+    const temoignage = temoignagesList.find(t => t.id == id);
+    if (!temoignage) return;
+    document.getElementById('temoignageId').value = temoignage.id;
+    document.getElementById('temoignageAuthor').value = temoignage.author;
+    document.getElementById('temoignageContent').value = temoignage.content;
+    document.getElementById('temoignageModalTitle').textContent = 'Modifier le témoignage';
+    document.getElementById('temoignageModal').classList.add('active');
+};
+
+window.deleteTemoignage = async (id) => {
+    if (!confirm('Supprimer ce témoignage ?')) return;
+    showLoader();
+    try {
+        const { error } = await supabaseSpacePublic
+            .from('acteur_temoignages')
+            .delete()
+            .eq('id', id);
+        if (error) throw error;
+        showToast('Témoignage supprimé', 'success');
+        await loadTemoignages();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur suppression', 'error');
+    } finally {
+        hideLoader();
+    }
+};
+
+// ========== FORMULAIRES D'AJOUT/MODIFICATION ==========
+document.getElementById('sportifForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('sportifId').value;
+    const data = {
+        full_name: document.getElementById('sportifFullName').value.trim(),
+        sport: document.getElementById('sportifSport').value.trim(),
+        region: document.getElementById('sportifRegion').value.trim() || null,
+        description: document.getElementById('sportifDescription').value.trim() || null,
+        image_url: document.getElementById('sportifImageUrl').value.trim() || null
+    };
+    showLoader();
+    try {
+        if (id) {
+            const { error } = await supabaseSpacePublic
+                .from('acteur_sportifs')
+                .update(data)
+                .eq('id', id);
+            if (error) throw error;
+            showToast('Sportif modifié', 'success');
+        } else {
+            const { error } = await supabaseSpacePublic
+                .from('acteur_sportifs')
+                .insert([data]);
+            if (error) throw error;
+            showToast('Sportif ajouté', 'success');
+        }
+        closeSportifModal();
+        await loadSportifs();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur', 'error');
+    } finally {
         hideLoader();
     }
 });
 
-window.closeModal = () => {
-    document.getElementById('candidatureModal').classList.remove('active');
-    currentCandidatureId = null;
-};
-
-document.getElementById('modalValid').addEventListener('click', () => {
-    if (currentCandidatureId) updateStatus(currentCandidatureId, 'approved');
-});
-document.getElementById('modalPause').addEventListener('click', () => {
-    if (currentCandidatureId) updateStatus(currentCandidatureId, 'suspended');
-});
-document.getElementById('modalReject').addEventListener('click', () => {
-    if (currentCandidatureId) updateStatus(currentCandidatureId, 'rejected');
-});
-document.getElementById('modalDelete').addEventListener('click', () => {
-    if (currentCandidatureId) deleteCandidature(currentCandidatureId);
-});
-document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
-document.getElementById('refreshBtn').addEventListener('click', loadCandidatures);
-
-document.getElementById('logoutAdmin')?.addEventListener('click', (e) => {
+document.getElementById('donForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (confirm('Déconnexion ?')) {
-        window.location.href = '../../index.html';
+    const id = document.getElementById('donId').value;
+    const data = {
+        title: document.getElementById('donTitle').value.trim(),
+        description: document.getElementById('donDescription').value.trim() || null,
+        region: document.getElementById('donRegion').value.trim() || null,
+        image_url: document.getElementById('donImageUrl').value.trim() || null
+    };
+    showLoader();
+    try {
+        if (id) {
+            const { error } = await supabaseSpacePublic
+                .from('acteur_dons')
+                .update(data)
+                .eq('id', id);
+            if (error) throw error;
+            showToast('Appel aux dons modifié', 'success');
+        } else {
+            const { error } = await supabaseSpacePublic
+                .from('acteur_dons')
+                .insert([data]);
+            if (error) throw error;
+            showToast('Appel aux dons ajouté', 'success');
+        }
+        closeDonModal();
+        await loadDons();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur', 'error');
+    } finally {
+        hideLoader();
     }
 });
 
+document.getElementById('temoignageForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('temoignageId').value;
+    const data = {
+        author: document.getElementById('temoignageAuthor').value.trim(),
+        content: document.getElementById('temoignageContent').value.trim()
+    };
+    showLoader();
+    try {
+        if (id) {
+            const { error } = await supabaseSpacePublic
+                .from('acteur_temoignages')
+                .update(data)
+                .eq('id', id);
+            if (error) throw error;
+            showToast('Témoignage modifié', 'success');
+        } else {
+            const { error } = await supabaseSpacePublic
+                .from('acteur_temoignages')
+                .insert([data]);
+            if (error) throw error;
+            showToast('Témoignage ajouté', 'success');
+        }
+        closeTemoignageModal();
+        await loadTemoignages();
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur', 'error');
+    } finally {
+        hideLoader();
+    }
+});
+
+// ========== MODALES ==========
+function closeModal() {
+    document.getElementById('candidatureModal').classList.remove('active');
+    currentCandidature = null;
+}
+function closeSportifModal() { document.getElementById('sportifModal').classList.remove('active'); document.getElementById('sportifForm').reset(); document.getElementById('sportifId').value = ''; }
+function closeDonModal() { document.getElementById('donModal').classList.remove('active'); document.getElementById('donForm').reset(); document.getElementById('donId').value = ''; }
+function closeTemoignageModal() { document.getElementById('temoignageModal').classList.remove('active'); document.getElementById('temoignageForm').reset(); document.getElementById('temoignageId').value = ''; }
+
+// ========== BOUTONS D'AJOUT ==========
+document.getElementById('addSportifBtn').addEventListener('click', () => {
+    document.getElementById('sportifModalTitle').textContent = 'Ajouter un sportif';
+    document.getElementById('sportifId').value = '';
+    document.getElementById('sportifForm').reset();
+    document.getElementById('sportifModal').classList.add('active');
+});
+document.getElementById('addDonBtn').addEventListener('click', () => {
+    document.getElementById('donModalTitle').textContent = 'Ajouter un appel aux dons';
+    document.getElementById('donId').value = '';
+    document.getElementById('donForm').reset();
+    document.getElementById('donModal').classList.add('active');
+});
+document.getElementById('addTemoignageBtn').addEventListener('click', () => {
+    document.getElementById('temoignageModalTitle').textContent = 'Ajouter un témoignage';
+    document.getElementById('temoignageId').value = '';
+    document.getElementById('temoignageForm').reset();
+    document.getElementById('temoignageModal').classList.add('active');
+});
+
+// ========== BOUTONS D'ACTIONS SUR CANDIDATURE ==========
+document.getElementById('validCandidatureBtn').addEventListener('click', () => {
+    if (currentCandidature) updateCandidatureStatus(currentCandidature, 'approved');
+});
+document.getElementById('pauseCandidatureBtn').addEventListener('click', () => {
+    if (currentCandidature) updateCandidatureStatus(currentCandidature, 'suspended');
+});
+document.getElementById('rejectCandidatureBtn').addEventListener('click', () => {
+    if (currentCandidature) updateCandidatureStatus(currentCandidature, 'rejected');
+});
+document.getElementById('deleteCandidatureBtn').addEventListener('click', () => {
+    if (currentCandidature) deleteCandidature(currentCandidature);
+});
+document.getElementById('sendCandMessageBtn').addEventListener('click', sendCandMessage);
+
+// ========== RAFFRAÎCHISSEMENT ==========
+document.getElementById('refreshCandidaturesBtn').addEventListener('click', loadCandidatures);
+document.getElementById('refreshSportifsBtn').addEventListener('click', loadSportifs);
+document.getElementById('refreshDonsBtn').addEventListener('click', loadDons);
+document.getElementById('refreshTemoignagesBtn').addEventListener('click', loadTemoignages);
+
+// ========== ONGLETS ==========
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`tab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`).classList.add('active');
+    document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
+    currentTab = tabId;
+    if (tabId === 'candidatures') loadCandidatures();
+    else if (tabId === 'sportifs') loadSportifs();
+    else if (tabId === 'dons') loadDons();
+    else if (tabId === 'temoignages') loadTemoignages();
+}
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+        switchTab(btn.dataset.tab);
+    });
+});
+document.querySelectorAll('#candidatureModal .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
         const tab = btn.dataset.tab;
-        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('active');
+        document.querySelectorAll('#candidatureModal .tab-pane').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('#candidatureModal .tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`cand${tab.charAt(0).toUpperCase() + tab.slice(1)}Tab`).classList.add('active');
         btn.classList.add('active');
-        if (tab === 'messages' && currentCandidatureId) {
-            loadMessages(currentCandidatureId);
-            setTimeout(() => {
-                if (!messageQuill) {
-                    messageQuill = new Quill('#messageEditor', { theme: 'snow', placeholder: 'Écrivez votre message...' });
-                }
-            }, 100);
-        }
-        if (tab === 'edit') {
-            setTimeout(() => {
-                if (!roleDataQuill) {
-                    roleDataQuill = new Quill('#roleDataEditor', { theme: 'snow', placeholder: 'Données spécifiques (JSON valide)' });
-                    roleDataQuill.on('text-change', () => {
-                        const text = roleDataQuill.root.innerHTML;
-                        document.getElementById('editRoleData').value = text;
-                    });
-                }
-            }, 100);
-        }
     });
 });
 
+// ========== INIT ==========
 document.addEventListener('DOMContentLoaded', () => {
     loadCandidatures();
     const modal = document.getElementById('candidatureModal');
@@ -426,3 +672,39 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === modal) closeModal();
     });
 });
+
+// Déclarer les variables globales pour les listes (pour les éditions)
+let sportifsList = [];
+let donsList = [];
+let temoignagesList = [];
+
+// Surcharger les fonctions de chargement pour mettre à jour les listes globales
+const originalLoadSportifs = loadSportifs;
+loadSportifs = async () => {
+    await originalLoadSportifs();
+    const { data } = await supabaseSpacePublic.from('acteur_sportifs').select('*');
+    sportifsList = data || [];
+};
+const originalLoadDons = loadDons;
+loadDons = async () => {
+    await originalLoadDons();
+    const { data } = await supabaseSpacePublic.from('acteur_dons').select('*');
+    donsList = data || [];
+};
+const originalLoadTemoignages = loadTemoignages;
+loadTemoignages = async () => {
+    await originalLoadTemoignages();
+    const { data } = await supabaseSpacePublic.from('acteur_temoignages').select('*');
+    temoignagesList = data || [];
+};
+
+// Réattacher les fonctions
+window.loadSportifs = loadSportifs;
+window.loadDons = loadDons;
+window.loadTemoignages = loadTemoignages;
+window.loadCandidatures = loadCandidatures;
+
+// Démarrer
+loadSportifs();
+loadDons();
+loadTemoignages();
