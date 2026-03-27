@@ -184,7 +184,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const diplomaBox = document.getElementById('upload-diplome');
     const idCardBox = document.getElementById('upload-piece');
 
-    // Gestion affiliation
     affOui.addEventListener('change', () => {
         affiliateGroup.style.display = affOui.checked ? 'block' : 'none';
         if (affOui.checked) {
@@ -197,7 +196,6 @@ document.addEventListener('DOMContentLoaded', () => {
         affiliateIdInput.value = '';
     });
 
-    // Gestion parent si mineur
     birthDateInput.addEventListener('change', () => {
         const birthDate = new Date(birthDateInput.value);
         const today = new Date();
@@ -207,7 +205,6 @@ document.addEventListener('DOMContentLoaded', () => {
         parentGroup.style.display = age < 18 ? 'block' : 'none';
     });
 
-    // Définition des champs spécifiques par sport
     const sportFields = {
         football: {
             roleCode: 'FT',
@@ -394,7 +391,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Upload avec progression (identique à l'original)
     function setupFileUpload(boxId, fileInputId, progressIndicatorSelector) {
         const box = document.getElementById(boxId);
         const input = document.getElementById(fileInputId);
@@ -415,7 +411,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function uploadFileWithProgress(file, fileType, box, indicator) {
         return new Promise((resolve, reject) => {
-            const fileName = `${Date.now()}_${fileType}.${file.name.split('.').pop()}`;
+            const fullName = document.getElementById('fullName').value.trim();
+            const safeName = fullName ? fullName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30) : 'candidat';
+            const fileName = `${safeName}_${fileType}_${Date.now()}.${file.name.split('.').pop()}`;
             supabaseSpacePublic.storage
                 .from('documents')
                 .createSignedUploadUrl(fileName)
@@ -532,7 +530,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (insertError) throw insertError;
             const ppId = inserted.id;
 
-            // Afficher la modale avec l'ID PP
             const modal = document.getElementById('successModal');
             const trackingSpan = document.getElementById('trackingId');
             trackingSpan.textContent = ppId;
@@ -559,7 +556,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Copie du lien dans la modale
     document.getElementById('copyTrackingBtn').addEventListener('click', () => {
         const link = document.getElementById('trackingId').textContent;
         if (link) {
@@ -577,7 +573,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('successModal').classList.remove('active');
     };
 
-    // Carrousel
     const slides = document.querySelectorAll('.carousel-slide');
     const indicators = document.querySelectorAll('.indicator');
     let currentSlide = 0;
@@ -611,7 +606,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Menu mobile
     const menuToggle = document.getElementById('menuToggle');
     const navLinks = document.getElementById('navLinks');
     if (menuToggle && navLinks) {
@@ -627,7 +621,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Récupération du paramètre ref dans l'URL
     const urlParams = new URLSearchParams(window.location.search);
     const ref = urlParams.get('ref');
     if (ref) {
