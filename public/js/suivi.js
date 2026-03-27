@@ -2,7 +2,8 @@ const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
 const supabaseSpacePublic = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let currentId = null;
+let currentInscription = null;
+let replyQuill = null;
 
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
@@ -56,12 +57,7 @@ function formatDate(dateStr) {
     return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-async function checkStatus(id) {
-    if (!id || id.trim() === '') {
-        showToast('Veuillez saisir un identifiant.', 'warning');
-        return;
-    }
-
+async function loadInscription(id) {
     showLoader();
     try {
         const { data, error } = await supabaseSpacePublic
@@ -73,45 +69,50 @@ async function checkStatus(id) {
         if (error || !data) {
             showToast('Identifiant introuvable. Vérifiez le code saisi.', 'error');
             document.getElementById('resultCard').style.display = 'none';
-            return;
+            return null;
         }
-
-        displayResult(data);
+        currentInscription = data;
+        displayInscription(data);
+        await loadMessages(id);
+        document.getElementById('resultCard').style.display = 'block';
+        return data;
     } catch (err) {
         console.error(err);
         showToast('Erreur lors de la vérification.', 'error');
         document.getElementById('resultCard').style.display = 'none';
+        return null;
     } finally {
         hideLoader();
     }
 }
 
-function displayResult(inscription) {
+function displayInscription(ins) {
     const statusMap = {
         pending: { label: 'En attente de validation', class: 'pending' },
         approved: { label: 'Approuvé', class: 'approved' },
-        rejected: { label: 'Rejeté', class: 'rejected' }
+        rejected: { label: 'Rejeté', class: 'rejected' },
+        suspended: { label: 'Suspendu', class: 'pending' }
     };
-    const status = statusMap[inscription.status] || statusMap.pending;
+    const status = statusMap[ins.status] || statusMap.pending;
 
     document.getElementById('statusBadge').textContent = status.label;
     document.getElementById('statusBadge').className = `status-badge ${status.class}`;
-    document.getElementById('applicantName').textContent = inscription.full_name || 'Candidat';
+    document.getElementById('applicantName').textContent = ins.full_name || 'Candidat';
 
     const infoGrid = document.getElementById('infoGrid');
     infoGrid.innerHTML = `
-        <div class="info-item"><strong>ID candidature</strong><span>${escapeHtml(inscription.id)}</span></div>
-        <div class="info-item"><strong>Sport</strong><span>${escapeHtml(inscription.sport)}</span></div>
-        <div class="info-item"><strong>Date de soumission</strong><span>${formatDate(inscription.created_at)}</span></div>
-        <div class="info-item"><strong>Téléphone</strong><span>${escapeHtml(inscription.phone)}</span></div>
-        <div class="info-item"><strong>Diplôme / formation</strong><span>${escapeHtml(inscription.diploma_title)}</span></div>
-        ${inscription.parent_name ? `<div class="info-item"><strong>Parent / tuteur</strong><span>${escapeHtml(inscription.parent_name)}</span></div>` : ''}
+        <div class="info-item"><strong>ID candidature</strong><span>${escapeHtml(ins.id)}</span></div>
+        <div class="info-item"><strong>Sport</strong><span>${escapeHtml(ins.sport)}</span></div>
+        <div class="info-item"><strong>Date de soumission</strong><span>${formatDate(ins.created_at)}</span></div>
+        <div class="info-item"><strong>Téléphone</strong><span>${escapeHtml(ins.phone)}</span></div>
+        <div class="info-item"><strong>Diplôme / formation</strong><span>${escapeHtml(ins.diploma_title)}</span></div>
+        ${ins.parent_name ? `<div class="info-item"><strong>Parent / tuteur</strong><span>${escapeHtml(ins.parent_name)}</span></div>` : ''}
     `;
 
     const sportDataDiv = document.getElementById('sportData');
-    if (inscription.sport_data && Object.keys(inscription.sport_data).length > 0) {
+    if (ins.sport_data && Object.keys(ins.sport_data).length > 0) {
         let sportHtml = `<h3>Informations sportives</h3><div class="sport-data-grid">`;
-        for (const [key, value] of Object.entries(inscription.sport_data)) {
+        for (const [key, value] of Object.entries(ins.sport_data)) {
             if (value) {
                 sportHtml += `<div class="info-item"><strong>${formatSportKey(key)}</strong><span>${escapeHtml(value)}</span></div>`;
             }
@@ -124,63 +125,93 @@ function displayResult(inscription) {
     }
 
     const adminNotesDiv = document.getElementById('adminNotes');
-    if (inscription.admin_notes) {
-        adminNotesDiv.innerHTML = `<strong><i class="fas fa-comment"></i> Message de l'équipe :</strong><br>${escapeHtml(inscription.admin_notes)}`;
+    if (ins.admin_notes) {
+        adminNotesDiv.innerHTML = `<strong><i class="fas fa-comment"></i> Message de l'équipe :</strong><br>${escapeHtml(ins.admin_notes)}`;
         adminNotesDiv.style.display = 'block';
     } else {
         adminNotesDiv.style.display = 'none';
     }
-
-    document.getElementById('resultCard').style.display = 'block';
 }
 
 function formatSportKey(key) {
     const labels = {
-        poste: 'Poste',
-        piedDominant: 'Pied dominant',
-        taille: 'Taille',
-        poids: 'Poids',
-        statistiques: 'Statistiques',
-        club: 'Club',
-        anneesPratique: 'Années de pratique',
-        niveau: 'Niveau',
-        mainDominante: 'Main dominante',
-        envergure: 'Envergure',
-        detente: 'Détente',
-        typeJeu: 'Type de jeu',
-        coupDroit: 'Coup droit',
-        revers: 'Revers',
-        classement: 'Classement',
-        surfacePref: 'Surface préférée',
-        meilleurResultat: 'Meilleur résultat',
-        vitesseService: 'Vitesse de service',
-        discipline: 'Discipline',
-        meilleurePerf: 'Meilleure performance',
-        record100: 'Record 100m',
-        record10k: 'Record 10km',
-        entrainementsSemaine: 'Entraînements/semaine',
-        blessures: 'Blessures',
-        vitesseTir: 'Vitesse de tir',
-        detenteAttaque: 'Détente attaque',
-        detenteContre: 'Détente contre',
-        vitesse40: 'Vitesse 40m',
-        plaquage: 'Plaquage',
-        matchsSaison: 'Matchs saison',
-        nage: 'Nage',
-        meilleur50: 'Meilleur 50m',
-        meilleur100: 'Meilleur 100m',
-        meilleur200: 'Meilleur 200m',
-        chrono50: 'Chrono 50m',
-        grade: 'Grade / Ceinture',
-        poidsCompetition: 'Poids compétition',
-        palmares: 'Palmarès',
-        specialite: 'Spécialité technique',
-        preparationPhysique: 'Préparation physique',
-        ftp: 'FTP (watts)',
-        fcm: 'Fréquence cardiaque max',
-        kmSemaine: 'Km/semaine'
+        poste: 'Poste', piedDominant: 'Pied dominant', taille: 'Taille', poids: 'Poids',
+        statistiques: 'Statistiques', club: 'Club', anneesPratique: 'Années pratique',
+        niveau: 'Niveau', mainDominante: 'Main dominante', envergure: 'Envergure',
+        detente: 'Détente', typeJeu: 'Type jeu', coupDroit: 'Coup droit', revers: 'Revers',
+        classement: 'Classement', surfacePref: 'Surface', meilleurResultat: 'Meilleur résultat',
+        vitesseService: 'Vitesse service', discipline: 'Discipline', meilleurePerf: 'Meilleure perf',
+        record100: 'Record 100m', record10k: 'Record 10km', entrainementsSemaine: 'Entraînements/sem',
+        blessures: 'Blessures', vitesseTir: 'Vitesse tir', detenteAttaque: 'Détente attaque',
+        detenteContre: 'Détente contre', vitesse40: 'Vitesse 40m', plaquage: 'Plaquage',
+        matchsSaison: 'Matchs saison', nage: 'Nage', meilleur50: '50m', meilleur100: '100m',
+        meilleur200: '200m', chrono50: 'Chrono 50m', grade: 'Grade', poidsCompetition: 'Poids compét.',
+        palmares: 'Palmarès', specialite: 'Spécialité', preparationPhysique: 'Prépa physique',
+        ftp: 'FTP', fcm: 'FC max', kmSemaine: 'Km/semaine'
     };
     return labels[key] || key;
+}
+
+async function loadMessages(inscriptionId) {
+    try {
+        const { data: messages, error } = await supabaseSpacePublic
+            .from('premierpasuivi_messages')
+            .select('*')
+            .eq('inscription_id', inscriptionId)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        renderMessages(messages || []);
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur chargement messages', 'error');
+    }
+}
+
+function renderMessages(messages) {
+    const container = document.getElementById('messagesContainer');
+    if (!container) return;
+    if (messages.length === 0) {
+        container.innerHTML = '<p class="empty-message">Aucun message pour le moment.</p>';
+        return;
+    }
+    container.innerHTML = messages.map(msg => `
+        <div class="message ${msg.sender}">
+            <div class="message-bubble">
+                <div>${msg.content}</div>
+                <div class="message-time">${new Date(msg.created_at).toLocaleString('fr-FR')}</div>
+            </div>
+        </div>
+    `).join('');
+    container.scrollTop = container.scrollHeight;
+}
+
+async function sendReply() {
+    if (!currentInscription || !replyQuill) return;
+    const content = replyQuill.root.innerHTML.trim();
+    if (!content || content === '<p><br></p>') {
+        showToast('Message vide', 'warning');
+        return;
+    }
+    showLoader();
+    try {
+        const { error } = await supabaseSpacePublic
+            .from('premierpasuivi_messages')
+            .insert([{
+                inscription_id: currentInscription.id,
+                sender: 'candidate',
+                content: content
+            }]);
+        if (error) throw error;
+        replyQuill.root.innerHTML = '';
+        await loadMessages(currentInscription.id);
+        showToast('Message envoyé', 'success');
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur envoi message', 'error');
+    } finally {
+        hideLoader();
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -191,13 +222,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (idFromUrl) {
         input.value = idFromUrl;
-        checkStatus(idFromUrl);
+        loadInscription(idFromUrl);
     }
 
     checkBtn.addEventListener('click', () => {
-        checkStatus(input.value.trim());
+        const id = input.value.trim();
+        if (id) loadInscription(id);
+        else showToast('Veuillez saisir un identifiant.', 'warning');
     });
 
+    // Initialiser l'éditeur Quill après que la zone soit visible
+    const observer = new MutationObserver(() => {
+        const replyEditor = document.getElementById('replyEditor');
+        if (replyEditor && !replyQuill) {
+            replyQuill = new Quill(replyEditor, { theme: 'snow', placeholder: 'Écrivez votre message...' });
+            observer.disconnect();
+        }
+    });
+    observer.observe(document.getElementById('resultCard'), { childList: true, subtree: true });
+
+    document.getElementById('sendReplyBtn').addEventListener('click', sendReply);
+
+    // Menu mobile
     const menuToggle = document.getElementById('menuToggle');
     const navLinks = document.getElementById('navLinks');
     if (menuToggle && navLinks) {
@@ -210,6 +256,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 navLinks.classList.remove('active');
                 menuToggle.classList.remove('open');
             }
+        });
+    }
+
+    // Sélecteur de langue (simplifié)
+    const langSelect = document.getElementById('langSelect');
+    if (langSelect) {
+        langSelect.addEventListener('change', (e) => {
+            showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
+            // Plus tard, implémenter la traduction
         });
     }
 });
