@@ -25,10 +25,9 @@
 
 body {
     font-family: 'Poppins', sans-serif;
-    background: var(--bg-light);
+    background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
     color: var(--dark);
     line-height: 1.6;
-    overflow-x: hidden;
 }
 
 .spinner {
@@ -46,7 +45,6 @@ body {
     100% { transform: rotate(360deg); }
 }
 
-/* Navigation */
 nav {
     display: flex;
     justify-content: space-between;
@@ -178,7 +176,6 @@ nav {
     border: none;
 }
 
-/* Header de la page */
 .acteur-header {
     background-size: cover;
     background-position: center;
@@ -204,7 +201,6 @@ nav {
     margin: 0 auto;
 }
 
-/* Filtres */
 .filters-section {
     max-width: 1200px;
     margin: 40px auto;
@@ -257,7 +253,6 @@ nav {
     transform: translateY(-2px);
 }
 
-/* Grilles */
 .cards-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -310,8 +305,8 @@ nav {
 }
 
 .btn-contact {
-    background: var(--primary);
-    color: white;
+    background: var(--gold);
+    color: black;
     border: none;
     padding: 8px 20px;
     border-radius: 30px;
@@ -321,11 +316,10 @@ nav {
 }
 
 .btn-contact:hover {
-    background: var(--primary-light);
+    background: var(--gold-dark);
     transform: translateY(-2px);
 }
 
-/* Section devenir acteur */
 .acteur-options {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -386,7 +380,6 @@ nav {
     box-shadow: 0 5px 15px rgba(85,27,140,0.3);
 }
 
-/* Modale commune */
 .modal {
     display: none;
     position: fixed;
@@ -600,7 +593,6 @@ nav {
     box-shadow: 0 10px 20px rgba(85,27,140,0.2);
 }
 
-/* Toast */
 .toast-container {
     position: fixed;
     top: 20px;
@@ -655,7 +647,6 @@ nav {
     to { opacity: 0; transform: translateX(400px); }
 }
 
-/* Footer */
 footer {
     background: #0a0a0a;
     color: white;
@@ -703,7 +694,6 @@ footer {
     margin: 5px 0;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     .menu-toggle {
         display: flex;
@@ -728,9 +718,6 @@ footer {
     }
     .nav-links a {
         margin: 12px 0;
-        text-align: center;
-    }
-    .btn-auth {
         text-align: center;
     }
     .filter-group {
