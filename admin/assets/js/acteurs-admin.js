@@ -844,7 +844,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
-// ========== DÉCONNEXION ==========
+// ========== DÉCONNEXION Simulateur ==========
 document.getElementById('logoutAdmin').addEventListener('click', (e) => {
     e.preventDefault();
     if (confirm('Déconnexion ?')) {
