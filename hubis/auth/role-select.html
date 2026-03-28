@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choix du rôle | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #ffffff;
+            color: #1e1e2a;
+            overflow-x: hidden;
+        }
+
+        /* Navbar */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            background: white;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+
+        .logo img {
+            height: 45px;
+        }
+
+        .logo span {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #6b3ba4;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 16px;
+        }
+
+        .nav-btn {
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: 500;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .nav-btn-outline {
+            border: 1px solid #6b3ba4;
+            color: #6b3ba4;
+            background: transparent;
+        }
+
+        .nav-btn-outline:hover {
+            background: #6b3ba4;
+            color: white;
+        }
+
+        /* Contenu principal */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #6b3ba4;
+            margin-bottom: 16px;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: #555;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Grille des rôles */
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        .role-card {
+            background: #f9f9ff;
+            border-radius: 28px;
+            padding: 32px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid #e9e9f0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.02);
+        }
+
+        .role-card:hover {
+            transform: translateY(-6px);
+            border-color: #6b3ba4;
+            box-shadow: 0 15px 30px -10px rgba(107,59,164,0.15);
+            background: white;
+        }
+
+        .role-icon {
+            font-size: 56px;
+            color: #6b3ba4;
+            margin-bottom: 20px;
+        }
+
+        .role-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #1e1e2a;
+        }
+
+        .role-desc {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid #eee;
+            margin-top: 60px;
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 15px 20px;
+            }
+            .logo span {
+                font-size: 1.2rem;
+            }
+            .hero h1 {
+                font-size: 2rem;
+            }
+            .hero p {
+                font-size: 1rem;
+            }
+            .role-card {
+                padding: 24px 16px;
+            }
+            .role-title {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo" onclick="window.location.href='../index.html'">
+            <img src="../public/img/logo-navbar.png" alt="HubISoccer" onerror="this.src='../img/logo-navbar.png'">
+            <span>HubISoccer</span>
+        </div>
+        <div class="nav-buttons">
+            <a href="../index.html" class="nav-btn nav-btn-outline">Accueil</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1 id="pageTitle">Chargement...</h1>
+            <p id="pageSubtitle">Sélectionnez votre espace pour continuer</p>
+        </div>
+        <div class="roles-grid" id="rolesGrid"></div>
+    </div>
+
+    <div class="footer">
+        <p>© 2026 HubISoccer - The Hub of Inspiration of Soccer</p>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action');
+
+        const pageTitle = document.getElementById('pageTitle');
+        const pageSubtitle = document.getElementById('pageSubtitle');
+
+        if (action === 'login') {
+            pageTitle.innerText = 'Connexion';
+            pageSubtitle.innerText = 'Choisissez votre espace pour vous connecter';
+        } else if (action === 'signup') {
+            pageTitle.innerText = 'Inscription';
+            pageSubtitle.innerText = 'Choisissez votre espace pour créer votre compte';
+        } else {
+            window.location.href = '../index.html';
+        }
+
+        const roles = [
+            { id: 'joueur', name: 'Footballer', icon: 'fas fa-futbol', desc: 'Accédez à votre espace Footballer, suivez vos stats et gérez votre carrière.' },
+            { id: 'agent', name: 'Agent FIFA', icon: 'fas fa-handshake', desc: 'Gérez vos joueurs, contrats et commissions.' },
+            { id: 'coach', name: 'Coach', icon: 'fas fa-chalkboard-user', desc: 'Analysez vos séances, suivez vos joueurs et planifiez.' },
+            { id: 'academie', name: 'Académie', icon: 'fas fa-school', desc: 'Gérez votre centre de formation et vos jeunes talents.' },
+            { id: 'parrain', name: 'Parrain', icon: 'fas fa-star', desc: 'Soutenez les talents et recevez des avantages exclusifs.' },
+            { id: 'arbitre', name: 'Corps arbitral', icon: 'fas fa-whistle', desc: 'Espace dédié aux arbitres et officiels de match.' },
+            { id: 'staff', name: 'Staff médical', icon: 'fas fa-notes-medical', desc: 'Suivi médical, blessures et réhabilitation.' },
+            { id: 'tournoi', name: 'Gestionnaire de tournoi', icon: 'fas fa-trophy', desc: 'Organisez et gérez des compétitions.' }
+        ];
+
+        const grid = document.getElementById('rolesGrid');
+        roles.forEach(role => {
+            const card = document.createElement('div');
+            card.className = 'role-card';
+            card.innerHTML = `
+                <div class="role-icon"><i class="${role.icon}"></i></div>
+                <div class="role-title">${role.name}</div>
+                <div class="role-desc">${role.desc}</div>
+            `;
+            card.addEventListener('click', () => {
+                if (action === 'login') {
+                    window.location.href = `login.html?role=${role.id}`;
+                } else if (action === 'signup') {
+                    window.location.href = `signup.html?role=${role.id}`;
+                }
+            });
+            grid.appendChild(card);
+        });
+    </script>
+</body>
+</html>
