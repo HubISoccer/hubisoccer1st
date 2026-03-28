@@ -2,13 +2,12 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Admin - Acteurs | HubISoccer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.quilljs.com/1.3.6/quill.snow.css">
-    <link rel="stylesheet" href="assets/css/admin.css">
-    <link rel="stylesheet" href="assets/css/acteurs-admin.css">
+    <link rel="stylesheet" href="css/acteurs-admin.css">
 </head>
 <body>
     <div id="globalLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; color: white; font-size: 1.2rem;">
@@ -30,70 +29,174 @@
     <div class="admin-container">
         <h1>Gestion des acteurs</h1>
 
-        <div class="admin-tabs">
-            <button class="tab-btn active" data-tab="candidatures">📋 Candidatures</button>
-            <button class="tab-btn" data-tab="sportifs">⚽ Sportifs</button>
-            <button class="tab-btn" data-tab="dons">❤️ Dons</button>
-            <button class="tab-btn" data-tab="temoignages">💬 Témoignages</button>
-        </div>
-
-        <!-- Onglet Candidatures -->
-        <div id="tabCandidatures" class="tab-pane active">
-            <div class="admin-card">
-                <div class="card-header">
-                    <h2><i class="fas fa-users"></i> Demandes des acteurs</h2>
-                    <div class="header-actions">
-                        <button class="btn-refresh" id="refreshCandidaturesBtn"><i class="fas fa-sync-alt"></i></button>
-                    </div>
+        <!-- Statistiques -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <i class="fas fa-futbol"></i>
+                <div>
+                    <h3 id="statSportifs">0</h3>
+                    <p>Sportifs</p>
                 </div>
-                <div id="candidaturesList" class="admin-list"></div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-hand-holding-heart"></i>
+                <div>
+                    <h3 id="statDons">0</h3>
+                    <p>Appels aux dons</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-coins"></i>
+                <div>
+                    <h3 id="statCollecte">0 FCFA</h3>
+                    <p>Collecté total</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-envelope"></i>
+                <div>
+                    <h3 id="statMessages">0</h3>
+                    <p>Messages non lus</p>
+                </div>
             </div>
         </div>
 
-        <!-- Onglet Sportifs -->
-        <div id="tabSportifs" class="tab-pane">
-            <div class="admin-card">
-                <div class="card-header">
-                    <h2><i class="fas fa-futbol"></i> Sportifs à soutenir</h2>
-                    <div class="header-actions">
-                        <button class="btn-add" id="addSportifBtn"><i class="fas fa-plus"></i> Ajouter</button>
-                        <button class="btn-refresh" id="refreshSportifsBtn"><i class="fas fa-sync-alt"></i></button>
-                    </div>
+        <!-- Section Sportifs -->
+        <div class="admin-card" id="section-sportifs">
+            <div class="card-header">
+                <h2><i class="fas fa-futbol"></i> Sportifs à soutenir</h2>
+                <div class="section-tools">
+                    <input type="text" class="search-input" id="searchSportifs" placeholder="Rechercher...">
+                    <button class="btn-refresh" id="refreshSportifsBtn" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
+                    <button class="btn-add" data-type="sportif"><i class="fas fa-plus"></i> Ajouter</button>
                 </div>
-                <div id="sportifsList" class="admin-list"></div>
             </div>
+            <div id="sportifsList" class="admin-list"></div>
         </div>
 
-        <!-- Onglet Dons -->
-        <div id="tabDons" class="tab-pane">
-            <div class="admin-card">
-                <div class="card-header">
-                    <h2><i class="fas fa-hand-holding-heart"></i> Appels aux dons</h2>
-                    <div class="header-actions">
-                        <button class="btn-add" id="addDonBtn"><i class="fas fa-plus"></i> Ajouter</button>
-                        <button class="btn-refresh" id="refreshDonsBtn"><i class="fas fa-sync-alt"></i></button>
-                    </div>
+        <!-- Section Dons -->
+        <div class="admin-card" id="section-dons">
+            <div class="card-header">
+                <h2><i class="fas fa-hand-holding-heart"></i> Appels aux dons</h2>
+                <div class="section-tools">
+                    <input type="text" class="search-input" id="searchDons" placeholder="Rechercher...">
+                    <button class="btn-refresh" id="refreshDonsBtn" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
+                    <button class="btn-add" data-type="don"><i class="fas fa-plus"></i> Ajouter</button>
                 </div>
-                <div id="donsList" class="admin-list"></div>
             </div>
+            <div id="donsList" class="admin-list"></div>
         </div>
 
-        <!-- Onglet Témoignages -->
-        <div id="tabTemoignages" class="tab-pane">
-            <div class="admin-card">
-                <div class="card-header">
-                    <h2><i class="fas fa-quote-right"></i> Témoignages</h2>
-                    <div class="header-actions">
-                        <button class="btn-add" id="addTemoignageBtn"><i class="fas fa-plus"></i> Ajouter</button>
-                        <button class="btn-refresh" id="refreshTemoignagesBtn"><i class="fas fa-sync-alt"></i></button>
+        <!-- Section Témoignages -->
+        <div class="admin-card" id="section-temoignages">
+            <div class="card-header">
+                <h2><i class="fas fa-quote-right"></i> Témoignages</h2>
+                <div class="section-tools">
+                    <input type="text" class="search-input" id="searchTemoignages" placeholder="Rechercher...">
+                    <button class="btn-refresh" id="refreshTemoignagesBtn" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
+                    <button class="btn-add" data-type="temoignage"><i class="fas fa-plus"></i> Ajouter</button>
+                </div>
+            </div>
+            <div id="temoignagesList" class="admin-list"></div>
+        </div>
+
+        <!-- Section Messages de contact -->
+        <div class="admin-card" id="section-messages">
+            <div class="card-header">
+                <h2><i class="fas fa-envelope"></i> Messages de contact</h2>
+                <div class="section-tools">
+                    <input type="text" class="search-input" id="searchMessages" placeholder="Rechercher...">
+                    <button class="btn-refresh" id="refreshMessagesBtn" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
+                </div>
+            </div>
+            <div id="messagesList" class="admin-list"></div>
+        </div>
+
+        <!-- Section Candidatures (acteurs) -->
+        <div class="admin-card" id="section-candidatures">
+            <div class="card-header">
+                <h2><i class="fas fa-hand-holding-heart"></i> Demandes des acteurs</h2>
+                <div class="section-tools">
+                    <input type="text" class="search-input" id="searchCandidatures" placeholder="Rechercher...">
+                    <button class="btn-refresh" id="refreshCandidaturesBtn" title="Rafraîchir"><i class="fas fa-sync-alt"></i></button>
+                </div>
+            </div>
+            <div id="candidaturesList" class="admin-list"></div>
+        </div>
+    </div>
+
+    <!-- MODALE GÉNÉRIQUE (sportif, don, témoignage) -->
+    <div id="itemModal" class="admin-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeItemModal()">&times;</span>
+            <h3 id="itemModalTitle">Ajouter</h3>
+            <form id="itemForm">
+                <input type="hidden" id="itemType">
+                <input type="hidden" id="itemId">
+                <div id="dynamicFields"></div>
+                <div id="fileUploadSection" style="margin-top: 15px;">
+                    <div class="form-group">
+                        <label>Image (optionnel)</label>
+                        <div class="file-upload-box" id="uploadImage">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Cliquez pour télécharger une image</span>
+                            <input type="file" id="imageFile" accept="image/*">
+                            <div class="progress-indicator" style="display: none;">
+                                <svg class="progress-circle" width="40" height="40">
+                                    <circle class="progress-bg" cx="20" cy="20" r="18" stroke="#e9ecef" stroke-width="3" fill="none"/>
+                                    <circle class="progress-bar" cx="20" cy="20" r="18" stroke="#551B8C" stroke-width="3" fill="none" stroke-dasharray="113.1" stroke-dashoffset="113.1" transform="rotate(-90 20 20)"/>
+                                </svg>
+                                <span class="progress-text">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Vidéo (optionnel)</label>
+                        <div class="file-upload-box" id="uploadVideo">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Cliquez pour télécharger une vidéo</span>
+                            <input type="file" id="videoFile" accept="video/*">
+                            <div class="progress-indicator" style="display: none;">
+                                <svg class="progress-circle" width="40" height="40">
+                                    <circle class="progress-bg" cx="20" cy="20" r="18" stroke="#e9ecef" stroke-width="3" fill="none"/>
+                                    <circle class="progress-bar" cx="20" cy="20" r="18" stroke="#551B8C" stroke-width="3" fill="none" stroke-dasharray="113.1" stroke-dashoffset="113.1" transform="rotate(-90 20 20)"/>
+                                </svg>
+                                <span class="progress-text">0%</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div id="temoignagesList" class="admin-list"></div>
+                <div class="form-group">
+                    <label>Statut</label>
+                    <select id="itemStatus">
+                        <option value="pending">En attente</option>
+                        <option value="approved">Approuvé</option>
+                        <option value="rejected">Rejeté</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Notes admin</label>
+                    <textarea id="itemAdminNotes" rows="2"></textarea>
+                </div>
+                <button type="submit" class="btn-submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODALE POUR MESSAGE DE CONTACT -->
+    <div id="messageModal" class="admin-modal">
+        <div class="modal-content large">
+            <span class="close" onclick="closeMessageModal()">&times;</span>
+            <h3>Message de contact</h3>
+            <div id="messageDetail" class="modal-details scrollable"></div>
+            <div class="message-compose">
+                <div id="replyMessageEditor" style="height: 120px;"></div>
+                <button id="sendReplyBtn" class="btn-send">Répondre</button>
             </div>
         </div>
     </div>
 
-    <!-- MODALE POUR CANDIDATURE (détails + messages + modification) -->
+    <!-- MODALE POUR CANDIDATURE (détails + modification + messages) -->
     <div id="candidatureModal" class="admin-modal">
         <div class="modal-content large">
             <span class="close" onclick="closeCandidatureModal()">×</span>
@@ -142,58 +245,11 @@
         </div>
     </div>
 
-    <!-- MODALE POUR AJOUT/MODIFICATION SPORTIF -->
-    <div id="sportifModal" class="admin-modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeSportifModal()">×</span>
-            <h3 id="sportifModalTitle">Ajouter un sportif</h3>
-            <form id="sportifForm">
-                <input type="hidden" id="sportifId">
-                <div class="form-group"><label>Nom complet *</label><input type="text" id="sportifFullName" required></div>
-                <div class="form-group"><label>Sport *</label><input type="text" id="sportifSport" required></div>
-                <div class="form-group"><label>Région</label><input type="text" id="sportifRegion"></div>
-                <div class="form-group"><label>Description</label><textarea id="sportifDescription" rows="3"></textarea></div>
-                <div class="form-group"><label>Image (URL)</label><input type="text" id="sportifImageUrl"></div>
-                <button type="submit" class="btn-submit">Enregistrer</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODALE POUR DON -->
-    <div id="donModal" class="admin-modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeDonModal()">×</span>
-            <h3 id="donModalTitle">Ajouter un appel aux dons</h3>
-            <form id="donForm">
-                <input type="hidden" id="donId">
-                <div class="form-group"><label>Titre *</label><input type="text" id="donTitle" required></div>
-                <div class="form-group"><label>Description</label><textarea id="donDescription" rows="3"></textarea></div>
-                <div class="form-group"><label>Région</label><input type="text" id="donRegion"></div>
-                <div class="form-group"><label>Image (URL)</label><input type="text" id="donImageUrl"></div>
-                <button type="submit" class="btn-submit">Enregistrer</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODALE POUR TÉMOIGNAGE -->
-    <div id="temoignageModal" class="admin-modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeTemoignageModal()">×</span>
-            <h3 id="temoignageModalTitle">Ajouter un témoignage</h3>
-            <form id="temoignageForm">
-                <input type="hidden" id="temoignageId">
-                <div class="form-group"><label>Auteur *</label><input type="text" id="temoignageAuthor" required></div>
-                <div class="form-group"><label>Contenu *</label><textarea id="temoignageContent" rows="4" required></textarea></div>
-                <button type="submit" class="btn-submit">Enregistrer</button>
-            </form>
-        </div>
-    </div>
+    <div id="toastContainer" class="toast-container"></div>
 
     <footer class="admin-footer">
         <p>© 2026 HubISoccer - Tous droits réservés.</p>
     </footer>
-
-    <div id="toastContainer" class="toast-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
