@@ -12,7 +12,6 @@ let temoignagesData = [];
 let messagesData = [];
 let candidaturesData = [];
 
-// ========== UTILITAIRES ==========
 function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/[&<>]/g, function(m) {
@@ -296,30 +295,43 @@ function renderCandidatures(list) {
 }
 
 function attachListActions() {
+    // Sportifs, Dons, Témoignages
     document.querySelectorAll('.list-item .actions .edit').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.removeEventListener('click', btn._handler);
+        const handler = (e) => {
             e.stopPropagation();
             const id = btn.dataset.id;
             const type = btn.dataset.type;
             openItemModal(type, id);
-        });
+        };
+        btn.addEventListener('click', handler);
+        btn._handler = handler;
     });
     document.querySelectorAll('.list-item .actions .delete').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.removeEventListener('click', btn._handler);
+        const handler = (e) => {
             e.stopPropagation();
             const id = btn.dataset.id;
             const type = btn.dataset.type;
             deleteItem(type, id);
-        });
+        };
+        btn.addEventListener('click', handler);
+        btn._handler = handler;
     });
     document.querySelectorAll('.list-item .actions .view').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.removeEventListener('click', btn._handler);
+        const handler = (e) => {
             e.stopPropagation();
             const id = btn.dataset.id;
             const type = btn.dataset.type;
-            if (type === 'message') openMessageModal(id);
-            else if (type === 'candidature') viewCandidature(id);
-        });
+            if (type === 'message') {
+                openMessageModal(id);
+            } else if (type === 'candidature') {
+                viewCandidature(id);
+            }
+        };
+        btn.addEventListener('click', handler);
+        btn._handler = handler;
     });
 }
 
@@ -529,7 +541,11 @@ async function deleteItem(type, id) {
 // ========== MESSAGES DE CONTACT ==========
 async function openMessageModal(id) {
     const message = messagesData.find(m => m.id == id);
-    if (!message) return;
+    if (!message) {
+        console.error('Message non trouvé', id);
+        showToast('Message introuvable', 'error');
+        return;
+    }
     currentMessageId = id;
     if (!replyMessageQuill) {
         replyMessageQuill = new Quill('#replyMessageEditor', { theme: 'snow', placeholder: 'Écrivez votre réponse...' });
@@ -572,7 +588,7 @@ document.getElementById('sendReplyBtn').addEventListener('click', async () => {
         replyMessageQuill.root.innerHTML = '';
         showToast('Réponse envoyée', 'success');
         closeMessageModal();
-        await loadMessages();
+        await loadMessages(); // recharger pour voir la réponse
     } catch (err) {
         console.error(err);
         showToast('Erreur envoi réponse', 'error');
@@ -771,7 +787,7 @@ function closeCandidatureModal() {
     currentCandidature = null;
 }
 
-// ========== BOUTONS D'AJOUT (modales) ==========
+// ========== BOUTONS D'AJOUT ==========
 document.querySelectorAll('.btn-add').forEach(btn => {
     btn.addEventListener('click', () => {
         const type = btn.dataset.type;
@@ -844,7 +860,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
-// ========== DÉCONNEXION Simulateur ==========
+// ========== DÉCONNEXION ==========
 document.getElementById('logoutAdmin').addEventListener('click', (e) => {
     e.preventDefault();
     if (confirm('Déconnexion ?')) {
