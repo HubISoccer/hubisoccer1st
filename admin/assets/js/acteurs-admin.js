@@ -238,7 +238,7 @@ function renderMessages(list) {
                 </div>
             </div>
             <div class="actions">
-                <button class="view" data-id="${m.id}" title="Voir et répondre"><i class="fas fa-eye"></i></button>
+                <button class="view" data-id="${m.id}" data-type="message" title="Voir et répondre"><i class="fas fa-eye"></i></button>
                 <button class="delete" data-id="${m.id}" data-type="message" title="Supprimer"><i class="fas fa-trash"></i></button>
             </div>
         </div>
@@ -295,7 +295,7 @@ function renderCandidatures(list) {
 }
 
 function attachListActions() {
-    // Sportifs, Dons, Témoignages
+    // Boutons Modifier et Supprimer (ceux qui ont un type explicite)
     document.querySelectorAll('.list-item .actions .edit').forEach(btn => {
         btn.removeEventListener('click', btn._handler);
         const handler = (e) => {
@@ -318,21 +318,23 @@ function attachListActions() {
         btn.addEventListener('click', handler);
         btn._handler = handler;
     });
-    document.querySelectorAll('.list-item .actions .view').forEach(btn => {
-        btn.removeEventListener('click', btn._handler);
-        const handler = (e) => {
+    // Délégation pour les boutons .view (gère les messages et candidatures)
+    // On l'attache une seule fois sur le conteneur, mais pour éviter les doublons, on le fait ici avec un flag.
+    if (!window._viewListenerAttached) {
+        document.querySelector('.admin-container')?.addEventListener('click', (e) => {
+            const viewBtn = e.target.closest('.view');
+            if (!viewBtn) return;
             e.stopPropagation();
-            const id = btn.dataset.id;
-            const type = btn.dataset.type;
+            const id = viewBtn.dataset.id;
+            const type = viewBtn.dataset.type;
             if (type === 'message') {
                 openMessageModal(id);
             } else if (type === 'candidature') {
                 viewCandidature(id);
             }
-        };
-        btn.addEventListener('click', handler);
-        btn._handler = handler;
-    });
+        });
+        window._viewListenerAttached = true;
+    }
 }
 
 function updateStats() {
