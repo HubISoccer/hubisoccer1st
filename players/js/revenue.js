@@ -554,74 +554,81 @@ async function downloadTransactionPDF(transaction) {
         pending: '#ffc107',
         approved: '#28a745',
         rejected: '#dc3545'
-    }[transaction.status] || '#6c757d';
+    } [transaction.status] || '#6c757d';
     const statusTextFr = {
         pending: 'EN ATTENTE',
         approved: 'APPROUVÉ',
         rejected: 'REJETÉ'
-    }[transaction.status] || transaction.status;
-
+    } [transaction.status] || transaction.status;
+    
     const verifyUrl = `https://hubisoccer.github.io/hubisoccer1st/verify-transaction.html?id=${transaction.id}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(verifyUrl)}`;
-
+    
+    // Créer un conteneur avec dimensions fixes pour éviter les coupures
     const element = document.createElement('div');
     element.style.fontFamily = 'Poppins, sans-serif';
+    element.style.width = '800px';
     element.style.padding = '20px';
     element.style.position = 'relative';
     element.style.backgroundColor = '#f8f0ff';
     element.style.color = '#1a1a1a';
-    element.style.width = '100%';
-    element.style.maxWidth = '800px';
     element.style.margin = '0 auto';
+    element.style.boxSizing = 'border-box';
     element.style.backgroundImage = 'repeating-linear-gradient(45deg, rgba(85,27,140,0.05) 0px, rgba(85,27,140,0.05) 2px, transparent 2px, transparent 8px)';
-    element.innerHTML = `
-        <div style="position: relative; z-index: 2;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #551B8C; padding-bottom: 10px; margin-bottom: 20px;">
-                <div>
-                    <img src="img/logo-navbar.png" style="height: 50px;" alt="HubISoccer">
-                    <div><strong>The Hub of Inspiration of Soccer</strong></div>
-                    <div style="font-size: 0.8rem;">RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</div>
-                    <div style="font-size: 0.8rem;">Siège social : Aitchedji, Abomey-Calavi, Bénin</div>
-                    <div style="font-size: 0.8rem;">Contact : +229 01 97 20 81 88 | hubisoccer@gmail.com</div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 1.2rem; font-weight: bold;">JUSTIFICATIF D'OPÉRATION NUMÉRIQUE</div>
-                    <div>Réf : ${transaction.reference}</div>
-                    <div>Date : ${new Date(transaction.created_at).toLocaleString('fr-FR')}</div>
-                </div>
+    
+    // Contenu principal
+    const contentDiv = document.createElement('div');
+    contentDiv.style.position = 'relative';
+    contentDiv.style.zIndex = '2';
+    contentDiv.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #551B8C; padding-bottom: 10px; margin-bottom: 20px;">
+            <div>
+                <img src="img/logo-navbar.png" style="height: 50px;" alt="HubISoccer">
+                <div><strong>The Hub of Inspiration of Soccer</strong></div>
+                <div style="font-size: 0.8rem;">RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</div>
+                <div style="font-size: 0.8rem;">Siège social : Aitchedji, Abomey-Calavi, Bénin</div>
+                <div style="font-size: 0.8rem;">Contact : +229 01 97 20 81 88 | hubisoccer@gmail.com</div>
             </div>
-            <div style="margin-bottom: 20px;">
-                <strong>Bénéficiaire :</strong> ${currentProfile.full_name}<br>
-                <strong>Rôle :</strong> Joueur (FT)<br>
-                <strong>ID HubISoccer :</strong> ${currentProfile.id}
-            </div>
-            <div style="background: ${statusColor}; padding: 8px; text-align: center; font-weight: bold; color: white; margin-bottom: 20px;">
-                STATUT : ${statusTextFr}
-            </div>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Nature</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.type === 'deposit' ? 'Dépôt' : transaction.type === 'withdraw' ? 'Retrait' : transaction.type === 'card_reload' ? 'Rechargement carte' : 'Bonus'}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Montant</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.amount} FCFA</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Mode de règlement</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.description?.split(' ')[2] || 'Solde interne'}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Libellé détaillé</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.description || ''}</td></tr>
-            </table>
-            <div style="font-size: 0.8rem; color: #6c757d; margin-bottom: 20px;">
-                <p>Le présent document est généré de manière automatisée par le système HubISoccer et constitue une preuve d'opération numérique conformément aux dispositions légales sur le commerce électronique au Bénin.</p>
-                <p>Cette transaction est enregistrée dans le grand livre numérique de l'entité The Hub of Inspiration of Soccer et peut faire l'objet d'une vérification de conformité auprès de nos services financiers.</p>
-                <p>Toute falsification de ce document est passible de poursuites judiciaires.</p>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
-                <div><img src="${qrCodeUrl}" style="width: 100px; height: 100px;" alt="QR Code"></div>
-                <div style="text-align: right;">
-                    <div>Signature du Responsable Financier</div>
-                    <div style="margin-top: 20px;">____________________</div>
-                    <div>Cachet numérique</div>
-                </div>
-            </div>
-            <div style="margin-top: 30px; text-align: center; font-size: 0.7rem; color: #aaa;">
-                Approuvé pour valoir ce que de droit
+            <div style="text-align: right;">
+                <div style="font-size: 1.2rem; font-weight: bold;">JUSTIFICATIF D'OPÉRATION NUMÉRIQUE</div>
+                <div>Réf : ${transaction.reference}</div>
+                <div>Date : ${new Date(transaction.created_at).toLocaleString('fr-FR')}</div>
             </div>
         </div>
+        <div style="margin-bottom: 20px;">
+            <strong>Bénéficiaire :</strong> ${currentProfile.full_name}<br>
+            <strong>Rôle :</strong> Joueur (FT)<br>
+            <strong>ID HubISoccer :</strong> ${currentProfile.id}
+        </div>
+        <div style="background: ${statusColor}; padding: 8px; text-align: center; font-weight: bold; color: white; margin-bottom: 20px;">
+            STATUT : ${statusTextFr}
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Nature</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.type === 'deposit' ? 'Dépôt' : transaction.type === 'withdraw' ? 'Retrait' : transaction.type === 'card_reload' ? 'Rechargement carte' : 'Bonus'}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Montant</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.amount} FCFA</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Mode de règlement</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.description?.split(' ')[2] || 'Solde interne'}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Libellé détaillé</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.description || ''}</td></tr>
+        </table>
+        <div style="font-size: 0.8rem; color: #6c757d; margin-bottom: 20px;">
+            <p>Le présent document est généré de manière automatisée par le système HubISoccer et constitue une preuve d'opération numérique conformément aux dispositions légales sur le commerce électronique au Bénin.</p>
+            <p>Cette transaction est enregistrée dans le grand livre numérique de l'entité The Hub of Inspiration of Soccer et peut faire l'objet d'une vérification de conformité auprès de nos services financiers.</p>
+            <p>Toute falsification de ce document est passible de poursuites judiciaires.</p>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+            <div><img src="${qrCodeUrl}" style="width: 100px; height: 100px;" alt="QR Code"></div>
+            <div style="text-align: right;">
+                <div>Signature du Responsable Financier</div>
+                <div style="margin-top: 20px;">____________________</div>
+                <div>Cachet numérique</div>
+            </div>
+        </div>
+        <div style="margin-top: 30px; text-align: center; font-size: 0.7rem; color: #aaa;">
+            Approuvé pour valoir ce que de droit
+        </div>
     `;
+    element.appendChild(contentDiv);
+    
+    // Filigrane
     const watermark = document.createElement('div');
     watermark.style.position = 'absolute';
     watermark.style.top = '0';
@@ -633,12 +640,13 @@ async function downloadTransactionPDF(transaction) {
     watermark.style.background = 'repeating-linear-gradient(45deg, rgba(85,27,140,0.1) 0px, rgba(85,27,140,0.1) 3px, transparent 3px, transparent 12px)';
     watermark.innerHTML = '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 48px; color: rgba(85,27,140,0.2); white-space: nowrap;">CONFIDENTIEL HUBISOCCER</div>';
     element.appendChild(watermark);
+    
     document.body.appendChild(element);
     const opt = {
         margin: 0.5,
         filename: `transaction_${transaction.reference}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, windowWidth: element.scrollWidth, windowHeight: element.scrollHeight },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
     html2pdf().set(opt).from(element).save().then(() => {
