@@ -478,6 +478,282 @@ async function loadUserMetadata() {
     hiddenPosts = new Set(hiddenData?.map(h => h.post_id) || []);
 }
 
+// ==================== RELATIONS (ABONNÉS / ABONNEMENTS / SUGGESTIONS) ====================
+
+async function loadFollowers() {
+    if (!currentProfile) return;
+    const { data, error } = await supabaseClient
+        .from('feed_follows')
+        .select('follower_id, profiles!follower_id(id, full_name, avatar_url, username)')
+        .eq('followed_id', currentProfile.id);
+    if (error) {
+        console.error('Erreur chargement followers:', error);
+        return;
+    }
+    followers = data || [];
+    renderFollowersList();
+}
+
+function renderFollowersList() {
+    const container = document.getElementById('followersList');
+    if (!container) return;
+    if (!followers.length) {
+        container.innerHTML = '<li>Aucun abonné</li>';
+        return;
+    }
+    container.innerHTML = followers.map(f => {
+        const user = f.profiles;
+        const isFollowing = following.some(fol => fol.following_id === user.id);
+        return `
+            <li data-user-id="${user.id}">
+                <img src="${user.avatar_url || 'img/user-default.jpg'}" onclick="openUserProfile('${user.id}')">
+                <span onclick="openUserProfile('${user.id}')">${escapeHtml(user.full_name)}</span>
+                <button class="follow-btn ${isFollowing ? 'following' : ''}" data-user-id="${user.id}" onclick="toggleFollow(this)">${isFollowing ? 'Abonné' : 'Suivre'}</button>
+            </li>
+        `;
+    }).join('');
+}
+
+async function loadFollowing() {
+    if (!currentProfile) return;
+    const { data, error } = await supabaseClient
+        .from('feed_follows')
+        .select('following_id, profiles!following_id(id, full_name, avatar_url, username)')
+        .eq('follower_id', currentProfile.id);
+    if (error) {
+        console.error('Erreur chargement following:', error);
+        return;
+    }
+    following = data || [];
+    renderFollowingList();
+}
+
+function renderFollowingList() {
+    const container = document.getElementById('followingList');
+    if (!container) return;
+    if (!following.length) {
+        container.innerHTML = '<li>Aucun abonnement</li>';
+        return;
+    }
+    container.innerHTML = following.map(f => {
+        const user = f.profiles;
+        return `
+            <li data-user-id="${user.id}">
+                <img src="${user.avatar_url || 'img/user-default.jpg'}" onclick="openUserProfile('${user.id}')">
+                <span onclick="openUserProfile('${user.id}')">${escapeHtml(user.full_name)}</span>
+                <button class="follow-btn following" data-user-id="${user.id}" onclick="toggleFollow(this)">Abonné</button>
+            </li>
+        `;
+    }).join('');
+}
+
+async function loadSuggestions() {
+    if (!currentProfile) return;
+    // Récupérer des profils que l'utilisateur ne suit pas
+    const followingIds = following.map(f => f.following_id);
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('id, full_name, avatar_url, username')
+        .not('id', 'in', `(${followingIds.join(',') || 'null'})`)
+        .neq('id', currentProfile.id)
+        .limit(10);
+    if (error) {
+        console.error('Erreur chargement suggestions:', error);
+        return;
+    }
+    renderSuggestionsList(data);
+}
+
+function renderSuggestionsList(users) {
+    const container = document.getElementById('suggestionsList');
+    if (!container) return;
+    if (!users.length) {
+        container.innerHTML = '<li>Aucune suggestion</li>';
+        return;
+    }
+    container.innerHTML = users.map(user => `
+        <li data-user-id="${user.id}">
+            <img src="${user.avatar_url || 'img/user-default.jpg'}" onclick="openUserProfile('${user.id}')">
+            <span onclick="openUserProfile('${user.id}')">${escapeHtml(user.full_name)}</span>
+            <button class="follow-btn" data-user-id="${user.id}" onclick="toggleFollow(this)">Suivre</button>
+        </li>
+    `).join('');
+}
+
+// ==================== LIVES ====================
+async function loadLives() {
+    if (!currentProfile) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('lives')
+            .select('id, title, user_id, profiles(id, full_name, avatar_url)')
+            .eq('status', 'en_direct')
+            .order('started_at', { ascending: false });
+        if (error) throw error;
+        renderLivesList(data || []);
+    } catch (err) {
+        console.error('Erreur chargement lives:', err);
+    }
+}
+
+function renderLivesList(lives) {
+    const container = document.getElementById('livesList');
+    if (!container) return;
+    if (!lives.length) {
+        container.innerHTML = '<li>Aucun live en direct</li>';
+        return;
+    }
+    container.innerHTML = lives.map(live => `
+        <li data-live-id="${live.id}" onclick="window.location.href='live.html?id=${live.id}'">
+            <img src="${live.profiles?.avatar_url || 'img/user-default.jpg'}" alt="${live.profiles?.full_name}">
+            <div>
+                <strong>${live.title}</strong><br>
+                <small>${live.profiles?.full_name}</small>
+            </div>
+        </li>
+    `).join('');
+}
+
+// ==================== SUIVI ET PROFIL ====================
+
+async function toggleFollow(button) {
+    const userId = button.dataset.userId;
+    const isFollowing = button.classList.contains('following');
+    if (isFollowing) {
+        const { error } = await supabaseClient
+            .from('feed_follows')
+            .delete()
+            .eq('follower_id', currentProfile.id)
+            .eq('followed_id', userId);
+        if (error) {
+            showToast('Erreur lors du désabonnement', 'error');
+            return;
+        }
+    } else {
+        const { error } = await supabaseClient
+            .from('feed_follows')
+            .insert({ follower_id: currentProfile.id, followed_id: userId });
+        if (error) {
+            showToast('Erreur lors de l’abonnement', 'error');
+            return;
+        }
+    }
+    // Recharger les listes et l'état des posts
+    await loadFollowing();
+    await loadFollowers();
+    await loadSuggestions();
+    renderPosts(); // met à jour les boutons dans les posts
+    showToast(isFollowing ? 'Désabonné' : 'Abonné', 'success');
+}
+
+async function openUserProfile(userId) {
+    if (userId === currentProfile.id) {
+        // Si c'est le profil de l'utilisateur courant, on peut ouvrir la page d'édition
+        window.location.href = 'profile-edit.html';
+        return;
+    }
+    // Récupérer les infos du profil cible
+    const { data: profile, error } = await supabaseClient
+        .from('profiles')
+        .select('id, full_name, username, avatar_url, bio, interests, reason, vision')
+        .eq('id', userId)
+        .single();
+    if (error) {
+        showToast('Impossible de charger le profil', 'error');
+        return;
+    }
+    // Récupérer les compteurs de followers/following
+    const { count: followersCount } = await supabaseClient
+        .from('feed_follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('followed_id', userId);
+    const { count: followingCount } = await supabaseClient
+        .from('feed_follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('follower_id', userId);
+    
+    // Remplir la modale
+    document.getElementById('profileAvatar').src = profile.avatar_url || 'img/user-default.jpg';
+    document.getElementById('profileName').textContent = profile.full_name;
+    document.getElementById('profileHubId').textContent = `@${profile.username || 'utilisateur'}`;
+    document.getElementById('profileBio').textContent = profile.bio || 'Aucune bio';
+    document.getElementById('profileInterests').textContent = profile.interests || 'Non renseigné';
+    document.getElementById('profileReason').textContent = profile.reason || 'Non renseigné';
+    document.getElementById('profileVision').textContent = profile.vision || 'Non renseigné';
+    
+    // Ajouter les compteurs (par exemple sous le pseudo)
+    let countersHtml = `<div class="profile-stats"><span>${followersCount} abonnés</span> · <span>${followingCount} abonnements</span></div>`;
+    const hubIdElem = document.getElementById('profileHubId');
+    if (hubIdElem && !document.querySelector('.profile-stats')) {
+        hubIdElem.insertAdjacentHTML('afterend', countersHtml);
+    }
+    
+    // Gérer le bouton "Suivre"
+    const isFollowing = following.some(f => f.following_id === userId);
+    const messageBtn = document.querySelector('#userProfileModal .btn-send-message');
+    // S'assurer qu'il y a un bouton "Suivre" à côté ou à la place. Pour l'instant, nous allons ajouter un bouton dans la modale si nécessaire.
+    // On peut modifier le HTML de la modale pour ajouter un conteneur dynamique, mais pour simplifier, nous allons ajouter un bouton juste avant le bouton message.
+    let followBtn = document.getElementById('modalFollowBtn');
+    if (!followBtn) {
+        followBtn = document.createElement('button');
+        followBtn.id = 'modalFollowBtn';
+        followBtn.className = 'follow-btn';
+        followBtn.style.marginRight = '10px';
+        messageBtn.parentNode.insertBefore(followBtn, messageBtn);
+    }
+    followBtn.textContent = isFollowing ? 'Abonné' : 'Suivre';
+    followBtn.classList.toggle('following', isFollowing);
+    followBtn.dataset.userId = userId;
+    followBtn.onclick = () => toggleFollow(followBtn);
+    
+    // Stocker l'ID de l'utilisateur pour le message direct
+    selectedUserId = userId;
+    
+    // Afficher la modale
+    document.getElementById('userProfileModal').style.display = 'block';
+}
+
+function closeUserProfileModal() {
+    document.getElementById('userProfileModal').style.display = 'none';
+    // Nettoyer le bouton ajouté pour éviter les doublons
+    const followBtn = document.getElementById('modalFollowBtn');
+    if (followBtn) followBtn.remove();
+    selectedUserId = null;
+}
+
+
+// ==================== VUES DES POSTS ====================
+let viewedPosts = new Set();
+
+function observePostsForViews() {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const postCard = entry.target.closest('.post-card');
+                if (!postCard) return;
+                const postId = postCard.dataset.postId;
+                if (postId && !viewedPosts.has(postId)) {
+                    viewedPosts.add(postId);
+                    recordView(postId);
+                }
+            }
+        });
+    }, { threshold: 0.5 });
+    
+    document.querySelectorAll('.post-card').forEach(card => observer.observe(card));
+}
+
+async function recordView(postId) {
+    if (!currentProfile) return;
+    const { error } = await supabaseClient
+        .from('post_views')
+        .insert({ user_id: currentProfile.id, post_id: postId });
+    if (error) console.error('Erreur enregistrement vue:', error);
+}
+
+
+
+
 // ==================== POSTS ====================
 async function getCountsMap(table, column, ids) {
     if (!ids.length) return {};
@@ -725,6 +1001,9 @@ function renderPosts() {
     if (!feed) return;
 
     let filteredPosts = window.filteredPosts || [...posts];
+    if (window.currentRoleFilter) {
+    filteredPosts = filteredPosts.filter(p => p.author?.role === window.currentRoleFilter);
+    }
     if (currentFilter === 'following') {
         const followingIds = following.map(f => f.following_id);
         filteredPosts = filteredPosts.filter(p => followingIds.includes(p.user_id));
@@ -2302,6 +2581,21 @@ function initSearchAndFilters() {
     });
 }
 
+// ==================== FILTRES PAR RÔLE ====================
+function initRoleFilters() {
+    const roleButtons = document.querySelectorAll('.role-filters .filter-btn');
+    roleButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const role = btn.dataset.role;
+            window.currentRoleFilter = (role === 'all') ? null : role;
+            renderPosts();
+            // Mettre à jour l'aspect actif
+            roleButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+}
+
 // ==================== MENU UTILISATEUR ====================
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
@@ -2470,12 +2764,16 @@ async function init() {
     populateCountrySelect();
     await loadSiteConfig();
     await loadFollowers();
+    await loadFollowing();
+    await loadSuggestions();
     await loadCollections();
     await loadUserMetadata();
     await loadNotifications();
     await loadStories();
+    await loadLives();
     await loadPosts(true);
     initSearchAndFilters();
+    initRoleFilters();
     initUserMenu();
     initLogout();
     initSidebars();
