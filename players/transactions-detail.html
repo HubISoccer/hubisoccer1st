@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Détail des transactions | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/transactions-detail.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+    <div id="globalLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; color: white; font-size: 1.2rem;">
+        <div class="spinner"></div> Chargement...
+    </div>
+
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Espace Joueur</span>
+        </div>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="yo">🇳🇬 Yoruba</option>
+                <option value="fon">🇧🇯 Fon</option>
+                <option value="mina">🇹🇬 Mina</option>
+                <option value="lin">🇨🇬 Lingala</option>
+                <option value="wol">🇸🇳 Wolof</option>
+                <option value="diou">🇨🇮 Dioula</option>
+                <option value="ha">🇳🇬 Hausa</option>
+                <option value="sw">🇰🇪 Kiswahili</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="pt">🇵🇹 Português</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="ar">🇸🇦 العربية</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="ja">🇯🇵 日本語</option>
+                <option value="tr">🇹🇷 Türkçe</option>
+                <option value="ko">🇰🇷 한국어</option>
+                <option value="hi">🇮🇳 हिन्दी</option>
+                <option value="nl">🇳🇱 Nederlands</option>
+                <option value="pl">🇵🇱 Polski</option>
+                <option value="vi">🇻🇳 Tiếng Việt</option>
+            </select>
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <div class="avatar-initials" id="userAvatarInitials" style="display: none; width: 35px; height: 35px; border-radius: 50%; background: #551B8C; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;"></div>
+                <img src="img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar" style="display: none;">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="edit-cv.html">Mon CV Pro</a>
+                    <a href="support.html">Paramètres</a>
+                    <a href="#" id="languageLink">Langue (Français)</a>
+                    <a href="#" id="logoutLink">Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Menu Joueur</h3>
+            <button class="close-sidebar" id="closeSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+            <a href="feed.html"><i class="fas fa-users"></i> Ma Communauté</a>
+            <a href="verification.html"><i class="fas fa-shield-alt"></i> Vérification du Statut</a>
+            <a href="edit-cv.html"><i class="fas fa-file-alt"></i> Modifier mon CV Pro</a>
+            <a href="certifications.html"><i class="fas fa-certificate"></i> Diplômes & Certifs</a>
+            <a href="tournaments.html"><i class="fas fa-trophy"></i> Suivi Tournoi (Live)</a>
+            <a href="transfers.html"><i class="fas fa-exchange-alt"></i> Historique Transferts</a>
+            <hr>
+            <a href="videos.html"><i class="fas fa-video"></i> Mes Vidéos</a>
+            <a href="revenue.html"><i class="fas fa-coins"></i> Mes Revenus</a>
+            <a href="messages.html"><i class="fas fa-envelope"></i> Messages</a>
+            <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <main class="transactions-detail-main">
+        <div class="transactions-detail-container">
+            <div class="page-header">
+                <h1><i class="fas fa-list-ul"></i> Détail des transactions</h1>
+                <p>Consultez l’intégralité de vos opérations.</p>
+            </div>
+
+            <!-- Filtres -->
+            <div class="filters-bar">
+                <div class="filter-group">
+                    <label>Type</label>
+                    <select id="filterType">
+                        <option value="all">Tous</option>
+                        <option value="deposit">Dépôts</option>
+                        <option value="withdraw">Retraits</option>
+                        <option value="bonus">Bonus</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Statut</label>
+                    <select id="filterStatus">
+                        <option value="all">Tous</option>
+                        <option value="pending">En attente</option>
+                        <option value="approved">Approuvé</option>
+                        <option value="rejected">Rejeté</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Date de début</label>
+                    <input type="date" id="dateStart">
+                </div>
+                <div class="filter-group">
+                    <label>Date de fin</label>
+                    <input type="date" id="dateEnd">
+                </div>
+                <div class="filter-group">
+                    <label>Montant min (FCFA)</label>
+                    <input type="number" id="amountMin" placeholder="0">
+                </div>
+                <div class="filter-group">
+                    <label>Montant max (FCFA)</label>
+                    <input type="number" id="amountMax" placeholder="Tous">
+                </div>
+                <div class="filter-group search-group">
+                    <label>Recherche</label>
+                    <input type="text" id="searchInput" placeholder="Référence, description...">
+                </div>
+                <button class="btn-filter" id="applyFilters"><i class="fas fa-filter"></i> Filtrer</button>
+                <button class="btn-reset" id="resetFilters"><i class="fas fa-undo-alt"></i> Réinitialiser</button>
+            </div>
+
+            <!-- Export et totaux -->
+            <div class="export-bar">
+                <div class="totals">
+                    <span>Total des transactions : <strong id="totalCount">0</strong></span>
+                    <span>Somme totale : <strong id="totalAmount">0 FCFA</strong></span>
+                </div>
+                <button class="btn-export-csv" id="exportCsvBtn"><i class="fas fa-download"></i> Exporter en CSV</button>
+            </div>
+
+            <!-- Liste des transactions -->
+            <div class="transactions-list" id="transactionsList">
+                <!-- Les transactions seront chargées dynamiquement -->
+            </div>
+        </div>
+    </main>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/transactions-detail.js"></script>
+</body>
+</html>
