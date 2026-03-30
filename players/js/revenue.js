@@ -8,6 +8,7 @@ let wallet = null;
 let transactions = [];
 let followersCount = 0;
 let bonusTiers = [];
+let currentCardAction = null;
 
 function escapeHtml(str) {
     if (!str) return '';
@@ -114,6 +115,7 @@ function updateAvatarDisplay() {
     }
 }
 
+// ========== GESTION DE LA CARTE ==========
 async function loadOrCreateWallet() {
     if (!currentProfile) return null;
     showLoader();
@@ -128,33 +130,14 @@ async function loadOrCreateWallet() {
 
         if (wallets && wallets.length > 0) {
             wallet = wallets[0];
+            await ensureCardFields(wallet);
+            displayCard();
         } else {
-            const { data: newWallet, error: insertError } = await supabasePlayersSpacePrive
-                .from('player_wallets')
-                .insert([{
-                    player_id: currentProfile.id,
-                    balance: 0,
-                    balance_pending: 0,
-                    bonus_inscription: 0
-                }])
-                .select()
-                .single();
-            if (insertError) throw insertError;
-            wallet = newWallet;
-            const accountNumber = `HUB${String(wallet.id).padStart(8, '0')}`;
-            const { error: updateError } = await supabasePlayersSpacePrive
-                .from('player_wallets')
-                .update({ account_number: accountNumber })
-                .eq('id', wallet.id);
-            if (updateError) console.error('Erreur mise à jour account_number:', updateError);
-            else wallet.account_number = accountNumber;
+            // Pas de portefeuille, afficher le bouton de création
+            document.getElementById('createCardSection').style.display = 'block';
+            document.getElementById('hubisCardContainer').style.display = 'none';
         }
-        const cardNumberElem = document.getElementById('cardNumber');
-        if (cardNumberElem && wallet.account_number) {
-            const masked = wallet.account_number.replace(/(.{4})/g, '$1 ').trim();
-            cardNumberElem.textContent = masked;
-        }
-        document.getElementById('pendingBalance').textContent = `${wallet.balance_pending || 0} FCFA`;
+        updateWalletUI();
         return wallet;
     } catch (err) {
         console.error(err);
@@ -165,6 +148,206 @@ async function loadOrCreateWallet() {
     }
 }
 
+async function ensureCardFields(w) {
+    // Si la carte n'a pas encore de numéro, générer les informations
+    if (!w.card_number) {
+        const cardNumber = generateCardNumber();
+        const cardType = generateCardType();
+        const expiry = generateExpiry();
+        const withdrawalCode = generateRandomDigits(5);
+        const emarketCode = generateRandomDigits(4);
+        const { error } = await supabasePlayersSpacePrive
+            .from('player_wallets')
+            .update({
+                card_number: cardNumber,
+                card_type: cardType,
+                card_expiry: expiry,
+                withdrawal_code: withdrawalCode,
+                emarket_code: emarketCode,
+                card_status: 'active'
+            })
+            .eq('id', w.id);
+        if (error) throw error;
+        Object.assign(w, { card_number: cardNumber, card_type: cardType, card_expiry: expiry, withdrawal_code: withdrawalCode, emarket_code: emarketCode, card_status: 'active' });
+    }
+}
+
+function generateCardNumber() {
+    let num = '';
+    for (let i = 0; i < 20; i++) num += Math.floor(Math.random() * 10);
+    return num;
+}
+function generateCardType() {
+    const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase(); // 5 caractères alphanum
+    const timestampPart = Math.floor(Date.now() / 1000).toString().slice(-5);
+    return `${randomPart} Role HUBIS ${timestampPart}`;
+}
+function generateExpiry() {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() + 1);
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    return `${month}/${year}`;
+}
+function generateRandomDigits(length) {
+    return Math.floor(Math.random() * Math.pow(10, length)).toString().padStart(length, '0');
+}
+
+function displayCard() {
+    document.getElementById('createCardSection').style.display = 'none';
+    const container = document.getElementById('hubisCardContainer');
+    container.style.display = 'block';
+    const cardNumberElem = document.getElementById('cardNumber');
+    const masked = wallet.card_number.replace(/(.{4})/g, '$1 ').trim();
+    cardNumberElem.textContent = masked;
+    document.getElementById('cardType').textContent = wallet.card_type;
+    document.getElementById('cardExpiry').textContent = wallet.card_expiry;
+    document.getElementById('cardBalance').textContent = `${wallet.balance || 0} FCFA`;
+    document.getElementById('cardHolder').textContent = currentProfile.full_name || 'Titulaire';
+    const wCode = wallet.withdrawal_code ? `Code retrait: ${wallet.withdrawal_code}` : 'Code retrait: •••••';
+    const eCode = wallet.emarket_code ? `Code e‑market: ${wallet.emarket_code}` : 'Code e‑market: ••••';
+    document.getElementById('withdrawalCode').textContent = wCode;
+    document.getElementById('emarketCode').textContent = eCode;
+    updateCardButtonsState();
+}
+
+function updateCardButtonsState() {
+    const isActive = wallet.card_status === 'active';
+    const blockBtn = document.getElementById('blockCardBtn');
+    const deleteBtn = document.getElementById('deleteCardBtn');
+    blockBtn.textContent = isActive ? 'Bloquer' : 'Débloquer';
+    // Le bouton supprimer reste actif même si bloqué, mais l'action sera différente
+}
+
+async function createCard() {
+    if (wallet) {
+        showToast('Carte déjà existante', 'warning');
+        return;
+    }
+    showLoader();
+    try {
+        // Créer un nouveau portefeuille avec les données de carte
+        const cardNumber = generateCardNumber();
+        const cardType = generateCardType();
+        const expiry = generateExpiry();
+        const withdrawalCode = generateRandomDigits(5);
+        const emarketCode = generateRandomDigits(4);
+        const { data: newWallet, error: insertError } = await supabasePlayersSpacePrive
+            .from('player_wallets')
+            .insert([{
+                player_id: currentProfile.id,
+                balance: 0,
+                balance_pending: 0,
+                bonus_inscription: 0,
+                account_number: `HUB${Date.now()}`,
+                card_number: cardNumber,
+                card_type: cardType,
+                card_expiry: expiry,
+                withdrawal_code: withdrawalCode,
+                emarket_code: emarketCode,
+                card_status: 'active'
+            }])
+            .select()
+            .single();
+        if (insertError) throw insertError;
+        wallet = newWallet;
+        displayCard();
+        showToast('Carte créée avec succès !', 'success');
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur lors de la création de la carte', 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function cardAction(action) {
+    if (!wallet) return;
+    if (action === 'reload') {
+        openDepositModal();
+        return;
+    }
+    // Pour bloquer, supprimer, on demande le code de retrait
+    currentCardAction = action;
+    document.getElementById('cardActionTitle').innerText = action === 'block' ? 'Bloquer la carte' : 'Supprimer la carte';
+    document.getElementById('cardActionModal').classList.add('active');
+}
+
+async function confirmCardAction() {
+    const code = document.getElementById('cardActionCode').value;
+    if (!code || code.length !== 5) {
+        showToast('Code de retrait invalide', 'warning');
+        return;
+    }
+    if (code !== wallet.withdrawal_code) {
+        showToast('Code incorrect', 'error');
+        return;
+    }
+    closeCardActionModal();
+    showLoader();
+    try {
+        if (currentCardAction === 'block') {
+            const newStatus = wallet.card_status === 'active' ? 'blocked' : 'active';
+            const { error } = await supabasePlayersSpacePrive
+                .from('player_wallets')
+                .update({ card_status: newStatus })
+                .eq('id', wallet.id);
+            if (error) throw error;
+            wallet.card_status = newStatus;
+            updateCardButtonsState();
+            showToast(`Carte ${newStatus === 'active' ? 'débloquée' : 'bloquée'}`, 'success');
+            // Notifier l'admin (on peut insérer une notification)
+            await supabasePlayersSpacePrive.from('notifications').insert([{
+                user_id: currentProfile.id,
+                type: 'card_action',
+                content: `Carte ${newStatus === 'active' ? 'débloquée' : 'bloquée'} par l'utilisateur`,
+                read: false,
+                created_at: new Date()
+            }]);
+        } else if (currentCardAction === 'delete') {
+            const { error } = await supabasePlayersSpacePrive
+                .from('player_wallets')
+                .update({ card_status: 'deleted' })
+                .eq('id', wallet.id);
+            if (error) throw error;
+            wallet.card_status = 'deleted';
+            showToast('Carte supprimée. Contactez l\'administration pour en créer une nouvelle.', 'info');
+            // Cacher la carte et afficher le bouton de création
+            document.getElementById('hubisCardContainer').style.display = 'none';
+            document.getElementById('createCardSection').style.display = 'block';
+            await supabasePlayersSpacePrive.from('notifications').insert([{
+                user_id: currentProfile.id,
+                type: 'card_deleted',
+                content: `Carte supprimée par l'utilisateur`,
+                read: false,
+                created_at: new Date()
+            }]);
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur lors de l\'action', 'error');
+    } finally {
+        hideLoader();
+        currentCardAction = null;
+        document.getElementById('cardActionCode').value = '';
+    }
+}
+
+function flipCard() {
+    const recto = document.getElementById('cardRecto');
+    const verso = document.getElementById('cardVerso');
+    if (recto.style.display === 'none') {
+        recto.style.display = 'block';
+        verso.style.display = 'none';
+        document.getElementById('flipCardBtn').textContent = 'Visualiser le recto';
+    } else {
+        recto.style.display = 'none';
+        verso.style.display = 'block';
+        document.getElementById('flipCardBtn').textContent = 'Visualiser le verso';
+    }
+}
+
+// ========== TRANSACTIONS ==========
 async function loadTransactions() {
     if (!currentProfile) return;
     showLoader();
@@ -173,7 +356,8 @@ async function loadTransactions() {
             .from('player_transactions')
             .select('*')
             .eq('player_id', currentProfile.id)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(20);
         if (error) throw error;
         transactions = data || [];
         renderTransactions();
@@ -243,26 +427,92 @@ function renderTransactions() {
 }
 
 async function downloadTransactionPDF(transaction) {
-    const balanceBefore = transaction.balance_before ?? 'N/A';
-    const balanceAfter = transaction.balance_after ?? 'N/A';
+    // Préparer les données
+    const statusColor = {
+        pending: '#ffc107',
+        approved: '#28a745',
+        rejected: '#dc3545'
+    }[transaction.status] || '#6c757d';
+    const statusTextFr = {
+        pending: 'EN ATTENTE',
+        approved: 'APPROUVÉ',
+        rejected: 'REJETÉ'
+    }[transaction.status] || transaction.status;
 
+    // Générer un QR code (externe ou avec une lib)
+    const verifyUrl = `https://hubisoccer.github.io/hubisoccer1st/verify-transaction.html?id=${transaction.id}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(verifyUrl)}`;
+
+    // Créer le contenu HTML du PDF
     const element = document.createElement('div');
-    element.style.padding = '20px';
     element.style.fontFamily = 'Poppins, sans-serif';
+    element.style.padding = '20px';
+    element.style.position = 'relative';
+    element.style.backgroundColor = '#f8f0ff'; // violet clair
+    element.style.color = '#1a1a1a';
+    // Filigrane en fond
+    element.style.backgroundImage = 'repeating-linear-gradient(45deg, rgba(85,27,140,0.05) 0px, rgba(85,27,140,0.05) 2px, transparent 2px, transparent 8px)';
     element.innerHTML = `
-        <h2>Reçu de transaction</h2>
-        <p><strong>Référence :</strong> ${escapeHtml(transaction.reference)}</p>
-        <p><strong>Date :</strong> ${new Date(transaction.created_at).toLocaleString('fr-FR')}</p>
-        <p><strong>Type :</strong> ${transaction.type === 'deposit' ? 'Dépôt' : transaction.type === 'withdraw' ? 'Retrait' : 'Bonus'}</p>
-        <p><strong>Montant :</strong> ${transaction.amount} FCFA</p>
-        <p><strong>Statut :</strong> ${transaction.status === 'pending' ? 'En attente' : transaction.status === 'approved' ? 'Approuvé' : 'Rejeté'}</p>
-        <p><strong>Description :</strong> ${escapeHtml(transaction.description || '')}</p>
-        ${transaction.admin_notes ? `<p><strong>Notes admin :</strong> ${escapeHtml(transaction.admin_notes)}</p>` : ''}
-        ${balanceBefore !== 'N/A' ? `<p><strong>Solde avant :</strong> ${balanceBefore} FCFA</p>` : ''}
-        ${balanceAfter !== 'N/A' ? `<p><strong>Solde après :</strong> ${balanceAfter} FCFA</p>` : ''}
-        <hr>
-        <p>HubISoccer - Reçu officiel</p>
+        <div style="position: relative; z-index: 2;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #551B8C; padding-bottom: 10px; margin-bottom: 20px;">
+                <div>
+                    <img src="img/logo-navbar.png" style="height: 50px;" alt="HubISoccer">
+                    <div><strong>The Hub of Inspiration of Soccer</strong></div>
+                    <div style="font-size: 0.8rem;">RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</div>
+                    <div style="font-size: 0.8rem;">Siège social : Aitchedji, Abomey-Calavi, Bénin</div>
+                    <div style="font-size: 0.8rem;">Contact : +229 01 97 20 81 88 | hubisoccer@gmail.com</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 1.2rem; font-weight: bold;">JUSTIFICATIF D'OPÉRATION NUMÉRIQUE</div>
+                    <div>Réf : ${transaction.reference}</div>
+                    <div>Date : ${new Date(transaction.created_at).toLocaleString('fr-FR')}</div>
+                </div>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <strong>Bénéficiaire :</strong> ${currentProfile.full_name}<br>
+                <strong>Rôle :</strong> Joueur (FT)<br>
+                <strong>ID HubISoccer :</strong> ${currentProfile.id}
+            </div>
+            <div style="background: ${statusColor}; padding: 8px; text-align: center; font-weight: bold; color: white; margin-bottom: 20px;">
+                STATUT : ${statusTextFr}
+            </div>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Nature</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.type === 'deposit' ? 'Dépôt' : transaction.type === 'withdraw' ? 'Retrait' : 'Bonus'}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Montant</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.amount} FCFA</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Mode de règlement</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.description?.split(' ')[2] || 'Solde interne'}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Libellé détaillé</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.description || ''}</td></tr>
+            </table>
+            <div style="font-size: 0.8rem; color: #6c757d; margin-bottom: 20px;">
+                <p>Le présent document est généré de manière automatisée par le système HubISoccer et constitue une preuve d'opération numérique conformément aux dispositions légales sur le commerce électronique au Bénin.</p>
+                <p>Cette transaction est enregistrée dans le grand livre numérique de l'entité The Hub of Inspiration of Soccer et peut faire l'objet d'une vérification de conformité auprès de nos services financiers.</p>
+                <p>Toute falsification de ce document est passible de poursuites judiciaires.</p>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                <div><img src="${qrCodeUrl}" style="width: 100px; height: 100px;" alt="QR Code"></div>
+                <div style="text-align: right;">
+                    <div>Signature du Responsable Financier</div>
+                    <div style="margin-top: 20px;">____________________</div>
+                    <div>Cachet numérique</div>
+                </div>
+            </div>
+            <div style="margin-top: 30px; text-align: center; font-size: 0.7rem; color: #aaa;">
+                Approuvé pour valoir ce que de droit
+            </div>
+        </div>
     `;
+    // Filigrane en pseudo-élément (ajouté via style)
+    element.style.position = 'relative';
+    const watermark = document.createElement('div');
+    watermark.style.position = 'absolute';
+    watermark.style.top = '0';
+    watermark.style.left = '0';
+    watermark.style.width = '100%';
+    watermark.style.height = '100%';
+    watermark.style.pointerEvents = 'none';
+    watermark.style.zIndex = '1';
+    watermark.style.background = 'repeating-linear-gradient(45deg, rgba(85,27,140,0.1) 0px, rgba(85,27,140,0.1) 3px, transparent 3px, transparent 12px)';
+    watermark.innerHTML = '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 48px; color: rgba(85,27,140,0.2); white-space: nowrap;">CONFIDENTIEL HUBISOCCER</div>';
+    element.appendChild(watermark);
     document.body.appendChild(element);
     const opt = {
         margin: 0.5,
@@ -307,6 +557,7 @@ async function exportCSV() {
     URL.revokeObjectURL(url);
 }
 
+// ========== BONUS ABONNÉS ==========
 async function loadFollowersCount() {
     if (!currentProfile) return;
     try {
@@ -412,6 +663,7 @@ async function claimBonus(tierId, amount) {
     }
 }
 
+// ========== DÉPÔT / RETRAIT ==========
 async function uploadProof(file, type) {
     if (!file) return null;
     const fileExt = file.name.split('.').pop();
@@ -547,11 +799,19 @@ document.getElementById('withdrawBonusBtn').addEventListener('click', () => {
 });
 
 document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+document.getElementById('viewAllTransactionsBtn').addEventListener('click', () => {
+    window.location.href = 'transactions-detail.html';
+});
+document.getElementById('viewAllTransactionsBtnBottom').addEventListener('click', () => {
+    window.location.href = 'transactions-detail.html';
+});
 
+// ========== UI ==========
 function openDepositModal() { document.getElementById('depositModal').style.display = 'block'; }
 function closeDepositModal() { document.getElementById('depositModal').style.display = 'none'; }
 function openWithdrawModal() { document.getElementById('withdrawModal').style.display = 'block'; }
 function closeWithdrawModal() { document.getElementById('withdrawModal').style.display = 'none'; }
+function closeCardActionModal() { document.getElementById('cardActionModal').classList.remove('active'); document.getElementById('cardActionCode').value = ''; currentCardAction = null; }
 
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
@@ -624,6 +884,13 @@ function initLogout() {
     });
 }
 
+function updateWalletUI() {
+    if (!wallet) return;
+    document.getElementById('walletBalance').textContent = `${wallet.balance || 0} FCFA`;
+    document.getElementById('pendingBalance').textContent = `${wallet.balance_pending || 0} FCFA`;
+}
+
+// ========== INIT ==========
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Initialisation revenue');
     const user = await checkSession();
@@ -631,14 +898,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadProfile();
     if (!currentProfile) return;
     await loadOrCreateWallet();
-    if (!wallet) return;
-    await loadTransactions();
+    if (wallet) {
+        await loadTransactions();
+    }
     await loadFollowersCount();
 
     document.getElementById('depositBtn').addEventListener('click', openDepositModal);
     document.getElementById('withdrawBtn').addEventListener('click', openWithdrawModal);
+    document.getElementById('createCardBtn').addEventListener('click', createCard);
+    document.getElementById('reloadCardBtn').addEventListener('click', () => cardAction('reload'));
+    document.getElementById('blockCardBtn').addEventListener('click', () => cardAction('block'));
+    document.getElementById('deleteCardBtn').addEventListener('click', () => cardAction('delete'));
+    document.getElementById('flipCardBtn').addEventListener('click', flipCard);
+    document.getElementById('confirmCardActionBtn').addEventListener('click', confirmCardAction);
     window.closeDepositModal = closeDepositModal;
     window.closeWithdrawModal = closeWithdrawModal;
+    window.closeCardActionModal = closeCardActionModal;
 
     addMenuHandle();
     initUserMenu();
