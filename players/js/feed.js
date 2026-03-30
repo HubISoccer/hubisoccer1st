@@ -2571,12 +2571,13 @@ async function loadLives() {
     try {
         const { data, error } = await supabaseClient
             .from('lives')
-            .select('id, title, user_id, started_at')
-            .eq('status', 'en_direct')
-            .order('started_at', { ascending: false });
+            .select('id, titre, user_id, created_at')
+            .eq('actif', true)
+            .order('created_at', { ascending: false });
         if (error) throw error;
-
-        const userIds = data.map(l => l.user_id);
+        
+        // Récupérer les profils des créateurs
+        const userIds = data.map(l => l.user_id).filter(id => id);
         let profiles = [];
         if (userIds.length) {
             const { data: profs } = await supabaseClient
@@ -2606,7 +2607,7 @@ function renderLivesList(lives) {
         <li data-live-id="${live.id}" onclick="window.location.href='live.html?id=${live.id}'">
             <img src="${live.profiles?.avatar_url || 'img/user-default.jpg'}" alt="${live.profiles?.full_name}">
             <div>
-                <strong>${live.title}</strong><br>
+                <strong>${live.titre}</strong><br>
                 <small>${live.profiles?.full_name}</small>
             </div>
         </li>
