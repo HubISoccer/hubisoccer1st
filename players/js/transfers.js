@@ -110,7 +110,7 @@ async function loadTransfers() {
         const { data, error } = await supabasePlayersSpacePrive
             .from('player_transfers')
             .select('*')
-            .eq('user_id', currentProfile.id)
+            .eq('player_id', currentProfile.id)   // ✅ Correction : user_id → player_id
             .order('date_transfert', { ascending: false });
         if (error) throw error;
         transfers = data || [];
@@ -247,13 +247,9 @@ function renderOffers() {
 function formatDescription(desc) {
     if (!desc) return '<p>Aucun détail fourni.</p>';
     let text = desc;
-    // Remplacer les séquences littérales \n par de vrais retours à la ligne
     text = text.replace(/\\n/g, '\n');
-    // Échapper le HTML pour éviter les injections
     let escaped = escapeHtml(text);
-    // Remplacer les retours chariot par des <br>
     let html = escaped.replace(/\r\n/g, '\n').replace(/\n/g, '<br>');
-    // Diviser en lignes
     let lines = html.split('<br>');
     let inList = false;
     let result = [];
@@ -484,9 +480,9 @@ function initLogout() {
 function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
+        if (m === '&') return '&';
+        if (m === '<') return '<';
+        if (m === '>') return '>';
         return m;
     });
 }
