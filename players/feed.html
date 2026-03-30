@@ -122,6 +122,12 @@
                 <ul class="suggestions-list" id="suggestionsList"></ul>
                 <a href="#" class="view-all">Voir plus</a>
             </div>
+            <!-- ========== AJOUT : SECTION LIVES EN DIRECT ========== -->
+            <div class="community-section">
+                <h4><i class="fas fa-broadcast-tower"></i> Lives en direct</h4>
+                <ul class="lives-list" id="livesList"></ul>
+                <a href="#" class="view-all">Voir tous</a>
+            </div>
             <div class="community-section">
                 <h4><i class="fas fa-fire"></i> Tendances</h4>
                 <ul class="trends-list" id="trendsList"></ul>
@@ -198,16 +204,16 @@
     <!-- ========== CONTENU PRINCIPAL ========== -->
     <main class="dashboard-main">
         <div class="feed-container">
-            <div class="feed-container">
-    <div class="feed-header">
-        <div>
-            <h1>Ma Communauté</h1>
-            <p>Partagez et interagissez avec les joueurs et acteurs du football.</p>
-        </div>
-        <button id="refreshFeedBtn" class="refresh-btn" onclick="location.reload()">
-            <i class="fas fa-sync-alt"></i> Rafraîchir
-        </button>
-    </div>
+            <div class="feed-header">
+                <div>
+                    <h1>Ma Communauté</h1>
+                    <p>Partagez et interagissez avec les joueurs et acteurs du football.</p>
+                </div>
+                <button id="refreshFeedBtn" class="refresh-btn" onclick="location.reload()">
+                    <i class="fas fa-sync-alt"></i> Rafraîchir
+                </button>
+            </div>
+
             <!-- ========== STORIES : deux rubriques ========== -->
             <div class="stories-section">
                 <h3><i class="fas fa-smile"></i> My HubIS Enjoy</h3>
@@ -226,7 +232,7 @@
                 </div>
             </div>
 
-            <!-- ========== ZONE DE PUBLICATION (disposition 3-1-3) ========== -->
+            <!-- ========== ZONE DE PUBLICATION ========== -->
             <div class="publish-box">
                 <div class="publish-top">
                     <img src="img/user-default.jpg" alt="Avatar" id="publishAvatar">
@@ -246,6 +252,10 @@
                         <button class="action-btn" id="pollBtn"><i class="fas fa-chart-pie"></i> Sondage</button>
                         <button class="action-btn" id="eventBtn"><i class="fas fa-calendar-alt"></i> Événement</button>
                         <button class="action-btn" id="schedulePostBtn"><i class="fas fa-clock"></i> Prog.</button>
+                        <!-- ========== AJOUT : BOUTON DÉMARRER UN LIVE ========== -->
+                        <button class="action-btn" id="startLiveBtn" onclick="window.location.href='live.html'">
+                            <i class="fas fa-video"></i> Live
+                        </button>
                     </div>
                 </div>
                 <div class="media-cancel" id="mediaCancel" style="display: none;">
