@@ -115,7 +115,11 @@ function updateAvatarDisplay() {
     }
 }
 
-// ========== GESTION DE LA CARTE ==========
+// ========== GESTION DU COMPTE PRINCIPAL ET DE LA CARTE ==========
+function generateAccountNumber() {
+    return 'HUB' + Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
+}
+
 function formatExpiry(dateStr) {
     if (!dateStr) return '••/••';
     const d = new Date(dateStr);
@@ -137,11 +141,13 @@ function generateCardNumber() {
     for (let i = 0; i < 20; i++) num += Math.floor(Math.random() * 10);
     return num;
 }
+
 function generateCardType() {
     const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase();
     const timestampPart = Math.floor(Date.now() / 1000).toString().slice(-5);
     return `${randomPart} Role HUBIS ${timestampPart}`;
 }
+
 function generateRandomDigits(length) {
     return Math.floor(Math.random() * Math.pow(10, length)).toString().padStart(length, '0');
 }
@@ -160,9 +166,35 @@ async function loadOrCreateWallet() {
 
         if (wallets && wallets.length > 0) {
             wallet = wallets[0];
+            if (!wallet.account_number) {
+                const accountNumber = generateAccountNumber();
+                const { error: updateError } = await supabasePlayersSpacePrive
+                    .from('player_wallets')
+                    .update({ account_number: accountNumber })
+                    .eq('id', wallet.id);
+                if (updateError) throw updateError;
+                wallet.account_number = accountNumber;
+            }
             await ensureCardFields(wallet);
             displayCard();
         } else {
+            // Créer le compte principal (sans carte)
+            const accountNumber = generateAccountNumber();
+            const { data: newWallet, error: insertError } = await supabasePlayersSpacePrive
+                .from('player_wallets')
+                .insert([{
+                    player_id: currentProfile.id,
+                    balance: 0,
+                    balance_pending: 0,
+                    bonus_inscription: 0,
+                    account_number: accountNumber,
+                    card_balance: 0,
+                    followers_last_claimed: 0
+                }])
+                .select()
+                .single();
+            if (insertError) throw insertError;
+            wallet = newWallet;
             document.getElementById('createCardSection').style.display = 'block';
             document.getElementById('hubisCardContainer').style.display = 'none';
         }
@@ -192,11 +224,20 @@ async function ensureCardFields(w) {
                 card_expiry: expiry,
                 withdrawal_code: withdrawalCode,
                 emarket_code: emarketCode,
-                card_status: 'active'
+                card_status: 'active',
+                card_balance: 0
             })
             .eq('id', w.id);
         if (error) throw error;
-        Object.assign(w, { card_number: cardNumber, card_type: cardType, card_expiry: expiry, withdrawal_code: withdrawalCode, emarket_code: emarketCode, card_status: 'active' });
+        Object.assign(w, {
+            card_number: cardNumber,
+            card_type: cardType,
+            card_expiry: expiry,
+            withdrawal_code: withdrawalCode,
+            emarket_code: emarketCode,
+            card_status: 'active',
+            card_balance: 0
+        });
     }
 }
 
@@ -205,27 +246,40 @@ function displayCard() {
     const container = document.getElementById('hubisCardContainer');
     container.style.display = 'block';
     const cardNumberElem = document.getElementById('cardNumber');
-    const masked = wallet.card_number.replace(/(.{4})/g, '$1 ').trim();
-    cardNumberElem.textContent = masked;
-    document.getElementById('cardType').textContent = wallet.card_type;
-    document.getElementById('cardExpiry').textContent = formatExpiry(wallet.card_expiry);
-    document.getElementById('cardBalance').textContent = `${wallet.balance || 0} FCFA`;
-    document.getElementById('cardHolder').textContent = currentProfile.full_name || 'Titulaire';
-    const wCode = wallet.withdrawal_code ? `Code retrait: ${wallet.withdrawal_code}` : 'Code retrait: •••••';
-    const eCode = wallet.emarket_code ? `Code e‑market: ${wallet.emarket_code}` : 'Code e‑market: ••••';
-    document.getElementById('withdrawalCode').textContent = wCode;
-    document.getElementById('emarketCode').textContent = eCode;
+    if (cardNumberElem) {
+        const masked = wallet.card_number.replace(/(.{4})/g, '$1 ').trim();
+        cardNumberElem.textContent = masked;
+    }
+    const cardTypeElem = document.getElementById('cardType');
+    if (cardTypeElem) cardTypeElem.textContent = wallet.card_type;
+    const cardExpiryElem = document.getElementById('cardExpiry');
+    if (cardExpiryElem) cardExpiryElem.textContent = formatExpiry(wallet.card_expiry);
+    const cardBalanceElem = document.getElementById('cardBalance');
+    if (cardBalanceElem) cardBalanceElem.textContent = `${wallet.card_balance || 0} FCFA`;
+    const cardHolderElem = document.getElementById('cardHolder');
+    if (cardHolderElem) cardHolderElem.textContent = currentProfile.full_name || 'Titulaire';
+    const wCodeElem = document.getElementById('withdrawalCode');
+    const eCodeElem = document.getElementById('emarketCode');
+    if (wCodeElem) wCodeElem.textContent = wallet.withdrawal_code ? `Code retrait: ${wallet.withdrawal_code}` : 'Code retrait: •••••';
+    if (eCodeElem) eCodeElem.textContent = wallet.emarket_code ? `Code e‑market: ${wallet.emarket_code}` : 'Code e‑market: ••••';
     updateCardButtonsState();
 }
 
 function updateCardButtonsState() {
-    const isActive = wallet.card_status === 'active';
     const blockBtn = document.getElementById('blockCardBtn');
-    blockBtn.textContent = isActive ? 'Bloquer' : 'Débloquer';
+    if (blockBtn && wallet) {
+        const isActive = wallet.card_status === 'active';
+        blockBtn.innerHTML = isActive ? '<i class="fas fa-lock"></i>' : '<i class="fas fa-lock-open"></i>';
+        blockBtn.title = isActive ? 'Bloquer la carte' : 'Débloquer la carte';
+    }
 }
 
 async function createCard() {
-    if (wallet) {
+    if (!wallet) {
+        showToast('Compte principal introuvable', 'error');
+        return;
+    }
+    if (wallet.card_number) {
         showToast('Carte déjà existante', 'warning');
         return;
     }
@@ -236,25 +290,28 @@ async function createCard() {
         const expiry = generateExpiry();
         const withdrawalCode = generateRandomDigits(5);
         const emarketCode = generateRandomDigits(4);
-        const { data: newWallet, error: insertError } = await supabasePlayersSpacePrive
+        const { error } = await supabasePlayersSpacePrive
             .from('player_wallets')
-            .insert([{
-                player_id: currentProfile.id,
-                balance: 0,
-                balance_pending: 0,
-                bonus_inscription: 0,
-                account_number: `HUB${Date.now()}`,
+            .update({
                 card_number: cardNumber,
                 card_type: cardType,
                 card_expiry: expiry,
                 withdrawal_code: withdrawalCode,
                 emarket_code: emarketCode,
-                card_status: 'active'
-            }])
-            .select()
-            .single();
-        if (insertError) throw insertError;
-        wallet = newWallet;
+                card_status: 'active',
+                card_balance: 0
+            })
+            .eq('id', wallet.id);
+        if (error) throw error;
+        Object.assign(wallet, {
+            card_number: cardNumber,
+            card_type: cardType,
+            card_expiry: expiry,
+            withdrawal_code: withdrawalCode,
+            emarket_code: emarketCode,
+            card_status: 'active',
+            card_balance: 0
+        });
         displayCard();
         showToast('Carte créée avec succès !', 'success');
     } catch (err) {
@@ -265,14 +322,72 @@ async function createCard() {
     }
 }
 
+async function reloadCard() {
+    if (!wallet) return;
+    const amount = prompt('Montant à recharger (FCFA) :');
+    if (!amount) return;
+    const numAmount = parseInt(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+        showToast('Montant invalide', 'warning');
+        return;
+    }
+    if (wallet.balance < numAmount) {
+        showToast('Solde insuffisant sur le compte principal', 'error');
+        return;
+    }
+    showLoader();
+    try {
+        // Débiter le compte principal
+        const newBalance = wallet.balance - numAmount;
+        const newCardBalance = (wallet.card_balance || 0) + numAmount;
+        const { error } = await supabasePlayersSpacePrive
+            .from('player_wallets')
+            .update({
+                balance: newBalance,
+                card_balance: newCardBalance
+            })
+            .eq('id', wallet.id);
+        if (error) throw error;
+        wallet.balance = newBalance;
+        wallet.card_balance = newCardBalance;
+
+        // Enregistrer la transaction (rechargement de carte, immédiat)
+        const reference = `RLOAD-${Date.now()}-${currentProfile.id}`;
+        const { error: transError } = await supabasePlayersSpacePrive
+            .from('player_transactions')
+            .insert([{
+                player_id: currentProfile.id,
+                type: 'card_reload',
+                amount: numAmount,
+                status: 'approved',
+                description: `Rechargement de carte`,
+                reference: reference,
+                balance_before: wallet.balance + numAmount,
+                balance_after: wallet.balance
+            }]);
+        if (transError) throw transError;
+
+        updateWalletUI();
+        displayCard(); // met à jour l'affichage du solde de la carte
+        await loadTransactions();
+        showToast('Carte rechargée avec succès', 'success');
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur lors du rechargement', 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
 async function cardAction(action) {
     if (!wallet) return;
     if (action === 'reload') {
-        openDepositModal();
+        reloadCard();
         return;
     }
     currentCardAction = action;
-    document.getElementById('cardActionTitle').innerText = action === 'block' ? 'Bloquer la carte' : 'Supprimer la carte';
+    const titleElem = document.getElementById('cardActionTitle');
+    if (titleElem) titleElem.innerText = action === 'block' ? 'Bloquer la carte' : 'Supprimer la carte';
     document.getElementById('cardActionModal').classList.add('active');
 }
 
@@ -337,14 +452,17 @@ async function confirmCardAction() {
 function flipCard() {
     const recto = document.getElementById('cardRecto');
     const verso = document.getElementById('cardVerso');
+    if (!recto || !verso) return;
     if (recto.style.display === 'none') {
         recto.style.display = 'block';
         verso.style.display = 'none';
-        document.getElementById('flipCardBtn').textContent = 'Visualiser le recto';
+        document.getElementById('flipCardBtn').innerHTML = '<i class="fas fa-eye"></i>';
+        document.getElementById('flipCardBtn').title = 'Visualiser le verso';
     } else {
         recto.style.display = 'none';
         verso.style.display = 'block';
-        document.getElementById('flipCardBtn').textContent = 'Visualiser le verso';
+        document.getElementById('flipCardBtn').innerHTML = '<i class="fas fa-eye-slash"></i>';
+        document.getElementById('flipCardBtn').title = 'Visualiser le recto';
     }
 }
 
@@ -375,14 +493,18 @@ function updateTotals() {
     let totalEarned = 0;
     let totalSpent = 0;
     transactions.forEach(t => {
-        if (t.type === 'deposit' || t.type === 'bonus') {
-            totalEarned += t.amount;
-        } else if (t.type === 'withdraw' || t.type === 'purchase') {
-            totalSpent += t.amount;
+        if (t.status === 'approved') {
+            if (t.type === 'deposit' || t.type === 'bonus' || t.type === 'card_reload') {
+                totalEarned += t.amount;
+            } else if (t.type === 'withdraw' || t.type === 'purchase') {
+                totalSpent += t.amount;
+            }
         }
     });
-    document.getElementById('totalEarned').textContent = `${totalEarned} FCFA`;
-    document.getElementById('totalSpent').textContent = `${totalSpent} FCFA`;
+    const totalEarnedElem = document.getElementById('totalEarned');
+    const totalSpentElem = document.getElementById('totalSpent');
+    if (totalEarnedElem) totalEarnedElem.textContent = `${totalEarned} FCFA`;
+    if (totalSpentElem) totalSpentElem.textContent = `${totalSpent} FCFA`;
 }
 
 function renderTransactions() {
@@ -394,9 +516,9 @@ function renderTransactions() {
     }
     list.innerHTML = transactions.map(t => {
         const date = new Date(t.created_at).toLocaleString('fr-FR');
-        const sign = (t.type === 'deposit' || t.type === 'bonus') ? '+' : '-';
-        const amountClass = (t.type === 'deposit' || t.type === 'bonus') ? 'positive' : 'negative';
-        const icon = t.type === 'deposit' ? 'fa-arrow-down' : (t.type === 'withdraw' ? 'fa-arrow-up' : 'fa-gift');
+        const sign = (t.type === 'deposit' || t.type === 'bonus' || t.type === 'card_reload') ? '+' : '-';
+        const amountClass = (sign === '+') ? 'positive' : 'negative';
+        const icon = t.type === 'deposit' ? 'fa-arrow-down' : (t.type === 'withdraw' ? 'fa-arrow-up' : (t.type === 'card_reload' ? 'fa-credit-card' : 'fa-gift'));
         const statusText = {
             pending: 'En attente',
             approved: 'Approuvé',
@@ -448,6 +570,9 @@ async function downloadTransactionPDF(transaction) {
     element.style.position = 'relative';
     element.style.backgroundColor = '#f8f0ff';
     element.style.color = '#1a1a1a';
+    element.style.width = '100%';
+    element.style.maxWidth = '800px';
+    element.style.margin = '0 auto';
     element.style.backgroundImage = 'repeating-linear-gradient(45deg, rgba(85,27,140,0.05) 0px, rgba(85,27,140,0.05) 2px, transparent 2px, transparent 8px)';
     element.innerHTML = `
         <div style="position: relative; z-index: 2;">
@@ -474,7 +599,7 @@ async function downloadTransactionPDF(transaction) {
                 STATUT : ${statusTextFr}
             </div>
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Nature</strong>\\n                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.type === 'deposit' ? 'Dépôt' : transaction.type === 'withdraw' ? 'Retrait' : 'Bonus'}</td> </tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Nature</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.type === 'deposit' ? 'Dépôt' : transaction.type === 'withdraw' ? 'Retrait' : transaction.type === 'card_reload' ? 'Rechargement carte' : 'Bonus'}</td></tr>
                 <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Montant</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.amount} FCFA</td></tr>
                 <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Mode de règlement</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.description?.split(' ')[2] || 'Solde interne'}</td></tr>
                 <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Libellé détaillé</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.description || ''}</td></tr>
@@ -513,7 +638,7 @@ async function downloadTransactionPDF(transaction) {
         margin: 0.5,
         filename: `transaction_${transaction.reference}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
+        html2canvas: { scale: 2, windowWidth: element.scrollWidth, windowHeight: element.scrollHeight },
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
     html2pdf().set(opt).from(element).save().then(() => {
@@ -552,7 +677,7 @@ async function exportCSV() {
     URL.revokeObjectURL(url);
 }
 
-// ========== BONUS ABONNÉS ==========
+// ========== BONUS ABONNÉS (récurrent) ==========
 async function loadFollowersCount() {
     if (!currentProfile) return;
     try {
@@ -562,103 +687,107 @@ async function loadFollowersCount() {
             .eq('followed_id', currentProfile.id);
         if (error) throw error;
         followersCount = count || 0;
-        await loadBonusTiers();
+        await updateBonusFollowers();
     } catch (err) {
         console.error(err);
     }
 }
 
-async function loadBonusTiers() {
-    try {
-        const { data, error } = await supabasePlayersSpacePrive
-            .from('bonus_tiers')
-            .select('*')
-            .order('min_followers', { ascending: true });
-        if (error) throw error;
-        bonusTiers = data || [];
-        updateBonusUI();
-    } catch (err) {
-        console.error(err);
+async function updateBonusFollowers() {
+    if (!wallet) return;
+    const lastClaimed = wallet.followers_last_claimed || 0;
+    const newFollowers = followersCount - lastClaimed;
+    if (newFollowers < 0) {
+        // si le compteur a baissé (peut arriver si des abonnements sont supprimés), on réinitialise
+        await supabasePlayersSpacePrive
+            .from('player_wallets')
+            .update({ followers_last_claimed: followersCount })
+            .eq('id', wallet.id);
+        wallet.followers_last_claimed = followersCount;
+        document.getElementById('bonusMessage').textContent = `Prochain bonus à 50 abonnés : 5000 FCFA (actuellement ${followersCount})`;
+        document.getElementById('withdrawBonusBtn').disabled = true;
+        return;
     }
-}
-
-async function updateBonusUI() {
-    if (!bonusTiers.length) return;
-    let eligibleTier = null;
-    for (let i = bonusTiers.length - 1; i >= 0; i--) {
-        const tier = bonusTiers[i];
-        if (followersCount >= tier.min_followers && (tier.max_followers === null || followersCount <= tier.max_followers)) {
-            const { data: claim, error } = await supabasePlayersSpacePrive
-                .from('player_bonus_claims')
-                .select('id')
-                .eq('player_id', currentProfile.id)
-                .eq('tier_id', tier.id)
-                .maybeSingle();
-            if (error) console.error(error);
-            if (!claim) {
-                eligibleTier = tier;
-                break;
-            }
-        }
-    }
+    const available = Math.floor(newFollowers / 50) * 5000;
     const bonusMsg = document.getElementById('bonusMessage');
     const withdrawBtn = document.getElementById('withdrawBonusBtn');
-    if (eligibleTier) {
-        bonusMsg.textContent = `${eligibleTier.amount} FCFA (${followersCount} abonnés) – Cliquez pour retirer`;
+    if (available > 0) {
+        bonusMsg.textContent = `${available} FCFA (${newFollowers} nouveaux abonnés) – Cliquez pour retirer`;
         withdrawBtn.disabled = false;
-        withdrawBtn.dataset.tierId = eligibleTier.id;
-        withdrawBtn.dataset.amount = eligibleTier.amount;
+        withdrawBtn.dataset.amount = available;
+        withdrawBtn.dataset.newFollowers = newFollowers;
     } else {
-        const nextTier = bonusTiers.find(t => followersCount < t.min_followers);
-        if (nextTier) {
-            bonusMsg.textContent = `Prochain bonus à ${nextTier.min_followers} abonnés : ${nextTier.amount} FCFA (actuellement ${followersCount})`;
-        } else {
-            bonusMsg.textContent = `Félicitations ! Vous avez atteint tous les paliers.`;
-        }
+        const nextNeeded = 50 - (newFollowers % 50);
+        bonusMsg.textContent = `Prochain bonus à ${nextNeeded} abonnés : 5000 FCFA (actuellement ${followersCount})`;
         withdrawBtn.disabled = true;
-        withdrawBtn.dataset.tierId = '';
         withdrawBtn.dataset.amount = '';
+        withdrawBtn.dataset.newFollowers = '';
     }
 }
 
-async function claimBonus(tierId, amount) {
-    if (!tierId) return;
+async function claimBonusFollowers() {
+    const btn = document.getElementById('withdrawBonusBtn');
+    const amount = parseInt(btn.dataset.amount);
+    const newFollowers = parseInt(btn.dataset.newFollowers);
+    if (!amount || amount <= 0) {
+        showToast('Aucun bonus disponible', 'warning');
+        return;
+    }
     showLoader();
     try {
+        // Créer une transaction de bonus
+        const reference = `BONUS-FOLLOWERS-${Date.now()}-${currentProfile.id}`;
+        const newBalance = wallet.balance + amount;
         const { error: transError } = await supabasePlayersSpacePrive
             .from('player_transactions')
             .insert([{
                 player_id: currentProfile.id,
                 type: 'bonus',
                 amount: amount,
-                status: 'pending',
-                description: `Bonus pour ${followersCount} abonnés`,
-                reference: `BONUS-${Date.now()}-${currentProfile.id}`,
+                status: 'approved', // bonus automatiquement approuvé
+                description: `Bonus pour ${newFollowers} nouveaux abonnés (${followersCount} total)`,
+                reference: reference,
                 balance_before: wallet.balance,
-                balance_after: wallet.balance + amount
+                balance_after: newBalance
             }]);
         if (transError) throw transError;
 
-        const { error: claimError } = await supabasePlayersSpacePrive
+        // Mettre à jour le solde du portefeuille
+        const newClaimed = (wallet.followers_last_claimed || 0) + newFollowers;
+        const { error: updateError } = await supabasePlayersSpacePrive
+            .from('player_wallets')
+            .update({
+                balance: newBalance,
+                followers_last_claimed: newClaimed
+            })
+            .eq('id', wallet.id);
+        if (updateError) throw updateError;
+
+        wallet.balance = newBalance;
+        wallet.followers_last_claimed = newClaimed;
+
+        // Enregistrer le palier (optionnel)
+        await supabasePlayersSpacePrive
             .from('player_bonus_claims')
             .insert([{
                 player_id: currentProfile.id,
-                tier_id: tierId
+                tier_id: 1, // palier 50
+                claimed_at: new Date()
             }]);
-        if (claimError) throw claimError;
 
-        showToast('Demande de bonus envoyée. En attente de validation.', 'success');
+        updateWalletUI();
         await loadTransactions();
-        updateBonusUI();
+        await updateBonusFollowers();
+        showToast('Bonus retiré avec succès !', 'success');
     } catch (err) {
         console.error(err);
-        showToast('Erreur lors de la demande de bonus', 'error');
+        showToast('Erreur lors du retrait du bonus', 'error');
     } finally {
         hideLoader();
     }
 }
 
-// ========== DÉPÔT / RETRAIT ==========
+// ========== DÉPÔT / RETRAIT (compte principal) ==========
 async function uploadProof(file, type) {
     if (!file) return null;
     const fileExt = file.name.split('.').pop();
@@ -676,6 +805,12 @@ async function uploadProof(file, type) {
         .getPublicUrl(filePath);
     return urlData.publicUrl;
 }
+
+function openDepositModal() { document.getElementById('depositModal').style.display = 'block'; }
+function closeDepositModal() { document.getElementById('depositModal').style.display = 'none'; }
+function openWithdrawModal() { document.getElementById('withdrawModal').style.display = 'block'; }
+function closeWithdrawModal() { document.getElementById('withdrawModal').style.display = 'none'; }
+function closeCardActionModal() { document.getElementById('cardActionModal').classList.remove('active'); document.getElementById('cardActionCode').value = ''; currentCardAction = null; }
 
 document.getElementById('depositForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -697,6 +832,8 @@ document.getElementById('depositForm').addEventListener('submit', async (e) => {
             proofUrl = await uploadProof(proofFile, 'deposit');
             if (!proofUrl) throw new Error('Échec upload justificatif');
         }
+        const reference = `DEP-${Date.now()}-${currentProfile.id}`;
+        const newBalance = wallet.balance + amount;
         const { error } = await supabasePlayersSpacePrive
             .from('player_transactions')
             .insert([{
@@ -705,10 +842,10 @@ document.getElementById('depositForm').addEventListener('submit', async (e) => {
                 amount: amount,
                 status: 'pending',
                 description: `Dépôt via ${method}`,
-                reference: `DEP-${Date.now()}-${currentProfile.id}`,
+                reference: reference,
                 proof_url: proofUrl,
                 balance_before: wallet.balance,
-                balance_after: wallet.balance + amount
+                balance_after: newBalance
             }]);
         if (error) throw error;
         showToast('Demande de dépôt envoyée, en attente de confirmation.', 'success');
@@ -754,6 +891,8 @@ document.getElementById('withdrawForm').addEventListener('submit', async (e) => 
             proofUrl = await uploadProof(proofFile, 'withdraw');
             if (!proofUrl) throw new Error('Échec upload justificatif');
         }
+        const reference = `WDR-${Date.now()}-${currentProfile.id}`;
+        const newBalance = wallet.balance - amount;
         const { error } = await supabasePlayersSpacePrive
             .from('player_transactions')
             .insert([{
@@ -762,10 +901,10 @@ document.getElementById('withdrawForm').addEventListener('submit', async (e) => 
                 amount: amount,
                 status: 'pending',
                 description: `Retrait vers ${method} (${recipient})`,
-                reference: `WDR-${Date.now()}-${currentProfile.id}`,
+                reference: reference,
                 proof_url: proofUrl,
                 balance_before: wallet.balance,
-                balance_after: wallet.balance - amount
+                balance_after: newBalance
             }]);
         if (error) throw error;
         showToast('Demande de retrait envoyée, en attente de validation.', 'success');
@@ -782,17 +921,7 @@ document.getElementById('withdrawForm').addEventListener('submit', async (e) => 
     }
 });
 
-document.getElementById('withdrawBonusBtn').addEventListener('click', () => {
-    const btn = document.getElementById('withdrawBonusBtn');
-    const tierId = btn.dataset.tierId;
-    const amount = parseInt(btn.dataset.amount);
-    if (tierId && amount) {
-        claimBonus(tierId, amount);
-    } else {
-        showToast('Aucun bonus disponible actuellement', 'warning');
-    }
-});
-
+document.getElementById('withdrawBonusBtn').addEventListener('click', claimBonusFollowers);
 document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
 document.getElementById('viewAllTransactionsBtn').addEventListener('click', () => {
     window.location.href = 'transactions-detail.html';
@@ -802,12 +931,6 @@ document.getElementById('viewAllTransactionsBtnBottom').addEventListener('click'
 });
 
 // ========== UI ==========
-function openDepositModal() { document.getElementById('depositModal').style.display = 'block'; }
-function closeDepositModal() { document.getElementById('depositModal').style.display = 'none'; }
-function openWithdrawModal() { document.getElementById('withdrawModal').style.display = 'block'; }
-function closeWithdrawModal() { document.getElementById('withdrawModal').style.display = 'none'; }
-function closeCardActionModal() { document.getElementById('cardActionModal').classList.remove('active'); document.getElementById('cardActionCode').value = ''; currentCardAction = null; }
-
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const dropdown = document.getElementById('userDropdown');
@@ -881,8 +1004,12 @@ function initLogout() {
 
 function updateWalletUI() {
     if (!wallet) return;
-    document.getElementById('walletBalance').textContent = `${wallet.balance || 0} FCFA`;
-    document.getElementById('pendingBalance').textContent = `${wallet.balance_pending || 0} FCFA`;
+    const walletBalanceElem = document.getElementById('walletBalance');
+    const pendingBalanceElem = document.getElementById('pendingBalance');
+    const accountNumberElem = document.getElementById('accountNumber');
+    if (walletBalanceElem) walletBalanceElem.textContent = `${wallet.balance || 0} FCFA`;
+    if (pendingBalanceElem) pendingBalanceElem.textContent = `${wallet.balance_pending || 0} FCFA`;
+    if (accountNumberElem) accountNumberElem.textContent = `Compte: ${wallet.account_number || '••••'}`;
 }
 
 // ========== INIT ==========
@@ -898,14 +1025,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     await loadFollowersCount();
 
-    document.getElementById('depositBtn').addEventListener('click', openDepositModal);
-    document.getElementById('withdrawBtn').addEventListener('click', openWithdrawModal);
-    document.getElementById('createCardBtn').addEventListener('click', createCard);
-    document.getElementById('reloadCardBtn').addEventListener('click', () => cardAction('reload'));
-    document.getElementById('blockCardBtn').addEventListener('click', () => cardAction('block'));
-    document.getElementById('deleteCardBtn').addEventListener('click', () => cardAction('delete'));
-    document.getElementById('flipCardBtn').addEventListener('click', flipCard);
-    document.getElementById('confirmCardActionBtn').addEventListener('click', confirmCardAction);
+    const depositBtn = document.getElementById('depositBtn');
+    if (depositBtn) depositBtn.addEventListener('click', openDepositModal);
+    const withdrawBtn = document.getElementById('withdrawBtn');
+    if (withdrawBtn) withdrawBtn.addEventListener('click', openWithdrawModal);
+    const createCardBtn = document.getElementById('createCardBtn');
+    if (createCardBtn) createCardBtn.addEventListener('click', createCard);
+    const reloadCardBtn = document.getElementById('reloadCardBtn');
+    if (reloadCardBtn) reloadCardBtn.addEventListener('click', () => cardAction('reload'));
+    const blockCardBtn = document.getElementById('blockCardBtn');
+    if (blockCardBtn) blockCardBtn.addEventListener('click', () => cardAction('block'));
+    const deleteCardBtn = document.getElementById('deleteCardBtn');
+    if (deleteCardBtn) deleteCardBtn.addEventListener('click', () => cardAction('delete'));
+    const flipCardBtn = document.getElementById('flipCardBtn');
+    if (flipCardBtn) flipCardBtn.addEventListener('click', flipCard);
+    const confirmCardActionBtn = document.getElementById('confirmCardActionBtn');
+    if (confirmCardActionBtn) confirmCardActionBtn.addEventListener('click', confirmCardAction);
+
     window.closeDepositModal = closeDepositModal;
     window.closeWithdrawModal = closeWithdrawModal;
     window.closeCardActionModal = closeCardActionModal;
@@ -915,10 +1051,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSidebar();
     initLogout();
 
-    document.getElementById('langSelect')?.addEventListener('change', (e) => {
+    const langSelect = document.getElementById('langSelect');
+    if (langSelect) langSelect.addEventListener('change', (e) => {
         showToast(`Langue changée en ${e.target.options[e.target.selectedIndex].text}`, 'info');
     });
-    document.getElementById('languageLink')?.addEventListener('click', (e) => {
+    const languageLink = document.getElementById('languageLink');
+    if (languageLink) languageLink.addEventListener('click', (e) => {
         e.preventDefault();
         showToast('Changement de langue bientôt disponible', 'info');
     });
