@@ -116,6 +116,36 @@ function updateAvatarDisplay() {
 }
 
 // ========== GESTION DE LA CARTE ==========
+function formatExpiry(dateStr) {
+    if (!dateStr) return '••/••';
+    const d = new Date(dateStr);
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear().toString().slice(-2);
+    return `${month}/${year}`;
+}
+
+function generateExpiry() {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() + 1);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    return `${year}-${month.toString().padStart(2, '0')}-01`;
+}
+
+function generateCardNumber() {
+    let num = '';
+    for (let i = 0; i < 20; i++) num += Math.floor(Math.random() * 10);
+    return num;
+}
+function generateCardType() {
+    const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const timestampPart = Math.floor(Date.now() / 1000).toString().slice(-5);
+    return `${randomPart} Role HUBIS ${timestampPart}`;
+}
+function generateRandomDigits(length) {
+    return Math.floor(Math.random() * Math.pow(10, length)).toString().padStart(length, '0');
+}
+
 async function loadOrCreateWallet() {
     if (!currentProfile) return null;
     showLoader();
@@ -133,7 +163,6 @@ async function loadOrCreateWallet() {
             await ensureCardFields(wallet);
             displayCard();
         } else {
-            // Pas de portefeuille, afficher le bouton de création
             document.getElementById('createCardSection').style.display = 'block';
             document.getElementById('hubisCardContainer').style.display = 'none';
         }
@@ -149,7 +178,6 @@ async function loadOrCreateWallet() {
 }
 
 async function ensureCardFields(w) {
-    // Si la carte n'a pas encore de numéro, générer les informations
     if (!w.card_number) {
         const cardNumber = generateCardNumber();
         const cardType = generateCardType();
@@ -172,27 +200,6 @@ async function ensureCardFields(w) {
     }
 }
 
-function generateCardNumber() {
-    let num = '';
-    for (let i = 0; i < 20; i++) num += Math.floor(Math.random() * 10);
-    return num;
-}
-function generateCardType() {
-    const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase(); // 5 caractères alphanum
-    const timestampPart = Math.floor(Date.now() / 1000).toString().slice(-5);
-    return `${randomPart} Role HUBIS ${timestampPart}`;
-}
-function generateExpiry() {
-    const date = new Date();
-    date.setFullYear(date.getFullYear() + 1);
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear().toString().slice(-2);
-    return `${month}/${year}`;
-}
-function generateRandomDigits(length) {
-    return Math.floor(Math.random() * Math.pow(10, length)).toString().padStart(length, '0');
-}
-
 function displayCard() {
     document.getElementById('createCardSection').style.display = 'none';
     const container = document.getElementById('hubisCardContainer');
@@ -201,7 +208,7 @@ function displayCard() {
     const masked = wallet.card_number.replace(/(.{4})/g, '$1 ').trim();
     cardNumberElem.textContent = masked;
     document.getElementById('cardType').textContent = wallet.card_type;
-    document.getElementById('cardExpiry').textContent = wallet.card_expiry;
+    document.getElementById('cardExpiry').textContent = formatExpiry(wallet.card_expiry);
     document.getElementById('cardBalance').textContent = `${wallet.balance || 0} FCFA`;
     document.getElementById('cardHolder').textContent = currentProfile.full_name || 'Titulaire';
     const wCode = wallet.withdrawal_code ? `Code retrait: ${wallet.withdrawal_code}` : 'Code retrait: •••••';
@@ -214,9 +221,7 @@ function displayCard() {
 function updateCardButtonsState() {
     const isActive = wallet.card_status === 'active';
     const blockBtn = document.getElementById('blockCardBtn');
-    const deleteBtn = document.getElementById('deleteCardBtn');
     blockBtn.textContent = isActive ? 'Bloquer' : 'Débloquer';
-    // Le bouton supprimer reste actif même si bloqué, mais l'action sera différente
 }
 
 async function createCard() {
@@ -226,7 +231,6 @@ async function createCard() {
     }
     showLoader();
     try {
-        // Créer un nouveau portefeuille avec les données de carte
         const cardNumber = generateCardNumber();
         const cardType = generateCardType();
         const expiry = generateExpiry();
@@ -267,7 +271,6 @@ async function cardAction(action) {
         openDepositModal();
         return;
     }
-    // Pour bloquer, supprimer, on demande le code de retrait
     currentCardAction = action;
     document.getElementById('cardActionTitle').innerText = action === 'block' ? 'Bloquer la carte' : 'Supprimer la carte';
     document.getElementById('cardActionModal').classList.add('active');
@@ -296,7 +299,6 @@ async function confirmCardAction() {
             wallet.card_status = newStatus;
             updateCardButtonsState();
             showToast(`Carte ${newStatus === 'active' ? 'débloquée' : 'bloquée'}`, 'success');
-            // Notifier l'admin (on peut insérer une notification)
             await supabasePlayersSpacePrive.from('notifications').insert([{
                 user_id: currentProfile.id,
                 type: 'card_action',
@@ -312,7 +314,6 @@ async function confirmCardAction() {
             if (error) throw error;
             wallet.card_status = 'deleted';
             showToast('Carte supprimée. Contactez l\'administration pour en créer une nouvelle.', 'info');
-            // Cacher la carte et afficher le bouton de création
             document.getElementById('hubisCardContainer').style.display = 'none';
             document.getElementById('createCardSection').style.display = 'block';
             await supabasePlayersSpacePrive.from('notifications').insert([{
@@ -427,7 +428,6 @@ function renderTransactions() {
 }
 
 async function downloadTransactionPDF(transaction) {
-    // Préparer les données
     const statusColor = {
         pending: '#ffc107',
         approved: '#28a745',
@@ -439,18 +439,15 @@ async function downloadTransactionPDF(transaction) {
         rejected: 'REJETÉ'
     }[transaction.status] || transaction.status;
 
-    // Générer un QR code (externe ou avec une lib)
     const verifyUrl = `https://hubisoccer.github.io/hubisoccer1st/verify-transaction.html?id=${transaction.id}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(verifyUrl)}`;
 
-    // Créer le contenu HTML du PDF
     const element = document.createElement('div');
     element.style.fontFamily = 'Poppins, sans-serif';
     element.style.padding = '20px';
     element.style.position = 'relative';
-    element.style.backgroundColor = '#f8f0ff'; // violet clair
+    element.style.backgroundColor = '#f8f0ff';
     element.style.color = '#1a1a1a';
-    // Filigrane en fond
     element.style.backgroundImage = 'repeating-linear-gradient(45deg, rgba(85,27,140,0.05) 0px, rgba(85,27,140,0.05) 2px, transparent 2px, transparent 8px)';
     element.innerHTML = `
         <div style="position: relative; z-index: 2;">
@@ -477,7 +474,7 @@ async function downloadTransactionPDF(transaction) {
                 STATUT : ${statusTextFr}
             </div>
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Nature</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.type === 'deposit' ? 'Dépôt' : transaction.type === 'withdraw' ? 'Retrait' : 'Bonus'}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Nature</strong>\\n                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.type === 'deposit' ? 'Dépôt' : transaction.type === 'withdraw' ? 'Retrait' : 'Bonus'}</td> </tr>
                 <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Montant</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.amount} FCFA</td></tr>
                 <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Mode de règlement</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.description?.split(' ')[2] || 'Solde interne'}</td></tr>
                 <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Libellé détaillé</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${transaction.description || ''}</td></tr>
@@ -500,8 +497,6 @@ async function downloadTransactionPDF(transaction) {
             </div>
         </div>
     `;
-    // Filigrane en pseudo-élément (ajouté via style)
-    element.style.position = 'relative';
     const watermark = document.createElement('div');
     watermark.style.position = 'absolute';
     watermark.style.top = '0';
