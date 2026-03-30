@@ -97,46 +97,18 @@
         <div class="revenue-container">
             <h1 class="page-title"><i class="fas fa-coins"></i> Mes revenus & portefeuille</h1>
 
-            <!-- Carte HubIS (recto/verso) -->
-            <div class="hubis-card-container" id="hubisCardContainer">
-                <div class="card-recto" id="cardRecto">
-                    <div class="card-header-recto">
-                        <img src="img/logo-navbar.png" alt="HubISoccer" class="card-logo">
-                        <span class="card-brand">HUBIS CARD</span>
-                    </div>
-                    <div class="card-balance" id="cardBalance">0 FCFA</div>
-                    <div class="card-number" id="cardNumber">•••• •••• •••• ••••</div>
-                    <div class="card-type" id="cardType">TYPE ROLE HUBIS 12345</div>
-                    <div class="card-expiry" id="cardExpiry">••/••</div>
-                    <div class="card-actions">
-                        <button class="card-action-btn" id="reloadCardBtn" data-action="reload">Recharger</button>
-                        <button class="card-action-btn" id="blockCardBtn" data-action="block">Bloquer</button>
-                        <button class="card-action-btn" id="deleteCardBtn" data-action="delete">Supprimer</button>
-                        <button class="card-action-btn" id="flipCardBtn">Visualiser le recto</button>
-                    </div>
-                </div>
-                <div class="card-verso" id="cardVerso" style="display: none;">
-                    <div class="card-header-verso">
-                        <span class="card-brand-verso">HUBIS CARD</span>
-                    </div>
-                    <div class="card-holder" id="cardHolder">Nom du titulaire</div>
-                    <div class="card-withdrawal-code" id="withdrawalCode">Code retrait: •••••</div>
-                    <div class="card-emarket-code" id="emarketCode">Code e‑market: ••••</div>
-                </div>
-            </div>
-
-            <!-- Bouton création de carte (si pas encore de carte) -->
-            <div class="create-card-section" id="createCardSection" style="display: none;">
-                <button class="btn-create-card" id="createCardBtn">Créer ma HubIS Card</button>
-            </div>
-
-            <!-- Synthèse des transactions -->
+            <!-- Compte principal -->
             <div class="wallet-overview">
                 <div class="wallet-card balance-card">
                     <div class="wallet-icon"><i class="fas fa-wallet"></i></div>
                     <div class="wallet-info">
                         <h3>Solde disponible</h3>
                         <p class="wallet-balance" id="walletBalance">0 FCFA</p>
+                        <small class="account-number" id="accountNumber">Compte: ••••</small>
+                    </div>
+                    <div class="wallet-actions">
+                        <button class="btn-deposit" id="depositBtn"><i class="fas fa-plus-circle"></i> Déposer</button>
+                        <button class="btn-withdraw" id="withdrawBtn"><i class="fas fa-minus-circle"></i> Retirer</button>
                     </div>
                     <button class="btn-details" id="viewAllTransactionsBtn" title="Voir toutes les transactions"><i class="fas fa-arrow-right"></i></button>
                 </div>
@@ -154,7 +126,40 @@
                 </div>
             </div>
 
-            <!-- Bonus abonnés -->
+            <!-- Carte HubIS -->
+            <div class="hubis-card-container" id="hubisCardContainer" style="display: none;">
+                <div class="card-recto" id="cardRecto">
+                    <div class="card-header-recto">
+                        <img src="img/logo-navbar.png" alt="HubISoccer" class="card-logo">
+                        <span class="card-brand">HUBIS CARD</span>
+                    </div>
+                    <div class="card-balance" id="cardBalance">0 FCFA</div>
+                    <div class="card-number" id="cardNumber">•••• •••• •••• ••••</div>
+                    <div class="card-type" id="cardType">TYPE ROLE HUBIS 12345</div>
+                    <div class="card-expiry" id="cardExpiry">••/••</div>
+                    <div class="card-actions">
+                        <button class="card-action-btn" id="reloadCardBtn" title="Recharger la carte"><i class="fas fa-plus"></i></button>
+                        <button class="card-action-btn" id="blockCardBtn" title="Bloquer la carte"><i class="fas fa-lock"></i></button>
+                        <button class="card-action-btn" id="deleteCardBtn" title="Supprimer la carte"><i class="fas fa-trash-alt"></i></button>
+                        <button class="card-action-btn" id="flipCardBtn" title="Visualiser le verso"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div class="card-verso" id="cardVerso" style="display: none;">
+                    <div class="card-header-verso">
+                        <span class="card-brand-verso">HUBIS CARD</span>
+                    </div>
+                    <div class="card-holder" id="cardHolder">Nom du titulaire</div>
+                    <div class="card-withdrawal-code" id="withdrawalCode">Code retrait: •••••</div>
+                    <div class="card-emarket-code" id="emarketCode">Code e‑market: ••••</div>
+                </div>
+            </div>
+
+            <!-- Bouton création de carte -->
+            <div class="create-card-section" id="createCardSection" style="display: none;">
+                <button class="btn-create-card" id="createCardBtn">Créer ma HubIS Card</button>
+            </div>
+
+            <!-- Bonus -->
             <div class="bonus-stats">
                 <h2>Mes bonus</h2>
                 <div class="bonus-grid">
@@ -178,10 +183,15 @@
                         <span class="bonus-label">Primes diverses</span>
                         <span class="bonus-value" id="bonusPrimes">0</span>
                     </div>
+                    <div class="bonus-item">
+                        <span class="bonus-icon"><i class="fas fa-users"></i></span>
+                        <span class="bonus-label">Hubis-Community</span>
+                        <span class="bonus-value" id="bonusCommunity">0</span>
+                    </div>
                 </div>
                 <div class="bonus-withdraw" id="bonusWithdrawSection">
                     <p class="bonus-inscription-label">
-                        <i class="fas fa-gift"></i> Bonus abonnés : <strong id="bonusMessage">Chargement...</strong>
+                        <i class="fas fa-gift"></i> Bonus de followers : <strong id="bonusMessage">Chargement...</strong>
                     </p>
                     <button class="btn-withdraw-bonus" id="withdrawBonusBtn" disabled>
                         <i class="fas fa-arrow-right"></i> Retirer le bonus
