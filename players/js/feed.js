@@ -306,7 +306,6 @@ function closeNotificationsModal() {
 function populateCountrySelect() {
     const countrySelect = document.getElementById('editCountry');
     if (!countrySelect) return;
-    // Garder l'option vide
     countrySelect.innerHTML = '<option value="">Sélectionner votre pays</option>';
     allCountries.forEach(country => {
         const option = document.createElement('option');
@@ -315,6 +314,7 @@ function populateCountrySelect() {
         countrySelect.appendChild(option);
     });
 }
+
 // ==================== COLLECTIONS ====================
 async function loadCollections() {
     updateLoaderProgress('Collections');
@@ -478,46 +478,38 @@ async function loadUserMetadata() {
     hiddenPosts = new Set(hiddenData?.map(h => h.post_id) || []);
 }
 
-// ==================== RELATIONS (ABONNÉS / ABONNEMENTS / SUGGESTIONS) ====================
-
+// ==================== RELATIONS (ABONNÉS / ABONNEMENTS / SUGGESTIONS / TENDANCES) ====================
 async function loadFollowers() {
     if (!currentProfile) return;
     const { data, error } = await supabaseClient
-        .from('feed_follows')
+        .from('unified_follows')
         .select('follower_id, profiles!follower_id(id, full_name, avatar_url, username)')
-        .eq('followed_id', currentProfile.id);
+        .eq('following_id', currentProfile.id);
     if (error) {
         console.error('Erreur chargement followers:', error);
         return;
     }
     followers = data || [];
-    renderFollowersList();
-}
-
-function renderFollowersList() {
-    const container = document.getElementById('followersList');
-    if (!container) return;
-    if (!followers.length) {
-        container.innerHTML = '<li>Aucun abonné</li>';
-        return;
+    const followersList = document.getElementById('followersList');
+    if (followersList) {
+        if (!followers.length) {
+            followersList.innerHTML = '<li>Aucun abonné</li>';
+        } else {
+            followersList.innerHTML = followers.slice(0, 5).map(f => `
+                <li onclick="openUserProfile('${f.follower_id}')">
+                    <img src="${f.profiles?.avatar_url || 'img/user-default.jpg'}">
+                    <span>${escapeHtml(f.profiles?.full_name || 'Anonyme')}</span>
+                    <small>@${f.profiles?.username || ''}</small>
+                </li>
+            `).join('');
+        }
     }
-    container.innerHTML = followers.map(f => {
-        const user = f.profiles;
-        const isFollowing = following.some(fol => fol.following_id === user.id);
-        return `
-            <li data-user-id="${user.id}">
-                <img src="${user.avatar_url || 'img/user-default.jpg'}" onclick="openUserProfile('${user.id}')">
-                <span onclick="openUserProfile('${user.id}')">${escapeHtml(user.full_name)}</span>
-                <button class="follow-btn ${isFollowing ? 'following' : ''}" data-user-id="${user.id}" onclick="toggleFollow(this)">${isFollowing ? 'Abonné' : 'Suivre'}</button>
-            </li>
-        `;
-    }).join('');
 }
 
 async function loadFollowing() {
     if (!currentProfile) return;
     const { data, error } = await supabaseClient
-        .from('feed_follows')
+        .from('unified_follows')
         .select('following_id, profiles!following_id(id, full_name, avatar_url, username)')
         .eq('follower_id', currentProfile.id);
     if (error) {
@@ -525,202 +517,81 @@ async function loadFollowing() {
         return;
     }
     following = data || [];
-    renderFollowingList();
-}
-
-function renderFollowingList() {
-    const container = document.getElementById('followingList');
-    if (!container) return;
-    if (!following.length) {
-        container.innerHTML = '<li>Aucun abonnement</li>';
-        return;
+    const followingList = document.getElementById('followingList');
+    if (followingList) {
+        if (!following.length) {
+            followingList.innerHTML = '<li>Aucun abonnement</li>';
+        } else {
+            followingList.innerHTML = following.slice(0, 5).map(f => `
+                <li onclick="openUserProfile('${f.following_id}')">
+                    <img src="${f.profiles?.avatar_url || 'img/user-default.jpg'}">
+                    <span>${escapeHtml(f.profiles?.full_name || 'Anonyme')}</span>
+                    <small>@${f.profiles?.username || ''}</small>
+                </li>
+            `).join('');
+        }
     }
-    container.innerHTML = following.map(f => {
-        const user = f.profiles;
-        return `
-            <li data-user-id="${user.id}">
-                <img src="${user.avatar_url || 'img/user-default.jpg'}" onclick="openUserProfile('${user.id}')">
-                <span onclick="openUserProfile('${user.id}')">${escapeHtml(user.full_name)}</span>
-                <button class="follow-btn following" data-user-id="${user.id}" onclick="toggleFollow(this)">Abonné</button>
-            </li>
-        `;
-    }).join('');
 }
 
 async function loadSuggestions() {
     if (!currentProfile) return;
-    // Récupérer des profils que l'utilisateur ne suit pas
     const followingIds = following.map(f => f.following_id);
     const { data, error } = await supabaseClient
         .from('profiles')
         .select('id, full_name, avatar_url, username')
         .not('id', 'in', `(${followingIds.join(',') || 'null'})`)
         .neq('id', currentProfile.id)
-        .limit(10);
+        .limit(5);
     if (error) {
         console.error('Erreur chargement suggestions:', error);
         return;
     }
-    renderSuggestionsList(data);
-}
-
-function renderSuggestionsList(users) {
-    const container = document.getElementById('suggestionsList');
-    if (!container) return;
-    if (!users.length) {
-        container.innerHTML = '<li>Aucune suggestion</li>';
-        return;
-    }
-    container.innerHTML = users.map(user => `
-        <li data-user-id="${user.id}">
-            <img src="${user.avatar_url || 'img/user-default.jpg'}" onclick="openUserProfile('${user.id}')">
-            <span onclick="openUserProfile('${user.id}')">${escapeHtml(user.full_name)}</span>
-            <button class="follow-btn" data-user-id="${user.id}" onclick="toggleFollow(this)">Suivre</button>
-        </li>
-    `).join('');
-}
-
-// ==================== LIVES ====================
-async function loadLives() {
-    if (!currentProfile) return;
-    try {
-        const { data, error } = await supabaseClient
-            .from('lives')
-            .select('id, title, user_id, profiles(id, full_name, avatar_url)')
-            .eq('status', 'en_direct')
-            .order('started_at', { ascending: false });
-        if (error) throw error;
-        renderLivesList(data || []);
-    } catch (err) {
-        console.error('Erreur chargement lives:', err);
-    }
-}
-
-function renderLivesList(lives) {
-    const container = document.getElementById('livesList');
-    if (!container) return;
-    if (!lives.length) {
-        container.innerHTML = '<li>Aucun live en direct</li>';
-        return;
-    }
-    container.innerHTML = lives.map(live => `
-        <li data-live-id="${live.id}" onclick="window.location.href='live.html?id=${live.id}'">
-            <img src="${live.profiles?.avatar_url || 'img/user-default.jpg'}" alt="${live.profiles?.full_name}">
-            <div>
-                <strong>${live.title}</strong><br>
-                <small>${live.profiles?.full_name}</small>
-            </div>
-        </li>
-    `).join('');
-}
-
-// ==================== SUIVI ET PROFIL ====================
-
-async function toggleFollow(button) {
-    const userId = button.dataset.userId;
-    const isFollowing = button.classList.contains('following');
-    if (isFollowing) {
-        const { error } = await supabaseClient
-            .from('feed_follows')
-            .delete()
-            .eq('follower_id', currentProfile.id)
-            .eq('followed_id', userId);
-        if (error) {
-            showToast('Erreur lors du désabonnement', 'error');
-            return;
-        }
-    } else {
-        const { error } = await supabaseClient
-            .from('feed_follows')
-            .insert({ follower_id: currentProfile.id, followed_id: userId });
-        if (error) {
-            showToast('Erreur lors de l’abonnement', 'error');
-            return;
+    const suggestionsList = document.getElementById('suggestionsList');
+    if (suggestionsList) {
+        if (!data.length) {
+            suggestionsList.innerHTML = '<li>Aucune suggestion</li>';
+        } else {
+            suggestionsList.innerHTML = data.map(s => `
+                <li onclick="openUserProfile('${s.id}')">
+                    <img src="${s.avatar_url || 'img/user-default.jpg'}">
+                    <span>${escapeHtml(s.full_name)}</span>
+                    <small>@${s.username || ''}</small>
+                </li>
+            `).join('');
         }
     }
-    // Recharger les listes et l'état des posts
-    await loadFollowing();
-    await loadFollowers();
-    await loadSuggestions();
-    renderPosts(); // met à jour les boutons dans les posts
-    showToast(isFollowing ? 'Désabonné' : 'Abonné', 'success');
 }
 
-async function openUserProfile(userId) {
-    if (userId === currentProfile.id) {
-        // Si c'est le profil de l'utilisateur courant, on peut ouvrir la page d'édition
-        window.location.href = 'profile-edit.html';
-        return;
-    }
-    // Récupérer les infos du profil cible
-    const { data: profile, error } = await supabaseClient
-        .from('profiles')
-        .select('id, full_name, username, avatar_url, bio, interests, reason, vision')
-        .eq('id', userId)
-        .single();
+async function loadTrends() {
+    const { data, error } = await supabaseClient
+        .from('unified_posts')
+        .select('content')
+        .limit(100);
     if (error) {
-        showToast('Impossible de charger le profil', 'error');
+        console.error('Erreur chargement tendances:', error);
         return;
     }
-    // Récupérer les compteurs de followers/following
-    const { count: followersCount } = await supabaseClient
-        .from('feed_follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('followed_id', userId);
-    const { count: followingCount } = await supabaseClient
-        .from('feed_follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('follower_id', userId);
-    
-    // Remplir la modale
-    document.getElementById('profileAvatar').src = profile.avatar_url || 'img/user-default.jpg';
-    document.getElementById('profileName').textContent = profile.full_name;
-    document.getElementById('profileHubId').textContent = `@${profile.username || 'utilisateur'}`;
-    document.getElementById('profileBio').textContent = profile.bio || 'Aucune bio';
-    document.getElementById('profileInterests').textContent = profile.interests || 'Non renseigné';
-    document.getElementById('profileReason').textContent = profile.reason || 'Non renseigné';
-    document.getElementById('profileVision').textContent = profile.vision || 'Non renseigné';
-    
-    // Ajouter les compteurs (par exemple sous le pseudo)
-    let countersHtml = `<div class="profile-stats"><span>${followersCount} abonnés</span> · <span>${followingCount} abonnements</span></div>`;
-    const hubIdElem = document.getElementById('profileHubId');
-    if (hubIdElem && !document.querySelector('.profile-stats')) {
-        hubIdElem.insertAdjacentHTML('afterend', countersHtml);
+    const hashtags = {};
+    (data || []).forEach(post => {
+        const matches = post.content?.match(/#\w+/g) || [];
+        matches.forEach(tag => {
+            hashtags[tag] = (hashtags[tag] || 0) + 1;
+        });
+    });
+    const sorted = Object.entries(hashtags).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const trendsList = document.getElementById('trendsList');
+    if (trendsList) {
+        if (!sorted.length) {
+            trendsList.innerHTML = '<li>Aucune tendance</li>';
+        } else {
+            trendsList.innerHTML = sorted.map(([tag, count]) => `
+                <li onclick="searchHashtag('${tag.substring(1)}')">
+                    <i class="fas fa-hashtag"></i> ${tag} <small>${count} posts</small>
+                </li>
+            `).join('');
+        }
     }
-    
-    // Gérer le bouton "Suivre"
-    const isFollowing = following.some(f => f.following_id === userId);
-    const messageBtn = document.querySelector('#userProfileModal .btn-send-message');
-    // S'assurer qu'il y a un bouton "Suivre" à côté ou à la place. Pour l'instant, nous allons ajouter un bouton dans la modale si nécessaire.
-    // On peut modifier le HTML de la modale pour ajouter un conteneur dynamique, mais pour simplifier, nous allons ajouter un bouton juste avant le bouton message.
-    let followBtn = document.getElementById('modalFollowBtn');
-    if (!followBtn) {
-        followBtn = document.createElement('button');
-        followBtn.id = 'modalFollowBtn';
-        followBtn.className = 'follow-btn';
-        followBtn.style.marginRight = '10px';
-        messageBtn.parentNode.insertBefore(followBtn, messageBtn);
-    }
-    followBtn.textContent = isFollowing ? 'Abonné' : 'Suivre';
-    followBtn.classList.toggle('following', isFollowing);
-    followBtn.dataset.userId = userId;
-    followBtn.onclick = () => toggleFollow(followBtn);
-    
-    // Stocker l'ID de l'utilisateur pour le message direct
-    selectedUserId = userId;
-    
-    // Afficher la modale
-    document.getElementById('userProfileModal').style.display = 'block';
 }
-
-function closeUserProfileModal() {
-    document.getElementById('userProfileModal').style.display = 'none';
-    // Nettoyer le bouton ajouté pour éviter les doublons
-    const followBtn = document.getElementById('modalFollowBtn');
-    if (followBtn) followBtn.remove();
-    selectedUserId = null;
-}
-
 
 // ==================== VUES DES POSTS ====================
 let viewedPosts = new Set();
@@ -750,9 +621,6 @@ async function recordView(postId) {
         .insert({ user_id: currentProfile.id, post_id: postId });
     if (error) console.error('Erreur enregistrement vue:', error);
 }
-
-
-
 
 // ==================== POSTS ====================
 async function getCountsMap(table, column, ids) {
@@ -820,7 +688,7 @@ async function loadPosts(reset = true) {
         const commentsCounts = await getCountsMap('unified_comments', 'post_id', postIds);
         const sharesCounts = await getCountsMap('unified_shares', 'post_id', postIds);
         const viewsCounts = await getCountsMap('post_views', 'post_id', postIds);
-        const dislikesCounts = await getCountsMap('unified_dislikes', 'post_id', postIds); // Ajout
+        const dislikesCounts = await getCountsMap('unified_dislikes', 'post_id', postIds);
 
         const newPosts = postsData.map(post => {
             const author = profilesMap[post.user_id];
@@ -839,7 +707,7 @@ async function loadPosts(reset = true) {
                 commentsCount: commentsCounts[post.id] || 0,
                 sharesCount: sharesCounts[post.id] || 0,
                 viewsCount: viewsCounts[post.id] || 0,
-                dislikesCount: dislikesCounts[post.id] || 0, // Ajout
+                dislikesCount: dislikesCounts[post.id] || 0,
                 isLiked: likedPosts.has(post.id),
                 isDisliked: dislikedPosts.has(post.id),
                 isSaved: savedPosts.has(post.id),
@@ -848,7 +716,6 @@ async function loadPosts(reset = true) {
             };
         }).filter(p => p !== null);
 
-        // Récupérer les collections pour ces posts
         const { data: collItems } = await supabaseClient
             .from('collection_items')
             .select('post_id, collection_id')
@@ -896,6 +763,7 @@ function loadMorePosts() {
 let dateFilter = 'all';
 let popularityFilter = 'all';
 let contentTypeFilter = 'all';
+let currentRoleFilter = null;
 
 function applyAdvancedFilters() {
     let filtered = [...posts];
@@ -1001,8 +869,8 @@ function renderPosts() {
     if (!feed) return;
 
     let filteredPosts = window.filteredPosts || [...posts];
-    if (window.currentRoleFilter) {
-    filteredPosts = filteredPosts.filter(p => p.author?.role === window.currentRoleFilter);
+    if (currentRoleFilter) {
+        filteredPosts = filteredPosts.filter(p => p.author?.role === currentRoleFilter);
     }
     if (currentFilter === 'following') {
         const followingIds = following.map(f => f.following_id);
@@ -2130,33 +1998,6 @@ async function uploadAudioComment() {
     }
 }
 
-// ==================== VUES ====================
-function observePostsForViews() {
-    const postsElements = document.querySelectorAll('.post-card');
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const postId = parseInt(entry.target.dataset.postId);
-                if (!observedPosts.has(postId)) {
-                    observedPosts.add(postId);
-                    recordView(postId);
-                }
-            }
-        });
-    }, { threshold: 0.5 });
-    postsElements.forEach(el => observer.observe(el));
-}
-async function recordView(postId) {
-    const { error } = await supabaseClient
-        .from('post_views')
-        .insert({
-            post_id: postId,
-            user_id: currentProfile.id,
-            session_id: null
-        });
-    if (error) console.error('Erreur enregistrement vue:', error);
-}
-
 // ==================== POSTS MASQUÉS ====================
 async function hidePost(postId) {
     const { error } = await supabaseClient
@@ -2298,31 +2139,74 @@ async function deletePost(postId) {
     }
 }
 
-// ==================== PROFIL UTILISATEUR ====================
+// ==================== PROFIL UTILISATEUR (version finale, avec bouton Suivre) ====================
 async function openUserProfile(userId) {
-    const { data, error } = await supabaseClient
+    if (userId === currentProfile.id) {
+        window.location.href = 'profile-edit.html';
+        return;
+    }
+    const { data: profile, error } = await supabaseClient
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
     if (error) {
-        showToast('Erreur chargement profil', 'error');
+        showToast('Impossible de charger le profil', 'error');
         return;
     }
+    // Récupérer les compteurs
+    const { count: followersCount } = await supabaseClient
+        .from('unified_follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', userId);
+    const { count: followingCount } = await supabaseClient
+        .from('unified_follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('follower_id', userId);
+
+    // Remplir la modale
+    document.getElementById('profileAvatar').src = profile.avatar_url || 'img/user-default.jpg';
+    document.getElementById('profileName').textContent = profile.full_name;
+    document.getElementById('profileHubId').textContent = `@${profile.username || 'utilisateur'}`;
+    document.getElementById('profileBio').textContent = profile.bio || 'Aucune bio.';
+    document.getElementById('profileInterests').textContent = profile.contact_info?.interests || 'Non renseigné';
+    document.getElementById('profileReason').textContent = profile.contact_info?.reason || 'Non renseigné';
+    document.getElementById('profileVision').textContent = profile.contact_info?.vision || 'Non renseigné';
+
+    // Ajouter les compteurs (s’ils n’existent pas déjà)
+    let statsDiv = document.querySelector('#userProfileModal .profile-stats');
+    if (!statsDiv) {
+        statsDiv = document.createElement('div');
+        statsDiv.className = 'profile-stats';
+        const hubIdElem = document.getElementById('profileHubId');
+        hubIdElem.insertAdjacentElement('afterend', statsDiv);
+    }
+    statsDiv.innerHTML = `<span>${followersCount} abonnés</span> · <span>${followingCount} abonnements</span>`;
+
+    // Gérer le bouton “Suivre”
+    const isFollowing = following.some(f => f.following_id === userId);
+    const messageBtn = document.querySelector('#userProfileModal .btn-send-message');
+    let followBtn = document.getElementById('modalFollowBtn');
+    if (!followBtn) {
+        followBtn = document.createElement('button');
+        followBtn.id = 'modalFollowBtn';
+        followBtn.className = 'follow-btn';
+        followBtn.style.marginRight = '10px';
+        messageBtn.parentNode.insertBefore(followBtn, messageBtn);
+    }
+    followBtn.textContent = isFollowing ? 'Abonné' : 'Suivre';
+    followBtn.classList.toggle('following', isFollowing);
+    followBtn.dataset.userId = userId;
+    followBtn.onclick = () => toggleFollow(followBtn);
+
     selectedUserId = userId;
-    document.getElementById('profileAvatar').src = data.avatar_url || 'img/user-default.jpg';
-    document.getElementById('profileName').textContent = data.full_name;
-    document.getElementById('profileHubId').textContent = `@${data.username || 'utilisateur'}`;
-    const badgesHtml = (data.badges || []).map(b => `<span class="badge-mini">${b}</span>`).join('');
-    document.getElementById('profileBadges').innerHTML = badgesHtml;
-    document.getElementById('profileBio').textContent = data.bio || 'Aucune bio.';
-    document.getElementById('profileInterests').textContent = data.contact_info?.interests || 'Non renseigné';
-    document.getElementById('profileReason').textContent = data.contact_info?.reason || 'Non renseigné';
-    document.getElementById('profileVision').textContent = data.contact_info?.vision || 'Non renseigné';
     document.getElementById('userProfileModal').style.display = 'block';
 }
 function closeUserProfileModal() {
     document.getElementById('userProfileModal').style.display = 'none';
+    const followBtn = document.getElementById('modalFollowBtn');
+    if (followBtn) followBtn.remove();
+    selectedUserId = null;
 }
 function sendMessageToUser() {
     if (selectedUserId) {
@@ -2355,86 +2239,9 @@ async function confirmBlockUser() {
     }
 }
 
-// ==================== FOLLOWERS / FOLLOWING ====================
-async function loadFollowers() {
-    updateLoaderProgress('Chargement des abonnés');
-    const { data: followersData } = await supabaseClient
-        .from('unified_follows')
-        .select('follower_id, follower:profiles!follower_id (id, full_name, avatar_url, username)')
-        .eq('following_id', currentProfile.id);
-    followers = followersData || [];
-    const followersList = document.getElementById('followersList');
-    if (followersList) {
-        followersList.innerHTML = followers.slice(0, 5).map(f => `
-            <li onclick="openUserProfile('${f.follower_id}')">
-                <img src="${f.follower?.avatar_url || 'img/user-default.jpg'}">
-                <span>${f.follower?.full_name || 'Anonyme'}</span>
-                <small>@${f.follower?.username || ''}</small>
-            </li>
-        `).join('');
-        if (followers.length === 0) followersList.innerHTML = '<li>Aucun abonné</li>';
-    }
-
-    const { data: followingData } = await supabaseClient
-        .from('unified_follows')
-        .select('following_id, followed:profiles!following_id (id, full_name, avatar_url, username)')
-        .eq('follower_id', currentProfile.id);
-    following = followingData || [];
-    const followingList = document.getElementById('followingList');
-    if (followingList) {
-        followingList.innerHTML = following.slice(0, 5).map(f => `
-            <li onclick="openUserProfile('${f.following_id}')">
-                <img src="${f.followed?.avatar_url || 'img/user-default.jpg'}">
-                <span>${f.followed?.full_name || 'Anonyme'}</span>
-                <small>@${f.followed?.username || ''}</small>
-            </li>
-        `).join('');
-        if (following.length === 0) followingList.innerHTML = '<li>Aucun abonnement</li>';
-    }
-
-    const { data: suggestionsData } = await supabaseClient
-        .from('profiles')
-        .select('id, full_name, avatar_url, username')
-        .neq('id', currentProfile.id)
-        .limit(5);
-    const suggestionsList = document.getElementById('suggestionsList');
-    if (suggestionsList) {
-        suggestionsList.innerHTML = (suggestionsData || []).map(s => `
-            <li onclick="openUserProfile('${s.id}')">
-                <img src="${s.avatar_url || 'img/user-default.jpg'}">
-                <span>${s.full_name || 'Anonyme'}</span>
-                <small>@${s.username || ''}</small>
-            </li>
-        `).join('');
-    }
-
-    const { data: trendsData } = await supabaseClient
-        .from('unified_posts')
-        .select('content')
-        .limit(100);
-    const hashtags = {};
-    (trendsData || []).forEach(post => {
-        const matches = post.content?.match(/#\w+/g) || [];
-        matches.forEach(tag => {
-            hashtags[tag] = (hashtags[tag] || 0) + 1;
-        });
-    });
-    const sorted = Object.entries(hashtags).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    const trendsList = document.getElementById('trendsList');
-    if (trendsList) {
-        trendsList.innerHTML = sorted.map(([tag, count]) => `
-            <li onclick="searchHashtag('${tag.substring(1)}')">
-                <i class="fas fa-hashtag"></i> ${tag} <small>${count} posts</small>
-            </li>
-        `).join('');
-        if (sorted.length === 0) trendsList.innerHTML = '<li>Aucune tendance</li>';
-    }
-
-    updateLoaderProgress('Abonnés chargés');
-}
-
+// ==================== SUIVI (toggleFollow) ====================
 async function toggleFollow(button) {
-    const followedId = button.dataset.userId;
+    const userId = button.dataset.userId;
     const isFollowing = button.classList.contains('following');
     withButtonSpinner(button, async () => {
         if (isFollowing) {
@@ -2442,18 +2249,22 @@ async function toggleFollow(button) {
                 .from('unified_follows')
                 .delete()
                 .eq('follower_id', currentProfile.id)
-                .eq('following_id', followedId);
+                .eq('following_id', userId);
             button.classList.remove('following');
             button.textContent = 'Suivre';
         } else {
             await supabaseClient
                 .from('unified_follows')
-                .insert({ follower_id: currentProfile.id, following_id: followedId });
+                .insert({ follower_id: currentProfile.id, following_id: userId });
             button.classList.add('following');
             button.textContent = 'Abonné';
         }
+        // Recharger les listes
         await loadFollowers();
-        await loadPosts(true);
+        await loadFollowing();
+        await loadSuggestions();
+        // Mettre à jour les boutons dans les posts
+        renderPosts();
     });
 }
 
@@ -2587,9 +2398,8 @@ function initRoleFilters() {
     roleButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const role = btn.dataset.role;
-            window.currentRoleFilter = (role === 'all') ? null : role;
+            currentRoleFilter = (role === 'all') ? null : role;
             renderPosts();
-            // Mettre à jour l'aspect actif
             roleButtons.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
         });
@@ -2755,9 +2565,57 @@ function togglePostMenu(btn) {
     });
 }
 
+// ==================== LIVES ====================
+async function loadLives() {
+    if (!currentProfile) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('lives')
+            .select('id, title, user_id, started_at')
+            .eq('status', 'en_direct')
+            .order('started_at', { ascending: false });
+        if (error) throw error;
+
+        const userIds = data.map(l => l.user_id);
+        let profiles = [];
+        if (userIds.length) {
+            const { data: profs } = await supabaseClient
+                .from('profiles')
+                .select('id, full_name, avatar_url')
+                .in('id', userIds);
+            profiles = profs || [];
+        }
+        const livesWithProfiles = data.map(live => ({
+            ...live,
+            profiles: profiles.find(p => p.id === live.user_id)
+        }));
+        renderLivesList(livesWithProfiles);
+    } catch (err) {
+        console.error('Erreur chargement lives:', err);
+    }
+}
+
+function renderLivesList(lives) {
+    const container = document.getElementById('livesList');
+    if (!container) return;
+    if (!lives.length) {
+        container.innerHTML = '<li>Aucun live en direct</li>';
+        return;
+    }
+    container.innerHTML = lives.map(live => `
+        <li data-live-id="${live.id}" onclick="window.location.href='live.html?id=${live.id}'">
+            <img src="${live.profiles?.avatar_url || 'img/user-default.jpg'}" alt="${live.profiles?.full_name}">
+            <div>
+                <strong>${live.title}</strong><br>
+                <small>${live.profiles?.full_name}</small>
+            </div>
+        </li>
+    `).join('');
+}
+
 // ==================== INITIALISATION PRINCIPALE ====================
 async function init() {
-    showLoaderWithProgress(11);
+    showLoaderWithProgress(13);
     const user = await checkSession();
     if (!user) return;
     await loadProfile();
@@ -2766,6 +2624,7 @@ async function init() {
     await loadFollowers();
     await loadFollowing();
     await loadSuggestions();
+    await loadTrends();
     await loadCollections();
     await loadUserMetadata();
     await loadNotifications();
