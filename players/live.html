@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
+        /* (styles identiques, je les garde) */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Poppins', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; }
         .navbar { background: #1a1a1a; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
@@ -99,7 +100,7 @@
 
         let currentUser = null;
         let currentProfile = null;
-        let currentLive = null;
+        let currentLive = null;        // { id, titre, peerId, isHost }
         let peer = null;
         let localStream = null;
         let remoteCall = null;
@@ -147,11 +148,31 @@
                     <div class="live-info">
                         <div class="live-title">${escapeHtml(live.titre)}</div>
                         <div class="live-creator">${live.profiles?.full_name || 'Inconnu'}</div>
+                        ${live.user_id === currentProfile.id ? `
+                            <button class="delete-live-btn" data-id="${live.id}" style="background: #dc3545; border: none; color: white; padding: 5px 10px; border-radius: 20px; margin-top: 8px; cursor: pointer;">
+                                <i class="fas fa-trash-alt"></i> Supprimer
+                            </button>
+                        ` : ''}
                     </div>
                 </div>
             `).join('');
+            // Ajout des écouteurs pour les boutons "Supprimer"
+            document.querySelectorAll('.delete-live-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const liveId = btn.dataset.id;
+                    if (confirm('Supprimer définitivement ce live ?')) {
+                        await supabaseClient.from('lives').delete().eq('id', liveId);
+                        showToast('Live supprimé');
+                        loadLives(); // recharge la liste
+                    }
+                });
+            });
+            // Écouteurs pour les cartes (rejoindre)
             document.querySelectorAll('.live-card').forEach(card => {
-                card.addEventListener('click', () => {
+                card.addEventListener('click', (e) => {
+                    // Ne pas déclencher si on a cliqué sur le bouton supprimer
+                    if (e.target.closest('.delete-live-btn')) return;
                     const id = card.dataset.id;
                     const peerId = card.dataset.peer;
                     const creatorId = card.dataset.creator;
@@ -196,7 +217,7 @@
                 return;
             }
             currentLive = { id: newLive.id, titre: title, peerId, isHost: true };
-            // Utilisation du serveur public 0.peerjs.com (plus fiable que peerjs.com)
+            // Créer le Peer avec serveur public
             peer = new Peer(peerId, {
                 host: '0.peerjs.com',
                 port: 443,
@@ -224,10 +245,53 @@
         }
 
         async function joinLive(liveId, peerId, creatorId) {
+            // Si c'est le créateur et que le live est actif, on le redirige vers la salle en tant qu'hôte
             if (creatorId === currentProfile.id) {
-                showToast('Vous êtes le créateur de ce live. Utilisez la page feed pour le gérer.');
+                // Récupérer les infos du live
+                const { data: live } = await supabaseClient.from('lives').select('*').eq('id', liveId).single();
+                if (!live || !live.actif) {
+                    showToast('Ce live n’existe plus ou est terminé.');
+                    return;
+                }
+                // Reprendre le live (même peerId)
+                currentLive = { id: liveId, titre: live.titre, peerId: live.video_url, isHost: true };
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    document.getElementById('localVideo').srcObject = localStream;
+                    document.getElementById('localVideo').style.display = 'block';
+                    document.getElementById('remoteVideo').style.display = 'none';
+                } catch (err) {
+                    showToast('Impossible d’accéder à la caméra/micro');
+                    return;
+                }
+                peer = new Peer(peerId, {
+                    host: '0.peerjs.com',
+                    port: 443,
+                    path: '/',
+                    secure: true
+                });
+                peer.on('open', () => {
+                    console.log('Reprise du live, peer ouvert:', peerId);
+                    peer.on('call', call => {
+                        call.answer(localStream);
+                        call.on('stream', remoteStream => {
+                            document.getElementById('remoteVideo').srcObject = remoteStream;
+                            document.getElementById('remoteVideo').style.display = 'block';
+                            document.getElementById('localVideo').style.display = 'block';
+                        });
+                    });
+                    showToast('Live repris !');
+                });
+                peer.on('error', err => {
+                    console.error('Peer error:', err);
+                    showToast('Erreur de connexion PeerJS.');
+                });
+                setupRealtimeForLive(liveId, true);
+                switchToLiveRoom(true);
                 return;
             }
+
+            // Spectateur
             currentLive = { id: liveId, peerId, isHost: false };
             peer = new Peer({
                 host: '0.peerjs.com',
@@ -276,6 +340,7 @@
             const isOwn = (userId === currentProfile.id);
             const div = document.createElement('div');
             div.className = `message ${isOwn ? 'own' : ''}`;
+            // Remplacer l'ID par le nom pour plus de convivialité (optionnel)
             div.innerHTML = `<strong>${userId.slice(0,6)}</strong> ${escapeHtml(message)}<small>${new Date(createdAt).toLocaleTimeString()}</small>`;
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
