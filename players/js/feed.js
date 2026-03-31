@@ -43,6 +43,8 @@ let currentCommentMediaPostId = null;
 let pendingPinCount = 0;
 let activeStoryMedia = null;
 let storyDeleteBtn = null;
+
+// ==================== LISTE DES PAYS ====================
 const allCountries = [
     "Afghanistan", "Afrique du Sud", "Albanie", "Algérie", "Allemagne", "Andorre", "Angola", "Antigua-et-Barbuda", "Arabie saoudite", "Argentine",
     "Arménie", "Australie", "Autriche", "Azerbaïdjan", "Bahamas", "Bahreïn", "Bangladesh", "Barbade", "Belgique", "Belize",
@@ -66,6 +68,7 @@ const allCountries = [
 ];
 
 // ==================== UTILITAIRES ====================
+// === Début function showToast ===
 function showToast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -93,7 +96,9 @@ function showToast(message, type = 'info', duration = 3000) {
         }
     }, duration);
 }
+// === Fin function showToast ===
 
+// === Début function timeSince ===
 function timeSince(date) {
     const seconds = Math.floor((new Date() - date) / 1000);
     let interval = Math.floor(seconds / 31536000);
@@ -108,14 +113,18 @@ function timeSince(date) {
     if (interval >= 1) return `il y a ${interval} minute${interval > 1 ? 's' : ''}`;
     return `il y a ${seconds} seconde${seconds > 1 ? 's' : ''}`;
 }
+// === Fin function timeSince ===
 
+// === Début function formatPostContent ===
 function formatPostContent(text) {
     if (!text) return '';
     text = text.replace(/@(\w+)/g, '<a href="#" onclick="openUserProfileByUsername(\'$1\')">@$1</a>');
     text = text.replace(/#(\w+)/g, '<a href="#" onclick="searchHashtag(\'$1\')">#$1</a>');
     return text;
 }
+// === Fin function formatPostContent ===
 
+// === Début function escapeHtml ===
 function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/[&<>]/g, function(m) {
@@ -125,7 +134,9 @@ function escapeHtml(str) {
         return m;
     });
 }
+// === Fin function escapeHtml ===
 
+// === Début function withButtonSpinner ===
 function withButtonSpinner(button, asyncFn) {
     const originalText = button.innerHTML;
     button.disabled = true;
@@ -141,8 +152,10 @@ function withButtonSpinner(button, asyncFn) {
         throw err;
     }
 }
+// === Fin function withButtonSpinner ===
 
 // ==================== LOADER ====================
+// === Début function updateLoaderProgress ===
 function updateLoaderProgress(stepName, increment = 1) {
     loadedSteps += increment;
     const percent = Math.min(100, Math.floor((loadedSteps / totalLoadSteps) * 100));
@@ -155,7 +168,9 @@ function updateLoaderProgress(stepName, increment = 1) {
         }, 300);
     }
 }
+// === Fin function updateLoaderProgress ===
 
+// === Début function showLoaderWithProgress ===
 function showLoaderWithProgress(steps) {
     totalLoadSteps = steps;
     loadedSteps = 0;
@@ -166,7 +181,9 @@ function showLoaderWithProgress(steps) {
         if (progressSpan) progressSpan.textContent = 'Chargement 0% – Initialisation';
     }
 }
+// === Fin function showLoaderWithProgress ===
 
+// === Début function showLoaderError ===
 function showLoaderError(message) {
     const loaderDiv = document.getElementById('globalLoader');
     if (loaderDiv) {
@@ -175,8 +192,10 @@ function showLoaderError(message) {
         alert(message);
     }
 }
+// === Fin function showLoaderError ===
 
 // ==================== AUTHENTIFICATION ====================
+// === Début function checkSession ===
 async function checkSession() {
     updateLoaderProgress('Vérification session');
     const { data: { session }, error } = await supabaseClient.auth.getSession();
@@ -187,7 +206,9 @@ async function checkSession() {
     currentUser = session.user;
     return currentUser;
 }
+// === Fin function checkSession ===
 
+// === Début function loadProfile ===
 async function loadProfile() {
     updateLoaderProgress('Chargement profil');
     const { data, error } = await supabaseClient
@@ -207,7 +228,9 @@ async function loadProfile() {
     privacyLevel = data.privacy || 'public';
     return currentProfile;
 }
+// === Fin function loadProfile ===
 
+// === Début function loadSiteConfig ===
 async function loadSiteConfig() {
     updateLoaderProgress('Configuration');
     const { data, error } = await supabaseClient
@@ -219,8 +242,10 @@ async function loadSiteConfig() {
         audioCommentsEnabled = data.value?.enabled === true;
     }
 }
+// === Fin function loadSiteConfig ===
 
 // ==================== NOTIFICATIONS ====================
+// === Début function loadNotifications ===
 async function loadNotifications() {
     if (!currentProfile) return;
     updateLoaderProgress('Notifications');
@@ -245,7 +270,9 @@ async function loadNotifications() {
         renderNotificationsModal();
     }
 }
+// === Fin function loadNotifications ===
 
+// === Début function renderNotificationsModal ===
 function renderNotificationsModal() {
     const list = document.getElementById('notificationsList');
     if (!list) return;
@@ -276,7 +303,9 @@ function renderNotificationsModal() {
         `;
     }).join('');
 }
+// === Fin function renderNotificationsModal ===
 
+// === Début function markNotificationAsRead ===
 async function markNotificationAsRead(notificationId) {
     await supabaseClient
         .from('notifications')
@@ -284,7 +313,9 @@ async function markNotificationAsRead(notificationId) {
         .eq('id', notificationId);
     await loadNotifications();
 }
+// === Fin function markNotificationAsRead ===
 
+// === Début function markAllNotificationsAsRead ===
 async function markAllNotificationsAsRead() {
     await supabaseClient
         .from('notifications')
@@ -294,19 +325,25 @@ async function markAllNotificationsAsRead() {
     await loadNotifications();
     showToast('Toutes les notifications ont été marquées comme lues', 'success');
 }
+// === Fin function markAllNotificationsAsRead ===
 
+// === Début function openNotificationsModal ===
 function openNotificationsModal() {
     renderNotificationsModal();
     document.getElementById('notificationsModal').style.display = 'block';
 }
+// === Fin function openNotificationsModal ===
 
+// === Début function closeNotificationsModal ===
 function closeNotificationsModal() {
     document.getElementById('notificationsModal').style.display = 'none';
 }
+// === Fin function closeNotificationsModal ===
+
+// === Début function populateCountrySelect ===
 function populateCountrySelect() {
     const countrySelect = document.getElementById('editCountry');
     if (!countrySelect) return;
-    // Garder l'option vide
     countrySelect.innerHTML = '<option value="">Sélectionner votre pays</option>';
     allCountries.forEach(country => {
         const option = document.createElement('option');
@@ -315,7 +352,10 @@ function populateCountrySelect() {
         countrySelect.appendChild(option);
     });
 }
+// === Fin function populateCountrySelect ===
+
 // ==================== COLLECTIONS ====================
+// === Début function loadCollections ===
 async function loadCollections() {
     updateLoaderProgress('Collections');
     const { data, error } = await supabaseClient
@@ -333,7 +373,9 @@ async function loadCollections() {
     }
     renderCollectionsUI();
 }
+// === Fin function loadCollections ===
 
+// === Début function renderCollectionsUI ===
 function renderCollectionsUI() {
     const container = document.getElementById('collectionsList');
     if (!container) return;
@@ -343,21 +385,29 @@ function renderCollectionsUI() {
         </li>
     `).join('');
 }
+// === Fin function renderCollectionsUI ===
 
+// === Début function setCurrentCollection ===
 function setCurrentCollection(collectionId) {
     currentCollection = collectionId;
     renderCollectionsUI();
     renderPosts();
 }
+// === Fin function setCurrentCollection ===
 
+// === Début function openCreateCollectionModal ===
 function openCreateCollectionModal() {
     document.getElementById('createCollectionModal').style.display = 'block';
 }
+// === Fin function openCreateCollectionModal ===
 
+// === Début function closeCreateCollectionModal ===
 function closeCreateCollectionModal() {
     document.getElementById('createCollectionModal').style.display = 'none';
 }
+// === Fin function closeCreateCollectionModal ===
 
+// === Début function createNewCollection ===
 async function createNewCollection() {
     const name = document.getElementById('newCollectionName').value.trim();
     if (!name) {
@@ -376,7 +426,9 @@ async function createNewCollection() {
         document.getElementById('newCollectionName').value = '';
     }
 }
+// === Fin function createNewCollection ===
 
+// === Début function addPostToCollection ===
 async function addPostToCollection(postId, collectionId) {
     const { error } = await supabaseClient
         .from('collection_items')
@@ -390,7 +442,9 @@ async function addPostToCollection(postId, collectionId) {
         }
     }
 }
+// === Fin function addPostToCollection ===
 
+// === Début function removePostFromCollection ===
 async function removePostFromCollection(postId, collectionId) {
     const { error } = await supabaseClient
         .from('collection_items')
@@ -406,7 +460,9 @@ async function removePostFromCollection(postId, collectionId) {
         }
     }
 }
+// === Fin function removePostFromCollection ===
 
+// === Début function showCollectionsModal ===
 function showCollectionsModal(postId) {
     const modal = document.getElementById('collectionsModal');
     const list = document.getElementById('collectionsModalList');
@@ -426,11 +482,15 @@ function showCollectionsModal(postId) {
     modal.dataset.postId = postId;
     modal.style.display = 'block';
 }
+// === Fin function showCollectionsModal ===
 
+// === Début function closeCollectionsModal ===
 function closeCollectionsModal() {
     document.getElementById('collectionsModal').style.display = 'none';
 }
+// === Fin function closeCollectionsModal ===
 
+// === Début function togglePostInCollection ===
 async function togglePostInCollection(postId, collectionId, currentlyIn) {
     if (currentlyIn) {
         await removePostFromCollection(postId, collectionId);
@@ -448,8 +508,10 @@ async function togglePostInCollection(postId, collectionId, currentlyIn) {
     }
     await loadPosts(true);
 }
+// === Fin function togglePostInCollection ===
 
 // ==================== CHARGEMENT DES DONNÉES UTILISATEUR ====================
+// === Début function loadUserMetadata ===
 async function loadUserMetadata() {
     updateLoaderProgress('Métadonnées');
     const { data: likesData } = await supabaseClient
@@ -477,284 +539,130 @@ async function loadUserMetadata() {
         .eq('user_id', currentProfile.id);
     hiddenPosts = new Set(hiddenData?.map(h => h.post_id) || []);
 }
+// === Fin function loadUserMetadata ===
 
-// ==================== RELATIONS (ABONNÉS / ABONNEMENTS / SUGGESTIONS) ====================
-
+// ==================== RELATIONS (ABONNÉS / ABONNEMENTS / SUGGESTIONS) – UNIFIED_FOLLOWS ====================
+// Cette fonction charge tout (abonnés, abonnements, suggestions, tendances) en une fois.
+// === Début function loadFollowers ===
 async function loadFollowers() {
-    if (!currentProfile) return;
-    const { data, error } = await supabaseClient
-        .from('feed_follows')
-        .select('follower_id, profiles!follower_id(id, full_name, avatar_url, username)')
-        .eq('followed_id', currentProfile.id);
-    if (error) {
-        console.error('Erreur chargement followers:', error);
-        return;
-    }
-    followers = data || [];
-    renderFollowersList();
-}
-
-function renderFollowersList() {
-    const container = document.getElementById('followersList');
-    if (!container) return;
-    if (!followers.length) {
-        container.innerHTML = '<li>Aucun abonné</li>';
-        return;
-    }
-    container.innerHTML = followers.map(f => {
-        const user = f.profiles;
-        const isFollowing = following.some(fol => fol.following_id === user.id);
-        return `
-            <li data-user-id="${user.id}">
-                <img src="${user.avatar_url || 'img/user-default.jpg'}" onclick="openUserProfile('${user.id}')">
-                <span onclick="openUserProfile('${user.id}')">${escapeHtml(user.full_name)}</span>
-                <button class="follow-btn ${isFollowing ? 'following' : ''}" data-user-id="${user.id}" onclick="toggleFollow(this)">${isFollowing ? 'Abonné' : 'Suivre'}</button>
+    updateLoaderProgress('Chargement des abonnés');
+    // Récupérer les abonnés (ceux qui suivent l'utilisateur courant)
+    const { data: followersData } = await supabaseClient
+        .from('unified_follows')
+        .select('follower_id, follower:profiles!follower_id (id, full_name, avatar_url, username)')
+        .eq('following_id', currentProfile.id);
+    followers = followersData || [];
+    const followersList = document.getElementById('followersList');
+    if (followersList) {
+        followersList.innerHTML = followers.slice(0, 5).map(f => `
+            <li onclick="openUserProfile('${f.follower_id}')">
+                <img src="${f.follower?.avatar_url || 'img/user-default.jpg'}">
+                <span>${escapeHtml(f.follower?.full_name || 'Anonyme')}</span>
+                <small>@${f.follower?.username || ''}</small>
             </li>
-        `;
-    }).join('');
-}
+        `).join('');
+        if (followers.length === 0) followersList.innerHTML = '<li>Aucun abonné</li>';
+    }
 
-async function loadFollowing() {
-    if (!currentProfile) return;
-    const { data, error } = await supabaseClient
-        .from('feed_follows')
-        .select('following_id, profiles!following_id(id, full_name, avatar_url, username)')
+    // Récupérer les abonnements (ceux que l'utilisateur courant suit)
+    const { data: followingData } = await supabaseClient
+        .from('unified_follows')
+        .select('following_id, followed:profiles!following_id (id, full_name, avatar_url, username)')
         .eq('follower_id', currentProfile.id);
-    if (error) {
-        console.error('Erreur chargement following:', error);
-        return;
-    }
-    following = data || [];
-    renderFollowingList();
-}
-
-function renderFollowingList() {
-    const container = document.getElementById('followingList');
-    if (!container) return;
-    if (!following.length) {
-        container.innerHTML = '<li>Aucun abonnement</li>';
-        return;
-    }
-    container.innerHTML = following.map(f => {
-        const user = f.profiles;
-        return `
-            <li data-user-id="${user.id}">
-                <img src="${user.avatar_url || 'img/user-default.jpg'}" onclick="openUserProfile('${user.id}')">
-                <span onclick="openUserProfile('${user.id}')">${escapeHtml(user.full_name)}</span>
-                <button class="follow-btn following" data-user-id="${user.id}" onclick="toggleFollow(this)">Abonné</button>
+    following = followingData || [];
+    const followingList = document.getElementById('followingList');
+    if (followingList) {
+        followingList.innerHTML = following.slice(0, 5).map(f => `
+            <li onclick="openUserProfile('${f.following_id}')">
+                <img src="${f.followed?.avatar_url || 'img/user-default.jpg'}">
+                <span>${escapeHtml(f.followed?.full_name || 'Anonyme')}</span>
+                <small>@${f.followed?.username || ''}</small>
             </li>
-        `;
-    }).join('');
-}
+        `).join('');
+        if (following.length === 0) followingList.innerHTML = '<li>Aucun abonnement</li>';
+    }
 
-async function loadSuggestions() {
-    if (!currentProfile) return;
-    // Récupérer des profils que l'utilisateur ne suit pas
+    // Suggestions : profils que l'utilisateur ne suit pas
     const followingIds = following.map(f => f.following_id);
-    const { data, error } = await supabaseClient
+    const { data: suggestionsData } = await supabaseClient
         .from('profiles')
         .select('id, full_name, avatar_url, username')
         .not('id', 'in', `(${followingIds.join(',') || 'null'})`)
         .neq('id', currentProfile.id)
-        .limit(10);
-    if (error) {
-        console.error('Erreur chargement suggestions:', error);
-        return;
+        .limit(5);
+    const suggestionsList = document.getElementById('suggestionsList');
+    if (suggestionsList) {
+        suggestionsList.innerHTML = (suggestionsData || []).map(s => `
+            <li onclick="openUserProfile('${s.id}')">
+                <img src="${s.avatar_url || 'img/user-default.jpg'}">
+                <span>${escapeHtml(s.full_name)}</span>
+                <small>@${s.username || ''}</small>
+            </li>
+        `).join('');
+        if (suggestionsData?.length === 0) suggestionsList.innerHTML = '<li>Aucune suggestion</li>';
     }
-    renderSuggestionsList(data);
+
+    // Tendances : hashtags populaires
+    const { data: trendsData } = await supabaseClient
+        .from('unified_posts')
+        .select('content')
+        .limit(100);
+    const hashtags = {};
+    (trendsData || []).forEach(post => {
+        const matches = post.content?.match(/#\w+/g) || [];
+        matches.forEach(tag => {
+            hashtags[tag] = (hashtags[tag] || 0) + 1;
+        });
+    });
+    const sorted = Object.entries(hashtags).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const trendsList = document.getElementById('trendsList');
+    if (trendsList) {
+        trendsList.innerHTML = sorted.map(([tag, count]) => `
+            <li onclick="searchHashtag('${tag.substring(1)}')">
+                <i class="fas fa-hashtag"></i> ${tag} <small>${count} posts</small>
+            </li>
+        `).join('');
+        if (sorted.length === 0) trendsList.innerHTML = '<li>Aucune tendance</li>';
+    }
+
+    updateLoaderProgress('Abonnés chargés');
 }
-
-function renderSuggestionsList(users) {
-    const container = document.getElementById('suggestionsList');
-    if (!container) return;
-    if (!users.length) {
-        container.innerHTML = '<li>Aucune suggestion</li>';
-        return;
-    }
-    container.innerHTML = users.map(user => `
-        <li data-user-id="${user.id}">
-            <img src="${user.avatar_url || 'img/user-default.jpg'}" onclick="openUserProfile('${user.id}')">
-            <span onclick="openUserProfile('${user.id}')">${escapeHtml(user.full_name)}</span>
-            <button class="follow-btn" data-user-id="${user.id}" onclick="toggleFollow(this)">Suivre</button>
-        </li>
-    `).join('');
-}
-
-// ==================== LIVES ====================
-async function loadLives() {
-    if (!currentProfile) return;
-    try {
-        const { data, error } = await supabaseClient
-            .from('lives')
-            .select('id, title, user_id, profiles(id, full_name, avatar_url)')
-            .eq('status', 'en_direct')
-            .order('started_at', { ascending: false });
-        if (error) throw error;
-        renderLivesList(data || []);
-    } catch (err) {
-        console.error('Erreur chargement lives:', err);
-    }
-}
-
-function renderLivesList(lives) {
-    const container = document.getElementById('livesList');
-    if (!container) return;
-    if (!lives.length) {
-        container.innerHTML = '<li>Aucun live en direct</li>';
-        return;
-    }
-    container.innerHTML = lives.map(live => `
-        <li data-live-id="${live.id}" onclick="window.location.href='live.html?id=${live.id}'">
-            <img src="${live.profiles?.avatar_url || 'img/user-default.jpg'}" alt="${live.profiles?.full_name}">
-            <div>
-                <strong>${live.title}</strong><br>
-                <small>${live.profiles?.full_name}</small>
-            </div>
-        </li>
-    `).join('');
-}
-
-// ==================== SUIVI ET PROFIL ====================
-
-async function toggleFollow(button) {
-    const userId = button.dataset.userId;
-    const isFollowing = button.classList.contains('following');
-    if (isFollowing) {
-        const { error } = await supabaseClient
-            .from('feed_follows')
-            .delete()
-            .eq('follower_id', currentProfile.id)
-            .eq('followed_id', userId);
-        if (error) {
-            showToast('Erreur lors du désabonnement', 'error');
-            return;
-        }
-    } else {
-        const { error } = await supabaseClient
-            .from('feed_follows')
-            .insert({ follower_id: currentProfile.id, followed_id: userId });
-        if (error) {
-            showToast('Erreur lors de l’abonnement', 'error');
-            return;
-        }
-    }
-    // Recharger les listes et l'état des posts
-    await loadFollowing();
-    await loadFollowers();
-    await loadSuggestions();
-    renderPosts(); // met à jour les boutons dans les posts
-    showToast(isFollowing ? 'Désabonné' : 'Abonné', 'success');
-}
-
-async function openUserProfile(userId) {
-    if (userId === currentProfile.id) {
-        // Si c'est le profil de l'utilisateur courant, on peut ouvrir la page d'édition
-        window.location.href = 'profile-edit.html';
-        return;
-    }
-    // Récupérer les infos du profil cible
-    const { data: profile, error } = await supabaseClient
-        .from('profiles')
-        .select('id, full_name, username, avatar_url, bio, interests, reason, vision')
-        .eq('id', userId)
-        .single();
-    if (error) {
-        showToast('Impossible de charger le profil', 'error');
-        return;
-    }
-    // Récupérer les compteurs de followers/following
-    const { count: followersCount } = await supabaseClient
-        .from('feed_follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('followed_id', userId);
-    const { count: followingCount } = await supabaseClient
-        .from('feed_follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('follower_id', userId);
-    
-    // Remplir la modale
-    document.getElementById('profileAvatar').src = profile.avatar_url || 'img/user-default.jpg';
-    document.getElementById('profileName').textContent = profile.full_name;
-    document.getElementById('profileHubId').textContent = `@${profile.username || 'utilisateur'}`;
-    document.getElementById('profileBio').textContent = profile.bio || 'Aucune bio';
-    document.getElementById('profileInterests').textContent = profile.interests || 'Non renseigné';
-    document.getElementById('profileReason').textContent = profile.reason || 'Non renseigné';
-    document.getElementById('profileVision').textContent = profile.vision || 'Non renseigné';
-    
-    // Ajouter les compteurs (par exemple sous le pseudo)
-    let countersHtml = `<div class="profile-stats"><span>${followersCount} abonnés</span> · <span>${followingCount} abonnements</span></div>`;
-    const hubIdElem = document.getElementById('profileHubId');
-    if (hubIdElem && !document.querySelector('.profile-stats')) {
-        hubIdElem.insertAdjacentHTML('afterend', countersHtml);
-    }
-    
-    // Gérer le bouton "Suivre"
-    const isFollowing = following.some(f => f.following_id === userId);
-    const messageBtn = document.querySelector('#userProfileModal .btn-send-message');
-    // S'assurer qu'il y a un bouton "Suivre" à côté ou à la place. Pour l'instant, nous allons ajouter un bouton dans la modale si nécessaire.
-    // On peut modifier le HTML de la modale pour ajouter un conteneur dynamique, mais pour simplifier, nous allons ajouter un bouton juste avant le bouton message.
-    let followBtn = document.getElementById('modalFollowBtn');
-    if (!followBtn) {
-        followBtn = document.createElement('button');
-        followBtn.id = 'modalFollowBtn';
-        followBtn.className = 'follow-btn';
-        followBtn.style.marginRight = '10px';
-        messageBtn.parentNode.insertBefore(followBtn, messageBtn);
-    }
-    followBtn.textContent = isFollowing ? 'Abonné' : 'Suivre';
-    followBtn.classList.toggle('following', isFollowing);
-    followBtn.dataset.userId = userId;
-    followBtn.onclick = () => toggleFollow(followBtn);
-    
-    // Stocker l'ID de l'utilisateur pour le message direct
-    selectedUserId = userId;
-    
-    // Afficher la modale
-    document.getElementById('userProfileModal').style.display = 'block';
-}
-
-function closeUserProfileModal() {
-    document.getElementById('userProfileModal').style.display = 'none';
-    // Nettoyer le bouton ajouté pour éviter les doublons
-    const followBtn = document.getElementById('modalFollowBtn');
-    if (followBtn) followBtn.remove();
-    selectedUserId = null;
-}
-
+// === Fin function loadFollowers ===
 
 // ==================== VUES DES POSTS ====================
-let viewedPosts = new Set();
-
+// === Début function observePostsForViews ===
 function observePostsForViews() {
+    const postsElements = document.querySelectorAll('.post-card');
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                const postCard = entry.target.closest('.post-card');
-                if (!postCard) return;
-                const postId = postCard.dataset.postId;
-                if (postId && !viewedPosts.has(postId)) {
-                    viewedPosts.add(postId);
+                const postId = parseInt(entry.target.dataset.postId);
+                if (!observedPosts.has(postId)) {
+                    observedPosts.add(postId);
                     recordView(postId);
                 }
             }
         });
     }, { threshold: 0.5 });
-    
-    document.querySelectorAll('.post-card').forEach(card => observer.observe(card));
+    postsElements.forEach(el => observer.observe(el));
 }
+// === Fin function observePostsForViews ===
 
+// === Début function recordView ===
 async function recordView(postId) {
-    if (!currentProfile) return;
     const { error } = await supabaseClient
         .from('post_views')
-        .insert({ user_id: currentProfile.id, post_id: postId });
+        .insert({
+            post_id: postId,
+            user_id: currentProfile.id,
+            session_id: null
+        });
     if (error) console.error('Erreur enregistrement vue:', error);
 }
-
-
-
+// === Fin function recordView ===
 
 // ==================== POSTS ====================
+// === Début function getCountsMap ===
 async function getCountsMap(table, column, ids) {
     if (!ids.length) return {};
     const { data, error } = await supabaseClient
@@ -772,7 +680,9 @@ async function getCountsMap(table, column, ids) {
     });
     return counts;
 }
+// === Fin function getCountsMap ===
 
+// === Début function loadPosts ===
 async function loadPosts(reset = true) {
     if (reset) {
         currentPostOffset = 0;
@@ -820,7 +730,7 @@ async function loadPosts(reset = true) {
         const commentsCounts = await getCountsMap('unified_comments', 'post_id', postIds);
         const sharesCounts = await getCountsMap('unified_shares', 'post_id', postIds);
         const viewsCounts = await getCountsMap('post_views', 'post_id', postIds);
-        const dislikesCounts = await getCountsMap('unified_dislikes', 'post_id', postIds); // Ajout
+        const dislikesCounts = await getCountsMap('unified_dislikes', 'post_id', postIds);
 
         const newPosts = postsData.map(post => {
             const author = profilesMap[post.user_id];
@@ -839,7 +749,7 @@ async function loadPosts(reset = true) {
                 commentsCount: commentsCounts[post.id] || 0,
                 sharesCount: sharesCounts[post.id] || 0,
                 viewsCount: viewsCounts[post.id] || 0,
-                dislikesCount: dislikesCounts[post.id] || 0, // Ajout
+                dislikesCount: dislikesCounts[post.id] || 0,
                 isLiked: likedPosts.has(post.id),
                 isDisliked: dislikedPosts.has(post.id),
                 isSaved: savedPosts.has(post.id),
@@ -848,7 +758,6 @@ async function loadPosts(reset = true) {
             };
         }).filter(p => p !== null);
 
-        // Récupérer les collections pour ces posts
         const { data: collItems } = await supabaseClient
             .from('collection_items')
             .select('post_id, collection_id')
@@ -885,18 +794,23 @@ async function loadPosts(reset = true) {
         loadingMore = false;
     }
 }
+// === Fin function loadPosts ===
 
+// === Début function loadMorePosts ===
 function loadMorePosts() {
     if (hasMorePosts && !loadingMore) {
         loadPosts(false);
     }
 }
+// === Fin function loadMorePosts ===
 
 // ==================== FILTRES ====================
 let dateFilter = 'all';
 let popularityFilter = 'all';
 let contentTypeFilter = 'all';
+let currentRoleFilter = null;
 
+// === Début function applyAdvancedFilters ===
 function applyAdvancedFilters() {
     let filtered = [...posts];
     const now = new Date();
@@ -927,8 +841,10 @@ function applyAdvancedFilters() {
 
     window.filteredPosts = filtered;
 }
+// === Fin function applyAdvancedFilters ===
 
 // ==================== RENDU DES POSTS ====================
+// === Début function renderPostCard ===
 function renderPostCard(post, isHidden = false) {
     const timeAgo = timeSince(new Date(post.created_at));
     const likedClass = post.isLiked ? 'liked' : '';
@@ -995,14 +911,16 @@ function renderPostCard(post, isHidden = false) {
         </div>
     `;
 }
+// === Fin function renderPostCard ===
 
+// === Début function renderPosts ===
 function renderPosts() {
     const feed = document.getElementById('postsFeed');
     if (!feed) return;
 
     let filteredPosts = window.filteredPosts || [...posts];
-    if (window.currentRoleFilter) {
-    filteredPosts = filteredPosts.filter(p => p.author?.role === window.currentRoleFilter);
+    if (currentRoleFilter) {
+        filteredPosts = filteredPosts.filter(p => p.author?.role === currentRoleFilter);
     }
     if (currentFilter === 'following') {
         const followingIds = following.map(f => f.following_id);
@@ -1037,8 +955,10 @@ function renderPosts() {
     feed.innerHTML = html;
     observePostsForViews();
 }
+// === Fin function renderPosts ===
 
 // ==================== COMMENTAIRES ====================
+// === Début function loadComments ===
 async function loadComments(postId) {
     const { data, error } = await supabaseClient
         .from('unified_comments')
@@ -1074,7 +994,9 @@ async function loadComments(postId) {
     `;
     commentsDiv.innerHTML = html;
 }
+// === Fin function loadComments ===
 
+// === Début function renderComment ===
 async function renderComment(comment, postId) {
     const authorName = comment.author?.full_name || 'Anonyme';
     const timeAgo = timeSince(new Date(comment.created_at));
@@ -1127,7 +1049,9 @@ async function renderComment(comment, postId) {
         ${repliesHtml ? `<div class="comment-reply">${repliesHtml}</div>` : ''}
     `;
 }
+// === Fin function renderComment ===
 
+// === Début function addComment ===
 async function addComment(postId) {
     const input = document.getElementById(`commentInput-${postId}`);
     const content = input.value.trim();
@@ -1160,27 +1084,37 @@ async function addComment(postId) {
         }
     });
 }
+// === Fin function addComment ===
 
+// === Début function focusComment ===
 function focusComment(postId) {
     document.getElementById(`commentInput-${postId}`).focus();
 }
+// === Fin function focusComment ===
 
+// === Début function scrollToComments ===
 function scrollToComments(postId) {
     document.getElementById(`comments-${postId}`).scrollIntoView({ behavior: 'smooth' });
 }
+// === Fin function scrollToComments ===
 
+// === Début function openReplyModal ===
 function openReplyModal(commentId, authorName, postId) {
     replyParentId = commentId;
     replyPostId = postId;
     document.getElementById('originalComment').innerHTML = `<strong>${authorName}</strong><br>${document.querySelector(`.comment[data-comment-id="${commentId}"] .comment-text`).innerHTML}`;
     document.getElementById('replyModal').style.display = 'block';
 }
+// === Fin function openReplyModal ===
 
+// === Début function closeReplyModal ===
 function closeReplyModal() {
     document.getElementById('replyModal').style.display = 'none';
     replyParentId = null;
 }
+// === Fin function closeReplyModal ===
 
+// === Début function sendReply ===
 async function sendReply() {
     const content = document.getElementById('replyContent').value.trim();
     if (!content) return;
@@ -1204,7 +1138,9 @@ async function sendReply() {
         }
     });
 }
+// === Fin function sendReply ===
 
+// === Début function editComment ===
 async function editComment(commentId, postId) {
     const newContent = prompt('Modifier votre commentaire :');
     if (!newContent) return;
@@ -1219,7 +1155,9 @@ async function editComment(commentId, postId) {
         loadComments(postId);
     }
 }
+// === Fin function editComment ===
 
+// === Début function deleteComment ===
 async function deleteComment(commentId, postId) {
     if (!confirm('Supprimer ce commentaire ?')) return;
     const { error } = await supabaseClient
@@ -1241,7 +1179,9 @@ async function deleteComment(commentId, postId) {
         }
     }
 }
+// === Fin function deleteComment ===
 
+// === Début function reportComment ===
 async function reportComment(commentId, postId) {
     const reason = prompt('Pourquoi signalez-vous ce commentaire ? (optionnel)');
     const { error } = await supabaseClient
@@ -1253,16 +1193,24 @@ async function reportComment(commentId, postId) {
         showToast('Commentaire signalé, merci', 'success');
     }
 }
+// === Fin function reportComment ===
 
 // ==================== COMMENTAIRE MÉDIA ====================
+// === Début function openCommentMediaModal ===
 function openCommentMediaModal(postId) {
     currentCommentMediaPostId = postId;
     document.getElementById('commentMediaModal').style.display = 'block';
 }
+// === Fin function openCommentMediaModal ===
+
+// === Début function closeCommentMediaModal ===
 function closeCommentMediaModal() {
     document.getElementById('commentMediaModal').style.display = 'none';
     currentCommentMediaPostId = null;
 }
+// === Fin function closeCommentMediaModal ===
+
+// === Début function uploadCommentMedia ===
 async function uploadCommentMedia() {
     const fileInput = document.getElementById('commentMediaFile');
     const file = fileInput.files[0];
@@ -1299,8 +1247,10 @@ async function uploadCommentMedia() {
         await loadComments(currentCommentMediaPostId);
     }
 }
+// === Fin function uploadCommentMedia ===
 
 // ==================== LIKES, DISLIKES ====================
+// === Début function likePost ===
 async function likePost(postId) {
     const postCard = document.querySelector(`.post-card[data-post-id="${postId}"]`);
     const likeBtn = postCard?.querySelector('.post-actions button:first-child');
@@ -1340,7 +1290,9 @@ async function likePost(postId) {
         posts[postIndex].likesCount = likedPosts.has(postId) ? posts[postIndex].likesCount + 1 : posts[postIndex].likesCount - 1;
     }
 }
+// === Fin function likePost ===
 
+// === Début function dislikePost ===
 async function dislikePost(postId) {
     const postCard = document.querySelector(`.post-card[data-post-id="${postId}"]`);
     const dislikeBtn = postCard?.querySelector('.post-actions button:nth-child(2)');
@@ -1380,7 +1332,9 @@ async function dislikePost(postId) {
         posts[postIndex].dislikesCount = dislikedPosts.has(postId) ? posts[postIndex].dislikesCount + 1 : posts[postIndex].dislikesCount - 1;
     }
 }
+// === Fin function dislikePost ===
 
+// === Début function showLikes ===
 async function showLikes(postId) {
     const { data, error } = await supabaseClient
         .from('unified_likes')
@@ -1400,10 +1354,15 @@ async function showLikes(postId) {
     `).join('');
     document.getElementById('likesModal').style.display = 'block';
 }
+// === Fin function showLikes ===
+
+// === Début function closeLikesModal ===
 function closeLikesModal() {
     document.getElementById('likesModal').style.display = 'none';
 }
+// === Fin function closeLikesModal ===
 
+// === Début function showDislikes ===
 async function showDislikes(postId) {
     const { data, error } = await supabaseClient
         .from('unified_dislikes')
@@ -1423,11 +1382,16 @@ async function showDislikes(postId) {
     `).join('');
     document.getElementById('dislikesModal').style.display = 'block';
 }
+// === Fin function showDislikes ===
+
+// === Début function closeDislikesModal ===
 function closeDislikesModal() {
     document.getElementById('dislikesModal').style.display = 'none';
 }
+// === Fin function closeDislikesModal ===
 
 // ==================== REPOST ====================
+// === Début function repost ===
 async function repost(originalPostId) {
     const originalPost = posts.find(p => p.id == originalPostId);
     if (!originalPost) return;
@@ -1447,14 +1411,22 @@ async function repost(originalPostId) {
         loadPosts(true);
     }
 }
+// === Fin function repost ===
 
 // ==================== PARTAGE EXTERNE ====================
+// === Début function sharePostExternal ===
 function sharePostExternal(postId) {
     const modal = document.getElementById('shareModal');
     modal.dataset.postId = postId;
     modal.style.display = 'block';
 }
+// === Fin function sharePostExternal ===
+
+// === Début function closeShareModal ===
 function closeShareModal() { document.getElementById('shareModal').style.display = 'none'; }
+// === Fin function closeShareModal ===
+
+// === Début function shareOn ===
 function shareOn(platform) {
     const postId = document.getElementById('shareModal').dataset.postId;
     const post = posts.find(p => p.id == postId);
@@ -1470,8 +1442,10 @@ function shareOn(platform) {
     if (shareUrl) window.open(shareUrl, '_blank');
     closeShareModal();
 }
+// === Fin function shareOn ===
 
 // ==================== STORIES ====================
+// === Début function loadStories ===
 async function loadStories() {
     updateLoaderProgress('Stories');
     const now = new Date().toISOString();
@@ -1487,7 +1461,9 @@ async function loadStories() {
     stories = data || [];
     renderStories();
 }
+// === Fin function loadStories ===
 
+// === Début function renderStories ===
 function renderStories() {
     const myStoriesList = document.getElementById('myStoriesList');
     const moodStoriesList = document.getElementById('hubisMoodList');
@@ -1510,7 +1486,9 @@ function renderStories() {
         </div>
     `).join('');
 }
+// === Fin function renderStories ===
 
+// === Début function openStoryUploadModal ===
 function openStoryUploadModal() {
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -1535,7 +1513,9 @@ function openStoryUploadModal() {
     document.body.appendChild(modal);
     modal.style.display = 'block';
 }
+// === Fin function openStoryUploadModal ===
 
+// === Début function uploadStory ===
 async function uploadStory() {
     const type = document.getElementById('storyType').value;
     const fileInput = document.getElementById('storyFile');
@@ -1596,7 +1576,9 @@ async function uploadStory() {
         if (progressDiv) progressDiv.style.display = 'none';
     }
 }
+// === Fin function uploadStory ===
 
+// === Début function openStory ===
 async function openStory(storyId) {
     currentStoryId = storyId;
     const story = stories.find(s => s.id == storyId);
@@ -1630,7 +1612,9 @@ async function openStory(storyId) {
     modal.style.display = 'flex';
     startStoryTimer(story);
 }
+// === Fin function openStory ===
 
+// === Début function deleteStory ===
 async function deleteStory(storyId) {
     if (!confirm('Supprimer cette story ?')) return;
     const { error } = await supabaseClient
@@ -1645,12 +1629,16 @@ async function deleteStory(storyId) {
         await loadStories();
     }
 }
+// === Fin function deleteStory ===
 
+// === Début function closeStoryModal ===
 function closeStoryModal() {
     if (storyTimer) clearTimeout(storyTimer);
     document.getElementById('storyModal').style.display = 'none';
 }
+// === Fin function closeStoryModal ===
 
+// === Début function nextStory ===
 function nextStory() {
     const index = stories.findIndex(s => s.id == currentStoryId);
     if (index < stories.length - 1) {
@@ -1659,14 +1647,18 @@ function nextStory() {
         closeStoryModal();
     }
 }
+// === Fin function nextStory ===
 
+// === Début function prevStory ===
 function prevStory() {
     const index = stories.findIndex(s => s.id == currentStoryId);
     if (index > 0) {
         openStory(stories[index - 1].id);
     }
 }
+// === Fin function prevStory ===
 
+// === Début function startStoryTimer ===
 function startStoryTimer(story) {
     if (storyTimer) clearTimeout(storyTimer);
     const bar = document.getElementById('storyProgressBar');
@@ -1689,13 +1681,18 @@ function startStoryTimer(story) {
         nextStory();
     }, 600000);
 }
+// === Fin function startStoryTimer ===
 
 // ==================== MENTIONS & HASHTAGS ====================
+// === Début function searchHashtag ===
 function searchHashtag(tag) {
     searchTerm = '#' + tag;
     document.getElementById('communitySearch').value = searchTerm;
     renderPosts();
 }
+// === Fin function searchHashtag ===
+
+// === Début function openUserProfileByUsername ===
 async function openUserProfileByUsername(username) {
     const { data, error } = await supabaseClient
         .from('profiles')
@@ -1705,8 +1702,10 @@ async function openUserProfileByUsername(username) {
     if (data) openUserProfile(data.id);
     else showToast('Utilisateur introuvable', 'error');
 }
+// === Fin function openUserProfileByUsername ===
 
 // ==================== ZOOM MÉDIA ====================
+// === Début function openMediaZoom ===
 function openMediaZoom(url, type, caption = '') {
     const modal = document.getElementById('mediaZoomModal');
     const viewer = document.getElementById('mediaViewer');
@@ -1716,17 +1715,28 @@ function openMediaZoom(url, type, caption = '') {
     if (captionDiv) captionDiv.innerHTML = caption;
     modal.style.display = 'block';
 }
+// === Fin function openMediaZoom ===
+
+// === Début function closeMediaZoom ===
 function closeMediaZoom() {
     document.getElementById('mediaZoomModal').style.display = 'none';
 }
+// === Fin function closeMediaZoom ===
 
 // ==================== ÉVÉNEMENTS ====================
+// === Début function openEventModal ===
 function openEventModal() {
     document.getElementById('createEventModal').style.display = 'block';
 }
+// === Fin function openEventModal ===
+
+// === Début function closeEventModal ===
 function closeEventModal() {
     document.getElementById('createEventModal').style.display = 'none';
 }
+// === Fin function closeEventModal ===
+
+// === Début function createEvent ===
 async function createEvent() {
     const title = document.getElementById('eventTitle').value.trim();
     const date = document.getElementById('eventDate').value;
@@ -1768,14 +1778,22 @@ async function createEvent() {
         loadPosts(true);
     }
 }
+// === Fin function createEvent ===
 
 // ==================== PROGRAMMATION ====================
+// === Début function openScheduleModal ===
 function openScheduleModal() {
     document.getElementById('schedulePostModal').style.display = 'block';
 }
+// === Fin function openScheduleModal ===
+
+// === Début function closeScheduleModal ===
 function closeScheduleModal() {
     document.getElementById('schedulePostModal').style.display = 'none';
 }
+// === Fin function closeScheduleModal ===
+
+// === Début function schedulePost ===
 async function schedulePost() {
     const scheduledAt = document.getElementById('scheduleDateTime').value;
     if (!scheduledAt) {
@@ -1819,8 +1837,10 @@ async function schedulePost() {
         cancelMedia();
     }
 }
+// === Fin function schedulePost ===
 
 // ==================== APERÇU ====================
+// === Début function openPreview ===
 function openPreview() {
     const content = document.getElementById('postContent').value.trim();
     const file = document.getElementById('mediaInput').files[0];
@@ -1841,15 +1861,23 @@ function openPreview() {
     }
     previewModal.style.display = 'block';
 }
+// === Fin function openPreview ===
+
+// === Début function closePreview ===
 function closePreview() {
     document.getElementById('previewModal').style.display = 'none';
 }
+// === Fin function closePreview ===
+
+// === Début function publishFromPreview ===
 function publishFromPreview() {
     document.getElementById('publishBtn').click();
     closePreview();
 }
+// === Fin function publishFromPreview ===
 
 // ==================== PUBLICATION ====================
+// === Début function createPost ===
 async function createPost(content, file) {
     let mediaUrl = null, mediaType = null;
     if (file) {
@@ -1902,19 +1930,30 @@ async function createPost(content, file) {
         renderPosts();
     }
 }
+// === Fin function createPost ===
+
+// === Début function cancelMedia ===
 function cancelMedia() {
     document.getElementById('publishMediaPreview').innerHTML = '';
     document.getElementById('mediaCancel').style.display = 'none';
     document.getElementById('mediaInput').value = '';
 }
+// === Fin function cancelMedia ===
 
 // ==================== SONDAGE ====================
+// === Début function openPollModal ===
 function openPollModal() {
     document.getElementById('pollModal').style.display = 'block';
 }
+// === Fin function openPollModal ===
+
+// === Début function closePollModal ===
 function closePollModal() {
     document.getElementById('pollModal').style.display = 'none';
 }
+// === Fin function closePollModal ===
+
+// === Début function createPoll ===
 async function createPoll() {
     const question = document.getElementById('pollQuestion').value.trim();
     const options = document.getElementById('pollOptions').value.split('\n').filter(o => o.trim());
@@ -1939,8 +1978,10 @@ async function createPoll() {
         loadPosts(true);
     }
 }
+// === Fin function createPoll ===
 
 // ==================== MODALES PROFIL, CONFIDENTIALITÉ, INVITATION ====================
+// === Début function openEditProfileModal ===
 function openEditProfileModal() {
     const modal = document.getElementById('editProfileModal');
     document.getElementById('editBio').value = currentProfile.bio || '';
@@ -1953,9 +1994,15 @@ function openEditProfileModal() {
     document.getElementById('editVision').value = currentProfile.contact_info?.vision || '';
     modal.style.display = 'block';
 }
+// === Fin function openEditProfileModal ===
+
+// === Début function closeEditProfileModal ===
 function closeEditProfileModal() {
     document.getElementById('editProfileModal').style.display = 'none';
 }
+// === Fin function closeEditProfileModal ===
+
+// === Début function saveProfileChanges ===
 async function saveProfileChanges(e) {
     e.preventDefault();
     const bio = document.getElementById('editBio').value.trim();
@@ -1992,13 +2039,22 @@ async function saveProfileChanges(e) {
         }
     });
 }
+// === Fin function saveProfileChanges ===
+
+// === Début function openPrivacyModal ===
 function openPrivacyModal() {
     document.getElementById('privacyModal').style.display = 'block';
     document.querySelector(`input[name="privacy"][value="${privacyLevel}"]`).checked = true;
 }
+// === Fin function openPrivacyModal ===
+
+// === Début function closePrivacyModal ===
 function closePrivacyModal() {
     document.getElementById('privacyModal').style.display = 'none';
 }
+// === Fin function closePrivacyModal ===
+
+// === Début function savePrivacy ===
 async function savePrivacy() {
     const selected = document.querySelector('input[name="privacy"]:checked').value;
     const { error } = await supabaseClient
@@ -2014,21 +2070,36 @@ async function savePrivacy() {
         loadPosts(true);
     }
 }
+// === Fin function savePrivacy ===
+
+// === Début function openInviteModal ===
 function openInviteModal() {
     document.getElementById('inviteModal').style.display = 'block';
 }
+// === Fin function openInviteModal ===
+
+// === Début function closeInviteModal ===
 function closeInviteModal() {
     document.getElementById('inviteModal').style.display = 'none';
 }
+// === Fin function closeInviteModal ===
+
+// === Début function sendInvite ===
 async function sendInvite() {
     const email = document.getElementById('inviteEmail').value.trim();
     if (!email) return;
     showToast(`Invitation envoyée à ${email}`, 'success');
     closeInviteModal();
 }
+// === Fin function sendInvite ===
+
+// === Début function showPersonalHistory ===
 function showPersonalHistory() {
     openHistoryModal();
 }
+// === Fin function showPersonalHistory ===
+
+// === Début function openHistoryModal ===
 async function openHistoryModal() {
     const { data, error } = await supabaseClient
         .from('user_activities')
@@ -2057,16 +2128,24 @@ async function openHistoryModal() {
     document.body.appendChild(modal);
     modal.style.display = 'block';
 }
+// === Fin function openHistoryModal ===
 
 // ==================== SIGNALEMENT ====================
+// === Début function openReportModal ===
 function openReportModal(postId) {
     currentReportPostId = postId;
     document.getElementById('reportModal').style.display = 'block';
 }
+// === Fin function openReportModal ===
+
+// === Début function closeReportModal ===
 function closeReportModal() {
     document.getElementById('reportModal').style.display = 'none';
     currentReportPostId = null;
 }
+// === Fin function closeReportModal ===
+
+// === Début function submitReport ===
 async function submitReport() {
     const reason = document.getElementById('reportReason').value.trim();
     const { error } = await supabaseClient
@@ -2083,17 +2162,25 @@ async function submitReport() {
         closeReportModal();
     }
 }
+// === Fin function submitReport ===
 
 // ==================== AUDIO COMMENTAIRES ====================
+// === Début function openAudioCommentModal ===
 function openAudioCommentModal(postId) {
     if (!audioCommentsEnabled) return;
     audioCommentPostId = postId;
     document.getElementById('audioCommentModal').style.display = 'block';
 }
+// === Fin function openAudioCommentModal ===
+
+// === Début function closeAudioModal ===
 function closeAudioModal() {
     document.getElementById('audioCommentModal').style.display = 'none';
     audioCommentPostId = null;
 }
+// === Fin function closeAudioModal ===
+
+// === Début function uploadAudioComment ===
 async function uploadAudioComment() {
     const fileInput = document.getElementById('audioFileInput');
     const file = fileInput.files[0];
@@ -2129,35 +2216,10 @@ async function uploadAudioComment() {
         await loadComments(audioCommentPostId);
     }
 }
-
-// ==================== VUES ====================
-function observePostsForViews() {
-    const postsElements = document.querySelectorAll('.post-card');
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const postId = parseInt(entry.target.dataset.postId);
-                if (!observedPosts.has(postId)) {
-                    observedPosts.add(postId);
-                    recordView(postId);
-                }
-            }
-        });
-    }, { threshold: 0.5 });
-    postsElements.forEach(el => observer.observe(el));
-}
-async function recordView(postId) {
-    const { error } = await supabaseClient
-        .from('post_views')
-        .insert({
-            post_id: postId,
-            user_id: currentProfile.id,
-            session_id: null
-        });
-    if (error) console.error('Erreur enregistrement vue:', error);
-}
+// === Fin function uploadAudioComment ===
 
 // ==================== POSTS MASQUÉS ====================
+// === Début function hidePost ===
 async function hidePost(postId) {
     const { error } = await supabaseClient
         .from('unified_hidden')
@@ -2171,7 +2233,9 @@ async function hidePost(postId) {
     if (postCard) postCard.remove();
     showToast('Post masqué', 'success');
 }
+// === Fin function hidePost ===
 
+// === Début function unhidePost ===
 async function unhidePost(postId) {
     const { error } = await supabaseClient
         .from('unified_hidden')
@@ -2190,7 +2254,9 @@ async function unhidePost(postId) {
         }
     }
 }
+// === Fin function unhidePost ===
 
+// === Début function loadHiddenPosts ===
 async function loadHiddenPosts() {
     showingHidden = true;
     document.getElementById('backToFeedBtn').style.display = 'block';
@@ -2240,6 +2306,9 @@ async function loadHiddenPosts() {
         showToast('Erreur lors du chargement des posts masqués', 'error');
     }
 }
+// === Fin function loadHiddenPosts ===
+
+// === Début function renderHiddenPosts ===
 function renderHiddenPosts(hiddenPostsList) {
     const feed = document.getElementById('postsFeed');
     if (!feed) return;
@@ -2253,13 +2322,18 @@ function renderHiddenPosts(hiddenPostsList) {
     });
     feed.innerHTML = html;
 }
+// === Fin function renderHiddenPosts ===
+
+// === Début function backToFeed ===
 function backToFeed() {
     showingHidden = false;
     document.getElementById('backToFeedBtn').style.display = 'none';
     loadPosts(true);
 }
+// === Fin function backToFeed ===
 
 // ==================== GESTION DES POSTS (MODIFIER, SUPPRIMER) ====================
+// === Début function editPost ===
 async function editPost(postId) {
     const post = posts.find(p => p.id == postId);
     if (!post) return;
@@ -2281,6 +2355,9 @@ async function editPost(postId) {
         }
     }
 }
+// === Fin function editPost ===
+
+// === Début function deletePost ===
 async function deletePost(postId) {
     if (!confirm('Supprimer cette publication ?')) return;
     const { error } = await supabaseClient
@@ -2297,33 +2374,81 @@ async function deletePost(postId) {
         if (index !== -1) posts.splice(index, 1);
     }
 }
+// === Fin function deletePost ===
 
-// ==================== PROFIL UTILISATEUR ====================
+// ==================== PROFIL UTILISATEUR (version avec bouton Suivre) ====================
+// === Début function openUserProfile ===
 async function openUserProfile(userId) {
-    const { data, error } = await supabaseClient
+    if (userId === currentProfile.id) {
+        window.location.href = 'profile-edit.html';
+        return;
+    }
+    const { data: profile, error } = await supabaseClient
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
     if (error) {
-        showToast('Erreur chargement profil', 'error');
+        showToast('Impossible de charger le profil', 'error');
         return;
     }
+    // Compteurs avec unified_follows
+    const { count: followersCount } = await supabaseClient
+        .from('unified_follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', userId);
+    const { count: followingCount } = await supabaseClient
+        .from('unified_follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('follower_id', userId);
+
+    document.getElementById('profileAvatar').src = profile.avatar_url || 'img/user-default.jpg';
+    document.getElementById('profileName').textContent = profile.full_name;
+    document.getElementById('profileHubId').textContent = `@${profile.username || 'utilisateur'}`;
+    document.getElementById('profileBio').textContent = profile.bio || 'Aucune bio.';
+    document.getElementById('profileInterests').textContent = profile.contact_info?.interests || 'Non renseigné';
+    document.getElementById('profileReason').textContent = profile.contact_info?.reason || 'Non renseigné';
+    document.getElementById('profileVision').textContent = profile.contact_info?.vision || 'Non renseigné';
+
+    let statsDiv = document.querySelector('#userProfileModal .profile-stats');
+    if (!statsDiv) {
+        statsDiv = document.createElement('div');
+        statsDiv.className = 'profile-stats';
+        const hubIdElem = document.getElementById('profileHubId');
+        hubIdElem.insertAdjacentElement('afterend', statsDiv);
+    }
+    statsDiv.innerHTML = `<span>${followersCount} abonnés</span> · <span>${followingCount} abonnements</span>`;
+
+    const isFollowing = following.some(f => f.following_id === userId);
+    const messageBtn = document.querySelector('#userProfileModal .btn-send-message');
+    let followBtn = document.getElementById('modalFollowBtn');
+    if (!followBtn) {
+        followBtn = document.createElement('button');
+        followBtn.id = 'modalFollowBtn';
+        followBtn.className = 'follow-btn';
+        followBtn.style.marginRight = '10px';
+        messageBtn.parentNode.insertBefore(followBtn, messageBtn);
+    }
+    followBtn.textContent = isFollowing ? 'Abonné' : 'Suivre';
+    followBtn.classList.toggle('following', isFollowing);
+    followBtn.dataset.userId = userId;
+    followBtn.onclick = () => toggleFollow(followBtn);
+
     selectedUserId = userId;
-    document.getElementById('profileAvatar').src = data.avatar_url || 'img/user-default.jpg';
-    document.getElementById('profileName').textContent = data.full_name;
-    document.getElementById('profileHubId').textContent = `@${data.username || 'utilisateur'}`;
-    const badgesHtml = (data.badges || []).map(b => `<span class="badge-mini">${b}</span>`).join('');
-    document.getElementById('profileBadges').innerHTML = badgesHtml;
-    document.getElementById('profileBio').textContent = data.bio || 'Aucune bio.';
-    document.getElementById('profileInterests').textContent = data.contact_info?.interests || 'Non renseigné';
-    document.getElementById('profileReason').textContent = data.contact_info?.reason || 'Non renseigné';
-    document.getElementById('profileVision').textContent = data.contact_info?.vision || 'Non renseigné';
     document.getElementById('userProfileModal').style.display = 'block';
 }
+// === Fin function openUserProfile ===
+
+// === Début function closeUserProfileModal ===
 function closeUserProfileModal() {
     document.getElementById('userProfileModal').style.display = 'none';
+    const followBtn = document.getElementById('modalFollowBtn');
+    if (followBtn) followBtn.remove();
+    selectedUserId = null;
 }
+// === Fin function closeUserProfileModal ===
+
+// === Début function sendMessageToUser ===
 function sendMessageToUser() {
     if (selectedUserId) {
         window.location.href = `messages.html?to=${selectedUserId}`;
@@ -2331,17 +2456,26 @@ function sendMessageToUser() {
         showToast('Aucun utilisateur sélectionné', 'warning');
     }
 }
+// === Fin function sendMessageToUser ===
 
 // ==================== BLOCAGE UTILISATEUR ====================
 let blockUserId = null;
+
+// === Début function openBlockUserModal ===
 function openBlockUserModal(userId) {
     blockUserId = userId;
     document.getElementById('blockUserModal').style.display = 'block';
 }
+// === Fin function openBlockUserModal ===
+
+// === Début function closeBlockUserModal ===
 function closeBlockUserModal() {
     document.getElementById('blockUserModal').style.display = 'none';
     blockUserId = null;
 }
+// === Fin function closeBlockUserModal ===
+
+// === Début function confirmBlockUser ===
 async function confirmBlockUser() {
     if (!blockUserId) return;
     const { error } = await supabaseClient
@@ -2354,87 +2488,12 @@ async function confirmBlockUser() {
         closeBlockUserModal();
     }
 }
+// === Fin function confirmBlockUser ===
 
-// ==================== FOLLOWERS / FOLLOWING ====================
-async function loadFollowers() {
-    updateLoaderProgress('Chargement des abonnés');
-    const { data: followersData } = await supabaseClient
-        .from('unified_follows')
-        .select('follower_id, follower:profiles!follower_id (id, full_name, avatar_url, username)')
-        .eq('following_id', currentProfile.id);
-    followers = followersData || [];
-    const followersList = document.getElementById('followersList');
-    if (followersList) {
-        followersList.innerHTML = followers.slice(0, 5).map(f => `
-            <li onclick="openUserProfile('${f.follower_id}')">
-                <img src="${f.follower?.avatar_url || 'img/user-default.jpg'}">
-                <span>${f.follower?.full_name || 'Anonyme'}</span>
-                <small>@${f.follower?.username || ''}</small>
-            </li>
-        `).join('');
-        if (followers.length === 0) followersList.innerHTML = '<li>Aucun abonné</li>';
-    }
-
-    const { data: followingData } = await supabaseClient
-        .from('unified_follows')
-        .select('following_id, followed:profiles!following_id (id, full_name, avatar_url, username)')
-        .eq('follower_id', currentProfile.id);
-    following = followingData || [];
-    const followingList = document.getElementById('followingList');
-    if (followingList) {
-        followingList.innerHTML = following.slice(0, 5).map(f => `
-            <li onclick="openUserProfile('${f.following_id}')">
-                <img src="${f.followed?.avatar_url || 'img/user-default.jpg'}">
-                <span>${f.followed?.full_name || 'Anonyme'}</span>
-                <small>@${f.followed?.username || ''}</small>
-            </li>
-        `).join('');
-        if (following.length === 0) followingList.innerHTML = '<li>Aucun abonnement</li>';
-    }
-
-    const { data: suggestionsData } = await supabaseClient
-        .from('profiles')
-        .select('id, full_name, avatar_url, username')
-        .neq('id', currentProfile.id)
-        .limit(5);
-    const suggestionsList = document.getElementById('suggestionsList');
-    if (suggestionsList) {
-        suggestionsList.innerHTML = (suggestionsData || []).map(s => `
-            <li onclick="openUserProfile('${s.id}')">
-                <img src="${s.avatar_url || 'img/user-default.jpg'}">
-                <span>${s.full_name || 'Anonyme'}</span>
-                <small>@${s.username || ''}</small>
-            </li>
-        `).join('');
-    }
-
-    const { data: trendsData } = await supabaseClient
-        .from('unified_posts')
-        .select('content')
-        .limit(100);
-    const hashtags = {};
-    (trendsData || []).forEach(post => {
-        const matches = post.content?.match(/#\w+/g) || [];
-        matches.forEach(tag => {
-            hashtags[tag] = (hashtags[tag] || 0) + 1;
-        });
-    });
-    const sorted = Object.entries(hashtags).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    const trendsList = document.getElementById('trendsList');
-    if (trendsList) {
-        trendsList.innerHTML = sorted.map(([tag, count]) => `
-            <li onclick="searchHashtag('${tag.substring(1)}')">
-                <i class="fas fa-hashtag"></i> ${tag} <small>${count} posts</small>
-            </li>
-        `).join('');
-        if (sorted.length === 0) trendsList.innerHTML = '<li>Aucune tendance</li>';
-    }
-
-    updateLoaderProgress('Abonnés chargés');
-}
-
+// ==================== SUIVI (toggleFollow) ====================
+// === Début function toggleFollow ===
 async function toggleFollow(button) {
-    const followedId = button.dataset.userId;
+    const userId = button.dataset.userId;
     const isFollowing = button.classList.contains('following');
     withButtonSpinner(button, async () => {
         if (isFollowing) {
@@ -2442,22 +2501,24 @@ async function toggleFollow(button) {
                 .from('unified_follows')
                 .delete()
                 .eq('follower_id', currentProfile.id)
-                .eq('following_id', followedId);
+                .eq('following_id', userId);
             button.classList.remove('following');
             button.textContent = 'Suivre';
         } else {
             await supabaseClient
                 .from('unified_follows')
-                .insert({ follower_id: currentProfile.id, following_id: followedId });
+                .insert({ follower_id: currentProfile.id, following_id: userId });
             button.classList.add('following');
             button.textContent = 'Abonné';
         }
-        await loadFollowers();
-        await loadPosts(true);
+        await loadFollowers(); // recharge tout
+        renderPosts();
     });
 }
+// === Fin function toggleFollow ===
 
 // ==================== ÉPINGLAGE VIP ====================
+// === Début function checkPinLimit ===
 async function checkPinLimit() {
     const { data, error } = await supabaseClient
         .from('user_pins')
@@ -2474,6 +2535,9 @@ async function checkPinLimit() {
     }
     return data.used_count;
 }
+// === Fin function checkPinLimit ===
+
+// === Début function pinPost ===
 async function pinPost() {
     const used = await checkPinLimit();
     if (used >= 2) {
@@ -2546,8 +2610,10 @@ async function pinPost() {
     }
     renderPosts();
 }
+// === Fin function pinPost ===
 
 // ==================== RECHERCHE ET FILTRES ====================
+// === Début function initSearchAndFilters ===
 function initSearchAndFilters() {
     const searchInput = document.getElementById('communitySearch');
     if (searchInput) {
@@ -2580,23 +2646,26 @@ function initSearchAndFilters() {
         loadPosts(true);
     });
 }
+// === Fin function initSearchAndFilters ===
 
 // ==================== FILTRES PAR RÔLE ====================
+// === Début function initRoleFilters ===
 function initRoleFilters() {
     const roleButtons = document.querySelectorAll('.role-filters .filter-btn');
     roleButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const role = btn.dataset.role;
-            window.currentRoleFilter = (role === 'all') ? null : role;
+            currentRoleFilter = (role === 'all') ? null : role;
             renderPosts();
-            // Mettre à jour l'aspect actif
             roleButtons.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
         });
     });
 }
+// === Fin function initRoleFilters ===
 
 // ==================== MENU UTILISATEUR ====================
+// === Début function initUserMenu ===
 function initUserMenu() {
     const userMenu = document.getElementById('userMenu');
     const userDropdown = document.getElementById('userDropdown');
@@ -2608,6 +2677,9 @@ function initUserMenu() {
         document.addEventListener('click', () => userDropdown.classList.remove('show'));
     }
 }
+// === Fin function initUserMenu ===
+
+// === Début function initLogout ===
 function initLogout() {
     document.querySelectorAll('#logoutLink, #logoutLinkSidebar').forEach(link => {
         link.addEventListener('click', async (e) => {
@@ -2617,8 +2689,10 @@ function initLogout() {
         });
     });
 }
+// === Fin function initLogout ===
 
 // ==================== SIDEBARS ====================
+// === Début function initSidebars ===
 function initSidebars() {
     const leftSidebar = document.getElementById('leftSidebar');
     const rightSidebar = document.getElementById('rightSidebar');
@@ -2676,8 +2750,10 @@ function initSidebars() {
         }
     });
 }
+// === Fin function initSidebars ===
 
 // ==================== NOUVEAUX POSTS (Realtime) ====================
+// === Début function subscribeToNewPosts ===
 function subscribeToNewPosts() {
     supabaseClient
         .channel('unified_posts_changes_player')
@@ -2693,13 +2769,18 @@ function subscribeToNewPosts() {
         })
         .subscribe();
 }
+// === Fin function subscribeToNewPosts ===
+
+// === Début function hideNewPostsIndicator ===
 function hideNewPostsIndicator() {
     const indicator = document.getElementById('newPostsIndicator');
     if (indicator) indicator.style.display = 'none';
     newPostsCount = 0;
 }
+// === Fin function hideNewPostsIndicator ===
 
 // ==================== LANGUES ====================
+// === Début function initLanguage ===
 function initLanguage() {
     const urlParams = new URLSearchParams(window.location.search);
     const lang = urlParams.get('lang') || localStorage.getItem('hubisoccer_lang') || 'fr';
@@ -2721,8 +2802,10 @@ function initLanguage() {
         });
     }
 }
+// === Fin function initLanguage ===
 
 // ==================== EMARKET ====================
+// === Début function openEmarketModal ===
 function openEmarketModal() {
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -2742,8 +2825,10 @@ function openEmarketModal() {
     document.body.appendChild(modal);
     modal.style.display = 'block';
 }
+// === Fin function openEmarketModal ===
 
 // ==================== MENU DES POSTS ====================
+// === Début function togglePostMenu ===
 function togglePostMenu(btn) {
     const dropdown = btn.nextElementSibling;
     dropdown.classList.toggle('show');
@@ -2754,22 +2839,61 @@ function togglePostMenu(btn) {
         }
     });
 }
+// === Fin function togglePostMenu ===
+
+// ==================== LIVES ====================
+// === Début function loadLives ===
+async function loadLives() {
+    if (!currentProfile) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('lives')
+            .select('id, titre, user_id, created_at')
+            .eq('actif', true)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        renderLivesList(data || []);
+    } catch (err) {
+        console.error('Erreur chargement lives:', err);
+    }
+}
+// === Fin function loadLives ===
+
+// === Début function renderLivesList ===
+function renderLivesList(lives) {
+    const container = document.getElementById('livesList');
+    if (!container) return;
+    if (!lives.length) {
+        container.innerHTML = '<li>Aucun live en direct</li>';
+        return;
+    }
+    container.innerHTML = lives.map(live => `
+        <li data-live-id="${live.id}" onclick="window.location.href='live.html?id=${live.id}'">
+            <i class="fas fa-video" style="font-size: 1.2rem; color: var(--primary);"></i>
+            <div>
+                <strong>${escapeHtml(live.titre)}</strong><br>
+                <small>Live en direct</small>
+            </div>
+        </li>
+    `).join('');
+}
+// === Fin function renderLivesList ===
 
 // ==================== INITIALISATION PRINCIPALE ====================
+// === Début function init ===
 async function init() {
-    showLoaderWithProgress(11);
+    showLoaderWithProgress(12);
     const user = await checkSession();
     if (!user) return;
     await loadProfile();
     populateCountrySelect();
     await loadSiteConfig();
-    await loadFollowers();
-    await loadFollowing();
-    await loadSuggestions();
+    await loadFollowers();      // charge tout (abonnés, abonnements, suggestions, tendances)
     await loadCollections();
     await loadUserMetadata();
     await loadNotifications();
     await loadStories();
+    await loadLives();
     await loadPosts(true);
     initSearchAndFilters();
     initRoleFilters();
@@ -2779,6 +2903,7 @@ async function init() {
     subscribeToNewPosts();
     initLanguage();
 
+    // Événements des boutons de la zone de publication
     const attachMediaBtn = document.getElementById('attachMediaBtn');
     if (attachMediaBtn) {
         attachMediaBtn.addEventListener('click', () => {
@@ -2878,6 +3003,7 @@ async function init() {
     const emarketBtn = document.getElementById('emarketBtn');
     if (emarketBtn) emarketBtn.addEventListener('click', openEmarketModal);
 
+    // Exposer les fonctions nécessaires dans window (pour les onclick HTML)
     window.closePreview = closePreview;
     window.publishFromPreview = publishFromPreview;
     window.openUserProfile = openUserProfile;
@@ -2955,6 +3081,7 @@ async function init() {
 
     updateLoaderProgress('Initialisation terminée');
 }
+// === Fin function init ===
 
 // Lancer l'initialisation
 init();
