@@ -33,10 +33,8 @@ let prizesData = [];
 
 // ===== FONCTIONS UTILITAIRES =====
 async function getCurrentUser() {
-    if (window.supabaseAuthPrive) {
-        const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
-        if (!error && user) return user;
-    }
+    const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
+    if (!error && user) return user;
     return null;
 }
 
@@ -60,7 +58,7 @@ function formatDateTime(dateStr) {
 // ===== CHARGEMENT DES DONNÉES =====
 async function loadTournamentDetails() {
     try {
-        const { data, error } = await supabaseGestionTournoi
+        const { data, error } = await window.supabaseAuthPrive
             .from('gestionnairetournoi_tournaments')
             .select(`
                 *,
@@ -81,7 +79,7 @@ async function loadTournamentDetails() {
         tournamentSportEl.textContent = data.sport?.name || 'Non spécifié';
         tournamentDescriptionEl.textContent = data.description || 'Aucune description';
 
-        // Afficher le bouton d'inscription si le tournoi est actif et l'utilisateur connecté
+        // Si l'utilisateur est connecté, on vérifie l'inscription
         if (currentUser) {
             await checkUserRegistration();
             registrationBlock.style.display = 'block';
@@ -97,17 +95,9 @@ async function loadTournamentDetails() {
 
 async function checkUserRegistration() {
     if (!currentUser || !tournamentData) return;
-    // Vérifier si l'utilisateur est déjà inscrit (dans la table gestionnairetournoi_registrations)
-    const { data, error } = await supabaseGestionTournoi
-        .from('gestionnairetournoi_registrations')
-        .select('id, status')
-        .eq('tournament_id', tournamentId)
-        .eq('player_id', currentUser.id) // Il faudrait une jointure avec gestionnairetournoi_players pour trouver le player_id
-        .maybeSingle();
 
-    // Pour simplifier, on suppose qu'on a une table `gestionnairetournoi_players` avec `user_id`
-    // On va d'abord récupérer le player_id correspondant à l'utilisateur
-    const { data: player, error: playerError } = await supabaseGestionTournoi
+    // Récupérer le player_id associé à l'utilisateur
+    const { data: player, error: playerError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .select('id')
         .eq('user_id', currentUser.id)
@@ -121,7 +111,8 @@ async function checkUserRegistration() {
         return;
     }
 
-    const { data: reg, error: regError } = await supabaseGestionTournoi
+    // Vérifier l'inscription
+    const { data: reg, error: regError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_registrations')
         .select('status')
         .eq('tournament_id', tournamentId)
@@ -163,9 +154,9 @@ async function registerUser() {
     }
     if (!tournamentData) return;
 
-    // 1. S'assurer que l'utilisateur a une fiche joueur dans gestionnairetournoi_players
+    // 1. S'assurer que l'utilisateur a une fiche joueur
     let playerId;
-    const { data: existingPlayer, error: playerError } = await supabaseGestionTournoi
+    const { data: existingPlayer, error: playerError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .select('id')
         .eq('user_id', currentUser.id)
@@ -179,8 +170,7 @@ async function registerUser() {
     if (existingPlayer) {
         playerId = existingPlayer.id;
     } else {
-        // Créer une fiche joueur basique
-        const { data: newPlayer, error: createError } = await supabaseGestionTournoi
+        const { data: newPlayer, error: createError } = await window.supabaseAuthPrive
             .from('gestionnairetournoi_players')
             .insert({
                 user_id: currentUser.id,
@@ -196,7 +186,7 @@ async function registerUser() {
     }
 
     // 2. Vérifier si déjà inscrit
-    const { data: existingReg, error: regCheckError } = await supabaseGestionTournoi
+    const { data: existingReg, error: regCheckError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_registrations')
         .select('id')
         .eq('tournament_id', tournamentId)
@@ -213,7 +203,7 @@ async function registerUser() {
     }
 
     // 3. Inscription
-    const { error: insertError } = await supabaseGestionTournoi
+    const { error: insertError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_registrations')
         .insert({
             tournament_id: tournamentId,
@@ -235,7 +225,7 @@ async function registerUser() {
 // ===== CHARGEMENT DES ÉQUIPES =====
 async function loadTeams() {
     try {
-        const { data, error } = await supabaseGestionTournoi
+        const { data, error } = await window.supabaseAuthPrive
             .from('gestionnairetournoi_teams')
             .select(`
                 *,
@@ -272,7 +262,7 @@ function renderTeams() {
 // ===== CHARGEMENT DES MATCHS =====
 async function loadMatches() {
     try {
-        const { data, error } = await supabaseGestionTournoi
+        const { data, error } = await window.supabaseAuthPrive
             .from('gestionnairetournoi_matches')
             .select(`
                 *,
@@ -322,8 +312,7 @@ function renderMatches() {
 // ===== CHARGEMENT DU CLASSEMENT =====
 async function loadStandings() {
     try {
-        // Récupérer les statistiques depuis gestionnairetournoi_stats
-        const { data, error } = await supabaseGestionTournoi
+        const { data, error } = await window.supabaseAuthPrive
             .from('gestionnairetournoi_stats')
             .select(`
                 *,
@@ -388,7 +377,7 @@ function renderStandings() {
 // ===== CHARGEMENT DES PRIMES =====
 async function loadPrizes() {
     try {
-        const { data, error } = await supabaseGestionTournoi
+        const { data, error } = await window.supabaseAuthPrive
             .from('gestionnairetournoi_prizes')
             .select(`
                 *,
@@ -431,10 +420,7 @@ function renderPrizes() {
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
     // Récupérer l'utilisateur connecté (si existant)
-    if (window.supabaseAuthPrive) {
-        const user = await getCurrentUser();
-        currentUser = user;
-    }
+    currentUser = await getCurrentUser();
 
     // Charger les données
     await loadTournamentDetails();
@@ -446,5 +432,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadPrizes()
     ]);
 });
-
-// Exporter les fonctions si nécessaires (non requis ici)
