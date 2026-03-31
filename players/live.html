@@ -7,7 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* (garde les styles précédents – identiques) */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Poppins', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; }
         .navbar { background: #1a1a1a; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
@@ -197,9 +196,9 @@
                 return;
             }
             currentLive = { id: newLive.id, titre: title, peerId, isHost: true };
-            // Configuration PeerJS avec un serveur public (peu fiable parfois, mais pratique)
+            // Utilisation du serveur public 0.peerjs.com (plus fiable que peerjs.com)
             peer = new Peer(peerId, {
-                host: 'peerjs.com',
+                host: '0.peerjs.com',
                 port: 443,
                 path: '/',
                 secure: true
@@ -231,7 +230,7 @@
             }
             currentLive = { id: liveId, peerId, isHost: false };
             peer = new Peer({
-                host: 'peerjs.com',
+                host: '0.peerjs.com',
                 port: 443,
                 path: '/',
                 secure: true
