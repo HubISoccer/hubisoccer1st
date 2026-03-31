@@ -8,59 +8,184 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/hubismanagtournoi.css">
     <link rel="stylesheet" href="css/tournament-card.css">
+    <link rel="stylesheet" href="../players/css/feed.css">
+    <style>
+        .dashboard-main { padding: 40px 5%; }
+        .tournoi-container { max-width: 1200px; margin: 0 auto; }
+        .tournoi-header { margin-top: 0; padding-top: 0; }
+        @media (max-width: 768px) { .dashboard-main { padding: 20px 4%; } }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="tournoi-container">
-        <header class="tournoi-header">
-            <div class="header-content">
-                <h1><i class="fas fa-trophy"></i> Gestion des tournois</h1>
-                <button id="createTournamentBtn" class="btn-primary"><i class="fas fa-plus"></i> Créer un tournoi</button>
-            </div>
-            <p class="subtitle">Participez, organisez et suivez vos compétitions sportives</p>
-        </header>
 
-        <div class="filters-bar">
-            <div class="filter-group">
-                <label><i class="fas fa-filter"></i> Sport</label>
-                <select id="sportFilter"><option value="all">Tous les sports</option></select>
-            </div>
-            <div class="filter-group">
-                <label><i class="fas fa-calendar-alt"></i> Période</label>
-                <select id="periodFilter">
-                    <option value="all">Tous</option>
-                    <option value="upcoming">À venir</option>
-                    <option value="ongoing">En cours</option>
-                    <option value="past">Terminés</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label><i class="fas fa-tag"></i> Type</label>
-                <select id="typeFilter"><option value="all">Tous</option></select>
-            </div>
+    <!-- NAVBAR -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="../players/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Gestionnaire de tournois</span>
         </div>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="../players/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="../players/profile-edit.html"><i class="fas fa-user"></i> Mon profil</a>
+                    <a href="../feed/feed.html"><i class="fas fa-users"></i> Communauté</a>
+                    <a href="../shared/messages.html"><i class="fas fa-envelope"></i> Messages</a>
+                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+        </div>
+    </nav>
 
-        <div class="tournaments-grid" id="tournamentsGrid">
-            <div class="loader" id="loader"><i class="fas fa-spinner fa-pulse"></i> Chargement...</div>
+    <!-- OVERLAY -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- SIDEBAR GAUCHE -->
+    <div class="sidebar left-sidebar" id="leftSidebar">
+        <div class="sidebar-header">
+            <h3>Menu Tournois</h3>
+            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
         </div>
+        <nav class="sidebar-nav">
+            <a href="accueil_hubisgst.html" class="active"><i class="fas fa-home"></i> Accueil</a>
+            <a href="create-tournament.html"><i class="fas fa-plus-circle"></i> Créer un tournoi</a>
+            <a href="my-tournaments.html"><i class="fas fa-list"></i> Mes tournois</a>
+            <a href="my-registrations.html"><i class="fas fa-calendar-check"></i> Mes inscriptions</a>
+            <a href="rankings.html"><i class="fas fa-chart-line"></i> Classements</a>
+            <a href="tournament-rules.html"><i class="fas fa-gavel"></i> Règlement</a>
+            <hr>
+            <a href="help-tournament.html"><i class="fas fa-question-circle"></i> Aide</a>
+        </nav>
     </div>
 
-    <script src="js/supabase-client.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/tournaments.js"></script>
-    <script>
-        // Utilisation directe de supabaseGestionTournoi (défini dans supabase-client.js)
-        // Pas de redéclaration de supabase.
+    <!-- CONTENU PRINCIPAL -->
+    <main class="dashboard-main">
+        <div class="tournoi-container">
+            <header class="tournoi-header">
+                <div class="header-content">
+                    <h1><i class="fas fa-trophy"></i> Gestion des tournois</h1>
+                    <button id="createTournamentBtn" class="btn-primary"><i class="fas fa-plus"></i> Créer un tournoi</button>
+                </div>
+                <p class="subtitle">Participez, organisez et suivez vos compétitions sportives</p>
+            </header>
+            <div class="filters-bar">
+                <div class="filter-group">
+                    <label><i class="fas fa-filter"></i> Sport</label>
+                    <select id="sportFilter"><option value="all">Tous les sports</option></select>
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-calendar-alt"></i> Période</label>
+                    <select id="periodFilter">
+                        <option value="all">Tous</option>
+                        <option value="upcoming">À venir</option>
+                        <option value="ongoing">En cours</option>
+                        <option value="past">Terminés</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-tag"></i> Type</label>
+                    <select id="typeFilter"><option value="all">Tous</option></select>
+                </div>
+            </div>
+            <div class="tournaments-grid" id="tournamentsGrid">
+                <div class="loader" id="loader"><i class="fas fa-spinner fa-pulse"></i> Chargement...</div>
+            </div>
+        </div>
+    </main>
 
+    <!-- FOOTER -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- SCRIPTS -->
+    <script src="../auth/auth.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        // ==================== UTILITAIRES (escapeHtml) ====================
+        if (typeof escapeHtml === 'undefined') {
+            window.escapeHtml = function(str) {
+                if (!str) return '';
+                return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+            };
+        }
+
+        // ==================== DONNÉES TOURNOIS ====================
         let allTournaments = [];
         let sportsMap = {};
         let typesMap = {};
+
+        async function loadTournamentsList() {
+            const { data, error } = await window.supabaseAuthPrive
+                .from('gestionnairetournoi_tournaments')
+                .select(`
+                    id, name, description, start_date, end_date, location,
+                    registration_code, prize_pool, stream_url,
+                    requires_first_pas, has_agreed_to_rules,
+                    type:type_id (name, label),
+                    sport:sport_id (name)
+                `)
+                .eq('is_active', true)
+                .order('start_date', { ascending: true });
+            if (error) throw error;
+            return data.map(t => ({
+                id: t.id, name: t.name, description: t.description,
+                start_date: t.start_date, end_date: t.end_date, location: t.location,
+                registration_code: t.registration_code, prize_pool: t.prize_pool,
+                stream_url: t.stream_url, requires_first_pas: t.requires_first_pas,
+                has_agreed_to_rules: t.has_agreed_to_rules,
+                type: t.type.name, typeLabel: t.type.label, sport: t.sport.name
+            }));
+        }
+
+        async function loadSportsList() {
+            const { data, error } = await window.supabaseAuthPrive
+                .from('gestionnairetournoi_sports')
+                .select('id, name')
+                .order('name');
+            if (error) throw error;
+            return data;
+        }
+
+        async function loadTournamentTypes() {
+            const { data, error } = await window.supabaseAuthPrive
+                .from('gestionnairetournoi_types')
+                .select('id, name, label');
+            if (error) throw error;
+            return data;
+        }
 
         async function loadFilters() {
             try {
                 const sports = await loadSportsList();
                 const types = await loadTournamentTypes();
-
                 const sportSelect = document.getElementById('sportFilter');
                 sports.forEach(sport => {
                     sportsMap[sport.id] = sport.name;
@@ -69,7 +194,6 @@
                     opt.textContent = sport.name;
                     sportSelect.appendChild(opt);
                 });
-
                 const typeSelect = document.getElementById('typeFilter');
                 types.forEach(type => {
                     typesMap[type.name] = type.label;
@@ -85,7 +209,7 @@
 
         async function loadAndDisplayTournaments() {
             try {
-                const tournaments = await loadTournamentsList(); // fonction de tournaments.js
+                const tournaments = await loadTournamentsList();
                 allTournaments = tournaments;
                 applyFilters();
             } catch (err) {
@@ -147,7 +271,60 @@
             });
         }
 
-        document.addEventListener('DOMContentLoaded', async () => {
+        // ==================== AUTHENTIFICATION ET UI ====================
+        (async () => {
+            const { data: { session }, error } = await window.supabaseAuthPrive.auth.getSession();
+            if (error || !session) {
+                window.location.href = '../auth/login.html';
+                return;
+            }
+            const { data: profile } = await window.supabaseAuthPrive
+                .from('profiles')
+                .select('full_name, avatar_url')
+                .eq('id', session.user.id)
+                .single();
+            if (profile) {
+                document.getElementById('userName').textContent = profile.full_name || 'Utilisateur';
+                document.getElementById('userAvatar').src = profile.avatar_url || '../players/img/user-default.jpg';
+            }
+
+            const userMenu = document.getElementById('userMenu');
+            const userDropdown = document.getElementById('userDropdown');
+            if (userMenu && userDropdown) {
+                userMenu.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userDropdown.classList.toggle('show');
+                });
+                document.addEventListener('click', () => userDropdown.classList.remove('show'));
+            }
+
+            document.getElementById('logoutLink').addEventListener('click', async (e) => {
+                e.preventDefault();
+                await window.supabaseAuthPrive.auth.signOut();
+                window.location.href = '../index.html';
+            });
+
+            const menuToggle = document.getElementById('menuToggle');
+            const leftSidebar = document.getElementById('leftSidebar');
+            const closeLeftSidebar = document.getElementById('closeLeftSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (menuToggle && leftSidebar && overlay) {
+                menuToggle.addEventListener('click', () => {
+                    leftSidebar.classList.add('active');
+                    overlay.classList.add('active');
+                });
+                if (closeLeftSidebar) {
+                    closeLeftSidebar.addEventListener('click', () => {
+                        leftSidebar.classList.remove('active');
+                        overlay.classList.remove('active');
+                    });
+                }
+                overlay.addEventListener('click', () => {
+                    leftSidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                });
+            }
+
             await loadFilters();
             await loadAndDisplayTournaments();
 
@@ -157,7 +334,7 @@
             document.getElementById('createTournamentBtn').addEventListener('click', () => {
                 window.location.href = 'create-tournament.html';
             });
-        });
+        })();
     </script>
 </body>
 </html>
