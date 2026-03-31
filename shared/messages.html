@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Messages | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="messages.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ===== NAVBAR ===== -->
+<nav class="top-nav">
+    <div class="nav-left">
+        <img src="../img/logo-navbar.png" alt="HubISoccer" class="nav-logo" id="navLogo">
+        <span class="nav-title" id="navSpaceTitle">Messagerie</span>
+    </div>
+    <div class="nav-right">
+        <select class="lang-picker" id="langSelect">
+            <option value="fr">🇫🇷 Français</option>
+            <option value="en">🇺🇸 English</option>
+            <option value="yo">🇳🇬 Yoruba</option>
+            <option value="fon">🇧🇯 Fon</option>
+            <option value="mina">🇹🇬 Mina</option>
+            <option value="lin">🇨🇬 Lingala</option>
+            <option value="wol">🇸🇳 Wolof</option>
+            <option value="diou">🇨🇮 Dioula</option>
+            <option value="ha">🇳🇬 Hausa</option>
+            <option value="sw">🇰🇪 Kiswahili</option>
+            <option value="es">🇪🇸 Español</option>
+            <option value="pt">🇵🇹 Português</option>
+            <option value="de">🇩🇪 Deutsch</option>
+            <option value="it">🇮🇹 Italiano</option>
+            <option value="ar">🇸🇦 العربية</option>
+            <option value="zh">🇨🇳 中文</option>
+            <option value="ru">🇷🇺 Русский</option>
+            <option value="ja">🇯🇵 日本語</option>
+            <option value="tr">🇹🇷 Türkçe</option>
+            <option value="ko">🇰🇷 한국어</option>
+            <option value="hi">🇮🇳 हिन्दी</option>
+            <option value="nl">🇳🇱 Nederlands</option>
+            <option value="pl">🇵🇱 Polski</option>
+            <option value="vi">🇻🇳 Tiếng Việt</option>
+        </select>
+        <div class="notif-btn" id="notifBtn">
+            <i class="fas fa-bell"></i>
+            <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+        </div>
+        <div class="user-menu" id="userMenu">
+            <img src="../img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+            <span class="user-name" id="userName">...</span>
+            <i class="fas fa-chevron-down fa-xs"></i>
+            <div class="user-dropdown" id="userDropdown">
+                <a href="#" id="dropProfile"><i class="fas fa-user"></i> Mon profil</a>
+                <a href="#" id="dropDashboard"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+                <a href="#" id="dropSettings"><i class="fas fa-cog"></i> Paramètres</a>
+                <hr>
+                <a href="#" id="dropLogout" class="logout-link"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+            </div>
+        </div>
+        <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+    </div>
+</nav>
+
+<!-- ===== SIDEBAR ===== -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+        <h3 id="sidebarTitle">Menu</h3>
+        <button class="sidebar-close" id="sidebarClose"><i class="fas fa-times"></i></button>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav">
+        <!-- Généré dynamiquement selon le rôle -->
+    </nav>
+</aside>
+
+<!-- ===== CONTENU PRINCIPAL ===== -->
+<main class="main-content">
+    <div class="messages-page">
+
+        <!-- En-tête -->
+        <div class="page-header">
+            <div class="page-header-left">
+                <h1><i class="fas fa-comments"></i> Mes Messages</h1>
+                <span class="total-badge" id="totalConvBadge">0 conversation</span>
+            </div>
+            <div class="page-header-actions">
+                <button class="btn-action" id="newGroupBtn" title="Nouveau groupe">
+                    <i class="fas fa-users"></i>
+                    <span>Nouveau groupe</span>
+                </button>
+                <button class="btn-action btn-secondary" id="archiveToggleBtn" title="Archives">
+                    <i class="fas fa-archive"></i>
+                    <span id="archiveToggleText">Archives</span>
+                </button>
+                <button class="btn-action btn-secondary" id="blockedBtn" title="Bloqués">
+                    <i class="fas fa-ban"></i>
+                    <span>Bloqués</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Barre de recherche -->
+        <div class="search-bar">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Rechercher une conversation ou un contact...">
+            <button id="clearSearch" style="display:none"><i class="fas fa-times"></i></button>
+        </div>
+
+        <!-- Filtres rapides -->
+        <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="all">Toutes</button>
+            <button class="filter-tab" data-filter="unread">Non lus</button>
+            <button class="filter-tab" data-filter="groups">Groupes</button>
+            <button class="filter-tab" data-filter="direct">Directs</button>
+        </div>
+
+        <!-- Liste des conversations -->
+        <div class="conversations-wrapper" id="conversationsWrapper">
+            <!-- Skeleton loader -->
+            <div class="skeleton-list" id="skeletonList">
+                <div class="skeleton-item" style="animation-delay:0s"></div>
+                <div class="skeleton-item" style="animation-delay:0.1s"></div>
+                <div class="skeleton-item" style="animation-delay:0.2s"></div>
+                <div class="skeleton-item" style="animation-delay:0.3s"></div>
+                <div class="skeleton-item" style="animation-delay:0.4s"></div>
+            </div>
+            <div class="conversations-list" id="conversationsList" style="display:none"></div>
+            <div class="empty-state" id="emptyState" style="display:none">
+                <div class="empty-icon"><i class="fas fa-comment-slash"></i></div>
+                <h3 id="emptyTitle">Aucune conversation</h3>
+                <p id="emptyDesc">Allez sur la communauté et envoyez un message à quelqu'un !</p>
+                <a href="#" id="emptyCommunityLink" class="btn-primary">
+                    <i class="fas fa-users"></i> Voir la communauté
+                </a>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<!-- ===== MODAL : NOUVEAU GROUPE ===== -->
+<div id="modalGroup" class="modal">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h2><i class="fas fa-users"></i> Créer un groupe</h2>
+            <button class="modal-close" onclick="closeModal('modalGroup')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-field">
+                <label>Nom du groupe <span class="required">*</span></label>
+                <input type="text" id="groupName" placeholder="Ex: Équipe U20, Staff médical...">
+            </div>
+            <div class="form-field">
+                <label>Photo du groupe (optionnel)</label>
+                <div class="group-avatar-picker" id="groupAvatarPicker">
+                    <i class="fas fa-camera"></i>
+                    <span>Choisir une photo</span>
+                    <input type="file" id="groupAvatarInput" accept="image/*" style="display:none">
+                </div>
+            </div>
+            <div class="form-field">
+                <label>Participants <span class="required">*</span> <span class="hint">(min. 2)</span></label>
+                <input type="text" id="memberSearch" placeholder="Rechercher parmi vos abonnés...">
+                <div class="members-list" id="membersList">
+                    <div class="members-loading"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>
+                </div>
+                <div class="selected-members" id="selectedMembers"></div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('modalGroup')">Annuler</button>
+            <button class="btn-confirm" id="createGroupBtn">
+                <i class="fas fa-check"></i> Créer le groupe
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL : UTILISATEURS BLOQUÉS ===== -->
+<div id="modalBlocked" class="modal">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h2><i class="fas fa-ban"></i> Utilisateurs bloqués</h2>
+            <button class="modal-close" onclick="closeModal('modalBlocked')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="blocked-list" id="blockedList">
+                <div class="members-loading"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL : ARCHIVER / SUPPRIMER ===== -->
+<div id="modalConvOptions" class="modal">
+    <div class="modal-box modal-box-sm">
+        <div class="modal-head">
+            <h2 id="convOptionsTitle">Options</h2>
+            <button class="modal-close" onclick="closeModal('modalConvOptions')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <p id="convOptionsDesc"></p>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('modalConvOptions')">Annuler</button>
+            <button class="btn-confirm" id="convOptionsConfirm"></button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TOASTS ===== -->
+<div id="toastContainer" class="toast-container"></div>
+
+<!-- ===== FOOTER ===== -->
+<footer class="page-footer">
+    <div class="footer-inner">
+        <div class="compliance-badges">
+            <span class="badge">Conformité APDP Bénin</span>
+            <span class="badge">Règlementation FIFA</span>
+            <span class="badge">Double Projet Sport-Études</span>
+        </div>
+        <p>HubISoccer — RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+        <p>© 2026 HubISoccer - The Hub of Inspiration of Soccer. Tous droits réservés.</p>
+    </div>
+</footer>
+
+<script src="messages.js"></script>
+</body>
+</html>
