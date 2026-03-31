@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>HubISoccer – Live</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #1a1a1a;
+            padding: 15px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        .logo {
+            height: 40px;
+            cursor: pointer;
+        }
+        .back-btn {
+            background: var(--primary, #551B8C);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        /* Liste des lives */
+        .lives-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .live-card {
+            background: #1e1e1e;
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .live-card:hover {
+            transform: scale(1.02);
+        }
+        .live-thumb {
+            background: #333;
+            height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffcc00;
+            font-size: 3rem;
+        }
+        .live-info {
+            padding: 12px;
+        }
+        .live-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        .live-creator {
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+        /* Salle de live */
+        .live-room {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .video-section {
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+        }
+        video {
+            width: 100%;
+            max-height: 70vh;
+            background: #000;
+        }
+        .live-controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .control-btn {
+            background: #333;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        .control-btn.danger {
+            background: #dc3545;
+        }
+        .control-btn.primary {
+            background: #551B8C;
+        }
+        .chat-section {
+            background: #1e1e1e;
+            border-radius: 16px;
+            padding: 15px;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .message {
+            background: #2a2a2a;
+            padding: 8px 12px;
+            border-radius: 20px;
+            width: fit-content;
+            max-width: 80%;
+        }
+        .message.own {
+            align-self: flex-end;
+            background: #551B8C;
+        }
+        .message strong {
+            color: #ffcc00;
+        }
+        .message small {
+            font-size: 0.7rem;
+            color: #aaa;
+            margin-left: 8px;
+        }
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 30px;
+            border: none;
+            background: #333;
+            color: white;
+            font-family: 'Poppins', sans-serif;
+        }
+        .chat-input button {
+            background: #551B8C;
+            border: none;
+            padding: 0 20px;
+            border-radius: 30px;
+            color: white;
+            cursor: pointer;
+        }
+        .strength-btn {
+            background: #ffcc00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .strength-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .gift-btn {
+            background: #28a745;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 20px;
+            max-width: 90%;
+            width: 400px;
+        }
+        .gift-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .gift-item {
+            background: #333;
+            padding: 10px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            z-index: 2000;
+        }
+        @media (max-width: 768px) {
+            .live-room {
+                flex-direction: column;
+            }
+            .chat-section {
+                height: 300px;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <div class="navbar">
+        <img src="img/logo-navbar.png" alt="HubISoccer" class="logo" onclick="window.location.href='dashboard.html'">
+        <button class="back-btn" onclick="window.location.href='feed.html'">← Retour à la communauté</button>
+    </div>
+    <div class="container" id="app">
+        <!-- Vue liste des lives -->
+        <div id="livesListContainer">
+            <h2>Lives en direct</h2>
+            <div class="lives-grid" id="livesGrid"></div>
+            <button id="createLiveBtn" class="control-btn primary" style="margin-top: 20px;"><i class="fas fa-video"></i> Démarrer un live</button>
+        </div>
+        <!-- Vue salle de live (cachée par défaut) -->
+        <div id="liveRoomContainer" style="display: none;">
+            <div class="live-room">
+                <div class="video-section">
+                    <video id="remoteVideo" autoplay playsinline></video>
+                    <video id="localVideo" autoplay playsinline muted style="display: none;"></video>
+                </div>
+                <div class="live-controls">
+                    <button id="stopLiveBtn" class="control-btn danger" style="display: none;"><i class="fas fa-stop"></i> Arrêter le live</button>
+                    <button id="leaveLiveBtn" class="control-btn"><i class="fas fa-sign-out-alt"></i> Quitter</button>
+                    <button id="strengthBtn" class="strength-btn"><i class="fas fa-fist-raised"></i> Force (0)</button>
+                    <button id="giftBtn" class="control-btn gift-btn"><i class="fas fa-gift"></i> Cadeau</button>
+                </div>
+                <div class="chat-section">
+                    <div class="messages" id="chatMessages"></div>
+                    <div class="chat-input">
+                        <input type="text" id="chatInput" placeholder="Votre message...">
+                        <button id="sendChatBtn">Envoyer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale cadeaux -->
+    <div id="giftModal" class="modal">
+        <div class="modal-content">
+            <h3>Choisissez un cadeau</h3>
+            <div class="gift-list" id="giftList"></div>
+            <button onclick="closeGiftModal()" style="margin-top: 10px; background:#333;">Fermer</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration Supabase (identique à feed.js)
+        const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = null;
+        let currentProfile = null;
+        let currentLive = null;        // { id, titre, peerId, isHost }
+        let peer = null;
+        let localStream = null;
+        let remoteCall = null;
+        let strengthSent = false;
+        let liveChannel = null;
+
+        // Fonctions utilitaires
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        async function checkAuth() {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error || !session) {
+                window.location.href = '../auth/login.html';
+                return null;
+            }
+            currentUser = session.user;
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+            currentProfile = profile;
+            return currentUser;
+        }
+
+        // Charger la liste des lives
+        async function loadLives() {
+            const { data, error } = await supabase
+                .from('lives')
+                .select('id, titre, user_id, profiles(id, full_name, avatar_url)')
+                .eq('actif', true)
+                .order('created_at', { ascending: false });
+            if (error) {
+                console.error(error);
+                return;
+            }
+            const grid = document.getElementById('livesGrid');
+            if (!data.length) {
+                grid.innerHTML = '<p style="color:#aaa;">Aucun live en direct. Soyez le premier à en lancer un !</p>';
+                return;
+            }
+            grid.innerHTML = data.map(live => `
+                <div class="live-card" data-id="${live.id}" data-peer="${live.video_url}" data-creator="${live.user_id}">
+                    <div class="live-thumb"><i class="fas fa-video"></i></div>
+                    <div class="live-info">
+                        <div class="live-title">${escapeHtml(live.titre)}</div>
+                        <div class="live-creator">${live.profiles?.full_name || 'Inconnu'}</div>
+                    </div>
+                </div>
+            `).join('');
+            document.querySelectorAll('.live-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const id = card.dataset.id;
+                    const peerId = card.dataset.peer;
+                    const creatorId = card.dataset.creator;
+                    joinLive(id, peerId, creatorId);
+                });
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+        }
+
+        // Créer un live (host)
+        async function startLive(title) {
+            if (!title) {
+                showToast('Veuillez entrer un titre');
+                return;
+            }
+            // Générer un peerId unique
+            const peerId = `live_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+            // Demander la caméra
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('localVideo').srcObject = localStream;
+                document.getElementById('localVideo').style.display = 'block';
+                document.getElementById('remoteVideo').style.display = 'none';
+            } catch (err) {
+                showToast('Impossible d’accéder à la caméra/micro');
+                return;
+            }
+            // Insérer dans la base
+            const { data: newLive, error } = await supabase
+                .from('lives')
+                .insert({
+                    titre: title,
+                    user_id: currentProfile.id,
+                    video_url: peerId,
+                    actif: true,
+                    created_at: new Date()
+                })
+                .select()
+                .single();
+            if (error) {
+                showToast('Erreur création live: ' + error.message);
+                return;
+            }
+            currentLive = { id: newLive.id, titre: title, peerId, isHost: true };
+            // Initialiser PeerJS
+            peer = new Peer(peerId);
+            peer.on('open', () => {
+                console.log('Peer ouvert, id:', peerId);
+                // Répondre aux appels entrants
+                peer.on('call', call => {
+                    call.answer(localStream);
+                    call.on('stream', remoteStream => {
+                        document.getElementById('remoteVideo').srcObject = remoteStream;
+                        document.getElementById('remoteVideo').style.display = 'block';
+                        document.getElementById('localVideo').style.display = 'block';
+                    });
+                });
+                showToast('Live démarré ! En attente de spectateurs.');
+            });
+            // Activer le chat et forces
+            setupRealtimeForLive(newLive.id, true);
+            switchToLiveRoom(true);
+        }
+
+        // Rejoindre un live (spectateur)
+        async function joinLive(liveId, peerId, creatorId) {
+            if (creatorId === currentProfile.id) {
+                showToast('Vous êtes le créateur de ce live. Utilisez la page feed pour le gérer.');
+                return;
+            }
+            currentLive = { id: liveId, peerId, isHost: false };
+            // Initialiser PeerJS (sans ID fixe)
+            peer = new Peer();
+            peer.on('open', () => {
+                // Appeler le diffuseur
+                const call = peer.call(peerId, null);
+                call.on('stream', remoteStream => {
+                    document.getElementById('remoteVideo').srcObject = remoteStream;
+                    document.getElementById('remoteVideo').style.display = 'block';
+                    document.getElementById('localVideo').style.display = 'none';
+                });
+                call.on('error', err => {
+                    showToast('Impossible de se connecter au live.');
+                    console.error(err);
+                });
+                remoteCall = call;
+            });
+            setupRealtimeForLive(liveId, false);
+            switchToLiveRoom(false);
+        }
+
+        function setupRealtimeForLive(liveId, isHost) {
+            if (liveChannel) supabase.removeChannel(liveChannel);
+            liveChannel = supabase.channel(`live-${liveId}`);
+            // Écouter les messages
+            liveChannel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'live_messages', filter: `live_id=eq.${liveId}` }, payload => {
+                addMessageToChat(payload.new.user_id, payload.new.message, payload.new.created_at);
+            }).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'live_strengths', filter: `live_id=eq.${liveId}` }, async payload => {
+                // Mettre à jour le compteur de forces
+                const { count } = await supabase.from('live_strengths').select('*', { count: 'exact', head: true }).eq('live_id', liveId);
+                document.getElementById('strengthBtn').innerHTML = `<i class="fas fa-fist-raised"></i> Force (${count})`;
+                if (payload.new.user_id !== currentProfile.id && !isHost) {
+                    showToast(`🔥 ${payload.new.user_id.slice(0,6)} a envoyé une force !`);
+                }
+            }).subscribe();
+            // Abonnement pour les cadeaux (non implémenté ici, mais possible)
+        }
+
+        function addMessageToChat(userId, message, createdAt) {
+            const container = document.getElementById('chatMessages');
+            const isOwn = (userId === currentProfile.id);
+            const div = document.createElement('div');
+            div.className = `message ${isOwn ? 'own' : ''}`;
+            // On pourrait récupérer le nom de l'utilisateur depuis un cache, mais simplifié
+            div.innerHTML = `<strong>${userId.slice(0,6)}</strong> ${escapeHtml(message)}<small>${new Date(createdAt).toLocaleTimeString()}</small>`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if (!msg || !currentLive) return;
+            const { error } = await supabase.from('live_messages').insert({
+                live_id: currentLive.id,
+                user_id: currentProfile.id,
+                message: msg
+            });
+            if (!error) input.value = '';
+            else showToast('Erreur envoi message');
+        }
+
+        async function sendStrength() {
+            if (!currentLive || strengthSent) {
+                showToast('Vous avez déjà envoyé une force pour ce live');
+                return;
+            }
+            const { error } = await supabase.from('live_strengths').insert({
+                live_id: currentLive.id,
+                user_id: currentProfile.id
+            });
+            if (error) {
+                showToast('Erreur: ' + error.message);
+            } else {
+                strengthSent = true;
+                document.getElementById('strengthBtn').disabled = true;
+                showToast('Force envoyée !');
+            }
+        }
+
+        async function stopLive() {
+            if (!currentLive.isHost) return;
+            // Fermer le stream et Peer
+            if (localStream) localStream.getTracks().forEach(t => t.stop());
+            if (peer) peer.destroy();
+            // Mettre à jour la base
+            await supabase.from('lives').update({ actif: false }).eq('id', currentLive.id);
+            showToast('Live terminé');
+            window.location.reload();
+        }
+
+        function leaveLive() {
+            if (peer) peer.destroy();
+            if (localStream) localStream.getTracks().forEach(t => t.stop());
+            if (liveChannel) supabase.removeChannel(liveChannel);
+            window.location.reload();
+        }
+
+        function switchToLiveRoom(isHost) {
+            document.getElementById('livesListContainer').style.display = 'none';
+            document.getElementById('liveRoomContainer').style.display = 'block';
+            document.getElementById('stopLiveBtn').style.display = isHost ? 'inline-flex' : 'none';
+            if (!isHost) {
+                // Spectateur : désactiver la force si déjà envoyée (géré via état)
+            }
+        }
+
+        // Ouvrir la modale de cadeaux (à implémenter avec catalogue)
+        async function openGiftModal() {
+            // Charger le catalogue depuis la table gift_catalog
+            const { data: gifts } = await supabase.from('gift_catalog').select('*');
+            const listDiv = document.getElementById('giftList');
+            if (!gifts || !gifts.length) {
+                listDiv.innerHTML = '<p>Aucun cadeau disponible</p>';
+            } else {
+                listDiv.innerHTML = gifts.map(g => `
+                    <div class="gift-item" data-id="${g.id}" data-price="${g.price}">
+                        <span>${g.name}</span>
+                        <span>${g.price} FCFA</span>
+                    </div>
+                `).join('');
+                document.querySelectorAll('.gift-item').forEach(item => {
+                    item.addEventListener('click', () => buyGift(item.dataset.id, item.dataset.price));
+                });
+            }
+            document.getElementById('giftModal').style.display = 'flex';
+        }
+        function closeGiftModal() { document.getElementById('giftModal').style.display = 'none'; }
+        async function buyGift(giftId, price) {
+            // Vérifier le solde du portefeuille (table player_wallets)
+            const { data: wallet } = await supabase.from('player_wallets').select('balance').eq('player_id', currentProfile.id).single();
+            if (!wallet || wallet.balance < price) {
+                showToast('Solde insuffisant');
+                closeGiftModal();
+                return;
+            }
+            // Déduire le solde et enregistrer le cadeau
+            const newBalance = wallet.balance - price;
+            await supabase.from('player_wallets').update({ balance: newBalance }).eq('player_id', currentProfile.id);
+            await supabase.from('live_gifts_sent').insert({
+                live_id: currentLive.id,
+                user_id: currentProfile.id,
+                gift_id: giftId
+            });
+            showToast('Cadeau envoyé !');
+            closeGiftModal();
+        }
+
+        // Création live : demander titre
+        document.getElementById('createLiveBtn').addEventListener('click', () => {
+            const title = prompt('Titre de votre live :');
+            if (title) startLive(title);
+        });
+        document.getElementById('sendChatBtn').addEventListener('click', sendMessage);
+        document.getElementById('chatInput').addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+        document.getElementById('strengthBtn').addEventListener('click', sendStrength);
+        document.getElementById('stopLiveBtn').addEventListener('click', stopLive);
+        document.getElementById('leaveLiveBtn').addEventListener('click', leaveLive);
+        document.getElementById('giftBtn').addEventListener('click', openGiftModal);
+
+        // Initialisation
+        (async () => {
+            await checkAuth();
+            await loadLives();
+            // Si l'URL contient ?id=... on rejoint directement
+            const urlParams = new URLSearchParams(window.location.search);
+            const liveId = urlParams.get('id');
+            if (liveId) {
+                const { data: live } = await supabase.from('lives').select('id, video_url, user_id').eq('id', liveId).single();
+                if (live && live.actif) joinLive(live.id, live.video_url, live.user_id);
+            }
+        })();
+    </script>
+</body>
+</html>
