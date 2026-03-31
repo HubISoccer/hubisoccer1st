@@ -6,105 +6,267 @@
     <title>Créer un tournoi | HubISoccer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Styles existants -->
     <link rel="stylesheet" href="css/hubismanagtournoi.css">
     <link rel="stylesheet" href="css/create-tournament.css">
+    <!-- Style commun (navbar, sidebar, footer) -->
+    <link rel="stylesheet" href="../players/css/feed.css">
+    <style>
+        /* Ajustements pour intégrer le formulaire */
+        .dashboard-main {
+            padding: 40px 5%;
+        }
+        .create-tournament-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .form-header {
+            margin-bottom: 30px;
+        }
+        @media (max-width: 768px) {
+            .dashboard-main {
+                padding: 20px 4%;
+            }
+        }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="create-tournament-container">
-        <div class="form-header">
-            <button class="btn-back" id="backBtn">
-                <i class="fas fa-arrow-left"></i>
-                Retour
-            </button>
-            <h1>Créer un tournoi</h1>
+
+    <!-- ========== NAVBAR (identique à accueil_hubisgst.html) ========== -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="../players/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Gestionnaire de tournois</span>
         </div>
-
-        <form id="createTournamentForm" class="tournament-form">
-            <div class="form-section">
-                <h2>Informations générales</h2>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="tournamentName">Nom du tournoi *</label>
-                        <input type="text" id="tournamentName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="sportId">Sport *</label>
-                        <select id="sportId" required></select>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="tournamentType">Type de tournoi *</label>
-                        <select id="tournamentType" required></select>
-                    </div>
-                    <div class="form-group">
-                        <label for="registrationCode">Code d'inscription (pour tournois publics)</label>
-                        <input type="text" id="registrationCode" placeholder="Laisser vide si non utilisé">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="description">Description</label>
-                    <textarea id="description" rows="4"></textarea>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="../players/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="../players/profile-edit.html"><i class="fas fa-user"></i> Mon profil</a>
+                    <a href="../feed/feed.html"><i class="fas fa-users"></i> Communauté</a>
+                    <a href="../shared/messages.html"><i class="fas fa-envelope"></i> Messages</a>
+                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                 </div>
             </div>
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+        </div>
+    </nav>
 
-            <div class="form-section">
-                <h2>Dates et lieu</h2>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="startDate">Date de début *</label>
-                        <input type="datetime-local" id="startDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="endDate">Date de fin *</label>
-                        <input type="datetime-local" id="endDate" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="location">Lieu</label>
-                    <input type="text" id="location">
-                </div>
-            </div>
+    <!-- ========== OVERLAY SIDEBAR ========== -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-            <div class="form-section">
-                <h2>Récompenses et conditions</h2>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="prizePool">Prix total (FCFA)</label>
-                        <input type="number" id="prizePool" min="0" step="1000" value="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="requiresFirstPas">Nécessite premier‑pas</label>
-                        <select id="requiresFirstPas">
-                            <option value="false">Non</option>
-                            <option value="true">Oui</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="rules">Règlement (optionnel)</label>
-                    <textarea id="rules" rows="4"></textarea>
-                </div>
-            </div>
-
-            <div class="form-section">
-                <h2>Streaming (optionnel)</h2>
-                <div class="form-group">
-                    <label for="streamUrl">URL du stream (YouTube, Twitch, etc.)</label>
-                    <input type="url" id="streamUrl" placeholder="https://...">
-                </div>
-            </div>
-
-            <div class="form-actions">
-                <button type="button" class="btn-secondary" id="cancelBtn">Annuler</button>
-                <button type="submit" class="btn-primary">Créer le tournoi</button>
-            </div>
-        </form>
+    <!-- ========== SIDEBAR GAUCHE (menu gestionnaire) ========== -->
+    <div class="sidebar left-sidebar" id="leftSidebar">
+        <div class="sidebar-header">
+            <h3>Menu Tournois</h3>
+            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="accueil_hubisgst.html"><i class="fas fa-home"></i> Accueil</a>
+            <a href="create-tournament.html" class="active"><i class="fas fa-plus-circle"></i> Créer un tournoi</a>
+            <a href="my-tournaments.html"><i class="fas fa-list"></i> Mes tournois</a>
+            <a href="my-registrations.html"><i class="fas fa-calendar-check"></i> Mes inscriptions</a>
+            <a href="rankings.html"><i class="fas fa-chart-line"></i> Classements</a>
+            <a href="tournament-rules.html"><i class="fas fa-gavel"></i> Règlement</a>
+            <hr>
+            <a href="help-tournament.html"><i class="fas fa-question-circle"></i> Aide</a>
+        </nav>
     </div>
 
-    <script src="js/supabase-client.js"></script>
+    <!-- ========== CONTENU PRINCIPAL ========== -->
+    <main class="dashboard-main">
+        <div class="create-tournament-container">
+            <div class="form-header">
+                <button class="btn-back" id="backBtn">
+                    <i class="fas fa-arrow-left"></i>
+                    Retour
+                </button>
+                <h1>Créer un tournoi</h1>
+            </div>
+
+            <form id="createTournamentForm" class="tournament-form">
+                <div class="form-section">
+                    <h2>Informations générales</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tournamentName">Nom du tournoi *</label>
+                            <input type="text" id="tournamentName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="sportId">Sport *</label>
+                            <select id="sportId" required></select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tournamentType">Type de tournoi *</label>
+                            <select id="tournamentType" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="registrationCode">Code d'inscription (pour tournois publics)</label>
+                            <input type="text" id="registrationCode" placeholder="Laisser vide si non utilisé">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" rows="4"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Dates et lieu</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="startDate">Date de début *</label>
+                            <input type="datetime-local" id="startDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="endDate">Date de fin *</label>
+                            <input type="datetime-local" id="endDate" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="location">Lieu</label>
+                        <input type="text" id="location">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Récompenses et conditions</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="prizePool">Prix total (FCFA)</label>
+                            <input type="number" id="prizePool" min="0" step="1000" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="requiresFirstPas">Nécessite premier‑pas</label>
+                            <select id="requiresFirstPas">
+                                <option value="false">Non</option>
+                                <option value="true">Oui</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="rules">Règlement (optionnel)</label>
+                        <textarea id="rules" rows="4"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Streaming (optionnel)</h2>
+                    <div class="form-group">
+                        <label for="streamUrl">URL du stream (YouTube, Twitch, etc.)</label>
+                        <input type="url" id="streamUrl" placeholder="https://...">
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelBtn">Annuler</button>
+                    <button type="submit" class="btn-primary">Créer le tournoi</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="../auth/auth.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/create-tournament.js"></script>
+
+    <!-- Script d’authentification et gestion UI (identique à accueil_hubisgst.html) -->
+    <script>
+        (async () => {
+            // Vérifier la session
+            const { data: { session }, error } = await window.supabaseAuthPrive.auth.getSession();
+            if (error || !session) {
+                window.location.href = '../auth/login.html';
+                return;
+            }
+            // Récupérer le profil
+            const { data: profile } = await window.supabaseAuthPrive
+                .from('profiles')
+                .select('full_name, avatar_url')
+                .eq('id', session.user.id)
+                .single();
+            if (profile) {
+                document.getElementById('userName').textContent = profile.full_name || 'Utilisateur';
+                document.getElementById('userAvatar').src = profile.avatar_url || '../players/img/user-default.jpg';
+            }
+
+            // Menu utilisateur
+            const userMenu = document.getElementById('userMenu');
+            const userDropdown = document.getElementById('userDropdown');
+            if (userMenu && userDropdown) {
+                userMenu.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userDropdown.classList.toggle('show');
+                });
+                document.addEventListener('click', () => userDropdown.classList.remove('show'));
+            }
+
+            // Déconnexion
+            document.getElementById('logoutLink').addEventListener('click', async (e) => {
+                e.preventDefault();
+                await window.supabaseAuthPrive.auth.signOut();
+                window.location.href = '../index.html';
+            });
+
+            // Gestion sidebar
+            const menuToggle = document.getElementById('menuToggle');
+            const leftSidebar = document.getElementById('leftSidebar');
+            const closeLeftSidebar = document.getElementById('closeLeftSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (menuToggle && leftSidebar && overlay) {
+                menuToggle.addEventListener('click', () => {
+                    leftSidebar.classList.add('active');
+                    overlay.classList.add('active');
+                });
+                if (closeLeftSidebar) {
+                    closeLeftSidebar.addEventListener('click', () => {
+                        leftSidebar.classList.remove('active');
+                        overlay.classList.remove('active');
+                    });
+                }
+                overlay.addEventListener('click', () => {
+                    leftSidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                });
+            }
+
+            // Boutons retour/annuler (déjà définis dans create-tournament.js, mais on peut aussi les gérer ici)
+            // On les laisse dans le fichier JS.
+        })();
+    </script>
 </body>
 </html>
