@@ -6,34 +6,20 @@
     <title>Créer un tournoi | HubISoccer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Styles existants -->
     <link rel="stylesheet" href="css/hubismanagtournoi.css">
     <link rel="stylesheet" href="css/create-tournament.css">
-    <!-- Style commun (navbar, sidebar, footer) -->
     <link rel="stylesheet" href="../players/css/feed.css">
     <style>
-        /* Ajustements pour intégrer le formulaire */
-        .dashboard-main {
-            padding: 40px 5%;
-        }
-        .create-tournament-container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        .form-header {
-            margin-bottom: 30px;
-        }
-        @media (max-width: 768px) {
-            .dashboard-main {
-                padding: 20px 4%;
-            }
-        }
+        .dashboard-main { padding: 40px 5%; }
+        .create-tournament-container { max-width: 1200px; margin: 0 auto; }
+        .form-header { margin-bottom: 30px; }
+        @media (max-width: 768px) { .dashboard-main { padding: 20px 4%; } }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-    <!-- ========== NAVBAR (identique à accueil_hubisgst.html) ========== -->
+    <!-- ========== NAVBAR ========== -->
     <nav class="dashboard-nav">
         <div class="nav-left">
             <img src="../players/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
@@ -66,7 +52,7 @@
     <!-- ========== OVERLAY SIDEBAR ========== -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- ========== SIDEBAR GAUCHE (menu gestionnaire) ========== -->
+    <!-- ========== SIDEBAR GAUCHE ========== -->
     <div class="sidebar left-sidebar" id="leftSidebar">
         <div class="sidebar-header">
             <h3>Menu Tournois</h3>
@@ -137,8 +123,8 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="location">Lieu</label>
-                        <input type="text" id="location">
+                        <label for="tournamentLocation">Lieu</label>
+                        <input type="text" id="tournamentLocation">
                     </div>
                 </div>
 
@@ -203,17 +189,14 @@
     <script src="../auth/auth.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/create-tournament.js"></script>
-
-    <!-- Script d’authentification et gestion UI (identique à accueil_hubisgst.html) -->
     <script>
+        // Gestion de la sidebar et de l’authentification
         (async () => {
-            // Vérifier la session
             const { data: { session }, error } = await window.supabaseAuthPrive.auth.getSession();
             if (error || !session) {
                 window.location.href = '../auth/login.html';
                 return;
             }
-            // Récupérer le profil
             const { data: profile } = await window.supabaseAuthPrive
                 .from('profiles')
                 .select('full_name, avatar_url')
@@ -224,7 +207,6 @@
                 document.getElementById('userAvatar').src = profile.avatar_url || '../players/img/user-default.jpg';
             }
 
-            // Menu utilisateur
             const userMenu = document.getElementById('userMenu');
             const userDropdown = document.getElementById('userDropdown');
             if (userMenu && userDropdown) {
@@ -235,14 +217,12 @@
                 document.addEventListener('click', () => userDropdown.classList.remove('show'));
             }
 
-            // Déconnexion
             document.getElementById('logoutLink').addEventListener('click', async (e) => {
                 e.preventDefault();
                 await window.supabaseAuthPrive.auth.signOut();
                 window.location.href = '../index.html';
             });
 
-            // Gestion sidebar
             const menuToggle = document.getElementById('menuToggle');
             const leftSidebar = document.getElementById('leftSidebar');
             const closeLeftSidebar = document.getElementById('closeLeftSidebar');
@@ -263,9 +243,6 @@
                     overlay.classList.remove('active');
                 });
             }
-
-            // Boutons retour/annuler (déjà définis dans create-tournament.js, mais on peut aussi les gérer ici)
-            // On les laisse dans le fichier JS.
         })();
     </script>
 </body>
