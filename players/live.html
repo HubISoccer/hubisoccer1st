@@ -303,7 +303,7 @@
         // Configuration Supabase (identique à feed.js)
         const SUPABASE_URL = 'https://wxlpcflanihqwumjwpjs.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bHBjZmxhbmlocXd1bWp3cGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzcwNzAsImV4cCI6MjA4Nzg1MzA3MH0.i1ZW-9MzSaeOKizKjaaq6mhtl7X23LsVpkkohc_p6Fw';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null;
         let currentProfile = null;
@@ -324,20 +324,20 @@
         }
 
         async function checkAuth() {
-            const { data: { session }, error } = await supabase.auth.getSession();
+            const { data: { session }, error } = await supabaseClient.auth.getSession();
             if (error || !session) {
                 window.location.href = '../auth/login.html';
                 return null;
             }
             currentUser = session.user;
-            const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+            const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
             currentProfile = profile;
             return currentUser;
         }
 
         // Charger la liste des lives
         async function loadLives() {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('lives')
                 .select('id, titre, user_id, profiles(id, full_name, avatar_url)')
                 .eq('actif', true)
@@ -394,7 +394,7 @@
                 return;
             }
             // Insérer dans la base
-            const { data: newLive, error } = await supabase
+            const { data: newLive, error } = await supabaseClient
                 .from('lives')
                 .insert({
                     titre: title,
@@ -465,7 +465,7 @@
                 addMessageToChat(payload.new.user_id, payload.new.message, payload.new.created_at);
             }).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'live_strengths', filter: `live_id=eq.${liveId}` }, async payload => {
                 // Mettre à jour le compteur de forces
-                const { count } = await supabase.from('live_strengths').select('*', { count: 'exact', head: true }).eq('live_id', liveId);
+                const { count } = await supabaseClient.from('live_strengths').select('*', { count: 'exact', head: true }).eq('live_id', liveId);
                 document.getElementById('strengthBtn').innerHTML = `<i class="fas fa-fist-raised"></i> Force (${count})`;
                 if (payload.new.user_id !== currentProfile.id && !isHost) {
                     showToast(`🔥 ${payload.new.user_id.slice(0,6)} a envoyé une force !`);
@@ -489,7 +489,7 @@
             const input = document.getElementById('chatInput');
             const msg = input.value.trim();
             if (!msg || !currentLive) return;
-            const { error } = await supabase.from('live_messages').insert({
+            const { error } = await supabaseClient.from('live_messages').insert({
                 live_id: currentLive.id,
                 user_id: currentProfile.id,
                 message: msg
@@ -503,7 +503,7 @@
                 showToast('Vous avez déjà envoyé une force pour ce live');
                 return;
             }
-            const { error } = await supabase.from('live_strengths').insert({
+            const { error } = await supabaseClient.from('live_strengths').insert({
                 live_id: currentLive.id,
                 user_id: currentProfile.id
             });
@@ -522,7 +522,7 @@
             if (localStream) localStream.getTracks().forEach(t => t.stop());
             if (peer) peer.destroy();
             // Mettre à jour la base
-            await supabase.from('lives').update({ actif: false }).eq('id', currentLive.id);
+            await supabaseClient.from('lives').update({ actif: false }).eq('id', currentLive.id);
             showToast('Live terminé');
             window.location.reload();
         }
@@ -546,7 +546,7 @@
         // Ouvrir la modale de cadeaux (à implémenter avec catalogue)
         async function openGiftModal() {
             // Charger le catalogue depuis la table gift_catalog
-            const { data: gifts } = await supabase.from('gift_catalog').select('*');
+            const { data: gifts } = await supabaseClient.from('gift_catalog').select('*');
             const listDiv = document.getElementById('giftList');
             if (!gifts || !gifts.length) {
                 listDiv.innerHTML = '<p>Aucun cadeau disponible</p>';
@@ -566,7 +566,7 @@
         function closeGiftModal() { document.getElementById('giftModal').style.display = 'none'; }
         async function buyGift(giftId, price) {
             // Vérifier le solde du portefeuille (table player_wallets)
-            const { data: wallet } = await supabase.from('player_wallets').select('balance').eq('player_id', currentProfile.id).single();
+            const { data: wallet } = await supabaseClient.from('player_wallets').select('balance').eq('player_id', currentProfile.id).single();
             if (!wallet || wallet.balance < price) {
                 showToast('Solde insuffisant');
                 closeGiftModal();
@@ -574,8 +574,8 @@
             }
             // Déduire le solde et enregistrer le cadeau
             const newBalance = wallet.balance - price;
-            await supabase.from('player_wallets').update({ balance: newBalance }).eq('player_id', currentProfile.id);
-            await supabase.from('live_gifts_sent').insert({
+            await supabaseClient.from('player_wallets').update({ balance: newBalance }).eq('player_id', currentProfile.id);
+            await supabaseClient.from('live_gifts_sent').insert({
                 live_id: currentLive.id,
                 user_id: currentProfile.id,
                 gift_id: giftId
@@ -604,7 +604,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const liveId = urlParams.get('id');
             if (liveId) {
-                const { data: live } = await supabase.from('lives').select('id, video_url, user_id').eq('id', liveId).single();
+                const { data: live } = await supabaseClient.from('lives').select('id, video_url, user_id').eq('id', liveId).single();
                 if (live && live.actif) joinLive(live.id, live.video_url, live.user_id);
             }
         })();
