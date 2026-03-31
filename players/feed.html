@@ -122,7 +122,6 @@
                 <ul class="suggestions-list" id="suggestionsList"></ul>
                 <a href="#" class="view-all">Voir plus</a>
             </div>
-            <!-- ========== AJOUT : SECTION LIVES EN DIRECT ========== -->
             <div class="community-section">
                 <h4><i class="fas fa-broadcast-tower"></i> Lives en direct</h4>
                 <ul class="lives-list" id="livesList"></ul>
@@ -214,7 +213,6 @@
                 </button>
             </div>
 
-            <!-- ========== STORIES : deux rubriques ========== -->
             <div class="stories-section">
                 <h3><i class="fas fa-smile"></i> My HubIS Enjoy</h3>
                 <div class="stories-container" id="myStoriesContainer">
@@ -232,7 +230,6 @@
                 </div>
             </div>
 
-            <!-- ========== ZONE DE PUBLICATION ========== -->
             <div class="publish-box">
                 <div class="publish-top">
                     <img src="img/user-default.jpg" alt="Avatar" id="publishAvatar">
@@ -252,7 +249,6 @@
                         <button class="action-btn" id="pollBtn"><i class="fas fa-chart-pie"></i> Sondage</button>
                         <button class="action-btn" id="eventBtn"><i class="fas fa-calendar-alt"></i> Événement</button>
                         <button class="action-btn" id="schedulePostBtn"><i class="fas fa-clock"></i> Prog.</button>
-                        <!-- ========== AJOUT : BOUTON DÉMARRER UN LIVE ========== -->
                         <button class="action-btn" id="startLiveBtn" onclick="window.location.href='live.html'">
                             <i class="fas fa-video"></i> Live
                         </button>
@@ -265,19 +261,16 @@
                 <input type="file" id="mediaInput" accept="image/*,video/*" style="display: none;">
             </div>
 
-            <!-- Indicateur nouveaux posts -->
             <div id="newPostsIndicator" class="new-posts-indicator" style="display: none;">
                 <span>⬆️</span> <span id="newPostsCount">0</span> nouveau(x) post(s)
             </div>
 
-            <!-- Fil d'actualité -->
             <div id="postsFeed" class="posts-feed">
                 <div id="feedLoader" class="feed-loader" style="display: none;">
                     <div class="spinner"></div>
                 </div>
             </div>
 
-            <!-- Pagination -->
             <div id="loadMoreBtn" class="load-more-btn" style="display: none;">
                 <button onclick="loadMorePosts()"><i class="fas fa-arrow-down"></i> Charger plus</button>
             </div>
@@ -289,7 +282,6 @@
 
     <!-- ========== MODALES ========== -->
 
-    <!-- Aperçu publication -->
     <div id="previewModal" class="modal preview-modal">
         <div class="preview-content">
             <div class="preview-header">
@@ -311,7 +303,6 @@
         </div>
     </div>
 
-    <!-- Édition profil (champs enrichis) -->
     <div id="editProfileModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -320,48 +311,20 @@
             </div>
             <div class="modal-body">
                 <form id="editProfileForm">
-                    <div class="form-group">
-                        <label>Bio</label>
-                        <textarea id="editBio" rows="4"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Téléphone (WhatsApp)</label>
-                        <input type="tel" id="editPhone">
-                    </div>
-                    <div class="form-group">
-                        <label>Email professionnel</label>
-                        <input type="email" id="editEmail">
-                    </div>
-                    <div class="form-group">
-                        <label>Pays de résidence</label>
-                        <select id="editCountry">
-                            <option value="">Sélectionner votre pays</option>
-                            <!-- La liste sera générée par JS -->
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Adresse complète</label>
-                        <textarea id="editAddress" rows="2"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Centres d'intérêt</label>
-                        <textarea id="editInterests" rows="3" placeholder="Football, musique, voyages..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Raison pour laquelle je suis sur HubISoccer</label>
-                        <textarea id="editReason" rows="3" placeholder="Partager ma passion, trouver des opportunités..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Vision / Philosophie</label>
-                        <textarea id="editVision" rows="3" placeholder="Ma vision du sport et de la vie..."></textarea>
-                    </div>
+                    <div class="form-group"><label>Bio</label><textarea id="editBio" rows="4"></textarea></div>
+                    <div class="form-group"><label>Téléphone (WhatsApp)</label><input type="tel" id="editPhone"></div>
+                    <div class="form-group"><label>Email professionnel</label><input type="email" id="editEmail"></div>
+                    <div class="form-group"><label>Pays de résidence</label><select id="editCountry"><option value="">Sélectionner votre pays</option></select></div>
+                    <div class="form-group"><label>Adresse complète</label><textarea id="editAddress" rows="2"></textarea></div>
+                    <div class="form-group"><label>Centres d'intérêt</label><textarea id="editInterests" rows="3" placeholder="Football, musique, voyages..."></textarea></div>
+                    <div class="form-group"><label>Raison pour laquelle je suis sur HubISoccer</label><textarea id="editReason" rows="3" placeholder="Partager ma passion, trouver des opportunités..."></textarea></div>
+                    <div class="form-group"><label>Vision / Philosophie</label><textarea id="editVision" rows="3" placeholder="Ma vision du sport et de la vie..."></textarea></div>
                     <button type="submit" class="btn-save-profile">Enregistrer</button>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Profil utilisateur -->
     <div id="userProfileModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -370,9 +333,7 @@
             </div>
             <div class="modal-body">
                 <div class="user-profile">
-                    <div class="profile-avatar">
-                        <img id="profileAvatar" src="img/user-default.jpg">
-                    </div>
+                    <div class="profile-avatar"><img id="profileAvatar" src="img/user-default.jpg"></div>
                     <h3 id="profileName"></h3>
                     <p id="profileHubId"></p>
                     <div id="profileBadges" class="profile-badges"></div>
@@ -380,41 +341,30 @@
                     <div class="profile-info-group"><strong>Centres d'intérêt :</strong><p id="profileInterests"></p></div>
                     <div class="profile-info-group"><strong>Raison d'être sur HubISoccer :</strong><p id="profileReason"></p></div>
                     <div class="profile-info-group"><strong>Vision / Philosophie :</strong><p id="profileVision"></p></div>
+                    <button id="modalFollowBtn" class="follow-btn" style="display: none; margin-right: 10px;"></button>
                     <button class="btn-send-message" onclick="sendMessageToUser()"><i class="fas fa-envelope"></i> Envoyer un message</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Likes -->
     <div id="likesModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Personnes qui aiment ce post</h2>
-                <span class="close-modal" onclick="closeLikesModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Personnes qui aiment ce post</h2><span class="close-modal" onclick="closeLikesModal()">×</span></div>
             <div class="modal-body"><ul id="likesList" class="likes-list"></ul></div>
         </div>
     </div>
 
-    <!-- Dislikes -->
     <div id="dislikesModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Personnes qui n'aiment pas ce post</h2>
-                <span class="close-modal" onclick="closeDislikesModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Personnes qui n'aiment pas ce post</h2><span class="close-modal" onclick="closeDislikesModal()">×</span></div>
             <div class="modal-body"><ul id="dislikesList" class="likes-list"></ul></div>
         </div>
     </div>
 
-    <!-- Répondre à un commentaire -->
     <div id="replyModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Répondre au commentaire</h2>
-                <span class="close-modal" onclick="closeReplyModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Répondre au commentaire</h2><span class="close-modal" onclick="closeReplyModal()">×</span></div>
             <div class="modal-body">
                 <div class="original-comment" id="originalComment"></div>
                 <textarea id="replyContent" rows="3" placeholder="Votre réponse..."></textarea>
@@ -423,13 +373,9 @@
         </div>
     </div>
 
-    <!-- Notifications -->
     <div id="notificationsModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Notifications</h2>
-                <span class="close-modal" onclick="closeNotificationsModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Notifications</h2><span class="close-modal" onclick="closeNotificationsModal()">×</span></div>
             <div class="modal-body">
                 <button id="markAllRead" class="btn-mark-all-read" onclick="markAllNotificationsAsRead()">Tout marquer comme lu</button>
                 <ul id="notificationsList" class="notifications-list"></ul>
@@ -437,24 +383,16 @@
         </div>
     </div>
 
-    <!-- Collections (ajouter/retirer) -->
     <div id="collectionsModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Ajouter à une collection</h2>
-                <span class="close-modal" onclick="closeCollectionsModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Ajouter à une collection</h2><span class="close-modal" onclick="closeCollectionsModal()">×</span></div>
             <div class="modal-body"><ul id="collectionsModalList" class="collections-modal-list"></ul></div>
         </div>
     </div>
 
-    <!-- Créer une collection -->
     <div id="createCollectionModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Créer une collection</h2>
-                <span class="close-modal" onclick="closeCreateCollectionModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Créer une collection</h2><span class="close-modal" onclick="closeCreateCollectionModal()">×</span></div>
             <div class="modal-body">
                 <div class="form-group"><label>Nom de la collection</label><input type="text" id="newCollectionName"></div>
                 <button class="btn-create-collection" onclick="createNewCollection()">Créer</button>
@@ -462,13 +400,9 @@
         </div>
     </div>
 
-    <!-- Sondage -->
     <div id="pollModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Créer un sondage</h2>
-                <span class="close-modal" onclick="closePollModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Créer un sondage</h2><span class="close-modal" onclick="closePollModal()">×</span></div>
             <div class="modal-body">
                 <div class="form-group"><label>Question</label><input type="text" id="pollQuestion"></div>
                 <div class="form-group"><label>Options (une par ligne)</label><textarea id="pollOptions" rows="4"></textarea></div>
@@ -477,13 +411,9 @@
         </div>
     </div>
 
-    <!-- Partage externe -->
     <div id="shareModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Partager sur</h2>
-                <span class="close-modal" onclick="closeShareModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Partager sur</h2><span class="close-modal" onclick="closeShareModal()">×</span></div>
             <div class="modal-body">
                 <div class="share-options">
                     <button onclick="shareOn('facebook')" class="share-btn facebook"><i class="fab fa-facebook-f"></i> Facebook</button>
@@ -495,13 +425,9 @@
         </div>
     </div>
 
-    <!-- Confidentialité -->
     <div id="privacyModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Confidentialité du profil</h2>
-                <span class="close-modal" onclick="closePrivacyModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Confidentialité du profil</h2><span class="close-modal" onclick="closePrivacyModal()">×</span></div>
             <div class="modal-body">
                 <div class="radio-group">
                     <label><input type="radio" name="privacy" value="public"> Public (tout le monde peut voir vos posts)</label>
@@ -513,13 +439,9 @@
         </div>
     </div>
 
-    <!-- Invitation -->
     <div id="inviteModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Inviter des amis</h2>
-                <span class="close-modal" onclick="closeInviteModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Inviter des amis</h2><span class="close-modal" onclick="closeInviteModal()">×</span></div>
             <div class="modal-body">
                 <div class="form-group"><label>Email de l'ami</label><input type="email" id="inviteEmail"></div>
                 <button id="sendInvite" class="btn-send-invite" onclick="sendInvite()">Envoyer l'invitation</button>
@@ -527,7 +449,6 @@
         </div>
     </div>
 
-    <!-- Zoom média -->
     <div id="mediaZoomModal" class="modal media-modal">
         <div class="modal-content media-modal-content">
             <span class="close-modal" onclick="closeMediaZoom()">×</span>
@@ -536,7 +457,6 @@
         </div>
     </div>
 
-    <!-- Story modal -->
     <div id="storyModal" class="story-modal">
         <div class="story-viewer" id="storyViewer">
             <div class="story-progress"><div class="story-progress-bar" id="storyProgressBar"></div></div>
@@ -546,13 +466,9 @@
         </div>
     </div>
 
-    <!-- Événement -->
     <div id="createEventModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Créer un événement</h2>
-                <span class="close-modal" onclick="closeEventModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Créer un événement</h2><span class="close-modal" onclick="closeEventModal()">×</span></div>
             <div class="modal-body">
                 <div class="form-group"><label>Titre</label><input type="text" id="eventTitle"></div>
                 <div class="form-group"><label>Date et heure</label><input type="datetime-local" id="eventDate"></div>
@@ -563,13 +479,9 @@
         </div>
     </div>
 
-    <!-- Programmation -->
     <div id="schedulePostModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Programmer une publication</h2>
-                <span class="close-modal" onclick="closeScheduleModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Programmer une publication</h2><span class="close-modal" onclick="closeScheduleModal()">×</span></div>
             <div class="modal-body">
                 <div class="form-group"><label>Date et heure de publication</label><input type="datetime-local" id="scheduleDateTime"></div>
                 <button class="btn-schedule" onclick="schedulePost()">Programmer</button>
@@ -577,13 +489,9 @@
         </div>
     </div>
 
-    <!-- Signalement -->
     <div id="reportModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Signaler</h2>
-                <span class="close-modal" onclick="closeReportModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Signaler</h2><span class="close-modal" onclick="closeReportModal()">×</span></div>
             <div class="modal-body">
                 <div class="form-group"><label>Raison</label><textarea id="reportReason" rows="3" placeholder="Pourquoi signalez-vous ce contenu ?"></textarea></div>
                 <button class="btn-report" onclick="submitReport()">Envoyer le signalement</button>
@@ -591,13 +499,9 @@
         </div>
     </div>
 
-    <!-- Commentaire audio -->
     <div id="audioCommentModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Commentaire audio</h2>
-                <span class="close-modal" onclick="closeAudioModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Commentaire audio</h2><span class="close-modal" onclick="closeAudioModal()">×</span></div>
             <div class="modal-body">
                 <div class="form-group"><label>Sélectionner un fichier audio (mp3, m4a, ogg)</label><input type="file" id="audioFileInput" accept="audio/*"></div>
                 <button class="btn-upload-audio" onclick="uploadAudioComment()">Envoyer</button>
@@ -605,13 +509,9 @@
         </div>
     </div>
 
-    <!-- Commentaire média -->
     <div id="commentMediaModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Ajouter un média au commentaire</h2>
-                <span class="close-modal" onclick="closeCommentMediaModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Ajouter un média au commentaire</h2><span class="close-modal" onclick="closeCommentMediaModal()">×</span></div>
             <div class="modal-body">
                 <div class="form-group"><label>Fichier (image ou vidéo)</label><input type="file" id="commentMediaFile" accept="image/*,video/*"></div>
                 <button class="btn-upload-media" onclick="uploadCommentMedia()">Envoyer</button>
@@ -619,13 +519,9 @@
         </div>
     </div>
 
-    <!-- Bloquer utilisateur -->
     <div id="blockUserModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Bloquer l'utilisateur</h2>
-                <span class="close-modal" onclick="closeBlockUserModal()">×</span>
-            </div>
+            <div class="modal-header"><h2>Bloquer l'utilisateur</h2><span class="close-modal" onclick="closeBlockUserModal()">×</span></div>
             <div class="modal-body">
                 <p>Êtes-vous sûr de vouloir bloquer cet utilisateur ? Il ne pourra plus interagir avec vous.</p>
                 <button class="btn-block-user" onclick="confirmBlockUser()">Bloquer</button>
@@ -633,24 +529,16 @@
         </div>
     </div>
 
-    <!-- Historique -->
     <div id="historyModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Mon historique</h2>
-                <span class="close-modal" onclick="this.closest('.modal').remove()">×</span>
-            </div>
+            <div class="modal-header"><h2>Mon historique</h2><span class="close-modal" onclick="this.closest('.modal').remove()">×</span></div>
             <div class="modal-body"><div id="historyContent"></div></div>
         </div>
     </div>
 
-    <!-- Emarket -->
     <div id="emarketModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Emarket HubISoccer</h2>
-                <span class="close-modal" onclick="this.closest('.modal').remove()">×</span>
-            </div>
+            <div class="modal-header"><h2>Emarket HubISoccer</h2><span class="close-modal" onclick="this.closest('.modal').remove()">×</span></div>
             <div class="modal-body">
                 <p>Découvrez nos produits dérivés, équipements et offres partenaires.</p>
                 <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:15px;">
@@ -661,14 +549,12 @@
         </div>
     </div>
 
-    <!-- Toasts et loader -->
     <div id="toastContainer" class="toast-container"></div>
     <div id="globalLoader" class="global-loader" style="display: none;">
         <div class="spinner"></div>
         <div id="loaderProgress" style="margin-top: 10px; font-size: 14px;">Chargement 0%</div>
     </div>
 
-    <!-- Footer -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
