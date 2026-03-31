@@ -690,9 +690,9 @@ async function loadFollowersCount() {
     if (!currentProfile) return;
     try {
         const { count, error } = await supabasePlayersSpacePrive
-            .from('feed_follows')
+            .from('unified_follows')
             .select('*', { count: 'exact', head: true })
-            .eq('followed_id', currentProfile.id);
+            .eq('following_id', currentProfile.id);
         if (error) throw error;
         followersCount = count || 0;
         await updateBonusFollowers();
