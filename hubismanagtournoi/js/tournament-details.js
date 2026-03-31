@@ -22,6 +22,7 @@ const prizeListEl = document.getElementById('prizeList');
 const registerBtn = document.getElementById('registerBtn');
 const registrationBlock = document.getElementById('registrationBlock');
 const registrationMessage = document.getElementById('registrationMessage');
+const backBtn = document.getElementById('backBtn'); // AJOUT
 
 // ===== ÉTATS =====
 let currentUser = null;
@@ -79,7 +80,6 @@ async function loadTournamentDetails() {
         tournamentSportEl.textContent = data.sport?.name || 'Non spécifié';
         tournamentDescriptionEl.textContent = data.description || 'Aucune description';
 
-        // Si l'utilisateur est connecté, on vérifie l'inscription
         if (currentUser) {
             await checkUserRegistration();
             registrationBlock.style.display = 'block';
@@ -96,7 +96,6 @@ async function loadTournamentDetails() {
 async function checkUserRegistration() {
     if (!currentUser || !tournamentData) return;
 
-    // Récupérer le player_id associé à l'utilisateur
     const { data: player, error: playerError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .select('id')
@@ -104,14 +103,12 @@ async function checkUserRegistration() {
         .maybeSingle();
 
     if (playerError || !player) {
-        // L'utilisateur n'a pas de fiche joueur, donc pas encore inscrit
         registerBtn.disabled = false;
         registerBtn.onclick = () => registerUser();
         registrationMessage.textContent = '';
         return;
     }
 
-    // Vérifier l'inscription
     const { data: reg, error: regError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_registrations')
         .select('status')
@@ -154,7 +151,6 @@ async function registerUser() {
     }
     if (!tournamentData) return;
 
-    // 1. S'assurer que l'utilisateur a une fiche joueur
     let playerId;
     const { data: existingPlayer, error: playerError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
@@ -185,7 +181,6 @@ async function registerUser() {
         playerId = newPlayer.id;
     }
 
-    // 2. Vérifier si déjà inscrit
     const { data: existingReg, error: regCheckError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_registrations')
         .select('id')
@@ -202,7 +197,6 @@ async function registerUser() {
         return;
     }
 
-    // 3. Inscription
     const { error: insertError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_registrations')
         .insert({
@@ -336,7 +330,7 @@ function renderStandings() {
         return;
     }
     let html = `
-        <table>
+        8px
             <thead>
                 <tr>
                     <th>#</th>
@@ -370,7 +364,7 @@ function renderStandings() {
             </tr>
         `;
     });
-    html += `</tbody></table>`;
+    html += `</tbody> </table>`;
     standingsListEl.innerHTML = html;
 }
 
@@ -419,10 +413,8 @@ function renderPrizes() {
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
-    // Récupérer l'utilisateur connecté (si existant)
     currentUser = await getCurrentUser();
 
-    // Charger les données
     await loadTournamentDetails();
     if (!tournamentData) return;
     await Promise.all([
@@ -431,4 +423,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadStandings(),
         loadPrizes()
     ]);
+
+    // AJOUT : gestion du bouton retour
+    if (backBtn) {
+        backBtn.addEventListener('click', () => {
+            window.location.href = 'accueil_hubisgst.html';
+        });
+    }
 });
