@@ -1,4 +1,6 @@
 // ===== GESTION DE LA CRÉATION DE TOURNOI =====
+// On utilise window.supabaseAuthPrive (défini dans auth.js) comme client unique
+
 // ===== ÉLÉMENTS DOM =====
 const form = document.getElementById('createTournamentForm');
 const backBtn = document.getElementById('backBtn');
@@ -10,7 +12,7 @@ const registrationCode = document.getElementById('registrationCode');
 const description = document.getElementById('description');
 const startDate = document.getElementById('startDate');
 const endDate = document.getElementById('endDate');
-const location = document.getElementById('location');
+const tournamentLocation = document.getElementById('tournamentLocation');  // renommé
 const prizePool = document.getElementById('prizePool');
 const requiresFirstPas = document.getElementById('requiresFirstPas');
 const rules = document.getElementById('rules');
@@ -100,6 +102,13 @@ form.addEventListener('submit', async (e) => {
         return;
     }
 
+    // Récupérer l'utilisateur connecté
+    const { data: { user }, error: userError } = await window.supabaseAuthPrive.auth.getUser();
+    if (userError || !user) {
+        showToast('Vous devez être connecté pour créer un tournoi', 'error');
+        return;
+    }
+
     const tournamentData = {
         name: tournamentName.value.trim(),
         sport_id: parseInt(sportSelect.value),
@@ -107,23 +116,15 @@ form.addEventListener('submit', async (e) => {
         description: description.value.trim() || null,
         start_date: startDate.value,
         end_date: endDate.value,
-        location: location.value.trim() || null,
+        location: tournamentLocation.value.trim() || null,
         registration_code: registrationCode.value.trim() || null,
         prize_pool: parseFloat(prizePool.value) || 0,
         requires_first_pas: requiresFirstPas.value === 'true',
         rules: rules.value.trim() || null,
         stream_url: streamUrl.value.trim() || null,
         is_active: true,
-        created_by: null
+        created_by: user.id
     };
-
-    // Récupérer l'utilisateur connecté
-    const { data: { user }, error: userError } = await window.supabaseAuthPrive.auth.getUser();
-    if (userError || !user) {
-        showToast('Vous devez être connecté pour créer un tournoi', 'error');
-        return;
-    }
-    tournamentData.created_by = user.id;
 
     try {
         // 1. Créer le tournoi
@@ -135,23 +136,22 @@ form.addEventListener('submit', async (e) => {
 
         if (tournamentError) throw tournamentError;
 
-        // 2. Si paiement requis, créer une entrée dans la table des paiements (si elle existe)
+        // 2. Si paiement requis, créer une entrée dans la table des paiements
         if (requiresPayment) {
-            // Vérifier si la table des paiements existe (optionnel)
-            // On insère même si la table n'existe pas, l'erreur sera capturée
-            const { error: paymentError } = await window.supabaseAuthPrive
-                .from('gestionnairetournoi_payments')
-                .insert({
-                    tournament_id: tournament.id,
-                    user_id: user.id,
-                    amount: 0, // À définir selon un forfait
-                    status: 'pending'
-                });
-            if (paymentError) {
-                console.error('Erreur insertion paiement :', paymentError);
-                // On ne bloque pas la création du tournoi
+            try {
+                const { error: paymentError } = await window.supabaseAuthPrive
+                    .from('gestionnairetournoi_payments')
+                    .insert({
+                        tournament_id: tournament.id,
+                        user_id: user.id,
+                        amount: 0, // À définir selon un forfait
+                        status: 'pending'
+                    });
+                if (paymentError) console.error(paymentError);
+                showToast('Tournoi créé. Le paiement sera traité ultérieurement.', 'info');
+            } catch (payErr) {
+                console.error('Erreur paiement (non bloquante)', payErr);
             }
-            showToast('Tournoi créé. Le paiement sera traité ultérieurement.', 'info');
         } else {
             showToast('Tournoi créé avec succès !', 'success');
         }
