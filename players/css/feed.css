@@ -368,6 +368,7 @@ body {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(85,27,140,0.2);
 }
+
 /* ===== STORIES ===== */
 .stories-section {
     margin-bottom: 30px;
@@ -1135,7 +1136,7 @@ body {
     margin-right: 5px;
 }
 
-/* ===== SIDEBAR DROITE (contenu communautaire) ===== */
+/* ===== SIDEBAR DROITE ===== */
 .right-sidebar .sidebar-content {
     display: flex;
     flex-direction: column;
@@ -1376,7 +1377,8 @@ body {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(255, 204, 0, 0.3);
 }
-/* ===== MODALES GÉNÉRIQUES ===== */
+
+/* ===== MODALES ===== */
 .modal {
     display: none;
     position: fixed;
@@ -2164,15 +2166,10 @@ body {
     .dashboard-nav {
         padding: 8px 4%;
     }
-    .dashboard-title {
-        display: none;
-    }
-    .lang-picker {
-        display: none;
-    }
-    .user-name {
-        display: none;
-    }
+    /* On ne cache plus ces éléments */
+    /* .dashboard-title { display: none; } */
+    /* .lang-picker { display: none; } */
+    /* .user-name { display: none; } */
     .sidebar {
         width: 85%;
         max-width: 300px;
