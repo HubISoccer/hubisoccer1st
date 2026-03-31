@@ -18,7 +18,7 @@ const streamUrl = document.getElementById('streamUrl');
 
 // ===== CHARGEMENT DES SPORTS ET TYPES =====
 async function loadSports() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_sports')
         .select('id, name')
         .order('name');
@@ -37,7 +37,7 @@ async function loadSports() {
 }
 
 async function loadTournamentTypes() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_types')
         .select('id, name, label, requires_payment')
         .order('name');
@@ -62,7 +62,6 @@ typeSelect.addEventListener('change', () => {
     const selectedOption = typeSelect.options[typeSelect.selectedIndex];
     const paymentRequired = selectedOption?.getAttribute('data-requires-payment') === 'true';
     if (paymentRequired) {
-        // Afficher une modale de paiement (simplifié ici)
         if (confirm('Les tournois privés simples nécessitent un paiement. Voulez-vous procéder au paiement après la création ?')) {
             requiresPayment = true;
         } else {
@@ -115,22 +114,20 @@ form.addEventListener('submit', async (e) => {
         rules: rules.value.trim() || null,
         stream_url: streamUrl.value.trim() || null,
         is_active: true,
-        created_by: null // sera rempli par RLS ou par l'utilisateur connecté
+        created_by: null
     };
 
-    // Récupérer l'utilisateur connecté (si possible)
-    let currentUser = null;
-    if (window.supabaseAuthPrive) {
-        const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
-        if (!error && user) currentUser = user;
+    // Récupérer l'utilisateur connecté
+    const { data: { user }, error: userError } = await window.supabaseAuthPrive.auth.getUser();
+    if (userError || !user) {
+        showToast('Vous devez être connecté pour créer un tournoi', 'error');
+        return;
     }
-    if (currentUser) {
-        tournamentData.created_by = currentUser.id;
-    }
+    tournamentData.created_by = user.id;
 
     try {
         // 1. Créer le tournoi
-        const { data: tournament, error: tournamentError } = await supabaseGestionTournoi
+        const { data: tournament, error: tournamentError } = await window.supabaseAuthPrive
             .from('gestionnairetournoi_tournaments')
             .insert(tournamentData)
             .select()
@@ -138,17 +135,22 @@ form.addEventListener('submit', async (e) => {
 
         if (tournamentError) throw tournamentError;
 
-        // 2. Si paiement requis, créer une entrée dans la table des paiements (simulé)
+        // 2. Si paiement requis, créer une entrée dans la table des paiements (si elle existe)
         if (requiresPayment) {
-            const { error: paymentError } = await supabaseGestionTournoi
+            // Vérifier si la table des paiements existe (optionnel)
+            // On insère même si la table n'existe pas, l'erreur sera capturée
+            const { error: paymentError } = await window.supabaseAuthPrive
                 .from('gestionnairetournoi_payments')
                 .insert({
                     tournament_id: tournament.id,
-                    user_id: currentUser?.id || null,
+                    user_id: user.id,
                     amount: 0, // À définir selon un forfait
                     status: 'pending'
                 });
-            if (paymentError) console.error(paymentError);
+            if (paymentError) {
+                console.error('Erreur insertion paiement :', paymentError);
+                // On ne bloque pas la création du tournoi
+            }
             showToast('Tournoi créé. Le paiement sera traité ultérieurement.', 'info');
         } else {
             showToast('Tournoi créé avec succès !', 'success');
