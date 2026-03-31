@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Discussion | HubISoccer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="discuss.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ===== HEADER CHAT ===== -->
+<header class="chat-header" id="chatHeader">
+    <div class="chat-header-left">
+        <button class="back-btn" id="backBtn" title="Retour">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <div class="chat-contact" id="chatContact">
+            <div class="contact-avatar-wrap">
+                <img id="contactAvatar" src="../img/user-default.jpg" alt="Avatar" class="contact-avatar">
+                <div class="online-indicator" id="onlineIndicator"></div>
+            </div>
+            <div class="contact-info">
+                <h2 id="contactName">Chargement...</h2>
+                <p id="contactStatus" class="contact-status">...</p>
+            </div>
+        </div>
+    </div>
+    <div class="chat-header-right">
+        <button class="header-action-btn" id="searchMsgBtn" title="Rechercher dans la conversation">
+            <i class="fas fa-search"></i>
+        </button>
+        <button class="header-action-btn" id="pinnedMsgBtn" title="Messages épinglés">
+            <i class="fas fa-thumbtack"></i>
+        </button>
+        <button class="header-action-btn" id="moreOptionsBtn" title="Plus d'options">
+            <i class="fas fa-ellipsis-v"></i>
+        </button>
+        <!-- Menu déroulant options -->
+        <div class="options-menu" id="optionsMenu">
+            <button class="option-item" id="optViewProfile">
+                <i class="fas fa-user"></i> Voir le profil
+            </button>
+            <button class="option-item" id="optMuteConv">
+                <i class="fas fa-bell-slash"></i> Mettre en sourdine
+            </button>
+            <button class="option-item" id="optArchiveConv">
+                <i class="fas fa-archive"></i> Archiver
+            </button>
+            <button class="option-item" id="optBlockUser">
+                <i class="fas fa-ban"></i> Bloquer
+            </button>
+            <hr>
+            <button class="option-item danger" id="optDeleteConv">
+                <i class="fas fa-trash-alt"></i> Supprimer la conversation
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- ===== BARRE RECHERCHE DANS MESSAGES ===== -->
+<div class="msg-search-bar" id="msgSearchBar" style="display:none">
+    <i class="fas fa-search"></i>
+    <input type="text" id="msgSearchInput" placeholder="Rechercher dans la conversation...">
+    <span id="msgSearchCount"></span>
+    <button id="msgSearchPrev"><i class="fas fa-chevron-up"></i></button>
+    <button id="msgSearchNext"><i class="fas fa-chevron-down"></i></button>
+    <button id="msgSearchClose"><i class="fas fa-times"></i></button>
+</div>
+
+<!-- ===== MESSAGES ÉPINGLÉS (bandeau) ===== -->
+<div class="pinned-banner" id="pinnedBanner" style="display:none">
+    <i class="fas fa-thumbtack"></i>
+    <span id="pinnedBannerText">Message épinglé</span>
+    <button id="viewPinnedBtn">Voir</button>
+</div>
+
+<!-- ===== ZONE DES MESSAGES ===== -->
+<main class="messages-area" id="messagesArea">
+    <!-- Loader initial -->
+    <div class="msg-loader" id="msgLoader">
+        <div class="spinner"></div>
+    </div>
+    <!-- Loader "charger plus" -->
+    <div class="load-more-btn" id="loadMoreBtn" style="display:none">
+        <button id="loadMoreMsgs"><i class="fas fa-arrow-up"></i> Charger les messages précédents</button>
+    </div>
+    <!-- Conteneur messages -->
+    <div class="messages-container" id="messagesContainer"></div>
+    <!-- Indicateur de frappe -->
+    <div class="typing-indicator" id="typingIndicator" style="display:none">
+        <div class="typing-avatar">
+            <img id="typingAvatar" src="../img/user-default.jpg" alt="">
+        </div>
+        <div class="typing-bubbles">
+            <span></span><span></span><span></span>
+        </div>
+    </div>
+</main>
+
+<!-- ===== BOUTON RETOUR EN BAS ===== -->
+<button class="scroll-bottom-btn" id="scrollBottomBtn" style="display:none" title="Défiler vers le bas">
+    <i class="fas fa-chevron-down"></i>
+    <span class="scroll-unread-badge" id="scrollUnreadBadge" style="display:none">0</span>
+</button>
+
+<!-- ===== ZONE DE SAISIE ===== -->
+<div class="input-zone" id="inputZone">
+
+    <!-- Indicateur de réponse -->
+    <div class="reply-bar" id="replyBar" style="display:none">
+        <div class="reply-bar-content">
+            <div class="reply-bar-line"></div>
+            <div class="reply-bar-info">
+                <span class="reply-bar-name" id="replyBarName"></span>
+                <span class="reply-bar-text" id="replyBarText"></span>
+            </div>
+        </div>
+        <button class="reply-bar-close" id="replyBarClose"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Indicateur d'édition -->
+    <div class="edit-bar" id="editBar" style="display:none">
+        <div class="edit-bar-content">
+            <i class="fas fa-pen"></i>
+            <span>Modifier le message</span>
+        </div>
+        <button class="edit-bar-close" id="editBarClose"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Prévisualisation pièce jointe -->
+    <div class="attachment-preview" id="attachmentPreview" style="display:none"></div>
+
+    <!-- Enregistreur audio -->
+    <div class="audio-recorder-bar" id="audioRecorderBar" style="display:none">
+        <div class="rec-left">
+            <span class="rec-dot"></span>
+            <span class="rec-time" id="recTime">0:00</span>
+        </div>
+        <div class="rec-wave" id="recWave">
+            <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="rec-actions">
+            <button class="rec-cancel-btn" id="recCancelBtn"><i class="fas fa-trash-alt"></i></button>
+            <button class="rec-stop-btn" id="recStopBtn"><i class="fas fa-stop"></i></button>
+        </div>
+    </div>
+
+    <!-- Barre de saisie principale -->
+    <div class="input-row">
+        <button class="input-btn attach-btn" id="attachBtn" title="Joindre un fichier">
+            <i class="fas fa-paperclip"></i>
+        </button>
+        <div class="textarea-wrap">
+            <textarea id="msgInput" rows="1" placeholder="Écrire un message..."></textarea>
+        </div>
+        <button class="input-btn emoji-btn" id="emojiBtn" title="Émojis">
+            <i class="fas fa-smile"></i>
+        </button>
+        <button class="input-btn audio-btn" id="audioBtn" title="Message vocal">
+            <i class="fas fa-microphone"></i>
+        </button>
+        <button class="send-btn" id="sendBtn" title="Envoyer">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+    <input type="file" id="fileInput" style="display:none"
+        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt">
+</div>
+
+<!-- ===== MENU CONTEXTUEL MESSAGES ===== -->
+<div class="context-menu" id="contextMenu" style="display:none">
+    <button class="ctx-item" id="ctxReply"><i class="fas fa-reply"></i> Répondre</button>
+    <button class="ctx-item" id="ctxReact"><i class="fas fa-smile"></i> Réagir</button>
+    <button class="ctx-item" id="ctxCopy"><i class="fas fa-copy"></i> Copier</button>
+    <button class="ctx-item" id="ctxEdit" style="display:none"><i class="fas fa-pen"></i> Modifier</button>
+    <button class="ctx-item" id="ctxPin"><i class="fas fa-thumbtack"></i> Épingler</button>
+    <button class="ctx-item" id="ctxForward"><i class="fas fa-share"></i> Transférer</button>
+    <hr>
+    <button class="ctx-item danger" id="ctxDeleteMe"><i class="fas fa-user-slash"></i> Supprimer pour moi</button>
+    <button class="ctx-item danger" id="ctxDeleteAll" style="display:none"><i class="fas fa-trash-alt"></i> Supprimer pour tous</button>
+</div>
+
+<!-- ===== PICKER RÉACTIONS ===== -->
+<div class="reaction-picker" id="reactionPicker" style="display:none">
+    <span data-emoji="👍">👍</span>
+    <span data-emoji="❤️">❤️</span>
+    <span data-emoji="😂">😂</span>
+    <span data-emoji="😮">😮</span>
+    <span data-emoji="😢">😢</span>
+    <span data-emoji="🔥">🔥</span>
+    <span data-emoji="⚽">⚽</span>
+    <span data-emoji="👏">👏</span>
+</div>
+
+<!-- ===== PICKER ÉMOJIS ===== -->
+<div class="emoji-picker" id="emojiPicker" style="display:none"></div>
+
+<!-- ===== MODAL : MESSAGES ÉPINGLÉS ===== -->
+<div id="modalPinned" class="modal">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h2><i class="fas fa-thumbtack"></i> Messages épinglés</h2>
+            <button class="modal-close" onclick="closeModal('modalPinned')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" id="pinnedList"></div>
+    </div>
+</div>
+
+<!-- ===== MODAL : TRANSFÉRER UN MESSAGE ===== -->
+<div id="modalForward" class="modal">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h2><i class="fas fa-share"></i> Transférer à...</h2>
+            <button class="modal-close" onclick="closeModal('modalForward')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="text" id="forwardSearch" class="forward-search" placeholder="Rechercher une conversation...">
+            <div class="forward-list" id="forwardList"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL : PROFIL UTILISATEUR ===== -->
+<div id="modalProfile" class="modal">
+    <div class="modal-box modal-profile">
+        <button class="modal-close-abs" onclick="closeModal('modalProfile')"><i class="fas fa-times"></i></button>
+        <div id="profileContent"></div>
+    </div>
+</div>
+
+<!-- ===== MODAL : ZOOM MÉDIA ===== -->
+<div id="modalMedia" class="modal modal-media">
+    <div class="media-viewer-wrap">
+        <button class="media-close-btn" onclick="closeModal('modalMedia')"><i class="fas fa-times"></i></button>
+        <div id="mediaViewer"></div>
+        <p class="media-caption" id="mediaCaption"></p>
+    </div>
+</div>
+
+<!-- ===== MODAL : CONFIRMATION ===== -->
+<div id="modalConfirm" class="modal">
+    <div class="modal-box modal-box-sm">
+        <div class="modal-head">
+            <h2 id="confirmTitle">Confirmation</h2>
+            <button class="modal-close" onclick="closeModal('modalConfirm')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body"><p id="confirmDesc"></p></div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('modalConfirm')">Annuler</button>
+            <button class="btn-confirm" id="confirmActionBtn"></button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TOASTS ===== -->
+<div id="toastContainer" class="toast-container"></div>
+
+<script src="discuss.js"></script>
+</body>
+</html>
