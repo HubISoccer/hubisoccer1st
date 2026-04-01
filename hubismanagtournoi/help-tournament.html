@@ -6,7 +6,10 @@
     <title>Aide | HubISoccer – Gestion des tournois</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/hubismanagtournoi.css">
+    <link rel="stylesheet" href="../players/css/feed.css">
     <style>
+        /* Styles spécifiques à la page d'aide (repris de l'original) */
         :root {
             --primary: #551B8C;
             --primary-light: #7e3db0;
@@ -20,17 +23,6 @@
             --light-gray: #e9ecef;
             --shadow: 0 10px 30px rgba(0,0,0,0.05);
             --transition: all 0.3s ease;
-        }
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
-            color: var(--dark);
-            line-height: 1.6;
         }
         .help-container {
             max-width: 1000px;
@@ -211,169 +203,318 @@
                 align-self: flex-start;
             }
         }
+        /* Ajustements pour l'intégration dans le layout principal */
+        .dashboard-main {
+            padding: 40px 5%;
+        }
+        @media (max-width: 768px) {
+            .dashboard-main {
+                padding: 20px 4%;
+            }
+        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="help-container">
-        <button class="btn-back" onclick="window.location.href='accueil_hubisgst.html'">
-            <i class="fas fa-arrow-left"></i> Retour
-        </button>
 
-        <div class="page-header">
-            <h1><i class="fas fa-question-circle"></i> Aide – Gestion des tournois</h1>
-            <p>Guide complet pour organiser, gérer et participer aux tournois sur HubISoccer</p>
+    <!-- ========== NAVBAR ========== -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="../players/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Gestionnaire de tournois</span>
         </div>
-
-        <div class="help-card">
-            <div class="help-section">
-                <h2><i class="fas fa-trophy"></i> 1. Créer un tournoi</h2>
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <div class="step-content">
-                        <h4>Choisir le type de tournoi</h4>
-                        <p>Sur la page d’accueil du module, cliquez sur <strong>“Créer un tournoi”</strong>. Sélectionnez le type :<br>
-                        - <strong>Public Show You</strong> : accessible à tous (code d’accès public).<br>
-                        - <strong>Public Détection</strong> : réservé aux joueurs ayant validé le premier‑pas.<br>
-                        - <strong>Privé HubISoccer</strong> : pour les membres de l’espace privé.<br>
-                        - <strong>Privé Simple</strong> : nécessite un paiement forfaitaire (pour les organisateurs externes).</p>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <div class="step-content">
-                        <h4>Remplir les informations générales</h4>
-                        <p>Nom du tournoi, sport, dates, lieu, description, montant de la prime éventuelle, code d’accès (pour les publics). Vous pouvez également ajouter un flux vidéo (YouTube, Twitch) pour la retransmission.</p>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <div class="step-content">
-                        <h4>Définir le règlement</h4>
-                        <p>Ajoutez un règlement spécifique (facultatif). Pour les tournois privés simples, un règlement est obligatoire et doit être accepté par les participants avant inscription.</p>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-number">4</div>
-                    <div class="step-content">
-                        <h4>Valider la création</h4>
-                        <p>Le tournoi apparaît alors dans la liste des tournois. Les inscriptions sont ouvertes selon les modalités choisies.</p>
-                    </div>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="../players/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="../players/profile-edit.html"><i class="fas fa-user"></i> Mon profil</a>
+                    <a href="../feed/feed.html"><i class="fas fa-users"></i> Communauté</a>
+                    <a href="../shared/messages.html"><i class="fas fa-envelope"></i> Messages</a>
+                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                 </div>
             </div>
-
-            <div class="help-section">
-                <h2><i class="fas fa-clipboard-list"></i> 2. Gérer les inscriptions</h2>
-                <p>Depuis votre tableau de bord (<strong>“Mes tournois”</strong> puis <strong>“Gérer”</strong>), vous pouvez :</p>
-                <ul>
-                    <li>Visualiser la liste des demandes d’inscription (en attente).</li>
-                    <li>Approuver ou rejeter chaque demande.</li>
-                    <li>Inviter directement des équipes ou des joueurs (onglet <strong>“Inviter”</strong>).</li>
-                    <li>Exporter la liste des participants (CSV).</li>
-                </ul>
-                <div class="highlight">
-                    <i class="fas fa-lightbulb"></i> <strong>Astuce :</strong> Pour les tournois publics avec code d’accès, assurez-vous de communiquer le code aux personnes concernées. Pour les tournois privés simples, le paiement du forfait est requis avant validation.
-                </div>
-            </div>
-
-            <div class="help-section">
-                <h2><i class="fas fa-calendar-week"></i> 3. Organiser les matchs</h2>
-                <p>Une fois les inscriptions validées, vous pouvez créer les rencontres :</p>
-                <ol>
-                    <li>Dans la gestion du tournoi, onglet <strong>“Matchs”</strong> → <strong>“Ajouter un match”</strong>.</li>
-                    <li>Sélectionnez les deux équipes, la date, le lieu, et éventuellement l’URL du streaming.</li>
-                    <li>Les matchs apparaissent dans le calendrier du tournoi et dans la page détail.</li>
-                    <li>Pendant le match, vous (ou les officiels désignés) pouvez saisir les événements (buts, cartons, etc.) depuis l’onglet <strong>“Rapports”</strong>.</li>
-                </ol>
-                <p>Les statistiques sont automatiquement mises à jour à partir des événements saisis.</p>
-            </div>
-
-            <div class="help-section">
-                <h2><i class="fas fa-file-alt"></i> 4. Saisir les rapports de match</h2>
-                <p>Chaque match peut être accompagné de trois types de rapports :</p>
-                <ul>
-                    <li><strong>Rapport arbitre</strong> : score, cartons, incidents.</li>
-                    <li><strong>Rapport commissaire</strong> : affluence, organisation, observations.</li>
-                    <li><strong>Rapport médical</strong> : blessures, interventions.</li>
-                </ul>
-                <p>Pour accéder au formulaire, cliquez sur <strong>“Saisir rapport”</strong> dans les détails du match. Les rapports sont ensuite consultables et exportables (PDF, Excel).</p>
-            </div>
-
-            <div class="help-section">
-                <h2><i class="fas fa-chart-line"></i> 5. Suivre les classements et statistiques</h2>
-                <p>Les classements sont calculés automatiquement à partir des résultats et sont visibles dans l’onglet <strong>“Classement”</strong> de la page du tournoi. Vous y trouverez :</p>
-                <ul>
-                    <li>Classement général des équipes (points, victoires, etc.)</li>
-                    <li>Meilleurs buteurs, passeurs</li>
-                    <li>Statistiques par joueur (cartons, matchs joués)</li>
-                </ul>
-                <p>Les statistiques individuelles alimentent le profil des joueurs sur la plateforme.</p>
-            </div>
-
-            <div class="help-section">
-                <h2><i class="fas fa-money-bill-wave"></i> 6. Gestion des primes</h2>
-                <p>Si votre tournoi prévoit une prime, vous pouvez l’attribuer à une équipe ou à un joueur dans l’onglet <strong>“Primes”</strong> de la gestion du tournoi. Les primes peuvent être versées via la plateforme (intégration à venir) ou en direct selon les modalités définies.</p>
-            </div>
-
-            <div class="help-section">
-                <h2><i class="fas fa-question-circle"></i> 7. Foire aux questions (FAQ)</h2>
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFAQ(this)">
-                        Comment modifier les informations d’un tournoi après sa création ?
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-                    <div class="faq-answer">
-                        Rendez-vous dans <strong>“Mes tournois”</strong>, cliquez sur <strong>“Gérer”</strong> puis sur l’onglet <strong>“Informations”</strong>. Vous pourrez y modifier le nom, les dates, le lieu, la prime, etc.
-                    </div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFAQ(this)">
-                        Que faire si une équipe se désiste en cours de tournoi ?
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-                    <div class="faq-answer">
-                        Vous pouvez déclarer le forfait dans la gestion des matchs concernés. Le classement sera ajusté automatiquement. Pour les tournois avec primes, l’équipe forfaitaire peut perdre ses droits.
-                    </div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFAQ(this)">
-                        Puis-je ajouter un flux vidéo après la création du tournoi ?
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-                    <div class="faq-answer">
-                        Oui, modifiez les informations du tournoi et renseignez l’URL du flux. Celui-ci sera alors visible dans la page du tournoi et dans la page dédiée <strong>“Live Stream”</strong>.
-                    </div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFAQ(this)">
-                        Comment exporter les résultats du tournoi ?
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-                    <div class="faq-answer">
-                        Dans la page du tournoi, un bouton <strong>“Exporter”</strong> (en cours de développement) permettra de télécharger les classements, les statistiques et les rapports de match au format CSV ou Excel.
-                    </div>
-                </div>
-            </div>
-
-            <div class="help-section">
-                <h2><i class="fas fa-headset"></i> 8. Besoin d’aide supplémentaire ?</h2>
-                <p>Si vous rencontrez un problème technique ou une question non traitée ici, vous pouvez :</p>
-                <ul>
-                    <li>Contacter le support via le formulaire dans <strong>“Support”</strong> (accessible depuis la navbar).</li>
-                    <li>Consulter le <a href="rules-hubisoccer.html" style="color: var(--primary);">Règlement général</a> pour les aspects juridiques.</li>
-                    <li>Rejoindre la communauté sur le <strong>“Feed”</strong> pour échanger avec d’autres organisateurs.</li>
-                </ul>
-                <button class="btn-primary" onclick="window.location.href='accueil_hubisgst.html'">
-                    <i class="fas fa-home"></i> Retour à l’accueil
-                </button>
-            </div>
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
         </div>
+    </nav>
 
-        <div class="footer-note">
-            © 2026 HubISoccer – Version 1.0 – Dernière mise à jour : 24 mars 2026
+    <!-- ========== OVERLAY SIDEBAR ========== -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ========== SIDEBAR GAUCHE ========== -->
+    <div class="sidebar left-sidebar" id="leftSidebar">
+        <div class="sidebar-header">
+            <h3>Menu Tournois</h3>
+            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
         </div>
+        <nav class="sidebar-nav">
+            <a href="accueil_hubisgst.html"><i class="fas fa-home"></i> Accueil</a>
+            <a href="create-tournament.html"><i class="fas fa-plus-circle"></i> Créer un tournoi</a>
+            <a href="my-tournaments.html"><i class="fas fa-list"></i> Mes tournois</a>
+            <a href="my-registrations.html"><i class="fas fa-calendar-check"></i> Mes inscriptions</a>
+            <a href="rankings.html"><i class="fas fa-chart-line"></i> Classements</a>
+            <a href="tournament-rules.html"><i class="fas fa-gavel"></i> Règlement</a>
+            <hr>
+            <a href="help-tournament.html" class="active"><i class="fas fa-question-circle"></i> Aide</a>
+        </nav>
     </div>
 
+    <!-- ========== CONTENU PRINCIPAL ========== -->
+    <main class="dashboard-main">
+        <div class="help-container">
+            <button class="btn-back" onclick="window.location.href='accueil_hubisgst.html'">
+                <i class="fas fa-arrow-left"></i> Retour
+            </button>
+
+            <div class="page-header">
+                <h1><i class="fas fa-question-circle"></i> Aide – Gestion des tournois</h1>
+                <p>Guide complet pour organiser, gérer et participer aux tournois sur HubISoccer</p>
+            </div>
+
+            <div class="help-card">
+                <!-- Le contenu de l'aide est identique à l'original -->
+                <div class="help-section">
+                    <h2><i class="fas fa-trophy"></i> 1. Créer un tournoi</h2>
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>Choisir le type de tournoi</h4>
+                            <p>Sur la page d’accueil du module, cliquez sur <strong>“Créer un tournoi”</strong>. Sélectionnez le type :<br>
+                            - <strong>Public Show You</strong> : accessible à tous (code d’accès public).<br>
+                            - <strong>Public Détection</strong> : réservé aux joueurs ayant validé le premier‑pas.<br>
+                            - <strong>Privé HubISoccer</strong> : pour les membres de l’espace privé.<br>
+                            - <strong>Privé Simple</strong> : nécessite un paiement forfaitaire (pour les organisateurs externes).</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>Remplir les informations générales</h4>
+                            <p>Nom du tournoi, sport, dates, lieu, description, montant de la prime éventuelle, code d’accès (pour les publics). Vous pouvez également ajouter un flux vidéo (YouTube, Twitch) pour la retransmission.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>Définir le règlement</h4>
+                            <p>Ajoutez un règlement spécifique (facultatif). Pour les tournois privés simples, un règlement est obligatoire et doit être accepté par les participants avant inscription.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h4>Valider la création</h4>
+                            <p>Le tournoi apparaît alors dans la liste des tournois. Les inscriptions sont ouvertes selon les modalités choisies.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="help-section">
+                    <h2><i class="fas fa-clipboard-list"></i> 2. Gérer les inscriptions</h2>
+                    <p>Depuis votre tableau de bord (<strong>“Mes tournois”</strong> puis <strong>“Gérer”</strong>), vous pouvez :</p>
+                    <ul>
+                        <li>Visualiser la liste des demandes d’inscription (en attente).</li>
+                        <li>Approuver ou rejeter chaque demande.</li>
+                        <li>Inviter directement des équipes ou des joueurs (onglet <strong>“Inviter”</strong>).</li>
+                        <li>Exporter la liste des participants (CSV).</li>
+                    </ul>
+                    <div class="highlight">
+                        <i class="fas fa-lightbulb"></i> <strong>Astuce :</strong> Pour les tournois publics avec code d’accès, assurez-vous de communiquer le code aux personnes concernées. Pour les tournois privés simples, le paiement du forfait est requis avant validation.
+                    </div>
+                </div>
+
+                <div class="help-section">
+                    <h2><i class="fas fa-calendar-week"></i> 3. Organiser les matchs</h2>
+                    <p>Une fois les inscriptions validées, vous pouvez créer les rencontres :</p>
+                    <ol>
+                        <li>Dans la gestion du tournoi, onglet <strong>“Matchs”</strong> → <strong>“Ajouter un match”</strong>.</li>
+                        <li>Sélectionnez les deux équipes, la date, le lieu, et éventuellement l’URL du streaming.</li>
+                        <li>Les matchs apparaissent dans le calendrier du tournoi et dans la page détail.</li>
+                        <li>Pendant le match, vous (ou les officiels désignés) pouvez saisir les événements (buts, cartons, etc.) depuis l’onglet <strong>“Rapports”</strong>.</li>
+                    </ol>
+                    <p>Les statistiques sont automatiquement mises à jour à partir des événements saisis.</p>
+                </div>
+
+                <div class="help-section">
+                    <h2><i class="fas fa-file-alt"></i> 4. Saisir les rapports de match</h2>
+                    <p>Chaque match peut être accompagné de trois types de rapports :</p>
+                    <ul>
+                        <li><strong>Rapport arbitre</strong> : score, cartons, incidents.</li>
+                        <li><strong>Rapport commissaire</strong> : affluence, organisation, observations.</li>
+                        <li><strong>Rapport médical</strong> : blessures, interventions.</li>
+                    </ul>
+                    <p>Pour accéder au formulaire, cliquez sur <strong>“Saisir rapport”</strong> dans les détails du match. Les rapports sont ensuite consultables et exportables (PDF, Excel).</p>
+                </div>
+
+                <div class="help-section">
+                    <h2><i class="fas fa-chart-line"></i> 5. Suivre les classements et statistiques</h2>
+                    <p>Les classements sont calculés automatiquement à partir des résultats et sont visibles dans l’onglet <strong>“Classement”</strong> de la page du tournoi. Vous y trouverez :</p>
+                    <ul>
+                        <li>Classement général des équipes (points, victoires, etc.)</li>
+                        <li>Meilleurs buteurs, passeurs</li>
+                        <li>Statistiques par joueur (cartons, matchs joués)</li>
+                    </ul>
+                    <p>Les statistiques individuelles alimentent le profil des joueurs sur la plateforme.</p>
+                </div>
+
+                <div class="help-section">
+                    <h2><i class="fas fa-money-bill-wave"></i> 6. Gestion des primes</h2>
+                    <p>Si votre tournoi prévoit une prime, vous pouvez l’attribuer à une équipe ou à un joueur dans l’onglet <strong>“Primes”</strong> de la gestion du tournoi. Les primes peuvent être versées via la plateforme (intégration à venir) ou en direct selon les modalités définies.</p>
+                </div>
+
+                <div class="help-section">
+                    <h2><i class="fas fa-question-circle"></i> 7. Foire aux questions (FAQ)</h2>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            Comment modifier les informations d’un tournoi après sa création ?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Rendez-vous dans <strong>“Mes tournois”</strong>, cliquez sur <strong>“Gérer”</strong> puis sur l’onglet <strong>“Informations”</strong>. Vous pourrez y modifier le nom, les dates, le lieu, la prime, etc.
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            Que faire si une équipe se désiste en cours de tournoi ?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Vous pouvez déclarer le forfait dans la gestion des matchs concernés. Le classement sera ajusté automatiquement. Pour les tournois avec primes, l’équipe forfaitaire peut perdre ses droits.
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            Puis-je ajouter un flux vidéo après la création du tournoi ?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Oui, modifiez les informations du tournoi et renseignez l’URL du flux. Celui-ci sera alors visible dans la page du tournoi et dans la page dédiée <strong>“Live Stream”</strong>.
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            Comment exporter les résultats du tournoi ?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Dans la page du tournoi, un bouton <strong>“Exporter”</strong> (en cours de développement) permettra de télécharger les classements, les statistiques et les rapports de match au format CSV ou Excel.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="help-section">
+                    <h2><i class="fas fa-headset"></i> 8. Besoin d’aide supplémentaire ?</h2>
+                    <p>Si vous rencontrez un problème technique ou une question non traitée ici, vous pouvez :</p>
+                    <ul>
+                        <li>Contacter le support via le formulaire dans <strong>“Support”</strong> (accessible depuis la navbar).</li>
+                        <li>Consulter le <a href="rules-hubisoccer.html" style="color: var(--primary);">Règlement général</a> pour les aspects juridiques.</li>
+                        <li>Rejoindre la communauté sur le <strong>“Feed”</strong> pour échanger avec d’autres organisateurs.</li>
+                    </ul>
+                    <button class="btn-primary" onclick="window.location.href='accueil_hubisgst.html'">
+                        <i class="fas fa-home"></i> Retour à l’accueil
+                    </button>
+                </div>
+            </div>
+
+            <div class="footer-note">
+                © 2026 HubISoccer – Version 1.0 – Dernière mise à jour : 24 mars 2026
+            </div>
+        </div>
+    </main>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="../auth/auth.js"></script>
+    <script src="js/utils.js"></script>
+
+    <!-- Gestion de la sidebar et de l’authentification -->
     <script>
+        (async () => {
+            const { data: { session }, error } = await window.supabaseAuthPrive.auth.getSession();
+            if (error || !session) {
+                window.location.href = '../auth/login.html';
+                return;
+            }
+            const { data: profile } = await window.supabaseAuthPrive
+                .from('profiles')
+                .select('full_name, avatar_url')
+                .eq('id', session.user.id)
+                .single();
+            if (profile) {
+                document.getElementById('userName').textContent = profile.full_name || 'Utilisateur';
+                document.getElementById('userAvatar').src = profile.avatar_url || '../players/img/user-default.jpg';
+            }
+
+            // Gestion du menu utilisateur
+            const userMenu = document.getElementById('userMenu');
+            const userDropdown = document.getElementById('userDropdown');
+            if (userMenu && userDropdown) {
+                userMenu.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userDropdown.classList.toggle('show');
+                });
+                document.addEventListener('click', () => userDropdown.classList.remove('show'));
+            }
+
+            // Déconnexion
+            document.getElementById('logoutLink').addEventListener('click', async (e) => {
+                e.preventDefault();
+                await window.supabaseAuthPrive.auth.signOut();
+                window.location.href = '../index.html';
+            });
+
+            // Sidebar gauche
+            const menuToggle = document.getElementById('menuToggle');
+            const leftSidebar = document.getElementById('leftSidebar');
+            const closeLeftSidebar = document.getElementById('closeLeftSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (menuToggle && leftSidebar && overlay) {
+                menuToggle.addEventListener('click', () => {
+                    leftSidebar.classList.add('active');
+                    overlay.classList.add('active');
+                });
+                if (closeLeftSidebar) {
+                    closeLeftSidebar.addEventListener('click', () => {
+                        leftSidebar.classList.remove('active');
+                        overlay.classList.remove('active');
+                    });
+                }
+                overlay.addEventListener('click', () => {
+                    leftSidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                });
+            }
+        })();
+
+        // Fonction pour les FAQ (définie globalement pour être appelée depuis les clics)
         function toggleFAQ(element) {
             const answer = element.nextElementSibling;
             answer.classList.toggle('show');
