@@ -14,7 +14,7 @@ let allEvents = [];
 
 // ===== CHARGEMENT DU JOUEUR =====
 async function loadPlayer() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .select(`
             *,
@@ -45,7 +45,7 @@ async function loadPlayer() {
 // ===== CHARGEMENT DES ÉVÉNEMENTS =====
 async function loadPlayerEvents() {
     // Récupérer tous les événements (buts, passes, cartons) du joueur
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_match_events')
         .select(`
             *,
