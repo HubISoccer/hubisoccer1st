@@ -44,29 +44,32 @@ async function loadPlayer() {
 
 // ===== CHARGEMENT DES ÉVÉNEMENTS =====
 async function loadPlayerEvents() {
-    const { data, error } = await window.supabaseAuthPrive
-        .from('gestionnairetournoi_match_events')
-        .select(`
-            *,
-            match:match_id (
-                id,
-                match_date,
-                tournament:tournament_id (id, name),
-                home_team:home_team_id (id, name),
-                away_team:away_team_id (id, name),
-                home_score,
-                away_score
-            )
-        `)
-        .eq('player_id', playerId)
-        .order('match.match_date', { ascending: false });
-    if (error) {
-        console.error(error);
-        showToast('Erreur chargement événements', 'error');
-        return;
+    try {
+        const { data, error } = await window.supabaseAuthPrive
+            .from('gestionnairetournoi_match_events')
+            .select(`
+                *,
+                match:match_id (
+                    id,
+                    match_date,
+                    tournament:tournament_id (id, name),
+                    home_team:home_team_id (id, name),
+                    away_team:away_team_id (id, name),
+                    home_score,
+                    away_score
+                )
+            `)
+            .eq('player_id', playerId)
+            .order('match_date', { ascending: false, foreignTable: 'match' });
+        if (error) throw error;
+        allEvents = data || [];
+    } catch (err) {
+        console.error('Erreur chargement événements:', err);
+        showToast('Erreur chargement des événements', 'error');
+        allEvents = [];
     }
-    allEvents = data || [];
 
+    // Extraire les tournois uniques
     const tournamentsMap = new Map();
     allEvents.forEach(ev => {
         if (ev.match?.tournament) {
