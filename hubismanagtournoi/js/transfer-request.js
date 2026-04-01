@@ -1,3 +1,7 @@
+// ===== RÉCUPÉRATION DES PARAMÈTRES URL =====
+const urlParams = new URLSearchParams(window.location.search);
+const currentTournamentId = urlParams.get('tournament_id'); // optionnel, utilisé pour le retour
+
 // ===== ÉTATS =====
 let currentUser = null;
 let currentProfile = null;
@@ -5,38 +9,33 @@ let userPlayers = [];
 let allTeams = [];
 let userRequests = [];
 let pendingRequests = [];
-let currentTournamentId = null; // sera passé en paramètre ou récupéré depuis l'URL
 
-// ===== RÉCUPÉRATION DE L'ID DU TOURNOI =====
-const urlParams = new URLSearchParams(window.location.search);
-currentTournamentId = urlParams.get('tournament_id');
-
-// ===== VÉRIFICATION DE L'UTILISATEUR =====
+// ===== AUTHENTIFICATION =====
 async function getCurrentUser() {
-    if (window.supabaseAuthPrive) {
-        const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
-        if (!error && user) return user;
-    }
+    const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
+    if (!error && user) return user;
     return null;
 }
 
 async function loadProfile() {
     if (!currentUser) return;
-    const { data, error } = await supabaseAuthPrive
+    const { data, error } = await window.supabaseAuthPrive
         .from('profiles')
         .select('*')
         .eq('id', currentUser.id)
         .single();
-    if (!error && data) {
-        currentProfile = data;
-    }
+    if (!error && data) currentProfile = data;
 }
 
 // ===== CHARGEMENT DES JOUEURS DE L'UTILISATEUR =====
 async function loadUserPlayers() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
-        .select('*, team:team_id (id, name)')
+        .select(`
+            *,
+            team:team_id (id, name),
+            profiles:user_id (full_name, avatar_url)
+        `)
         .eq('user_id', currentUser.id);
     if (error) {
         console.error(error);
@@ -44,13 +43,19 @@ async function loadUserPlayers() {
     } else {
         userPlayers = data || [];
     }
+
     const playerSelect = document.getElementById('playerSelect');
     if (!userPlayers.length) {
         playerSelect.innerHTML = '<option value="">Aucun joueur trouvé</option>';
         return;
     }
     playerSelect.innerHTML = '<option value="">Sélectionnez un joueur</option>' +
-        userPlayers.map(p => `<option value="${p.id}" data-team-id="${p.team_id || ''}" data-team-name="${p.team?.name || 'Aucune équipe'}">${p.profiles?.full_name || 'Joueur'} (${p.position || '?'})</option>`).join('');
+        userPlayers.map(p => `
+            <option value="${p.id}" data-team-id="${p.team_id || ''}" data-team-name="${p.team?.name || 'Aucune équipe'}">
+                ${p.profiles?.full_name || 'Joueur'} (${p.position || '?'})
+            </option>
+        `).join('');
+
     playerSelect.addEventListener('change', () => {
         const selected = playerSelect.options[playerSelect.selectedIndex];
         const teamName = selected.getAttribute('data-team-name') || '';
@@ -60,7 +65,7 @@ async function loadUserPlayers() {
 
 // ===== CHARGEMENT DES ÉQUIPES POUR LA DESTINATION =====
 async function loadTeams() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_teams')
         .select('*')
         .order('name');
@@ -77,7 +82,13 @@ async function loadTeams() {
 
 // ===== CHARGEMENT DES DEMANDES DE L'UTILISATEUR =====
 async function loadUserRequests() {
-    const { data, error } = await supabaseGestionTournoi
+    const playerIds = userPlayers.map(p => p.id);
+    if (!playerIds.length) {
+        userRequests = [];
+        renderUserRequests();
+        return;
+    }
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_transfers')
         .select(`
             *,
@@ -85,7 +96,7 @@ async function loadUserRequests() {
             to_team:to_team_id (id, name),
             player:player_id (id, user_id, profiles:user_id (full_name))
         `)
-        .eq('player_id', userPlayers.map(p => p.id))
+        .in('player_id', playerIds)
         .order('requested_at', { ascending: false });
     if (error) {
         console.error(error);
@@ -123,12 +134,13 @@ function renderUserRequests() {
 
 // ===== CHARGEMENT DES DEMANDES EN ATTENTE (POUR ADMIN) =====
 async function loadPendingRequests() {
-    // Vérifier si l'utilisateur est admin (rôle 'admin' dans profiles)
+    // Vérifier si l'utilisateur est admin
     if (!currentProfile || currentProfile.role !== 'admin') {
-        document.getElementById('pendingTab').style.display = 'none';
+        const pendingTab = document.getElementById('pendingTab');
+        if (pendingTab) pendingTab.style.display = 'none';
         return;
     }
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_transfers')
         .select(`
             *,
@@ -185,9 +197,13 @@ function renderPendingRequests() {
 }
 
 async function updateTransferStatus(transferId, status) {
-    const { error } = await supabaseGestionTournoi
+    const { error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_transfers')
-        .update({ status, approved_at: new Date().toISOString(), approved_by: currentUser.id })
+        .update({
+            status: status,
+            approved_at: new Date().toISOString(),
+            approved_by: currentUser.id
+        })
         .eq('id', transferId);
     if (error) {
         showToast('Erreur lors de la mise à jour', 'error');
@@ -197,7 +213,7 @@ async function updateTransferStatus(transferId, status) {
             // Mettre à jour l'équipe du joueur
             const transfer = pendingRequests.find(r => r.id == transferId);
             if (transfer) {
-                await supabaseGestionTournoi
+                await window.supabaseAuthPrive
                     .from('gestionnairetournoi_players')
                     .update({ team_id: transfer.to_team_id })
                     .eq('id', transfer.player_id);
@@ -228,28 +244,15 @@ async function submitTransfer(e) {
         return;
     }
 
-    const { error } = await supabaseGestionTournoi
-        .from(' } = await supabaseGestionTournoi
+    const { error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_transfers')
-        .insert({
-            player_id:gestionnairetournoi_transfers')
         .insert({
             player_id: playerId,
             from_team_id: currentTeamId,
-            playerId,
-            from_team_id: currentTeamId,
             to_team_id: targetTeamId,
-            reason: to_team_id: targetTeamId,
             reason: reason || null,
             status: 'pending',
-            requested_at: new Date().toISOString reason || null,
-            status: 'pending',
             requested_at: new Date().toISOString()
-        });
-
-    if (error) {
-        showToast('Erreur lors de l\'envoi de la demande', 'error');
-    }()
         });
 
     if (error) {
@@ -257,32 +260,15 @@ async function submitTransfer(e) {
     } else {
         showToast('Demande de transfert envoyée', 'success');
         document.getElementById('transferForm').reset();
-        document.getElementById else {
-        showToast('Demande de transfert envoyée', 'success');
-        document.getElementById('transferForm').reset();
         document.getElementById('currentTeamDisplay').value = '';
         await loadUserRequests();
     }
 }
 
-// ===== INITIAL('currentTeamDisplay').value = '';
-        await loadUserRequests();
-    }
-}
-
-// ===== INITIALISATIONISATION =====
-document.addEventListener('DOMContentLoaded', async () => {
-    currentUser = await getCurrentUser();
-    if (!currentUser =====
+// ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
     currentUser = await getCurrentUser();
     if (!currentUser) {
-        window.location.href = '../auth/login.html';
-        return;
-    }
-    await loadProfile();
-    await loadUserPlayers();
-   ) {
         window.location.href = '../auth/login.html';
         return;
     }
@@ -292,35 +278,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadUserRequests();
     await loadPendingRequests();
 
-    document.getElementById('transferForm').addEventListener(' await loadTeams();
-    await loadUserRequests();
-    await loadPendingRequests();
-
     document.getElementById('transferForm').addEventListener('submit', submitTransfer);
-
-    // Onglets
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', ()submit', submitTransfer);
 
     // Onglets
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            const tab = btn.get => {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
             const tab = btn.getAttribute('data-tab');
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(`${tabAttribute('data-tab');
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             document.getElementById(`${tab}Tab`).classList.add('active');
-        });
-    });
-
-    document.getElementById('backBtn').addEventListener('click', () => {
-        if (currentTournamentId) {
-            window.location.href = `tournament-details.html?id=${currentTour}Tab`).classList.add('active');
         });
     });
 
