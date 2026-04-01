@@ -4,10 +4,9 @@ let allTournaments = [];
 let currentFilter = 'all';
 
 async function getCurrentUser() {
-    if (window.supabaseAuthPrive) {
-        const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
-        if (!error && user) return user;
-    }
+    // On utilise le client défini dans auth.js
+    const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
+    if (!error && user) return user;
     return null;
 }
 
@@ -15,7 +14,7 @@ async function getCurrentUser() {
 async function loadMyTournaments() {
     if (!currentUser) return;
 
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_tournaments')
         .select(`
             id,
@@ -147,7 +146,7 @@ function renderTournaments(tournaments) {
         btn.addEventListener('click', async (e) => {
             const id = btn.getAttribute('data-id');
             if (confirm('Publier ce tournoi ? Il deviendra visible par tous.')) {
-                await supabaseGestionTournoi
+                await window.supabaseAuthPrive
                     .from('gestionnairetournoi_tournaments')
                     .update({ is_active: true })
                     .eq('id', id);
@@ -160,7 +159,7 @@ function renderTournaments(tournaments) {
         btn.addEventListener('click', async (e) => {
             const id = btn.getAttribute('data-id');
             if (confirm('Supprimer définitivement ce tournoi ? Cette action est irréversible.')) {
-                const { error } = await supabaseGestionTournoi
+                const { error } = await window.supabaseAuthPrive
                     .from('gestionnairetournoi_tournaments')
                     .delete()
                     .eq('id', id);
