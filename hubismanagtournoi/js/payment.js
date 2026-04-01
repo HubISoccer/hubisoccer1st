@@ -6,10 +6,8 @@ let currentUser = null;
 let paymentAmount = 0;
 
 async function getCurrentUser() {
-    if (window.supabaseAuthPrive) {
-        const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
-        if (!error && user) return user;
-    }
+    const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
+    if (!error && user) return user;
     return null;
 }
 
@@ -19,7 +17,7 @@ async function loadTournamentInfo() {
         window.location.href = 'accueil_hubisgst.html';
         return;
     }
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_tournaments')
         .select('name, start_date, end_date, location, type_id')
         .eq('id', tournamentId)
@@ -54,7 +52,7 @@ async function uploadProof(file) {
     const fileExt = file.name.split('.').pop();
     const fileName = `payment_${currentUser.id}_${Date.now()}.${fileExt}`;
     const filePath = `payment_proofs/${fileName}`;
-    const { error, data } = await supabaseGestionTournoi.storage
+    const { error } = await window.supabaseAuthPrive.storage
         .from('documents')
         .upload(filePath, file);
     if (error) {
@@ -62,7 +60,7 @@ async function uploadProof(file) {
         showToast('Erreur upload de la preuve', 'error');
         return null;
     }
-    const { data: urlData } = supabaseGestionTournoi.storage
+    const { data: urlData } = window.supabaseAuthPrive.storage
         .from('documents')
         .getPublicUrl(filePath);
     return urlData.publicUrl;
@@ -93,7 +91,7 @@ async function processPayment() {
     }
     if (proofUrl) paymentData.proof_url = proofUrl;
 
-    const { error } = await supabaseGestionTournoi
+    const { error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_payments')
         .insert(paymentData);
     if (error) {
