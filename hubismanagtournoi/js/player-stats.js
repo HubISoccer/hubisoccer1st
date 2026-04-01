@@ -44,7 +44,6 @@ async function loadPlayer() {
 
 // ===== CHARGEMENT DES ÉVÉNEMENTS =====
 async function loadPlayerEvents() {
-    // Récupérer tous les événements (buts, passes, cartons) du joueur
     const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_match_events')
         .select(`
@@ -68,7 +67,6 @@ async function loadPlayerEvents() {
     }
     allEvents = data || [];
 
-    // Extraire les tournois uniques
     const tournamentsMap = new Map();
     allEvents.forEach(ev => {
         if (ev.match?.tournament) {
@@ -92,15 +90,13 @@ async function loadPlayerEvents() {
 }
 
 function renderStats() {
-    // Filtrer par tournoi
     let filteredEvents = allEvents;
     if (selectedTournamentId) {
         filteredEvents = filteredEvents.filter(ev => ev.match?.tournament_id === selectedTournamentId);
     }
 
-    // Calculer les totaux
     let goals = 0, assists = 0, yellow = 0, red = 0;
-    const matchesMap = new Map(); // pour compter les matchs uniques
+    const matchesMap = new Map();
     filteredEvents.forEach(ev => {
         if (ev.event_type === 'goal') goals++;
         else if (ev.event_type === 'assist') assists++;
