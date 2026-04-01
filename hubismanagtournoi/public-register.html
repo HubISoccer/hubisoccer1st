@@ -8,94 +8,184 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/hubismanagtournoi.css">
     <link rel="stylesheet" href="css/public-register.css">
+    <link rel="stylesheet" href="../players/css/feed.css">
+    <style>
+        .dashboard-main {
+            padding: 40px 5%;
+        }
+        .register-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        @media (max-width: 768px) {
+            .dashboard-main {
+                padding: 20px 4%;
+            }
+        }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="register-container">
-        <div class="register-card">
-            <div class="register-header">
-                <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="logo">
-                <h1>Inscription à un tournoi</h1>
-                <p>Remplissez le formulaire pour participer</p>
-            </div>
 
-            <!-- Étape 1 : Saisie du code -->
-            <div id="stepCode" class="step active">
-                <div class="form-group">
-                    <label>Code d'inscription *</label>
-                    <input type="text" id="registrationCode" placeholder="Entrez le code du tournoi" required>
-                    <button id="verifyCodeBtn" class="btn-primary">Vérifier</button>
+    <!-- ========== NAVBAR ========== -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="../players/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Gestionnaire de tournois</span>
+        </div>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="../players/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="../players/profile-edit.html"><i class="fas fa-user"></i> Mon profil</a>
+                    <a href="../feed/feed.html"><i class="fas fa-users"></i> Communauté</a>
+                    <a href="../shared/messages.html"><i class="fas fa-envelope"></i> Messages</a>
+                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                 </div>
-                <div id="codeError" class="error-message" style="display: none;"></div>
             </div>
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+        </div>
+    </nav>
 
-            <!-- Étape 2 : Formulaire d'inscription -->
-            <div id="stepForm" class="step" style="display: none;">
-                <div id="tournamentInfo" class="tournament-info"></div>
-                <form id="publicRegistrationForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Nom complet *</label>
-                            <input type="text" id="playerName" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Email *</label>
-                            <input type="email" id="playerEmail" required>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Téléphone *</label>
-                            <input type="tel" id="playerPhone" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Date de naissance *</label>
-                            <input type="date" id="playerBirthDate" required>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Poste (optionnel)</label>
-                            <input type="text" id="playerPosition">
-                        </div>
-                        <div class="form-group">
-                            <label>Club / Équipe (optionnel)</label>
-                            <input type="text" id="playerClub">
-                        </div>
-                    </div>
+    <!-- ========== OVERLAY SIDEBAR ========== -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ========== SIDEBAR GAUCHE ========== -->
+    <div class="sidebar left-sidebar" id="leftSidebar">
+        <div class="sidebar-header">
+            <h3>Menu Tournois</h3>
+            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="accueil_hubisgst.html"><i class="fas fa-home"></i> Accueil</a>
+            <a href="create-tournament.html"><i class="fas fa-plus-circle"></i> Créer un tournoi</a>
+            <a href="my-tournaments.html"><i class="fas fa-list"></i> Mes tournois</a>
+            <a href="my-registrations.html"><i class="fas fa-calendar-check"></i> Mes inscriptions</a>
+            <a href="rankings.html"><i class="fas fa-chart-line"></i> Classements</a>
+            <a href="tournament-rules.html"><i class="fas fa-gavel"></i> Règlement</a>
+            <hr>
+            <a href="help-tournament.html"><i class="fas fa-question-circle"></i> Aide</a>
+        </nav>
+    </div>
+
+    <!-- ========== CONTENU PRINCIPAL ========== -->
+    <main class="dashboard-main">
+        <div class="register-container">
+            <div class="register-card">
+                <div class="register-header">
+                    <img src="../players/img/logo-navbar.png" alt="HubISoccer" class="logo">
+                    <h1>Inscription à un tournoi</h1>
+                    <p>Remplissez le formulaire pour participer</p>
+                </div>
+
+                <!-- Étape 1 : Saisie du code -->
+                <div id="stepCode" class="step active">
                     <div class="form-group">
-                        <label>Message (optionnel)</label>
-                        <textarea id="playerMessage" rows="3" placeholder="Ajoutez une remarque..."></textarea>
+                        <label>Code d'inscription *</label>
+                        <input type="text" id="registrationCode" placeholder="Entrez le code du tournoi" required>
+                        <button id="verifyCodeBtn" class="btn-primary">Vérifier</button>
                     </div>
-                    <div class="rules-agreement">
-                        <label>
-                            <input type="checkbox" id="agreeRules" required>
-                            J'ai lu et j'accepte le <a href="#" id="rulesLink">règlement du tournoi</a>
-                        </label>
-                    </div>
-                    <button type="submit" class="btn-primary">Soumettre ma candidature</button>
-                </form>
-            </div>
-
-            <!-- Étape 3 : Confirmation -->
-            <div id="stepSuccess" class="step" style="display: none;">
-                <div class="success-icon">
-                    <i class="fas fa-check-circle"></i>
+                    <div id="codeError" class="error-message" style="display: none;"></div>
                 </div>
-                <h2>Inscription enregistrée !</h2>
-                <p>Votre demande a bien été prise en compte. Elle sera examinée par l'organisation.</p>
-                <p>Un email de confirmation vous sera envoyé prochainement.</p>
-                <button id="backToHomeBtn" class="btn-primary">Retour à l'accueil</button>
+
+                <!-- Étape 2 : Formulaire d'inscription -->
+                <div id="stepForm" class="step" style="display: none;">
+                    <div id="tournamentInfo" class="tournament-info"></div>
+                    <form id="publicRegistrationForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nom complet *</label>
+                                <input type="text" id="playerName" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Email *</label>
+                                <input type="email" id="playerEmail" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Téléphone *</label>
+                                <input type="tel" id="playerPhone" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Date de naissance *</label>
+                                <input type="date" id="playerBirthDate" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Poste (optionnel)</label>
+                                <input type="text" id="playerPosition">
+                            </div>
+                            <div class="form-group">
+                                <label>Club / Équipe (optionnel)</label>
+                                <input type="text" id="playerClub">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Message (optionnel)</label>
+                            <textarea id="playerMessage" rows="3" placeholder="Ajoutez une remarque..."></textarea>
+                        </div>
+                        <div class="rules-agreement">
+                            <label>
+                                <input type="checkbox" id="agreeRules" required>
+                                J'ai lu et j'accepte le <a href="#" id="rulesLink">règlement du tournoi</a>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn-primary">Soumettre ma candidature</button>
+                    </form>
+                </div>
+
+                <!-- Étape 3 : Confirmation -->
+                <div id="stepSuccess" class="step" style="display: none;">
+                    <div class="success-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h2>Inscription enregistrée !</h2>
+                    <p>Votre demande a bien été prise en compte. Elle sera examinée par l'organisation.</p>
+                    <p>Un email de confirmation vous sera envoyé prochainement.</p>
+                    <button id="backToHomeBtn" class="btn-primary">Retour à l'accueil</button>
+                </div>
             </div>
         </div>
-    </div>
+    </main>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
 
     <!-- Modale du règlement -->
     <div id="rulesModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Règlement du tournoi</h2>
-                <span class="close-modal">&times;</span>
+                <span class="close-modal">×</span>
             </div>
             <div class="modal-body">
                 <div id="rulesContent"></div>
@@ -105,8 +195,66 @@
 
     <div id="toastContainer" class="toast-container"></div>
 
-    <script src="js/supabase-client.js"></script>
+    <!-- Scripts -->
+    <script src="../auth/auth.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/public-register.js"></script>
+
+    <!-- Gestion de la sidebar et de l’authentification -->
+    <script>
+        (async () => {
+            const { data: { session }, error } = await window.supabaseAuthPrive.auth.getSession();
+            if (error || !session) {
+                window.location.href = '../auth/login.html';
+                return;
+            }
+            const { data: profile } = await window.supabaseAuthPrive
+                .from('profiles')
+                .select('full_name, avatar_url')
+                .eq('id', session.user.id)
+                .single();
+            if (profile) {
+                document.getElementById('userName').textContent = profile.full_name || 'Utilisateur';
+                document.getElementById('userAvatar').src = profile.avatar_url || '../players/img/user-default.jpg';
+            }
+
+            const userMenu = document.getElementById('userMenu');
+            const userDropdown = document.getElementById('userDropdown');
+            if (userMenu && userDropdown) {
+                userMenu.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userDropdown.classList.toggle('show');
+                });
+                document.addEventListener('click', () => userDropdown.classList.remove('show'));
+            }
+
+            document.getElementById('logoutLink').addEventListener('click', async (e) => {
+                e.preventDefault();
+                await window.supabaseAuthPrive.auth.signOut();
+                window.location.href = '../index.html';
+            });
+
+            const menuToggle = document.getElementById('menuToggle');
+            const leftSidebar = document.getElementById('leftSidebar');
+            const closeLeftSidebar = document.getElementById('closeLeftSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (menuToggle && leftSidebar && overlay) {
+                menuToggle.addEventListener('click', () => {
+                    leftSidebar.classList.add('active');
+                    overlay.classList.add('active');
+                });
+                if (closeLeftSidebar) {
+                    closeLeftSidebar.addEventListener('click', () => {
+                        leftSidebar.classList.remove('active');
+                        overlay.classList.remove('active');
+                    });
+                }
+                overlay.addEventListener('click', () => {
+                    leftSidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                });
+            }
+        })();
+    </script>
 </body>
 </html>
