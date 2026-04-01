@@ -3,10 +3,9 @@ let currentUser = null;
 let registrations = [];
 
 async function getCurrentUser() {
-    if (window.supabaseAuthPrive) {
-        const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
-        if (!error && user) return user;
-    }
+    // On utilise le client défini dans auth.js
+    const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
+    if (!error && user) return user;
     return null;
 }
 
@@ -15,7 +14,7 @@ async function loadMyRegistrations() {
     if (!currentUser) return;
 
     // 1. Récupérer l'ID du joueur dans gestionnairetournoi_players
-    const { data: player, error: playerError } = await supabaseGestionTournoi
+    const { data: player, error: playerError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .select('id')
         .eq('user_id', currentUser.id)
@@ -27,7 +26,7 @@ async function loadMyRegistrations() {
     }
 
     // 2. Récupérer les inscriptions
-    const { data: regs, error: regError } = await supabaseGestionTournoi
+    const { data: regs, error: regError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_registrations')
         .select(`
             id,
@@ -124,7 +123,7 @@ function renderRegistrations(registrationsList) {
         btn.addEventListener('click', async (e) => {
             const regId = btn.getAttribute('data-id');
             if (confirm('Voulez-vous vraiment annuler votre inscription ?')) {
-                const { error } = await supabaseGestionTournoi
+                const { error } = await window.supabaseAuthPrive
                     .from('gestionnairetournoi_registrations')
                     .delete()
                     .eq('id', regId);
@@ -141,6 +140,7 @@ function renderRegistrations(registrationsList) {
 
 // ===== INITIALISATION =====
 document.addEventListener('DOMContentLoaded', async () => {
+    // Récupérer l'utilisateur (déjà fait dans le script global, mais on le refait ici pour être sûr)
     currentUser = await getCurrentUser();
     if (!currentUser) {
         window.location.href = '../auth/login.html';
