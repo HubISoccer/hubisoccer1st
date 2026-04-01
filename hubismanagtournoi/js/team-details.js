@@ -16,16 +16,14 @@ let teamMatches = [];
 
 // ===== VÉRIFICATION DE L'UTILISATEUR =====
 async function getCurrentUser() {
-    if (window.supabaseAuthPrive) {
-        const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
-        if (!error && user) return user;
-    }
+    const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
+    if (!error && user) return user;
     return null;
 }
 
 // ===== CHARGEMENT DE L'ÉQUIPE =====
 async function loadTeam() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_teams')
         .select(`
             *,
@@ -52,7 +50,6 @@ async function loadTeam() {
     document.getElementById('teamCreator').textContent = data.creator?.full_name || 'Administrateur';
     document.getElementById('teamCreated').textContent = new Date(data.created_at).toLocaleDateString('fr-FR');
 
-    // Afficher le bouton ajouter joueur si l'utilisateur est le créateur ou un capitaine (à implémenter)
     if (currentUser && (teamData.created_by === currentUser.id)) {
         document.getElementById('addPlayerBtn').style.display = 'flex';
     }
@@ -60,7 +57,7 @@ async function loadTeam() {
 
 // ===== CHARGEMENT DES JOUEURS =====
 async function loadPlayers() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .select(`
             *,
@@ -113,7 +110,7 @@ function renderPlayers() {
                 const playerId = btn.getAttribute('data-id');
                 const playerName = btn.getAttribute('data-name');
                 if (confirm(`Retirer ${playerName} de l'équipe ?`)) {
-                    const { error } = await supabaseGestionTournoi
+                    const { error } = await window.supabaseAuthPrive
                         .from('gestionnairetournoi_players')
                         .update({ team_id: null })
                         .eq('id', playerId);
@@ -137,7 +134,7 @@ function searchPlayers(query) {
         document.getElementById('playerSearchResults').innerHTML = '';
         return;
     }
-    supabaseGestionTournoi
+    window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .select(`
             id,
@@ -183,8 +180,7 @@ async function addPlayer(e) {
     const position = document.getElementById('playerPosition').value;
     const isCaptain = document.getElementById('playerIsCaptain').checked;
 
-    // Vérifier si le joueur est déjà dans une autre équipe (optionnel)
-    const { data: existing, error: checkError } = await supabaseGestionTournoi
+    const { data: existing, error: checkError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .select('team_id')
         .eq('id', selectedPlayerId)
@@ -204,7 +200,7 @@ async function addPlayer(e) {
         position: position || null,
         is_captain: isCaptain
     };
-    const { error } = await supabaseGestionTournoi
+    const { error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .update(updates)
         .eq('id', selectedPlayerId);
@@ -232,8 +228,7 @@ function closeAddPlayerModal() {
 
 // ===== CHARGEMENT DES TOURNOIS POUR STATISTIQUES =====
 async function loadTournamentsForStats() {
-    // Récupérer les tournois où cette équipe a participé (via stats)
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_stats')
         .select('tournament_id, tournament:tournament_id (id, name, start_date)')
         .eq('team_id', teamId)
@@ -262,7 +257,7 @@ async function loadTournamentsForStats() {
 }
 
 async function loadTeamStats(tournamentId) {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_stats')
         .select('*')
         .eq('team_id', teamId)
@@ -285,45 +280,21 @@ function renderTeamStats() {
     }
     container.innerHTML = `
         <div class="stats-grid">
-            <div class="stat-item">
-                <div class="stat-value">${currentTournamentStats.matches_played || 0}</div>
-                <div class="stat-label">Matchs joués</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${currentTournamentStats.wins || 0}</div>
-                <div class="stat-label">Victoires</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${currentTournamentStats.draws || 0}</div>
-                <div class="stat-label">Nuls</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${currentTournamentStats.losses || 0}</div>
-                <div class="stat-label">Défaites</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${currentTournamentStats.goals_for || 0}</div>
-                <div class="stat-label">Buts marqués</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${currentTournamentStats.goals_against || 0}</div>
-                <div class="stat-label">Buts encaissés</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${(currentTournamentStats.goals_for - currentTournamentStats.goals_against) || 0}</div>
-                <div class="stat-label">Différence</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${currentTournamentStats.points || 0}</div>
-                <div class="stat-label">Points</div>
-            </div>
+            <div class="stat-item"><div class="stat-value">${currentTournamentStats.matches_played || 0}</div><div class="stat-label">Matchs joués</div></div>
+            <div class="stat-item"><div class="stat-value">${currentTournamentStats.wins || 0}</div><div class="stat-label">Victoires</div></div>
+            <div class="stat-item"><div class="stat-value">${currentTournamentStats.draws || 0}</div><div class="stat-label">Nuls</div></div>
+            <div class="stat-item"><div class="stat-value">${currentTournamentStats.losses || 0}</div><div class="stat-label">Défaites</div></div>
+            <div class="stat-item"><div class="stat-value">${currentTournamentStats.goals_for || 0}</div><div class="stat-label">Buts marqués</div></div>
+            <div class="stat-item"><div class="stat-value">${currentTournamentStats.goals_against || 0}</div><div class="stat-label">Buts encaissés</div></div>
+            <div class="stat-item"><div class="stat-value">${(currentTournamentStats.goals_for - currentTournamentStats.goals_against) || 0}</div><div class="stat-label">Différence</div></div>
+            <div class="stat-item"><div class="stat-value">${currentTournamentStats.points || 0}</div><div class="stat-label">Points</div></div>
         </div>
     `;
 }
 
 // ===== CHARGEMENT DES MATCHS DE L'ÉQUIPE =====
 async function loadTeamMatches() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_matches')
         .select(`
             *,
@@ -354,12 +325,8 @@ function renderTeamMatches() {
         const score = `${match.home_score ?? '-'} - ${match.away_score ?? '-'}`;
         return `
             <div class="match-card">
-                <div class="match-date">
-                    <i class="fas fa-calendar-alt"></i> ${new Date(match.match_date).toLocaleString('fr-FR')}
-                </div>
-                <div class="match-teams">
-                    ${isHome ? match.home_team?.name : match.away_team?.name} vs ${opponent}
-                </div>
+                <div class="match-date"><i class="fas fa-calendar-alt"></i> ${new Date(match.match_date).toLocaleString('fr-FR')}</div>
+                <div class="match-teams">${isHome ? match.home_team?.name : match.away_team?.name} vs ${opponent}</div>
                 <div class="match-score">${score}</div>
                 <a href="match-details.html?id=${match.id}" class="btn-view">Détails</a>
             </div>
@@ -378,7 +345,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadTeamMatches()
     ]);
 
-    // Gestion des onglets
+    // Onglets
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
