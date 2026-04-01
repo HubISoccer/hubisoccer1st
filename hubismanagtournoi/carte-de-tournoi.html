@@ -13,7 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        /* Styles spécifiques à la page (reprise de l'original) */
+        /* Styles identiques à l'original, avec ajustements pour l'intégration */
         .carte-container { max-width: 1200px; margin: 0 auto; }
         h1 { text-align: center; color: #551B8C; margin-bottom: 30px; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .form-section, .card-section {
@@ -62,6 +62,11 @@
         @media (max-width: 768px) { .card-preview { flex-direction: column; } .form-row { grid-template-columns: 1fr; } }
         .dashboard-main { padding: 40px 5%; }
         @media (max-width: 768px) { .dashboard-main { padding: 20px 4%; } }
+        /* Pour les images manquantes, on utilise des data:image */
+        .default-image-placeholder {
+            background: #eee; border-radius: 8px; display: inline-block; width: 50px; height: 50px;
+            display: flex; align-items: center; justify-content: center; font-size: 24px; color: #999;
+        }
     </style>
 </head>
 <body>
@@ -206,8 +211,8 @@
                 <div class="card-preview" id="cardPreview">
                     <div class="card-face card-front" id="cardFront">
                         <div class="card-header">
-                            <img id="organizerLogo" src="img/default-organizer.png" alt="Logo organisateur">
-                            <img id="clubLogoDisplay" src="img/default-club.png" alt="Logo club">
+                            <img id="organizerLogo" src="../players/img/logo-navbar.png" alt="Logo organisateur">
+                            <img id="clubLogoDisplay" src="../players/img/logo-navbar.png" alt="Logo club">
                         </div>
                         <div class="card-info" id="frontInfo"></div>
                         <div class="signature-area">
@@ -218,8 +223,8 @@
                     </div>
                     <div class="card-face card-back" id="cardBack">
                         <div class="card-header">
-                            <img id="flagImg" src="img/default-flag.png" alt="Drapeau">
-                            <img id="hubisoccerLogo" src="img/hubisoccer-logo.png" alt="HubISoccer">
+                            <img id="flagImg" src="https://flagcdn.com/64x48/bj.png" alt="Drapeau">
+                            <img id="hubisoccerLogo" src="../players/img/logo-navbar.png" alt="HubISoccer">
                         </div>
                         <div class="card-info" id="backInfo"></div>
                         <div class="signature-area">
@@ -280,47 +285,24 @@
         (async () => {
             const { data: { session }, error } = await window.supabaseAuthPrive.auth.getSession();
             if (error || !session) {
-                window.location.href = '../Prive.auth.getSession();
-            if (error || !session) {
                 window.location.href = '../auth/login.html';
                 return;
             }
             const { data: profile } = await window.supabaseAuthPrive
                 .from('profiles')
-auth/login.html';
-                return;
-            }
-            const { data: profile } = await window.supabaseAuthPrive
-                .from('profiles')
-                .                .select('full_name, avatar_url')
+                .select('full_name, avatar_url')
                 .eq('id', session.user.id)
                 .single();
             if (profile) {
-                document.getElementById('userNameselect('full_name, avatar_url')
-                .eq('id', session.user.id)
-                .single();
-            if (profile) {
-                document').textContent = profile.full_name || 'Utilisateur';
-                document.getElementById('userAvatar').src = profile.avatar_url.getElementById('userName').textContent = profile.full_name || 'Utilisateur';
-                document.getElementById('userAvatar').src = profile. || '../players/img/user-default.jpg';
-            }
-
-            // Menu utilisateur
-            const userMenu = document.getElementById('userMenuavatar_url || '../players/img/user-default.jpg';
+                document.getElementById('userName').textContent = profile.full_name || 'Utilisateur';
+                document.getElementById('userAvatar').src = profile.avatar_url || '../players/img/user-default.jpg';
             }
 
             // Menu utilisateur
             const userMenu = document.getElementById('userMenu');
             const userDropdown = document.getElementById('userDropdown');
             if (userMenu && userDropdown) {
-                userMenu.addEventListener('click');
-            const userDropdown = document.getElementById('userDropdown');
-            if (userMenu && userDropdown) {
-                userMenu.addEventListener('click', (', (e) => {
-                    e.stopPropagation();
-                    userDropdown.classList.toggle('show');
-                });
-                document.addEventListenere) => {
+                userMenu.addEventListener('click', (e) => {
                     e.stopPropagation();
                     userDropdown.classList.toggle('show');
                 });
@@ -329,22 +311,7 @@ auth/login.html';
 
             // Déconnexion
             document.getElementById('logoutLink').addEventListener('click', async (e) => {
-               ('click', () => userDropdown.classList.remove('show'));
-            }
-
-            // Déconnexion
-            document.getElementById('logoutLink').addEventListener('click', async (e) => {
-                e.preventDefault e.preventDefault();
-                await window.supabaseAuthPrive.auth.signOut();
-                window.location.href = '../index.html';
-            });
-
-            // Sidebar gauche
-            const menuToggle = document.getElementById('menuToggle');
-            const leftSidebar = document.getElementById('leftSidebar');
-            const closeLeftSidebar = document.getElementById('closeLeftSidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-           ();
+                e.preventDefault();
                 await window.supabaseAuthPrive.auth.signOut();
                 window.location.href = '../index.html';
             });
@@ -372,42 +339,9 @@ auth/login.html';
             }
         })();
 
-        // ===== Logique de la carte de tournoi (inchangée) =====
-        const urlParams = new URLSearchParams(window.location.search);
-        const category = urlParams.get('type if (menuToggle && leftSidebar && overlay) {
-                menuToggle.addEventListener('click', () => {
-                    leftSidebar.classList.add('active');
-                    overlay.classList.add('active');
-                });
-                if (closeLeftSidebar) {
-                    closeLeftSidebar.addEventListener('click', () => {
-                        leftSidebar.classList.remove('active');
-                        overlay.classList.remove('active');
-                    });
-                }
-                overlay.addEventListener('click', () => {
-                    leftSidebar.classList.remove('active');
-                    overlay.classList.remove('active');
-                });
-            }
-        })();
-
-        // ===== Logique de la carte de tournoi (inchangée) =====
+        // ===== Logique de la carte de tournoi (inchangée, mais corrigée pour les images) =====
         const urlParams = new URLSearchParams(window.location.search);
         const category = urlParams.get('type');
-        const categoryLabels = {
-            public_show: 'Public Show You',
-            public_detection: 'Détection HubISoccer',
-            private_hubisoccer: 'Privé HubISoccer',
-            private_simple: 'Privé Simple'
-        };
-        if (!category || !categoryLabels[category]) {
-            alert('Catégorie invalide, retour à la page de choix.');
-            window.location.href = 'demande-carte.html';
-        }
-        document.getElementById('categoryDisplay').value = categoryLabels[category];
-
-        let');
         const categoryLabels = {
             public_show: 'Public Show You',
             public_detection: 'Détection HubISoccer',
@@ -437,40 +371,7 @@ auth/login.html';
             reader.readAsDataURL(file);
         }
         document.getElementById('clubLogoFile').addEventListener('change', function() {
-            handleFileUpload ownerSignatureData = null;
-        let signaturePad = null;
-        let currentSignatureType = null;
-
-        // Gestion des fichiers
-        function handleFileUpload(fileInput, previewDiv, callback) {
-            const file = fileInput.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const dataURL = e.target.result;
-                previewDiv.innerHTML = `<img src="${dataURL}" style="max-width:100px;">`;
-                if (callback) callback(dataURL);
-            };
-            reader.readAsDataURL(file);
-        }
-        document.getElementById('clubLogoFile').addEventListener('change', function() {
             handleFileUpload(this, document.getElementById('clubLogoPreview'), (dataURL) => {
-                window.clubLogoData = dataURL;
-            });
-        });
-        document.getElementById('photoFile').addEventListener('change', function() {
-            handleFileUpload(this, document.getElementById('photoPreview'), (dataURL) => {
-                window.photoData = dataURL;
-            });
-        });
-
-        // Signature
-        function openSignatureModal(type) {
-            currentSignatureType = type;
-            const title = type === 'owner' ? 'Signature du propriétaire' : 'Signature';
-            document.getElementById('signatureModalTitle').innerText = title;
-            document.getElementById('signatureModal').style.display = 'flex';
-            const canvas = document.getElementById('signature(this, document.getElementById('clubLogoPreview'), (dataURL) => {
                 window.clubLogoData = dataURL;
             });
         });
@@ -508,44 +409,7 @@ auth/login.html';
         window.openSignatureModal = openSignatureModal;
         window.closeSignatureModal = closeSignatureModal;
 
-        function generateTrackingCode() { return 'HUB-' + MathCanvas');
-            canvas.width = canvas.offsetWidth || 400;
-            canvas.height = canvas.offsetHeight || 200;
-            if (signaturePad) signaturePad.clear();
-            else signaturePad = new SignaturePad(canvas, { backgroundColor: 'white', penColor: '#551B8C' });
-        }
-        function closeSignatureModal() { document.getElementById('signatureModal').style.display = 'none'; }
-        document.getElementById('clearSignatureBtn').addEventListener('click', () => { if (signaturePad) signaturePad.clear(); });
-        document.getElementById('saveSignatureBtn').addEventListener('click', () => {
-            if (signaturePad && !signaturePad.isEmpty()) {
-                const dataURL = signaturePad.toDataURL();
-                if (currentSignatureType === 'owner') {
-                    ownerSignatureData = dataURL;
-                    document.getElementById('ownerSignImg').src = dataURL;
-                    document.getElementById('ownerSignaturePreview').innerHTML = `<img src="${dataURL}" style="max-height:60px;">`;
-                }
-                closeSignatureModal();
-            } else alert('Veuillez signer.');
-        });
-        window.openSignatureModal = openSignatureModal;
-        window.closeSignatureModal = closeSignatureModal;
-
         function generateTrackingCode() { return 'HUB-' + Math.random().toString(36).substring(2, 10).toUpperCase(); }
-
-        function generateCard() {
-            const fullName = document.getElementById('fullName').value.trim();
-            const birthDate = document.getElementById('birthDate').value;
-            const nationality = document.getElementById('nationality').value.trim();
-            const country = document.getElementById('country').value.trim();
-            const club = document.getElementById('club').value.trim();
-            const tournamentName = document.getElementById('tournamentName').value.trim();
-            const countryCode = document.getElementById('countryCode').value.trim().toUpperCase();
-            const acceptRules = document.getElementById('acceptRules').checked;
-            if (!fullName || !birthDate || !nationality || !country || !acceptRules || !window.photoData) {
-                alert('Veuillez remplir tous les champs obligatoires, accepter le règlement et charger une photo.');
-                return;
-            }
-            if (!ownerSignatureData) {.random().toString(36).substring(2, 10).toUpperCase(); }
 
         function generateCard() {
             const fullName = document.getElementById('fullName').value.trim();
@@ -583,41 +447,7 @@ auth/login.html';
             document.getElementById('frontInfo').innerHTML = `
                 <p><strong>N° Carte :</strong> ${trackingCode}</p>
                 <p><strong>Nom :</strong> ${escapeHtml(fullName)}</p>
-                <p><strong>Date naissance :</strong> alert('Veuillez signer la carte.'); return; }
-
-            const trackingCode = generateTrackingCode();
-            const issueDate = new Date().toLocaleDateString('fr-FR');
-            const expiryDate = new Date(); expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-            const expiryDateStr = expiryDate.toLocaleDateString('fr-FR');
-            const deliveryPlace = 'Cotonou, Bénin';
-
-            const cardData = {
-                fullName, birthDate, nationality, country, club, tournamentName,
-                trackingCode, issueDate, expiryDateStr, deliveryPlace,
-                ownerSignature: ownerSignatureData,
-                category, categoryLabel: categoryLabels[category],
-                photo: window.photoData,
-                clubLogo: window.clubLogoData || null,
-                countryCode: countryCode || 'bj'
-            };
-            localStorage.setItem('pendingCard_' + trackingCode, JSON.stringify(cardData));
-
-            // Affichage carte
-            document.getElementById('frontInfo').innerHTML = `
-                <p><strong>N° Carte :</strong> ${trackingCode}</p>
-                <p><strong>Nom :</strong> ${escapeHtml(fullName)}</p>
                 <p><strong>Date naissance :</strong> ${birthDate}</p>
-                <p><strong>Nationalité :</strong> ${escapeHtml(nationality)}</p>
-                <p><strong>Pays :</strong> ${escapeHtml(country)}</p>
-                <p><strong>Club :</strong> ${escapeHtml(club) || '-'}</p>
-                <p><strong>Catégorie :</strong> ${categoryLabels[category]}</p>
-                <p><strong>Tournoi :</strong> ${escapeHtml(tournamentName) || '-'}</p>
-            `;
-            document.getElementById('ownerSignImg').src = ownerSignatureData;
-            if (window.clubLogoData) document.getElementById('clubLogoDisplay').src = window.clubLogoData;
-            if (window.photoData) {
-                const frontInfoDiv = document.getElementById('frontInfo');
-                const photoHtml = `<div class=" ${birthDate}</p>
                 <p><strong>Nationalité :</strong> ${escapeHtml(nationality)}</p>
                 <p><strong>Pays :</strong> ${escapeHtml(country)}</p>
                 <p><strong>Club :</strong> ${escapeHtml(club) || '-'}</p>
@@ -633,11 +463,6 @@ auth/login.html';
             }
             const qrDiv = document.getElementById('qrCode');
             qrDiv.innerHTML = '';
-            new QRCode(qrDiv, { text: `https://hubisoccer.com/verify-card?code=${photo-titulaire"><img src="${window.photoData}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; margin-top:10px;"></div>`;
-                frontInfoDiv.insertAdjacentHTML('beforeend', photoHtml);
-            }
-            const qrDiv = document.getElementById('qrCode');
-            qrDiv.innerHTML = '';
             new QRCode(qrDiv, { text: `https://hubisoccer.com/verify-card?code=${trackingCode}`, width: 100, height: 100 });
             document.getElementById('backInfo').innerHTML = `
                 <p><strong>Délivré par :</strong> HubISoccer</p>
@@ -645,66 +470,32 @@ auth/login.html';
                 <p><strong>Date de délivrance :</strong> ${issueDate}</p>
                 <p><strong>Valable jusqu'au :</strong> ${expiryDateStr}</p>
             `;
-            document.getElementById('flagImg').src = `https://flagcdn.com/64x48/${countryCodetrackingCode}`, width: 100, height: 100 });
-            document.getElementById('backInfo').innerHTML = `
-                <p><strong>Délivré par :</strong> HubISoccer</p>
-                <p><strong>Lieu de délivrance :</strong> ${deliveryPlace}</p>
-                <p><strong>Date de délivrance :</strong> ${issueDate}</p>
-                <p><strong>Valable jusqu'au :</strong> ${expiryDateStr}</p>
-            `;
-            document.getElementById('flagImg').src = `https://flagcdn.com/64x48/${ || 'bj'}.png`;
+            document.getElementById('flagImg').src = `https://flagcdn.com/64x48/${countryCode || 'bj'}.png`;
             document.getElementById('cardPreviewSection').style.display = 'block';
             document.querySelector('.form-section').style.display = 'none';
         }
 
-        function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;countryCode || 'bj'}.png`;
-            document.getElementById('cardPreviewSection').style.display = 'block';
-            document.querySelector('.form-section').style.display = 'none';
-        }
-
-        function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return'; return m;}); }
-
-        document.getElementById('generateCardBtn').addEventListener('click', generateCard);
-        document.getElementById('printCardBtn').addEventListener('click', () => {
- m;}); }
+        function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
 
         document.getElementById('generateCardBtn').addEventListener('click', generateCard);
         document.getElementById('printCardBtn').addEventListener('click', () => {
             const element = document.getElementById('cardPreview');
-            html2pdf().from(element).set({ margin: 0.5, filename: `carte_${document.getElementById            const element = document.getElementById('cardPreview');
-            html2pdf().from(element).set({ margin: 0.5, filename: `carte_${document.getElementById('fullName').value.trim().replace(/\s/g, '_')}.pdf`,('fullName').value.trim().replace(/\s/g, '_')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' } }).save();
-        });
-        unit: 'in', format: 'a4', orientation: 'landscape' } }).save();
+            html2pdf().from(element).set({ margin: 0.5, filename: `carte_${document.getElementById('fullName').value.trim().replace(/\s/g, '_')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' } }).save();
         });
         document.getElementById('editCardBtn').addEventListener('click', () => {
-            document.getElementById document.getElementById('editCardBtn').addEventListener('click', () => {
             document.getElementById('cardPreviewSection').style.display = 'none';
-            document.querySelector('.form-section').style.display = '('cardPreviewSection').style.display = 'none';
             document.querySelector('.form-section').style.display = 'block';
-        });
-        document.getElementById('resetFormBtn').addEventListener('click', () => {
-block';
         });
         document.getElementById('resetFormBtn').addEventListener('click', () => {
             document.getElementById('carteForm').reset();
             ownerSignatureData = null;
-                       document.getElementById('carteForm').reset();
-            ownerSignatureData = null;
             window.photoData = null;
             window.clubLogoData = null;
-            document.getElementById(' window.photoData = null;
-            window.clubLogoData = null;
-            document.getElementById('ownerSignaturePreview').innerHTML = '<i class="fas fa-pen"></ownerSignaturePreview').innerHTML = '<i class="fas fa-pen"></i> Cliquez pour signer';
-            document.getElementById('photoPreview').i> Cliquez pour signer';
+            document.getElementById('ownerSignaturePreview').innerHTML = '<i class="fas fa-pen"></i> Cliquez pour signer';
             document.getElementById('photoPreview').innerHTML = '';
             document.getElementById('clubLogoPreview').innerHTML = '';
-innerHTML = '';
-            document.getElementById('clubLogoPreview').innerHTML = '';
             document.getElementById('cardPreviewSection').style.display = 'none';
-            document.querySelector('.            document.getElementById('cardPreviewSection').style.display = 'none';
             document.querySelector('.form-section').style.display = 'block';
-        });
-   form-section').style.display = 'block';
         });
     </script>
 </body>
