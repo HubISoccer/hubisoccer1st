@@ -11,7 +11,7 @@ let currentUser = null;
 
 // ===== CHARGEMENT DES INFOS DU MATCH =====
 async function loadMatchInfo() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_matches')
         .select(`
             *,
@@ -45,7 +45,7 @@ function toggleReportForm() {
     else if (type === 'medical') document.getElementById('medicalForm').style.display = 'block';
 }
 
-// ===== COLLECTE DES DONNÉES =====
+// ===== COLLECTE DES DONNÉES (structure JSONB) =====
 function collectReportData() {
     const type = document.getElementById('reportType').value;
     let content = {};
@@ -83,7 +83,7 @@ async function uploadFile(file) {
     const fileExt = file.name.split('.').pop();
     const fileName = `${matchId}_${Date.now()}.${fileExt}`;
     const filePath = `match_reports/${fileName}`;
-    const { error, data } = await supabaseGestionTournoi.storage
+    const { error } = await window.supabaseAuthPrive.storage
         .from('documents')
         .upload(filePath, file);
     if (error) {
@@ -91,7 +91,7 @@ async function uploadFile(file) {
         showToast('Erreur upload fichier', 'error');
         return null;
     }
-    const { data: urlData } = supabaseGestionTournoi.storage
+    const { data: urlData } = window.supabaseAuthPrive.storage
         .from('documents')
         .getPublicUrl(filePath);
     return urlData.publicUrl;
@@ -113,13 +113,13 @@ async function saveReport() {
         if (!fileUrl) return;
     }
 
-    const { type: reportType, content } = collectReportData();
+    const { content } = collectReportData();
 
-    const { error } = await supabaseGestionTournoi
+    const { error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_match_reports')
         .insert({
             match_id: parseInt(matchId),
-            report_type: reportType,
+            report_type: type,
             reporter_id: currentUser?.id || null,
             content: content,
             file_url: fileUrl,
