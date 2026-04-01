@@ -8,80 +8,170 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/hubismanagtournoi.css">
     <link rel="stylesheet" href="css/team-details.css">
+    <link rel="stylesheet" href="../players/css/feed.css">
+    <style>
+        .dashboard-main {
+            padding: 40px 5%;
+        }
+        .team-detail-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        @media (max-width: 768px) {
+            .dashboard-main {
+                padding: 20px 4%;
+            }
+        }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="team-detail-container">
-        <div class="page-header">
-            <button class="btn-back" id="backBtn">
-                <i class="fas fa-arrow-left"></i>
-                Retour
-            </button>
-            <h1 id="teamName">Chargement...</h1>
-        </div>
 
-        <div class="team-info-card">
-            <div class="team-logo" id="teamLogo">
-                <i class="fas fa-users"></i>
-            </div>
-            <div class="team-meta">
-                <div class="meta-row"><i class="fas fa-tag"></i> Catégorie : <span id="teamCategory">-</span></div>
-                <div class="meta-row"><i class="fas fa-futbol"></i> Sport : <span id="teamSport">-</span></div>
-                <div class="meta-row"><i class="fas fa-user"></i> Créateur : <span id="teamCreator">-</span></div>
-                <div class="meta-row"><i class="fas fa-calendar-alt"></i> Créée le : <span id="teamCreated">-</span></div>
-            </div>
+    <!-- ========== NAVBAR ========== -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="../players/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Gestionnaire de tournois</span>
         </div>
-
-        <div class="tabs">
-            <button class="tab-btn active" data-tab="players">Joueurs</button>
-            <button class="tab-btn" data-tab="stats">Statistiques</button>
-            <button class="tab-btn" data-tab="matches">Matchs</button>
-        </div>
-
-        <!-- Onglet Joueurs -->
-        <div id="playersTab" class="tab-content active">
-            <div class="players-header">
-                <h2><i class="fas fa-users"></i> Effectif</h2>
-                <button id="addPlayerBtn" class="btn-primary" style="display: none;">
-                    <i class="fas fa-plus"></i> Ajouter un joueur
-                </button>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
             </div>
-            <div id="playersList" class="players-list">
-                <div class="loader"><i class="fas fa-spinner fa-pulse"></i> Chargement...</div>
-            </div>
-        </div>
-
-        <!-- Onglet Statistiques -->
-        <div id="statsTab" class="tab-content">
-            <div class="stats-section">
-                <h2><i class="fas fa-chart-line"></i> Statistiques du tournoi</h2>
-                <div id="tournamentSelect" class="tournament-selector">
-                    <label>Sélectionner un tournoi :</label>
-                    <select id="tournamentStatsSelect"></select>
-                </div>
-                <div id="teamStats" class="team-stats">
-                    <div class="loader"><i class="fas fa-spinner fa-pulse"></i> Chargement...</div>
+            <div class="user-menu" id="userMenu">
+                <img src="../players/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="../players/profile-edit.html"><i class="fas fa-user"></i> Mon profil</a>
+                    <a href="../feed/feed.html"><i class="fas fa-users"></i> Communauté</a>
+                    <a href="../shared/messages.html"><i class="fas fa-envelope"></i> Messages</a>
+                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                 </div>
             </div>
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
         </div>
+    </nav>
 
-        <!-- Onglet Matchs -->
-        <div id="matchesTab" class="tab-content">
-            <div class="matches-section">
-                <h2><i class="fas fa-calendar-week"></i> Matchs disputés</h2>
-                <div id="teamMatchesList" class="matches-list">
-                    <div class="loader"><i class="fas fa-spinner fa-pulse"></i> Chargement...</div>
-                </div>
-            </div>
+    <!-- ========== OVERLAY SIDEBAR ========== -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ========== SIDEBAR GAUCHE ========== -->
+    <div class="sidebar left-sidebar" id="leftSidebar">
+        <div class="sidebar-header">
+            <h3>Menu Tournois</h3>
+            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
         </div>
+        <nav class="sidebar-nav">
+            <a href="accueil_hubisgst.html"><i class="fas fa-home"></i> Accueil</a>
+            <a href="create-tournament.html"><i class="fas fa-plus-circle"></i> Créer un tournoi</a>
+            <a href="my-tournaments.html"><i class="fas fa-list"></i> Mes tournois</a>
+            <a href="my-registrations.html"><i class="fas fa-calendar-check"></i> Mes inscriptions</a>
+            <a href="rankings.html"><i class="fas fa-chart-line"></i> Classements</a>
+            <a href="tournament-rules.html"><i class="fas fa-gavel"></i> Règlement</a>
+            <hr>
+            <a href="help-tournament.html"><i class="fas fa-question-circle"></i> Aide</a>
+        </nav>
     </div>
+
+    <!-- ========== CONTENU PRINCIPAL ========== -->
+    <main class="dashboard-main">
+        <div class="team-detail-container">
+            <div class="page-header">
+                <button class="btn-back" id="backBtn">
+                    <i class="fas fa-arrow-left"></i>
+                    Retour
+                </button>
+                <h1 id="teamName">Chargement...</h1>
+            </div>
+
+            <div class="team-info-card">
+                <div class="team-logo" id="teamLogo">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="team-meta">
+                    <div class="meta-row"><i class="fas fa-tag"></i> Catégorie : <span id="teamCategory">-</span></div>
+                    <div class="meta-row"><i class="fas fa-futbol"></i> Sport : <span id="teamSport">-</span></div>
+                    <div class="meta-row"><i class="fas fa-user"></i> Créateur : <span id="teamCreator">-</span></div>
+                    <div class="meta-row"><i class="fas fa-calendar-alt"></i> Créée le : <span id="teamCreated">-</span></div>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="players">Joueurs</button>
+                <button class="tab-btn" data-tab="stats">Statistiques</button>
+                <button class="tab-btn" data-tab="matches">Matchs</button>
+            </div>
+
+            <!-- Onglet Joueurs -->
+            <div id="playersTab" class="tab-content active">
+                <div class="players-header">
+                    <h2><i class="fas fa-users"></i> Effectif</h2>
+                    <button id="addPlayerBtn" class="btn-primary" style="display: none;">
+                        <i class="fas fa-plus"></i> Ajouter un joueur
+                    </button>
+                </div>
+                <div id="playersList" class="players-list">
+                    <div class="loader"><i class="fas fa-spinner fa-pulse"></i> Chargement...</div>
+                </div>
+            </div>
+
+            <!-- Onglet Statistiques -->
+            <div id="statsTab" class="tab-content">
+                <div class="stats-section">
+                    <h2><i class="fas fa-chart-line"></i> Statistiques du tournoi</h2>
+                    <div id="tournamentSelect" class="tournament-selector">
+                        <label>Sélectionner un tournoi :</label>
+                        <select id="tournamentStatsSelect"></select>
+                    </div>
+                    <div id="teamStats" class="team-stats">
+                        <div class="loader"><i class="fas fa-spinner fa-pulse"></i> Chargement...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Onglet Matchs -->
+            <div id="matchesTab" class="tab-content">
+                <div class="matches-section">
+                    <h2><i class="fas fa-calendar-week"></i> Matchs disputés</h2>
+                    <div id="teamMatchesList" class="matches-list">
+                        <div class="loader"><i class="fas fa-spinner fa-pulse"></i> Chargement...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
 
     <!-- Modale Ajouter joueur -->
     <div id="addPlayerModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Ajouter un joueur</h2>
-                <span class="close-modal">&times;</span>
+                <span class="close-modal">×</span>
             </div>
             <div class="modal-body">
                 <form id="addPlayerForm">
@@ -116,8 +206,66 @@
 
     <div id="toastContainer" class="toast-container"></div>
 
-    <script src="js/supabase-client.js"></script>
+    <!-- Scripts -->
+    <script src="../auth/auth.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/team-details.js"></script>
+
+    <!-- Gestion de la sidebar et de l’authentification -->
+    <script>
+        (async () => {
+            const { data: { session }, error } = await window.supabaseAuthPrive.auth.getSession();
+            if (error || !session) {
+                window.location.href = '../auth/login.html';
+                return;
+            }
+            const { data: profile } = await window.supabaseAuthPrive
+                .from('profiles')
+                .select('full_name, avatar_url')
+                .eq('id', session.user.id)
+                .single();
+            if (profile) {
+                document.getElementById('userName').textContent = profile.full_name || 'Utilisateur';
+                document.getElementById('userAvatar').src = profile.avatar_url || '../players/img/user-default.jpg';
+            }
+
+            const userMenu = document.getElementById('userMenu');
+            const userDropdown = document.getElementById('userDropdown');
+            if (userMenu && userDropdown) {
+                userMenu.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userDropdown.classList.toggle('show');
+                });
+                document.addEventListener('click', () => userDropdown.classList.remove('show'));
+            }
+
+            document.getElementById('logoutLink').addEventListener('click', async (e) => {
+                e.preventDefault();
+                await window.supabaseAuthPrive.auth.signOut();
+                window.location.href = '../index.html';
+            });
+
+            const menuToggle = document.getElementById('menuToggle');
+            const leftSidebar = document.getElementById('leftSidebar');
+            const closeLeftSidebar = document.getElementById('closeLeftSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (menuToggle && leftSidebar && overlay) {
+                menuToggle.addEventListener('click', () => {
+                    leftSidebar.classList.add('active');
+                    overlay.classList.add('active');
+                });
+                if (closeLeftSidebar) {
+                    closeLeftSidebar.addEventListener('click', () => {
+                        leftSidebar.classList.remove('active');
+                        overlay.classList.remove('active');
+                    });
+                }
+                overlay.addEventListener('click', () => {
+                    leftSidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                });
+            }
+        })();
+    </script>
 </body>
 </html>
