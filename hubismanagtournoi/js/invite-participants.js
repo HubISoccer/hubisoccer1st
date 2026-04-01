@@ -15,10 +15,8 @@ let currentFilter = '';
 
 // ===== VÉRIFICATION DE L'UTILISATEUR ET CHARGEMENT DU TOURNOI =====
 async function getCurrentUser() {
-    if (window.supabaseAuthPrive) {
-        const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
-        if (!error && user) return user;
-    }
+    const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
+    if (!error && user) return user;
     return null;
 }
 
@@ -27,7 +25,7 @@ async function checkCreator() {
         window.location.href = '../auth/login.html';
         return false;
     }
-    const { data: tournament, error } = await supabaseGestionTournoi
+    const { data: tournament, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_tournaments')
         .select('created_by, name, start_date, end_date, location, sport_id')
         .eq('id', tournamentId)
@@ -48,7 +46,7 @@ async function checkCreator() {
 
 // ===== CHARGEMENT DES ÉQUIPES =====
 async function loadTeams() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_teams')
         .select('*')
         .order('name');
@@ -90,7 +88,7 @@ function renderTeams() {
 
 // ===== CHARGEMENT DES JOUEURS =====
 async function loadPlayers() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .select(`
             id,
@@ -137,7 +135,7 @@ function renderPlayers() {
 
 // ===== INVITATIONS =====
 async function loadInvitations() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_invitations')
         .select(`
             *,
@@ -208,7 +206,7 @@ async function sendInvitation(type, id, name) {
     } else {
         payload.player_id = id;
     }
-    const { error } = await supabaseGestionTournoi
+    const { error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_invitations')
         .insert(payload);
     if (error) {
@@ -270,7 +268,7 @@ async function createTeamAndInvite(e) {
         sport_id: tournamentData.sport_id,
         created_by: currentUser.id
     };
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_teams')
         .insert(newTeam)
         .select()
