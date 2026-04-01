@@ -17,10 +17,8 @@ let prizesList = [];
 
 // ===== VÉRIFICATION DE L'UTILISATEUR =====
 async function getCurrentUser() {
-    if (window.supabaseAuthPrive) {
-        const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
-        if (!error && user) return user;
-    }
+    const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
+    if (!error && user) return user;
     return null;
 }
 
@@ -29,7 +27,7 @@ async function checkCreator() {
         window.location.href = '../auth/login.html';
         return false;
     }
-    const { data: tournament, error } = await supabaseGestionTournoi
+    const { data: tournament, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_tournaments')
         .select('created_by')
         .eq('id', tournamentId)
@@ -44,7 +42,7 @@ async function checkCreator() {
 
 // ===== CHARGEMENT DES DONNÉES =====
 async function loadTournamentInfo() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_tournaments')
         .select(`
             *,
@@ -80,8 +78,7 @@ async function loadTournamentInfo() {
 }
 
 async function loadRegistrations() {
-    // Récupérer les inscriptions avec les informations joueurs
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_registrations')
         .select(`
             *,
@@ -149,7 +146,6 @@ function renderRegistrations() {
         `).join('');
     }
 
-    // Écouteurs pour les boutons d'approbation/rejet
     document.querySelectorAll('.btn-approve').forEach(btn => {
         btn.addEventListener('click', async () => {
             const regId = btn.getAttribute('data-id');
@@ -165,7 +161,7 @@ function renderRegistrations() {
 }
 
 async function updateRegistrationStatus(registrationId, status) {
-    const { error } = await supabaseGestionTournoi
+    const { error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_registrations')
         .update({ status, approved_by: currentUser.id })
         .eq('id', registrationId);
@@ -178,7 +174,7 @@ async function updateRegistrationStatus(registrationId, status) {
 }
 
 async function loadTeams() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_teams')
         .select('*')
         .eq('sport_id', tournamentData.sport_id)
@@ -220,7 +216,7 @@ function renderTeams() {
         btn.addEventListener('click', async () => {
             const teamId = btn.getAttribute('data-id');
             if (confirm('Supprimer cette équipe ?')) {
-                const { error } = await supabaseGestionTournoi
+                const { error } = await window.supabaseAuthPrive
                     .from('gestionnairetournoi_teams')
                     .delete()
                     .eq('id', teamId);
@@ -235,7 +231,7 @@ function renderTeams() {
 }
 
 async function loadMatches() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_matches')
         .select(`
             *,
@@ -279,7 +275,7 @@ function renderMatches() {
         btn.addEventListener('click', async () => {
             const matchId = btn.getAttribute('data-id');
             if (confirm('Supprimer ce match ?')) {
-                const { error } = await supabaseGestionTournoi
+                const { error } = await window.supabaseAuthPrive
                     .from('gestionnairetournoi_matches')
                     .delete()
                     .eq('id', matchId);
@@ -294,13 +290,19 @@ function renderMatches() {
 }
 
 async function loadReports() {
-    const { data, error } = await supabaseGestionTournoi
+    const matchIds = matchesList.map(m => m.id);
+    if (!matchIds.length) {
+        reportsList = [];
+        renderReports();
+        return;
+    }
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_match_reports')
         .select(`
             *,
             match:match_id (id, home_team_id, away_team_id, home_team:home_team_id(name), away_team:away_team_id(name))
         `)
-        .eq('match_id', matchesList.map(m => m.id))
+        .in('match_id', matchIds)
         .order('created_at', { ascending: false });
     if (error) {
         console.error(error);
@@ -334,7 +336,7 @@ function renderReports() {
         btn.addEventListener('click', async () => {
             const reportId = btn.getAttribute('data-id');
             if (confirm('Supprimer ce rapport ?')) {
-                const { error } = await supabaseGestionTournoi
+                const { error } = await window.supabaseAuthPrive
                     .from('gestionnairetournoi_match_reports')
                     .delete()
                     .eq('id', reportId);
@@ -349,7 +351,7 @@ function renderReports() {
 }
 
 async function loadPrizes() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_prizes')
         .select(`
             *,
@@ -395,7 +397,7 @@ function renderPrizes() {
         btn.addEventListener('click', async () => {
             const prizeId = btn.getAttribute('data-id');
             if (confirm('Supprimer cette prime ?')) {
-                const { error } = await supabaseGestionTournoi
+                const { error } = await window.supabaseAuthPrive
                     .from('gestionnairetournoi_prizes')
                     .delete()
                     .eq('id', prizeId);
@@ -429,7 +431,7 @@ async function saveTournamentChanges(e) {
         stream_url: document.getElementById('editStreamUrl').value,
         is_active: document.getElementById('editIsActive').checked
     };
-    const { error } = await supabaseGestionTournoi
+    const { error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_tournaments')
         .update(updates)
         .eq('id', tournamentId);
@@ -457,7 +459,7 @@ async function addTeam(e) {
         sport_id: tournamentData.sport_id,
         created_by: currentUser.id
     };
-    const { error } = await supabaseGestionTournoi
+    const { error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_teams')
         .insert(newTeam);
     if (error) {
@@ -470,7 +472,6 @@ async function addTeam(e) {
 }
 
 function openAddMatchModal() {
-    // Remplir les select des équipes
     const homeSelect = document.getElementById('matchHomeTeam');
     const awaySelect = document.getElementById('matchAwayTeam');
     homeSelect.innerHTML = '<option value="">Sélectionner</option>';
@@ -498,7 +499,7 @@ async function addMatch(e) {
         showToast('Sélectionnez les deux équipes', 'warning');
         return;
     }
-    const { error } = await supabaseGestionTournoi
+    const { error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_matches')
         .insert(newMatch);
     if (error) {
@@ -511,13 +512,11 @@ async function addMatch(e) {
 }
 
 function openAddPrizeModal() {
-    // Remplir les listes
     const teamSelect = document.getElementById('prizeTeamId');
     teamSelect.innerHTML = '<option value="">Sélectionner</option>';
     teamsList.forEach(team => {
         teamSelect.innerHTML += `<option value="${team.id}">${escapeHtml(team.name)}</option>`;
     });
-    // Remplir les joueurs (à partir des inscriptions approuvées)
     const playerSelect = document.getElementById('prizePlayerId');
     playerSelect.innerHTML = '<option value="">Sélectionner</option>';
     approvedRegistrations.forEach(reg => {
@@ -549,7 +548,7 @@ async function addPrize(e) {
             return;
         }
     }
-    const { error } = await supabaseGestionTournoi
+    const { error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_prizes')
         .insert(prizeData);
     if (error) {
