@@ -1,139 +1,218 @@
+// ===== public-register.js =====
 let currentTournament = null;
 
-// ===== ÉTAPE 1 : VÉRIFICATION DU CODE =====
+// Éléments DOM
+const stepCode = document.getElementById('stepCode');
+const stepForm = document.getElementById('stepForm');
+const stepSuccess = document.getElementById('stepSuccess');
+const verifyBtn = document.getElementById('verifyCodeBtn');
+const registrationCodeInput = document.getElementById('registrationCode');
+const codeErrorDiv = document.getElementById('codeError');
+const tournamentInfoDiv = document.getElementById('tournamentInfo');
+const form = document.getElementById('publicRegistrationForm');
+const rulesLink = document.getElementById('rulesLink');
+const rulesModal = document.getElementById('rulesModal');
+const rulesContent = document.getElementById('rulesContent');
+const backToHomeBtn = document.getElementById('backToHomeBtn');
+
+// Fermeture de la modale
+const closeModalBtn = rulesModal?.querySelector('.close-modal');
+if (closeModalBtn) {
+    closeModalBtn.addEventListener('click', () => {
+        rulesModal.style.display = 'none';
+    });
+}
+window.addEventListener('click', (e) => {
+    if (e.target === rulesModal) {
+        rulesModal.style.display = 'none';
+    }
+});
+
+// Vérifier le code d'inscription
 async function verifyCode() {
-    const code = document.getElementById('registrationCode').value.trim();
+    const code = registrationCodeInput.value.trim();
     if (!code) {
         showToast('Veuillez saisir un code', 'warning');
         return;
     }
+    codeErrorDiv.style.display = 'none';
 
-    const { data, error } = await supabaseGestionTournoi
-        .from('gestionnairetournoi_tournaments')
-        .select(`
-            id,
-            name,
-            start_date,
-            end_date,
-            location,
-            description,
-            rules,
-            type:type_id (name, label),
-            sport:sport_id (name)
-        `)
-        .eq('registration_code', code)
-        .eq('is_active', true)
-        .single();
+    try {
+        const { data, error } = await window.supabaseAuthPrive
+            .from('gestionnairetournoi_tournaments')
+            .select(`
+                id,
+                name,
+                start_date,
+                end_date,
+                location,
+                rules,
+                registration_code,
+                type:type_id (name, label),
+                sport:sport_id (name)
+            `)
+            .eq('registration_code', code)
+            .eq('is_active', true)
+            .maybeSingle();
 
-    if (error || !data) {
-        document.getElementById('codeError').style.display = 'block';
-        document.getElementById('codeError').textContent = 'Code invalide ou tournoi non trouvé.';
-        return;
+        if (error) throw error;
+
+        if (!data) {
+            codeErrorDiv.textContent = 'Code invalide ou tournoi non actif.';
+            codeErrorDiv.style.display = 'block';
+            return;
+        }
+
+        currentTournament = data;
+
+        // Afficher les infos du tournoi
+        const start = new Date(data.start_date).toLocaleDateString('fr-FR');
+        const end = new Date(data.end_date).toLocaleDateString('fr-FR');
+        tournamentInfoDiv.innerHTML = `
+            <h3>${escapeHtml(data.name)}</h3>
+            <p><i class="fas fa-calendar-alt"></i> ${start} - ${end}</p>
+            <p><i class="fas fa-map-marker-alt"></i> ${escapeHtml(data.location || 'Lieu non spécifié')}</p>
+            <p><i class="fas fa-futbol"></i> ${escapeHtml(data.sport?.name)}</p>
+            <p><i class="fas fa-tag"></i> ${escapeHtml(data.type?.label)}</p>
+        `;
+
+        // Préparer le lien du règlement
+        if (data.rules) {
+            rulesContent.innerHTML = `<div class="rules-text">${escapeHtml(data.rules).replace(/\n/g, '<br>')}</div>`;
+        } else {
+            rulesContent.innerHTML = '<p>Aucun règlement spécifique.</p>';
+        }
+
+        // Passer à l'étape 2
+        stepCode.style.display = 'none';
+        stepForm.style.display = 'block';
+    } catch (err) {
+        console.error(err);
+        showToast('Erreur lors de la vérification du code', 'error');
     }
-
-    currentTournament = data;
-    document.getElementById('codeError').style.display = 'none';
-    document.getElementById('stepCode').style.display = 'none';
-    document.getElementById('stepForm').style.display = 'block';
-
-    // Afficher les informations du tournoi
-    const infoDiv = document.getElementById('tournamentInfo');
-    infoDiv.innerHTML = `
-        <div class="tournament-name">${escapeHtml(currentTournament.name)}</div>
-        <div class="tournament-dates">📅 ${new Date(currentTournament.start_date).toLocaleDateString('fr-FR')} - ${new Date(currentTournament.end_date).toLocaleDateString('fr-FR')}</div>
-        <div class="tournament-location">📍 ${escapeHtml(currentTournament.location || 'Lieu non précisé')}</div>
-        <div class="tournament-sport">⚽ ${currentTournament.sport?.name || 'Sport'}</div>
-    `;
-
-    // Stocker le règlement pour la modale
-    document.getElementById('rulesContent').innerHTML = currentTournament.rules || 'Aucun règlement spécifique.';
 }
 
-// ===== MODALE DU RÈGLEMENT =====
-function openRulesModal() {
-    document.getElementById('rulesModal').style.display = 'block';
-}
-function closeRulesModal() {
-    document.getElementById('rulesModal').style.display = 'none';
-}
-
-// ===== SOUMISSION DU FORMULAIRE =====
+// Soumission du formulaire
 async function submitRegistration(e) {
     e.preventDefault();
 
-    // Vérifier que l'utilisateur a accepté le règlement
-    if (!document.getElementById('agreeRules').checked) {
-        showToast('Vous devez accepter le règlement pour vous inscrire', 'warning');
-        return;
-    }
+    // Récupération des valeurs
+    const name = document.getElementById('playerName').value.trim();
+    const email = document.getElementById('playerEmail').value.trim();
+    const phone = document.getElementById('playerPhone').value.trim();
+    const birthDate = document.getElementById('playerBirthDate').value;
+    const position = document.getElementById('playerPosition').value.trim();
+    const club = document.getElementById('playerClub').value.trim();
+    const message = document.getElementById('playerMessage').value.trim();
+    const agree = document.getElementById('agreeRules').checked;
 
-    // Collecte des données
-    const playerData = {
-        tournament_id: currentTournament.id,
-        registration_code: document.getElementById('registrationCode').value,
-        player_name: document.getElementById('playerName').value.trim(),
-        player_email: document.getElementById('playerEmail').value.trim(),
-        player_phone: document.getElementById('playerPhone').value.trim(),
-        player_birth_date: document.getElementById('playerBirthDate').value,
-        position: document.getElementById('playerPosition').value.trim(),
-        player_club: document.getElementById('playerClub').value.trim(),
-        message: document.getElementById('playerMessage').value.trim(),
-        has_agreed_to_rules: true,
-        status: 'pending'
-    };
-
-    // Validation
-    if (!playerData.player_name || !playerData.player_email || !playerData.player_phone || !playerData.player_birth_date) {
+    if (!name || !email || !phone || !birthDate) {
         showToast('Veuillez remplir tous les champs obligatoires', 'warning');
         return;
     }
-
-    // Vérifier si l'email est déjà utilisé pour ce tournoi
-    const { data: existing, error: checkError } = await supabaseGestionTournoi
-        .from('gestionnairetournoi_public_registrations')
-        .select('id')
-        .eq('tournament_id', currentTournament.id)
-        .eq('player_email', playerData.player_email)
-        .maybeSingle();
-
-    if (existing) {
-        showToast('Vous êtes déjà inscrit à ce tournoi avec cet email', 'error');
+    if (!agree) {
+        showToast('Vous devez accepter le règlement', 'warning');
+        return;
+    }
+    if (!currentTournament) {
+        showToast('Code de tournoi invalide', 'error');
         return;
     }
 
-    // Insertion dans la base
-    const { error } = await supabaseGestionTournoi
-        .from('gestionnairetournoi_public_registrations')
-        .insert(playerData);
+    // Vérifier si l'email est déjà utilisé dans un autre compte (optionnel, mais on peut)
+    // Ici on ne crée pas de compte Supabase, seulement une inscription dans le tournoi.
 
-    if (error) {
-        console.error(error);
+    // Créer un joueur dans gestionnairetournoi_players
+    // On utilise l'email comme identifiant unique (user_id peut être null car pas de compte)
+    const playerData = {
+        user_id: null,
+        full_name: name,
+        email: email,
+        phone: phone,
+        birth_date: birthDate,
+        position: position || null,
+        club: club || null,
+        created_at: new Date().toISOString()
+    };
+
+    // Vérifier si le joueur existe déjà (par email)
+    const { data: existingPlayer, error: playerCheckError } = await window.supabaseAuthPrive
+        .from('gestionnairetournoi_players')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+
+    let playerId;
+    if (existingPlayer) {
+        playerId = existingPlayer.id;
+        // Optionnel : mettre à jour les informations
+        await window.supabaseAuthPrive
+            .from('gestionnairetournoi_players')
+            .update({
+                full_name: name,
+                phone: phone,
+                birth_date: birthDate,
+                position: position || null,
+                club: club || null
+            })
+            .eq('id', playerId);
+    } else {
+        const { data: newPlayer, error: insertError } = await window.supabaseAuthPrive
+            .from('gestionnairetournoi_players')
+            .insert(playerData)
+            .select()
+            .single();
+        if (insertError) {
+            console.error(insertError);
+            showToast('Erreur lors de la création du joueur', 'error');
+            return;
+        }
+        playerId = newPlayer.id;
+    }
+
+    // Créer l'inscription
+    const registrationData = {
+        tournament_id: currentTournament.id,
+        player_id: playerId,
+        status: 'pending',
+        registration_date: new Date().toISOString(),
+        message: message || null,
+        has_agreed_to_rules: true
+    };
+
+    const { error: regError } = await window.supabaseAuthPrive
+        .from('gestionnairetournoi_registrations')
+        .insert(registrationData);
+
+    if (regError) {
+        console.error(regError);
         showToast('Erreur lors de l\'inscription', 'error');
         return;
     }
 
-    // Success
-    document.getElementById('stepForm').style.display = 'none';
-    document.getElementById('stepSuccess').style.display = 'block';
+    // Envoyer un email de confirmation (simulé – à implémenter via une fonction Edge)
+    // On peut simplement afficher un message
+    showToast('Inscription envoyée !', 'success');
+
+    // Afficher l'étape de succès
+    stepForm.style.display = 'none';
+    stepSuccess.style.display = 'block';
 }
 
-// ===== INITIALISATION =====
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('verifyCodeBtn').addEventListener('click', verifyCode);
-    document.getElementById('publicRegistrationForm').addEventListener('submit', submitRegistration);
-    document.getElementById('rulesLink').addEventListener('click', (e) => {
-        e.preventDefault();
-        openRulesModal();
-    });
-    document.querySelectorAll('.close-modal, .modal .close-modal').forEach(btn => {
-        btn.addEventListener('click', closeRulesModal);
-    });
-    window.addEventListener('click', (e) => {
-        if (e.target === document.getElementById('rulesModal')) {
-            closeRulesModal();
-        }
-    });
-    document.getElementById('backToHomeBtn').addEventListener('click', () => {
-        window.location.href = 'accueil_hubisgst.html';
-    });
+// Retour à l'accueil
+function backToHome() {
+    window.location.href = 'accueil_hubisgst.html';
+}
+
+// Écouteurs
+verifyBtn.addEventListener('click', verifyCode);
+form.addEventListener('submit', submitRegistration);
+backToHomeBtn.addEventListener('click', backToHome);
+
+// Afficher la modale du règlement
+rulesLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (rulesModal) {
+        rulesModal.style.display = 'block';
+    }
 });
