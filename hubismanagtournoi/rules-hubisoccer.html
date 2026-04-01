@@ -6,7 +6,9 @@
     <title>Règlement général | HubISoccer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../players/css/feed.css">
     <style>
+        /* Styles spécifiques à la page (repris de l'original) */
         :root {
             --primary: #551B8C;
             --primary-light: #7e3db0;
@@ -21,31 +23,15 @@
             --shadow: 0 10px 30px rgba(0,0,0,0.05);
             --transition: all 0.3s ease;
         }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
-            color: var(--dark);
-            line-height: 1.6;
-        }
-
         .rules-container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 40px 20px;
         }
-
         .page-header {
             margin-bottom: 40px;
             text-align: center;
         }
-
         .page-header h1 {
             font-size: 2.5rem;
             color: var(--primary-dark);
@@ -53,16 +39,13 @@
             align-items: center;
             gap: 12px;
         }
-
         .page-header h1 i {
             color: var(--gold);
         }
-
         .page-header p {
             color: var(--gray);
             margin-top: 10px;
         }
-
         .btn-back {
             background: transparent;
             border: none;
@@ -76,12 +59,10 @@
             transition: var(--transition);
             margin-bottom: 20px;
         }
-
         .btn-back:hover {
             color: var(--primary-dark);
             transform: translateX(-3px);
         }
-
         .rules-card {
             background: white;
             border-radius: 24px;
@@ -90,16 +71,13 @@
             overflow: hidden;
             margin-bottom: 30px;
         }
-
         .rules-section {
             padding: 30px;
             border-bottom: 1px solid var(--light-gray);
         }
-
         .rules-section:last-child {
             border-bottom: none;
         }
-
         .rules-section h2 {
             color: var(--primary);
             font-size: 1.6rem;
@@ -108,32 +86,26 @@
             align-items: center;
             gap: 10px;
         }
-
         .rules-section h2 i {
             color: var(--gold);
             font-size: 1.4rem;
         }
-
         .rules-section h3 {
             font-size: 1.2rem;
             margin: 20px 0 10px;
             color: var(--dark);
         }
-
         .rules-section p {
             margin-bottom: 15px;
             color: var(--gray);
         }
-
         .rules-section ul, .rules-section ol {
             margin: 15px 0 15px 30px;
             color: var(--gray);
         }
-
         .rules-section li {
             margin-bottom: 8px;
         }
-
         .highlight {
             background: var(--bg-light);
             padding: 20px;
@@ -141,7 +113,6 @@
             border-left: 4px solid var(--gold);
             margin: 20px 0;
         }
-
         .signature-block {
             background: var(--bg-light);
             border-radius: 16px;
@@ -149,11 +120,6 @@
             text-align: center;
             margin-top: 20px;
         }
-
-        .signature-block p {
-            margin-bottom: 20px;
-        }
-
         .btn-accept {
             background: var(--primary);
             color: white;
@@ -167,20 +133,17 @@
             align-items: center;
             gap: 8px;
         }
-
         .btn-accept:hover {
             background: var(--primary-dark);
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(85,27,140,0.3);
         }
-
         .footer-note {
             text-align: center;
             font-size: 0.8rem;
             color: var(--gray);
             margin-top: 30px;
         }
-
         @media (max-width: 768px) {
             .rules-container {
                 padding: 20px;
@@ -195,88 +158,395 @@
                 font-size: 1.3rem;
             }
         }
+        /* Ajustements pour l'intégration dans le layout */
+        .dashboard-main {
+            padding: 40px 5%;
+        }
+        @media (max-width: 768px) {
+            .dashboard-main {
+                padding: 20px 4%;
+            }
+        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="rules-container">
-        <button class="btn-back" onclick="window.location.href='accueil_hubisgst.html'">
-            <i class="fas fa-arrow-left"></i> Retour
-        </button>
 
-        <div class="page-header">
-            <h1><i class="fas fa-gavel"></i> Règlement général HubISoccer</h1>
-            <p>Version 2.0 – applicable à toutes les compétitions organisées via la plateforme</p>
+    <!-- ========== NAVBAR ========== -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="../players/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Gestionnaire de tournois</span>
         </div>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="../players/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="../players/profile-edit.html"><i class="fas fa-user"></i> Mon profil</a>
+                    <a href="../feed/feed.html"><i class="fas fa-users"></i> Communauté</a>
+                    <a href="../shared/messages.html"><i class="fas fa-envelope"></i> Messages</a>
+                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                </div>
+            </div>
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+        </div>
+    </nav>
 
-        <div class="rules-card">
-            <div class="rules-section">
-                <h2><i class="fas fa-file-contract"></i> 1. Objet et champ d’application</h2>
-                <p>Le présent règlement général définit les conditions d’organisation, de participation et de déroulement des tournois et compétitions gérés sur la plateforme HubISoccer. Il s’applique à tous les utilisateurs (organisateurs, participants, officiels) quel que soit le type de tournoi (public, privé, détection).</p>
-                <p>En s’inscrivant sur HubISoccer ou en participant à un événement, chaque utilisateur accepte sans réserve les présentes dispositions.</p>
+    <!-- ========== OVERLAY SIDEBAR ========== -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ========== SIDEBAR GAUCHE ========== -->
+    <div class="sidebar left-sidebar" id="leftSidebar">
+        <div class="sidebar-header">
+            <h3>Menu Tournois</h3>
+            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="accueil_hubisgst.html"><i class="fas fa-home"></i> Accueil</a>
+            <a href="create-tournament.html"><i class="fas fa-plus-circle"></i> Créer un tournoi</a>
+            <a href="my-tournaments.html"><i class="fas fa-list"></i> Mes tournois</a>
+            <a href="my-registrations.html"><i class="fas fa-calendar-check"></i> Mes inscriptions</a>
+            <a href="rankings.html"><i class="fas fa-chart-line"></i> Classements</a>
+            <a href="tournament-rules.html"><i class="fas fa-gavel"></i> Règlement</a>
+            <hr>
+            <a href="rules-hubisoccer.html" class="active"><i class="fas fa-file-contract"></i> Règlement général</a>
+            <a href="help-tournament.html"><i class="fas fa-question-circle"></i> Aide</a>
+        </nav>
+    </div>
+
+    <!-- ========== CONTENU PRINCIPAL ========== -->
+    <main class="dashboard-main">
+        <div class="rules-container">
+            <button class="btn-back" id="backBtn">
+                <i class="fas fa-arrow-left"></i> Retour
+            </button>
+
+            <div class="page-header">
+                <h1><i class="fas fa-gavel"></i> Règlement général HubISoccer</h1>
+                <p>Version 2.0 – applicable à toutes les compétitions organisées via la plateforme</p>
             </div>
 
-            <div class="rules-section">
-                <h2><i class="fas fa-user-check"></i> 2. Conditions de participation</h2>
-                <p><strong>2.1 – Âge et aptitudes</strong><br>Les participants doivent être âgés d’au moins 12 ans, sauf dérogation spécifique prévue pour certaines catégories. Ils attestent être en bonne condition physique et ne présenter aucune contre-indication médicale à la pratique sportive concernée.</p>
-                <p><strong>2.2 – Licence et identité</strong><br>Pour les tournois officiels HubISoccer, chaque participant doit posséder un identifiant HubISoccer valide. Les organisateurs de tournois privés peuvent définir leurs propres critères d’éligibilité.</p>
-                <p><strong>2.3 – Fair‑play et éthique</strong><br>Tout comportement antisportif, frauduleux ou contraire à l’éthique (dopage, violence, propos discriminatoires) expose le contrevenant à des sanctions pouvant aller jusqu’à l’exclusion définitive de la plateforme.</p>
+            <div class="rules-card">
+                <!-- Contenu statique du règlement (inchangé) -->
+                <div class="rules-section">
+                    <h2><i class="fas fa-file-contract"></i> 1. Objet et champ d’application</h2>
+                    <p>Le présent règlement général définit les conditions d’organisation, de participation et de déroulement des tournois et compétitions gérés sur la plateforme HubISoccer. Il s’applique à tous les utilisateurs (organisateurs, participants, officiels) quel que soit le type de tournoi (public, privé, détection).</p>
+                    <p>En s’inscrivant sur HubISoccer ou en participant à un événement, chaque utilisateur accepte sans réserve les présentes dispositions.</p>
+                </div>
+
+                <div class="rules-section">
+                    <h2><i class="fas fa-user-check"></i> 2. Conditions de participation</h2>
+                    <p><strong>2.1 – Âge et aptitudes</strong><br>Les participants doivent être âgés d’au moins 12 ans, sauf dérogation spécifique prévue pour certaines catégories. Ils attestent être en bonne condition physique et ne présenter aucune contre-indication médicale à la pratique sportive concernée.</p>
+                    <p><strong>2.2 – Licence et identité</strong><br>Pour les tournois officiels HubISoccer, chaque participant doit posséder un identifiant HubISoccer valide. Les organisateurs de tournois privés peuvent définir leurs propres critères d’éligibilité.</p>
+                    <p><strong>2.3 – Fair‑play et éthique</strong><br>Tout comportement antisportif, frauduleux ou contraire à l’éthique (dopage, violence, propos discriminatoires) expose le contrevenant à des sanctions pouvant aller jusqu’à l’exclusion définitive de la plateforme.</p>
+                </div>
+
+                <div class="rules-section">
+                    <h2><i class="fas fa-trophy"></i> 3. Organisation des tournois</h2>
+                    <p><strong>3.1 – Types de tournois</strong><br>HubISoccer distingue quatre catégories de tournois :<br>
+                    - <strong>Public Show You</strong> : tournoi ouvert à tous, sans prérequis.<br>
+                    - <strong>Public Détection</strong> : accessible après validation du premier‑pas (examen théorique et pratique).<br>
+                    - <strong>Privé HubISoccer</strong> : réservé aux membres de l’espace privé.<br>
+                    - <strong>Privé Simple</strong> : créé par un utilisateur après paiement d’un forfait.</p>
+                    <p><strong>3.2 – Obligations de l’organisateur</strong><br>L’organisateur s’engage à fournir un règlement propre au tournoi (visible avant inscription), à garantir le bon déroulement des rencontres et à saisir les résultats dans les délais impartis. Il peut être assisté par l’équipe HubISoccer pour la validation des inscriptions et la gestion des litiges.</p>
+                    <p><strong>3.3 – Forfait et primes</strong><br>Les tournois privés simples nécessitent l’acquittement d’un forfait (montant variable selon la durée et le nombre d’équipes). Les primes éventuelles sont versées via la plateforme selon les modalités définies par l’organisateur.</p>
+                </div>
+
+                <div class="rules-section">
+                    <h2><i class="fas fa-futbol"></i> 4. Déroulement des matchs</h2>
+                    <p><strong>4.1 – Feuilles de match</strong><br>Pour chaque rencontre, un rapport officiel doit être saisi par les acteurs désignés : arbitre, commissaire, staff médical. Ces rapports incluent le score, les cartons, les blessures, etc. Ils font foi en cas de contestation.</p>
+                    <p><strong>4.2 – Streaming et données</strong><br>Les organisateurs peuvent diffuser les matchs via un flux intégré ou un lien externe. Les données statistiques générées (possession, tirs, etc.) restent la propriété de HubISoccer et peuvent être utilisées pour enrichir le profil des joueurs.</p>
+                    <p><strong>4.3 – Retrait et forfait</strong><br>Une équipe qui ne se présente pas dans les délais impartis est déclarée forfait. L’organisation peut décider de sanctions financières ou sportives.</p>
+                </div>
+
+                <div class="rules-section">
+                    <h2><i class="fas fa-chart-line"></i> 5. Statistiques et classements</h2>
+                    <p>Les statistiques individuelles et collectives sont calculées automatiquement à partir des rapports de match. Les classements sont mis à jour en temps réel. Les joueurs peuvent consulter l’historique de leurs performances sur leur profil.</p>
+                </div>
+
+                <div class="rules-section">
+                    <h2><i class="fas fa-laptop-code"></i> 6. Protection des données et propriété intellectuelle</h2>
+                    <p>Conformément à la réglementation en vigueur (RGPD), les données personnelles collectées sont utilisées uniquement dans le cadre du fonctionnement de la plateforme et ne sont pas cédées à des tiers. Chaque utilisateur dispose d’un droit d’accès, de rectification et d’opposition.</p>
+                    <p>Les contenus publiés (photos, vidéos) restent la propriété de leur auteur, mais leur utilisation dans le cadre d’une communication autour du tournoi est autorisée.</p>
+                </div>
+
+                <div class="rules-section">
+                    <h2><i class="fas fa-shield-alt"></i> 7. Responsabilité et assurance</h2>
+                    <p>HubISoccer agit comme une plateforme de mise en relation et d’organisation. La responsabilité de la plateforme ne saurait être engagée en cas d’accident, de blessure ou de litige entre participants. Il appartient à chaque participant de souscrire les assurances nécessaires.</p>
+                </div>
+
+                <div class="rules-section">
+                    <h2><i class="fas fa-gavel"></i> 8. Sanctions et recours</h2>
+                    <p>Tout manquement au présent règlement ou au règlement spécifique d’un tournoi peut entraîner : avertissement, retrait de points, exclusion temporaire ou définitive. Les décisions de l’administration HubISoccer sont sans appel.</p>
+                </div>
+
+                <div class="rules-section">
+                    <h2><i class="fas fa-calendar-alt"></i> 9. Entrée en vigueur et modifications</h2>
+                    <p>Le présent règlement entre en vigueur à la date de sa publication. HubISoccer se réserve le droit de le modifier à tout moment ; les modifications sont opposables dès leur mise en ligne.</p>
+                </div>
+
+                <div class="signature-block">
+                    <p><i class="fas fa-hand-peace"></i> En vous inscrivant à un tournoi ou en organisant une compétition, vous reconnaissez avoir pris connaissance et accepter sans réserve l’intégralité du présent règlement général.</p>
+                    <button class="btn-accept" id="openAcceptModalBtn">
+                        <i class="fas fa-check-circle"></i> J'accepte le règlement
+                    </button>
+                </div>
             </div>
 
-            <div class="rules-section">
-                <h2><i class="fas fa-trophy"></i> 3. Organisation des tournois</h2>
-                <p><strong>3.1 – Types de tournois</strong><br>HubISoccer distingue quatre catégories de tournois :<br>
-                - <strong>Public Show You</strong> : tournoi ouvert à tous, sans prérequis.<br>
-                - <strong>Public Détection</strong> : accessible après validation du premier‑pas (examen théorique et pratique).<br>
-                - <strong>Privé HubISoccer</strong> : réservé aux membres de l’espace privé.<br>
-                - <strong>Privé Simple</strong> : créé par un utilisateur après paiement d’un forfait.</p>
-                <p><strong>3.2 – Obligations de l’organisateur</strong><br>L’organisateur s’engage à fournir un règlement propre au tournoi (visible avant inscription), à garantir le bon déroulement des rencontres et à saisir les résultats dans les délais impartis. Il peut être assisté par l’équipe HubISoccer pour la validation des inscriptions et la gestion des litiges.</p>
-                <p><strong>3.3 – Forfait et primes</strong><br>Les tournois privés simples nécessitent l’acquittement d’un forfait (montant variable selon la durée et le nombre d’équipes). Les primes éventuelles sont versées via la plateforme selon les modalités définies par l’organisateur.</p>
-            </div>
-
-            <div class="rules-section">
-                <h2><i class="fas fa-futbol"></i> 4. Déroulement des matchs</h2>
-                <p><strong>4.1 – Feuilles de match</strong><br>Pour chaque rencontre, un rapport officiel doit être saisi par les acteurs désignés : arbitre, commissaire, staff médical. Ces rapports incluent le score, les cartons, les blessures, etc. Ils font foi en cas de contestation.</p>
-                <p><strong>4.2 – Streaming et données</strong><br>Les organisateurs peuvent diffuser les matchs via un flux intégré ou un lien externe. Les données statistiques générées (possession, tirs, etc.) restent la propriété de HubISoccer et peuvent être utilisées pour enrichir le profil des joueurs.</p>
-                <p><strong>4.3 – Retrait et forfait</strong><br>Une équipe qui ne se présente pas dans les délais impartis est déclarée forfait. L’organisation peut décider de sanctions financières ou sportives.</p>
-            </div>
-
-            <div class="rules-section">
-                <h2><i class="fas fa-chart-line"></i> 5. Statistiques et classements</h2>
-                <p>Les statistiques individuelles et collectives sont calculées automatiquement à partir des rapports de match. Les classements sont mis à jour en temps réel. Les joueurs peuvent consulter l’historique de leurs performances sur leur profil.</p>
-            </div>
-
-            <div class="rules-section">
-                <h2><i class="fas fa-laptop-code"></i> 6. Protection des données et propriété intellectuelle</h2>
-                <p>Conformément à la réglementation en vigueur (RGPD), les données personnelles collectées sont utilisées uniquement dans le cadre du fonctionnement de la plateforme et ne sont pas cédées à des tiers. Chaque utilisateur dispose d’un droit d’accès, de rectification et d’opposition.</p>
-                <p>Les contenus publiés (photos, vidéos) restent la propriété de leur auteur, mais leur utilisation dans le cadre d’une communication autour du tournoi est autorisée.</p>
-            </div>
-
-            <div class="rules-section">
-                <h2><i class="fas fa-shield-alt"></i> 7. Responsabilité et assurance</h2>
-                <p>HubISoccer agit comme une plateforme de mise en relation et d’organisation. La responsabilité de la plateforme ne saurait être engagée en cas d’accident, de blessure ou de litige entre participants. Il appartient à chaque participant de souscrire les assurances nécessaires.</p>
-            </div>
-
-            <div class="rules-section">
-                <h2><i class="fas fa-gavel"></i> 8. Sanctions et recours</h2>
-                <p>Tout manquement au présent règlement ou au règlement spécifique d’un tournoi peut entraîner : avertissement, retrait de points, exclusion temporaire ou définitive. Les décisions de l’administration HubISoccer sont sans appel.</p>
-            </div>
-
-            <div class="rules-section">
-                <h2><i class="fas fa-calendar-alt"></i> 9. Entrée en vigueur et modifications</h2>
-                <p>Le présent règlement entre en vigueur à la date de sa publication. HubISoccer se réserve le droit de le modifier à tout moment ; les modifications sont opposables dès leur mise en ligne.</p>
-            </div>
-
-            <div class="signature-block">
-                <p><i class="fas fa-hand-peace"></i> En vous inscrivant à un tournoi ou en organisant une compétition, vous reconnaissez avoir pris connaissance et accepter sans réserve l’intégralité du présent règlement général.</p>
-                <button class="btn-accept" onclick="window.location.href='accueil_hubisgst.html'">
-                    <i class="fas fa-check-circle"></i> J'accepte le règlement
-                </button>
+            <div class="footer-note">
+                © 2026 HubISoccer – Tous droits réservés – Dernière mise à jour : 24 mars 2026
             </div>
         </div>
+    </main>
 
-        <div class="footer-note">
-            © 2026 HubISoccer – Tous droits réservés – Dernière mise à jour : 24 mars 2026
+    <!-- ========== FOOTER ========== -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ========== MODALE DE SIGNATURE ========== -->
+    <div id="signatureModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Acceptation du règlement</h2>
+                <span class="close-modal" id="closeSignatureModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="acceptanceForm">
+                    <div class="form-group">
+                        <label>Nom complet *</label>
+                        <input type="text" id="acceptFullName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Catégorie *</label>
+                        <select id="acceptCategory" required>
+                            <option value="">Sélectionnez votre catégorie</option>
+                            <option value="U12">U12</option>
+                            <option value="U15">U15</option>
+                            <option value="U18">U18</option>
+                            <option value="Senior">Senior</option>
+                            <option value="Vétéran">Vétéran</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Club / Équipe (optionnel)</label>
+                        <input type="text" id="acceptClub" placeholder="Nom de votre club">
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="acceptConfirm" required>
+                        <label>Je certifie avoir lu et accepté l’intégralité du règlement général</label>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn-cancel" id="cancelSignatureBtn">Annuler</button>
+                        <button type="submit" class="btn-confirm">Valider et signer</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="../auth/auth.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        // Récupération des paramètres URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const tournamentId = urlParams.get('tournament_id');
+
+        let currentUser = null;
+        let currentProfile = null;
+
+        // Éléments DOM
+        const backBtn = document.getElementById('backBtn');
+        const openModalBtn = document.getElementById('openAcceptModalBtn');
+        const signatureModal = document.getElementById('signatureModal');
+        const closeModalBtn = document.getElementById('closeSignatureModal');
+        const cancelBtn = document.getElementById('cancelSignatureBtn');
+        const acceptanceForm = document.getElementById('acceptanceForm');
+        const acceptFullName = document.getElementById('acceptFullName');
+        const acceptCategory = document.getElementById('acceptCategory');
+        const acceptClub = document.getElementById('acceptClub');
+        const acceptConfirm = document.getElementById('acceptConfirm');
+
+        // ===== AUTHENTIFICATION =====
+        async function checkAuth() {
+            const { data: { session }, error } = await window.supabaseAuthPrive.auth.getSession();
+            if (error || !session) {
+                window.location.href = '../auth/login.html';
+                return null;
+            }
+            currentUser = session.user;
+            const { data: profile } = await window.supabaseAuthPrive
+                .from('profiles')
+                .select('full_name')
+                .eq('id', currentUser.id)
+                .single();
+            currentProfile = profile;
+            return currentUser;
+        }
+
+        // ===== AFFICHAGE DU PROFIL DANS LA NAVBAR =====
+        async function updateNavbarProfile() {
+            if (currentProfile && currentProfile.full_name) {
+                document.getElementById('userName').textContent = currentProfile.full_name;
+            }
+            const { data: profileAvatar } = await window.supabaseAuthPrive
+                .from('profiles')
+                .select('avatar_url')
+                .eq('id', currentUser.id)
+                .single();
+            if (profileAvatar?.avatar_url) {
+                document.getElementById('userAvatar').src = profileAvatar.avatar_url;
+            }
+        }
+
+        // ===== ENREGISTREMENT DE L'ACCEPTATION =====
+        async function saveAcceptance(event) {
+            event.preventDefault();
+            const fullName = acceptFullName.value.trim();
+            const category = acceptCategory.value;
+            const club = acceptClub.value.trim();
+            if (!fullName || !category) {
+                showToast('Veuillez remplir tous les champs obligatoires', 'warning');
+                return;
+            }
+            if (!acceptConfirm.checked) {
+                showToast('Vous devez confirmer votre acceptation', 'warning');
+                return;
+            }
+
+            const dataToInsert = {
+                tournament_id: tournamentId ? parseInt(tournamentId) : null,
+                user_id: currentUser?.id || null,
+                full_name: fullName,
+                club: club || null,
+                category: category,
+                signed_at: new Date().toISOString(),
+                ip_address: null // optionnel
+            };
+
+            try {
+                const { error } = await window.supabaseAuthPrive
+                    .from('gestionnairetournoi_rule_acceptances')
+                    .insert(dataToInsert);
+                if (error) throw error;
+                showToast('Acceptation enregistrée !', 'success');
+                closeModal();
+                // Redirection en fonction de la présence de tournament_id
+                if (tournamentId) {
+                    window.location.href = `tournament-details.html?id=${tournamentId}`;
+                } else {
+                    window.location.href = 'accueil_hubisgst.html';
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Erreur lors de l’enregistrement', 'error');
+            }
+        }
+
+        // ===== GESTION DE LA MODALE =====
+        function openModal() {
+            // Préremplir le nom si l'utilisateur est connecté
+            if (currentProfile && currentProfile.full_name) {
+                acceptFullName.value = currentProfile.full_name;
+            }
+            signatureModal.style.display = 'block';
+        }
+        function closeModal() {
+            signatureModal.style.display = 'none';
+            acceptanceForm.reset();
+        }
+
+        // ===== GESTION DE LA SIDEBAR ET DU MENU UTILISATEUR =====
+        function initSidebarAndUserMenu() {
+            const userMenu = document.getElementById('userMenu');
+            const userDropdown = document.getElementById('userDropdown');
+            if (userMenu && userDropdown) {
+                userMenu.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userDropdown.classList.toggle('show');
+                });
+                document.addEventListener('click', () => userDropdown.classList.remove('show'));
+            }
+
+            document.getElementById('logoutLink').addEventListener('click', async (e) => {
+                e.preventDefault();
+                await window.supabaseAuthPrive.auth.signOut();
+                window.location.href = '../index.html';
+            });
+
+            const menuToggle = document.getElementById('menuToggle');
+            const leftSidebar = document.getElementById('leftSidebar');
+            const closeLeftSidebar = document.getElementById('closeLeftSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (menuToggle && leftSidebar && overlay) {
+                menuToggle.addEventListener('click', () => {
+                    leftSidebar.classList.add('active');
+                    overlay.classList.add('active');
+                });
+                if (closeLeftSidebar) {
+                    closeLeftSidebar.addEventListener('click', () => {
+                        leftSidebar.classList.remove('active');
+                        overlay.classList.remove('active');
+                    });
+                }
+                overlay.addEventListener('click', () => {
+                    leftSidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                });
+            }
+        }
+
+        // ===== INITIALISATION =====
+        (async () => {
+            const user = await checkAuth();
+            if (!user) return;
+            await updateNavbarProfile();
+            initSidebarAndUserMenu();
+
+            backBtn.addEventListener('click', () => {
+                if (tournamentId) {
+                    window.location.href = `tournament-details.html?id=${tournamentId}`;
+                } else {
+                    window.location.href = 'accueil_hubisgst.html';
+                }
+            });
+
+            openModalBtn.addEventListener('click', openModal);
+            closeModalBtn.addEventListener('click', closeModal);
+            cancelBtn.addEventListener('click', closeModal);
+            acceptanceForm.addEventListener('submit', saveAcceptance);
+            window.addEventListener('click', (e) => {
+                if (e.target === signatureModal) closeModal();
+            });
+        })();
+    </script>
 </body>
 </html>
