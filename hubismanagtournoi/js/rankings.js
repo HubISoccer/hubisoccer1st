@@ -8,7 +8,7 @@ let players = [];
 
 // ===== CHARGEMENT DES TOURNOIS =====
 async function loadTournaments() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_tournaments')
         .select('id, name, sport_id, start_date')
         .eq('is_active', true)
@@ -36,7 +36,7 @@ async function loadTournaments() {
 
 // ===== CHARGEMENT DES STATISTIQUES =====
 async function loadTeamStats() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_stats')
         .select(`
             *,
@@ -57,7 +57,7 @@ async function loadTeamStats() {
 
 async function loadPlayersStats() {
     // Récupérer tous les événements de match pour ce tournoi
-    const { data: matches, error: matchesError } = await supabaseGestionTournoi
+    const { data: matches, error: matchesError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_matches')
         .select('id')
         .eq('tournament_id', currentTournamentId);
@@ -69,7 +69,7 @@ async function loadPlayersStats() {
         return;
     }
     const matchIds = matches.map(m => m.id);
-    const { data: events, error: eventsError } = await supabaseGestionTournoi
+    const { data: events, error: eventsError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_match_events')
         .select('*')
         .in('match_id', matchIds)
@@ -84,7 +84,7 @@ async function loadPlayersStats() {
     }
 
     // Récupérer les joueurs avec leurs profils
-    const { data: playersData, error: playersError } = await supabaseGestionTournoi
+    const { data: playersData, error: playersError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .select(`
             id,
@@ -171,7 +171,7 @@ function renderTeamsRanking() {
             </tr>
         `;
     });
-    html += `</tbody></table>`;
+    html += `</tbody> </table>`;
     container.innerHTML = html;
 }
 
@@ -190,7 +190,7 @@ function renderScorersRanking() {
     scorers.forEach((p, idx) => {
         html += `<tr><td>${idx+1}</td><td>${escapeHtml(p.player_name)}</td><td>${p.goals}</td></tr>`;
     });
-    html += `</tbody></table>`;
+    html += `</tbody> </table>`;
     container.innerHTML = html;
 }
 
@@ -209,7 +209,7 @@ function renderAssistsRanking() {
     assisters.forEach((p, idx) => {
         html += `<tr><td>${idx+1}</td><td>${escapeHtml(p.player_name)}</td><td>${p.assists}</td></tr>`;
     });
-    html += `</tbody></table>`;
+    html += `</tbody> </table>`;
     container.innerHTML = html;
 }
 
@@ -228,7 +228,7 @@ function renderCardsRanking() {
     cards.forEach((p, idx) => {
         html += `<tr><td>${idx+1}</td><td>${escapeHtml(p.player_name)}</td><td>${p.yellow_cards}</td><td>${p.red_cards}</td></tr>`;
     });
-    html += `</tbody></table>`;
+    html += `</tbody> </table>`;
     container.innerHTML = html;
 }
 
