@@ -1,266 +1,129 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Paiement | HubISoccer</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/hubismanagtournoi.css">
-    <link rel="stylesheet" href="css/payment.css">
-    <link rel="stylesheet" href="../players/css/feed.css">
-    <style>
-        .dashboard-main {
-            padding: 40px 5%;
+// ===== RÉCUPÉRATION DE L'ID DU TOURNOI =====
+const urlParams = new URLSearchParams(window.location.search);
+const tournamentId = urlParams.get('id');
+let tournamentData = null;
+let currentUser = null;
+let paymentAmount = 0;
+
+async function getCurrentUser() {
+    const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
+    if (!error && user) return user;
+    return null;
+}
+
+async function loadTournamentInfo() {
+    if (!tournamentId) {
+        showToast('Tournoi non spécifié', 'error');
+        window.location.href = 'accueil_hubisgst.html';
+        return;
+    }
+    const { data, error } = await window.supabaseAuthPrive
+        .from('gestionnairetournoi_tournaments')
+        .select('name, start_date, end_date, location, type_id')
+        .eq('id', tournamentId)
+        .single();
+    if (error) {
+        console.error(error);
+        showToast('Erreur chargement du tournoi', 'error');
+        return;
+    }
+    tournamentData = data;
+    // Simuler un montant à payer (à remplacer par la valeur réelle du forfait)
+    paymentAmount = 25000; // 25 000 FCFA par défaut (à adapter selon le type de tournoi)
+    document.getElementById('tournamentInfo').innerHTML = `
+        <p><strong>${escapeHtml(tournamentData.name)}</strong></p>
+        <p>Du ${new Date(tournamentData.start_date).toLocaleDateString('fr-FR')} au ${new Date(tournamentData.end_date).toLocaleDateString('fr-FR')}</p>
+        <p>${tournamentData.location || 'Lieu non précisé'}</p>
+    `;
+    document.getElementById('amount').textContent = `${paymentAmount.toLocaleString()} FCFA`;
+}
+
+// ===== GESTION DES MÉTHODES DE PAIEMENT =====
+function togglePaymentFields() {
+    const method = document.querySelector('input[name="paymentMethod"]:checked').value;
+    document.getElementById('mobileMoneyFields').style.display = method === 'mobile_money' ? 'block' : 'none';
+    document.getElementById('cardFields').style.display = method === 'card' ? 'block' : 'none';
+    document.getElementById('bankTransferFields').style.display = method === 'bank_transfer' ? 'block' : 'none';
+}
+
+// ===== UPLOAD DE FICHIER (preuve) =====
+async function uploadProof(file) {
+    if (!file) return null;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `payment_${currentUser.id}_${Date.now()}.${fileExt}`;
+    const filePath = `payment_proofs/${fileName}`;
+    const { error } = await window.supabaseAuthPrive.storage
+        .from('documents')
+        .upload(filePath, file);
+    if (error) {
+        console.error(error);
+        showToast('Erreur upload de la preuve', 'error');
+        return null;
+    }
+    const { data: urlData } = window.supabaseAuthPrive.storage
+        .from('documents')
+        .getPublicUrl(filePath);
+    return urlData.publicUrl;
+}
+
+// ===== SAUVEGARDE DU PAIEMENT =====
+async function processPayment() {
+    const method = document.querySelector('input[name="paymentMethod"]:checked').value;
+    let proofUrl = null;
+    if (method === 'bank_transfer') {
+        const fileInput = document.getElementById('proofFile');
+        if (fileInput.files.length) {
+            proofUrl = await uploadProof(fileInput.files[0]);
         }
-        .payment-container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        @media (max-width: 768px) {
-            .dashboard-main {
-                padding: 20px 4%;
-            }
-        }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
-<body>
+    }
 
-    <!-- ========== NAVBAR ========== -->
-    <nav class="dashboard-nav">
-        <div class="nav-left">
-            <img src="../players/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
-            <span class="dashboard-title">Gestionnaire de tournois</span>
-        </div>
-        <div class="nav-right">
-            <select class="lang-picker" id="langSelect">
-                <option value="fr">🇫🇷 Français</option>
-                <option value="en">🇺🇸 English</option>
-            </select>
-            <div class="notif-icon" id="notifIcon">
-                <i class="fas fa-bell"></i>
-                <span class="notif-badge" id="notifBadge">0</span>
-            </div>
-            <div class="user-menu" id="userMenu">
-                <img src="../players/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
-                <span class="user-name" id="userName">Chargement...</span>
-                <i class="fas fa-chevron-down"></i>
-                <div class="user-dropdown" id="userDropdown">
-                    <a href="../players/profile-edit.html"><i class="fas fa-user"></i> Mon profil</a>
-                    <a href="../feed/feed.html"><i class="fas fa-users"></i> Communauté</a>
-                    <a href="../shared/messages.html"><i class="fas fa-envelope"></i> Messages</a>
-                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
-                </div>
-            </div>
-            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
-        </div>
-    </nav>
+    const paymentData = {
+        tournament_id: parseInt(tournamentId),
+        user_id: currentUser.id,
+        amount: paymentAmount,
+        payment_method: method,
+        status: 'pending',
+        created_at: new Date().toISOString()
+    };
+    if (method === 'mobile_money') {
+        paymentData.phone_number = document.getElementById('phoneNumber').value;
+        // La colonne 'operator' n'existe pas dans la table, on ne l'envoie pas
+    }
+    if (proofUrl) paymentData.proof_url = proofUrl;
 
-    <!-- ========== OVERLAY SIDEBAR ========== -->
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    const { error } = await window.supabaseAuthPrive
+        .from('gestionnairetournoi_payments')
+        .insert(paymentData);
+    if (error) {
+        showToast('Erreur lors de l\'enregistrement du paiement', 'error');
+        console.error(error);
+        return;
+    }
+    showToast('Paiement enregistré, en attente de validation', 'success');
+    setTimeout(() => {
+        window.location.href = `create-tournament.html?id=${tournamentId}`;
+    }, 2000);
+}
 
-    <!-- ========== SIDEBAR GAUCHE ========== -->
-    <div class="sidebar left-sidebar" id="leftSidebar">
-        <div class="sidebar-header">
-            <h3>Menu Tournois</h3>
-            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="accueil_hubisgst.html"><i class="fas fa-home"></i> Accueil</a>
-            <a href="create-tournament.html"><i class="fas fa-plus-circle"></i> Créer un tournoi</a>
-            <a href="my-tournaments.html"><i class="fas fa-list"></i> Mes tournois</a>
-            <a href="my-registrations.html"><i class="fas fa-calendar-check"></i> Mes inscriptions</a>
-            <a href="rankings.html"><i class="fas fa-chart-line"></i> Classements</a>
-            <a href="tournament-rules.html"><i class="fas fa-gavel"></i> Règlement</a>
-            <hr>
-            <a href="rules-hubisoccer.html"><i class="fas fa-file-contract"></i> Règlement général</a>
-            <a href="help-tournament.html"><i class="fas fa-question-circle"></i> Aide</a>
-        </nav>
-    </div>
+// ===== INITIALISATION =====
+document.addEventListener('DOMContentLoaded', async () => {
+    currentUser = await getCurrentUser();
+    if (!currentUser) {
+        window.location.href = '../auth/login.html';
+        return;
+    }
+    await loadTournamentInfo();
 
-    <!-- ========== CONTENU PRINCIPAL ========== -->
-    <main class="dashboard-main">
-        <div class="payment-container">
-            <div class="page-header">
-                <button class="btn-back" id="backBtn">
-                    <i class="fas fa-arrow-left"></i>
-                    Retour
-                </button>
-                <h1>
-                    <i class="fas fa-credit-card"></i>
-                    Paiement
-                </h1>
-            </div>
+    document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+        radio.addEventListener('change', togglePaymentFields);
+    });
+    togglePaymentFields();
 
-            <div class="payment-card">
-                <div class="payment-summary">
-                    <h2>Récapitulatif</h2>
-                    <div id="tournamentInfo" class="tournament-info">
-                        <p>Chargement...</p>
-                    </div>
-                    <div class="amount-due">
-                        <span>Montant à payer :</span>
-                        <strong id="amount">0 FCFA</strong>
-                    </div>
-                </div>
-
-                <div class="payment-methods">
-                    <h3>Mode de paiement</h3>
-                    <div class="methods-list">
-                        <label class="method-option">
-                            <input type="radio" name="paymentMethod" value="mobile_money" checked>
-                            <i class="fas fa-mobile-alt"></i>
-                            <span>Mobile Money (MTN, Moov)</span>
-                        </label>
-                        <label class="method-option">
-                            <input type="radio" name="paymentMethod" value="card">
-                            <i class="fas fa-credit-card"></i>
-                            <span>Carte bancaire</span>
-                        </label>
-                        <label class="method-option">
-                            <input type="radio" name="paymentMethod" value="bank_transfer">
-                            <i class="fas fa-university"></i>
-                            <span>Virement bancaire</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div id="mobileMoneyFields" class="payment-details">
-                    <div class="form-group">
-                        <label>Numéro de téléphone *</label>
-                        <input type="tel" id="phoneNumber" placeholder="+229 XX XX XX XX">
-                    </div>
-                    <div class="form-group">
-                        <label>Opérateur</label>
-                        <select id="operator">
-                            <option value="mtn">MTN</option>
-                            <option value="moov">Moov</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div id="cardFields" class="payment-details" style="display: none;">
-                    <div class="form-group">
-                        <label>Numéro de carte *</label>
-                        <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456">
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Date d'expiration</label>
-                            <input type="text" id="cardExpiry" placeholder="MM/AA">
-                        </div>
-                        <div class="form-group">
-                            <label>CVV</label>
-                            <input type="text" id="cardCvv" placeholder="123">
-                        </div>
-                    </div>
-                </div>
-
-                <div id="bankTransferFields" class="payment-details" style="display: none;">
-                    <div class="bank-info">
-                        <p><strong>Coordonnées bancaires :</strong></p>
-                        <p>Banque : HubISoccer Bank<br>
-                        IBAN : BJ66 1234 5678 9012 3456 7890 1234<br>
-                        BIC : HUBIBJBB</p>
-                        <p class="small">Veuillez utiliser votre email comme référence.</p>
-                    </div>
-                    <div class="form-group">
-                        <label>Preuve de virement (facultatif)</label>
-                        <input type="file" id="proofFile" accept=".pdf,.jpg,.jpeg,.png">
-                    </div>
-                </div>
-
-                <div class="form-actions">
-                    <button id="payBtn" class="btn-primary">Payer maintenant</button>
-                    <button id="cancelBtn" class="btn-secondary">Annuler</button>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- ========== FOOTER ========== -->
-    <footer class="dashboard-footer">
-        <div class="footer-content">
-            <div class="compliance-badges">
-                <span class="badge">Conformité APDP Bénin</span>
-                <span class="badge">Règlementation FIFA</span>
-                <span class="badge">Double Projet Sport-Études</span>
-            </div>
-            <div class="contact-info">
-                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
-                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
-            </div>
-            <div class="legal">
-                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
-                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
-                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
-            </div>
-        </div>
-    </footer>
-
-    <div id="toastContainer" class="toast-container"></div>
-
-    <!-- Scripts -->
-    <script src="../auth/auth.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/payment.js"></script>
-
-    <!-- Gestion de la sidebar et de l’authentification -->
-    <script>
-        (async () => {
-            const { data: { session }, error } = await window.supabaseAuthPrive.auth.getSession();
-            if (error || !session) {
-                window.location.href = '../auth/login.html';
-                return;
-            }
-            const { data: profile } = await window.supabaseAuthPrive
-                .from('profiles')
-                .select('full_name, avatar_url')
-                .eq('id', session.user.id)
-                .single();
-            if (profile) {
-                document.getElementById('userName').textContent = profile.full_name || 'Utilisateur';
-                document.getElementById('userAvatar').src = profile.avatar_url || '../players/img/user-default.jpg';
-            }
-
-            const userMenu = document.getElementById('userMenu');
-            const userDropdown = document.getElementById('userDropdown');
-            if (userMenu && userDropdown) {
-                userMenu.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    userDropdown.classList.toggle('show');
-                });
-                document.addEventListener('click', () => userDropdown.classList.remove('show'));
-            }
-
-            document.getElementById('logoutLink').addEventListener('click', async (e) => {
-                e.preventDefault();
-                await window.supabaseAuthPrive.auth.signOut();
-                window.location.href = '../index.html';
-            });
-
-            const menuToggle = document.getElementById('menuToggle');
-            const leftSidebar = document.getElementById('leftSidebar');
-            const closeLeftSidebar = document.getElementById('closeLeftSidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            if (menuToggle && leftSidebar && overlay) {
-                menuToggle.addEventListener('click', () => {
-                    leftSidebar.classList.add('active');
-                    overlay.classList.add('active');
-                });
-                if (closeLeftSidebar) {
-                    closeLeftSidebar.addEventListener('click', () => {
-                        leftSidebar.classList.remove('active');
-                        overlay.classList.remove('active');
-                    });
-                }
-                overlay.addEventListener('click', () => {
-                    leftSidebar.classList.remove('active');
-                    overlay.classList.remove('active');
-                });
-            }
-        })();
-    </script>
-</body>
-</html>
+    document.getElementById('payBtn').addEventListener('click', processPayment);
+    document.getElementById('cancelBtn').addEventListener('click', () => {
+        window.location.href = `create-tournament.html?id=${tournamentId}`;
+    });
+    document.getElementById('backBtn').addEventListener('click', () => {
+        window.location.href = `create-tournament.html?id=${tournamentId}`;
+    });
+});
