@@ -1,246 +1,278 @@
-// ===== ÉTATS =====
+// ===== stats-compare.js =====
 let tournaments = [];
 let currentTournamentId = null;
-let compareType = 'teams'; // 'teams' ou 'players'
+let currentCompareType = 'teams'; // 'teams' ou 'players'
 let teamsList = [];
 let playersList = [];
-let teamStats = {};
-let playerStats = {};
+
+// Éléments DOM
+const tournamentSelect = document.getElementById('tournamentSelect');
+const firstSelect = document.getElementById('firstSelect');
+const secondSelect = document.getElementById('secondSelect');
+const resultsDiv = document.getElementById('comparisonResults');
 
 // ===== CHARGEMENT DES TOURNOIS =====
 async function loadTournaments() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_tournaments')
         .select('id, name')
         .eq('is_active', true)
         .order('start_date', { ascending: false });
     if (error) {
         console.error(error);
-        showToast('Erreur chargement tournois', 'error');
+        showToast('Erreur chargement des tournois', 'error');
+        tournamentSelect.innerHTML = '<option value="">Erreur de chargement</option>';
         return;
     }
     tournaments = data || [];
-    const select = document.getElementById('tournamentSelect');
     if (!tournaments.length) {
-        select.innerHTML = '<option value="">Aucun tournoi disponible</option>';
+        tournamentSelect.innerHTML = '<option value="">Aucun tournoi disponible</option>';
         return;
     }
-    select.innerHTML = '<option value="">-- Sélectionnez un tournoi --</option>' +
+    tournamentSelect.innerHTML = '<option value="">-- Sélectionnez un tournoi --</option>' +
         tournaments.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
-    select.addEventListener('change', async () => {
-        currentTournamentId = select.value ? parseInt(select.value) : null;
+    tournamentSelect.addEventListener('change', () => {
+        currentTournamentId = tournamentSelect.value ? parseInt(tournamentSelect.value) : null;
         if (currentTournamentId) {
-            await loadDataForTournament();
-            updateSelectors();
+            loadEntities();
         } else {
-            document.getElementById('comparisonResults').innerHTML = '<div class="empty-state"><i class="fas fa-chart-line"></i><p>Sélectionnez un tournoi</p></div>';
+            resetSelects();
+            showEmptyState();
         }
     });
 }
 
-// ===== CHARGEMENT DES DONNÉES POUR LE TOURNOI =====
-async function loadDataForTournament() {
+// ===== CHARGEMENT DES ENTITÉS SELON LE TYPE =====
+async function loadEntities() {
     if (!currentTournamentId) return;
-    await Promise.all([
-        loadTeamsForTournament(),
-        loadPlayersForTournament(),
-        loadStatsForTournament()
-    ]);
+    if (currentCompareType === 'teams') {
+        await loadTeamsForTournament();
+    } else {
+        await loadPlayersForTournament();
+    }
 }
 
 async function loadTeamsForTournament() {
-    // Récupérer les équipes qui ont des statistiques dans ce tournoi
-    const { data, error } = await supabaseGestionTournoi
+    // Récupérer les équipes ayant participé à ce tournoi (via stats)
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_stats')
-        .select('team_id, team:team_id (id, name, logo_url)')
-        .eq('tournament_id', currentTournamentId)
-        .not('team_id', 'is', null);
+        .select('team_id, team:team_id (id, name)')
+        .eq('tournament_id', currentTournamentId);
     if (error) {
         console.error(error);
         teamsList = [];
-        return;
+    } else {
+        teamsList = data.map(s => s.team).filter(t => t !== null);
     }
-    teamsList = data?.map(s => s.team).filter(t => t) || [];
+    populateSelects(teamsList, 'name');
 }
 
 async function loadPlayersForTournament() {
-    // Récupérer les joueurs qui ont participé à des matchs du tournoi (via events)
-    const { data: matches, error: matchesError } = await supabaseGestionTournoi
-        .from('gestionnairetournoi_matches')
-        .select('id')
-        .eq('tournament_id', currentTournamentId);
-    if (matchesError || !matches.length) {
+    // Récupérer les joueurs ayant participé à ce tournoi (via inscriptions approuvées)
+    // On prend les joueurs inscrits et approuvés pour ce tournoi
+    const { data, error } = await window.supabaseAuthPrive
+        .from('gestionnairetournoi_registrations')
+        .select('player_id, player:player_id (id, profiles:user_id (full_name))')
+        .eq('tournament_id', currentTournamentId)
+        .eq('status', 'approved');
+    if (error) {
+        console.error(error);
         playersList = [];
-        return;
+    } else {
+        playersList = data.map(r => ({
+            id: r.player_id,
+            name: r.player?.profiles?.full_name || 'Joueur'
+        })).filter(p => p.id !== null);
     }
-    const matchIds = matches.map(m => m.id);
-    const { data: events, error: eventsError } = await supabaseGestionTournoi
-        .from('gestionnairetournoi_match_events')
-        .select('player_id, player:player_id (id, user_id, profiles:user_id (full_name, avatar_url))')
-        .in('match_id', matchIds)
-        .not('player_id', 'is', null);
-    if (eventsError) {
-        console.error(eventsError);
-        playersList = [];
-        return;
-    }
-    // Dédupliquer les joueurs
-    const playerMap = new Map();
-    events.forEach(e => {
-        if (e.player && !playerMap.has(e.player.id)) {
-            playerMap.set(e.player.id, e.player);
-        }
-    });
-    playersList = Array.from(playerMap.values());
+    populateSelects(playersList, 'name');
 }
 
-async function loadStatsForTournament() {
-    // Charger les stats des équipes
-    const { data: teamStatsData, error: teamError } = await supabaseGestionTournoi
+function populateSelects(items, labelKey) {
+    if (!items.length) {
+        firstSelect.innerHTML = '<option value="">Aucune donnée disponible</option>';
+        secondSelect.innerHTML = '<option value="">Aucune donnée disponible</option>';
+        firstSelect.disabled = true;
+        secondSelect.disabled = true;
+        return;
+    }
+    const options = items.map(item => `<option value="${item.id}">${escapeHtml(item[labelKey])}</option>`).join('');
+    firstSelect.innerHTML = `<option value="">-- Sélectionnez --</option>${options}`;
+    secondSelect.innerHTML = `<option value="">-- Sélectionnez --</option>${options}`;
+    firstSelect.disabled = false;
+    secondSelect.disabled = false;
+
+    // Réinitialiser les sélections précédentes
+    firstSelect.value = '';
+    secondSelect.value = '';
+    resultsDiv.innerHTML = '<div class="empty-state"><i class="fas fa-chart-line"></i><p>Sélectionnez deux entités</p></div>';
+
+    // Ajouter les événements de changement
+    firstSelect.onchange = () => compare();
+    secondSelect.onchange = () => compare();
+}
+
+function resetSelects() {
+    firstSelect.innerHTML = '<option value="">-- Sélectionnez --</option>';
+    secondSelect.innerHTML = '<option value="">-- Sélectionnez --</option>';
+    firstSelect.disabled = true;
+    secondSelect.disabled = true;
+}
+
+function showEmptyState() {
+    resultsDiv.innerHTML = '<div class="empty-state"><i class="fas fa-chart-line"></i><p>Sélectionnez un tournoi, un type et deux entités à comparer</p></div>';
+}
+
+// ===== COMPARAISON =====
+async function compare() {
+    const firstId = firstSelect.value;
+    const secondId = secondSelect.value;
+    if (!firstId || !secondId) return;
+    if (!currentTournamentId) return;
+
+    if (currentCompareType === 'teams') {
+        await compareTeams(firstId, secondId);
+    } else {
+        await comparePlayers(firstId, secondId);
+    }
+}
+
+async function compareTeams(teamAId, teamBId) {
+    // Récupérer les statistiques des deux équipes dans le tournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_stats')
         .select('*')
-        .eq('tournament_id', currentTournamentId);
-    if (!teamError) {
-        teamStats = {};
-        teamStatsData.forEach(s => {
-            teamStats[s.team_id] = s;
-        });
+        .eq('tournament_id', currentTournamentId)
+        .in('team_id', [teamAId, teamBId]);
+    if (error) {
+        console.error(error);
+        showToast('Erreur récupération statistiques', 'error');
+        return;
     }
-    // Charger les stats des joueurs (à partir des événements)
-    const { data: matches, error: matchesError } = await supabaseGestionTournoi
+    const teamAStats = data.find(s => s.team_id == teamAId) || {};
+    const teamBStats = data.find(s => s.team_id == teamBId) || {};
+
+    const teamAName = teamsList.find(t => t.id == teamAId)?.name || 'Équipe A';
+    const teamBName = teamsList.find(t => t.id == teamBId)?.name || 'Équipe B';
+
+    renderComparison(teamAName, teamBName, [
+        { label: 'Matchs joués', a: teamAStats.matches_played || 0, b: teamBStats.matches_played || 0 },
+        { label: 'Victoires', a: teamAStats.wins || 0, b: teamBStats.wins || 0 },
+        { label: 'Nuls', a: teamAStats.draws || 0, b: teamBStats.draws || 0 },
+        { label: 'Défaites', a: teamAStats.losses || 0, b: teamBStats.losses || 0 },
+        { label: 'Buts marqués', a: teamAStats.goals_for || 0, b: teamBStats.goals_for || 0 },
+        { label: 'Buts encaissés', a: teamAStats.goals_against || 0, b: teamBStats.goals_against || 0 },
+        { label: 'Différence', a: (teamAStats.goals_for || 0) - (teamAStats.goals_against || 0),
+                                   b: (teamBStats.goals_for || 0) - (teamBStats.goals_against || 0) },
+        { label: 'Points', a: teamAStats.points || 0, b: teamBStats.points || 0 }
+    ]);
+}
+
+async function comparePlayers(playerAId, playerBId) {
+    // Récupérer les événements de tous les matchs du tournoi
+    const { data: matches, error: matchesError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_matches')
         .select('id')
         .eq('tournament_id', currentTournamentId);
-    if (matchesError || !matches.length) {
-        playerStats = {};
+    if (matchesError) {
+        console.error(matchesError);
+        showToast('Erreur chargement matchs', 'error');
         return;
     }
     const matchIds = matches.map(m => m.id);
-    const { data: events, error: eventsError } = await supabaseGestionTournoi
+    if (!matchIds.length) {
+        renderComparison('Joueur A', 'Joueur B', []);
+        return;
+    }
+    const { data: events, error: eventsError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_match_events')
         .select('*')
         .in('match_id', matchIds);
     if (eventsError) {
         console.error(eventsError);
-        playerStats = {};
+        showToast('Erreur chargement événements', 'error');
         return;
     }
-    playerStats = {};
+
+    const playerAStats = { goals: 0, assists: 0, yellow: 0, red: 0 };
+    const playerBStats = { goals: 0, assists: 0, yellow: 0, red: 0 };
     events.forEach(e => {
-        if (!e.player_id) return;
-        if (!playerStats[e.player_id]) {
-            playerStats[e.player_id] = {
-                goals: 0,
-                assists: 0,
-                yellow_cards: 0,
-                red_cards: 0,
-                matches: 0
-            };
+        if (e.player_id == playerAId) {
+            if (e.event_type === 'goal') playerAStats.goals++;
+            else if (e.event_type === 'assist') playerAStats.assists++;
+            else if (e.event_type === 'yellow_card') playerAStats.yellow++;
+            else if (e.event_type === 'red_card') playerAStats.red++;
+        } else if (e.player_id == playerBId) {
+            if (e.event_type === 'goal') playerBStats.goals++;
+            else if (e.event_type === 'assist') playerBStats.assists++;
+            else if (e.event_type === 'yellow_card') playerBStats.yellow++;
+            else if (e.event_type === 'red_card') playerBStats.red++;
         }
-        if (e.event_type === 'goal') playerStats[e.player_id].goals++;
-        else if (e.event_type === 'assist') playerStats[e.player_id].assists++;
-        else if (e.event_type === 'yellow_card') playerStats[e.player_id].yellow_cards++;
-        else if (e.event_type === 'red_card') playerStats[e.player_id].red_cards++;
     });
-    // Compter les matchs joués par joueur (à partir des participations)
-    const { data: playersData, error: playersError } = await supabaseGestionTournoi
-        .from('gestionnairetournoi_players')
-        .select('id, team_id')
-        .in('team_id', teamsList.map(t => t.id));
-    if (!playersError && playersData) {
-        playersData.forEach(p => {
-            if (playerStats[p.id]) {
-                playerStats[p.id].matches = (playerStats[p.id].matches || 0) + 1;
-            }
-        });
-    }
+
+    const playerAName = playersList.find(p => p.id == playerAId)?.name || 'Joueur A';
+    const playerBName = playersList.find(p => p.id == playerBId)?.name || 'Joueur B';
+
+    renderComparison(playerAName, playerBName, [
+        { label: 'Buts', a: playerAStats.goals, b: playerBStats.goals },
+        { label: 'Passes décisives', a: playerAStats.assists, b: playerBStats.assists },
+        { label: 'Cartons jaunes', a: playerAStats.yellow, b: playerBStats.yellow },
+        { label: 'Cartons rouges', a: playerAStats.red, b: playerBStats.red }
+    ]);
 }
 
-function updateSelectors() {
-    const firstSelect = document.getElementById('firstSelect');
-    const secondSelect = document.getElementById('secondSelect');
-    if (compareType === 'teams') {
-        firstSelect.innerHTML = '<option value="">-- Sélectionnez une équipe --</option>' +
-            teamsList.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
-        secondSelect.innerHTML = '<option value="">-- Sélectionnez une équipe --</option>' +
-            teamsList.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
-    } else {
-        firstSelect.innerHTML = '<option value="">-- Sélectionnez un joueur --</option>' +
-            playersList.map(p => `<option value="${p.id}">${escapeHtml(p.profiles?.full_name || 'Joueur')}</option>`).join('');
-        secondSelect.innerHTML = '<option value="">-- Sélectionnez un joueur --</option>' +
-            playersList.map(p => `<option value="${p.id}">${escapeHtml(p.profiles?.full_name || 'Joueur')}</option>`).join('');
-    }
-    firstSelect.disabled = false;
-    secondSelect.disabled = false;
-    firstSelect.value = '';
-    secondSelect.value = '';
-    document.getElementById('comparisonResults').innerHTML = '<div class="empty-state"><i class="fas fa-chart-line"></i><p>Sélectionnez deux entités à comparer</p></div>';
-}
-
-function compare() {
-    const firstId = document.getElementById('firstSelect').value;
-    const secondId = document.getElementById('secondSelect').value;
-    if (!firstId || !secondId) {
-        showToast('Veuillez sélectionner deux éléments', 'warning');
+function renderComparison(nameA, nameB, stats) {
+    if (!stats.length) {
+        resultsDiv.innerHTML = '<div class="empty-state"><i class="fas fa-chart-line"></i><p>Aucune statistique disponible pour ces deux entités</p></div>';
         return;
     }
-    if (compareType === 'teams') {
-        compareTeams(parseInt(firstId), parseInt(secondId));
-    } else {
-        comparePlayers(parseInt(firstId), parseInt(secondId));
-    }
-}
-
-function compareTeams(id1, id2) {
-    const team1 = teamsList.find(t => t.id === id1);
-    const team2 = teamsList.find(t => t.id === id2);
-    const stats1 = teamStats[id1] || {};
-    const stats2 = teamStats[id2] || {};
-
-    const metrics = [
-        { label: 'Matchs joués', key: 'matches_played', fmt: v => v || 0 },
-        { label: 'Victoires', key: 'wins', fmt: v => v || 0 },
-        { label: 'Nuls', key: 'draws', fmt: v => v || 0 },
-        { label: 'Défaites', key: 'losses', fmt: v => v || 0 },
-        { label: 'Buts marqués', key: 'goals_for', fmt: v => v || 0 },
-        { label: 'Buts encaissés', key: 'goals_against', fmt: v => v || 0 },
-        { label: 'Différence', key: 'goals_diff', fmt: v => (stats1.goals_for - stats1.goals_against) || 0, value2: (stats2.goals_for - stats2.goals_against) || 0 },
-        { label: 'Points', key: 'points', fmt: v => v || 0 },
-        { label: 'Cartons jaunes', key: 'yellow_cards', fmt: v => v || 0 },
-        { label: 'Cartons rouges', key: 'red_cards', fmt: v => v || 0 }
-    ];
-
     let html = `
-        <table class="comparison-table">
-            <thead>
-                <tr>
-                    <th>Statistique</th>
-                    <th>${escapeHtml(team1.name)}</th>
-                    <th>${escapeHtml(team2.name)}</th>
-                </tr>
-            </thead>
-            <tbody>
+        <div class="comparison-header">
+            <div class="comparison-item first">${escapeHtml(nameA)}</div>
+            <div class="comparison-item second">${escapeHtml(nameB)}</div>
+        </div>
+        <div class="comparison-stats">
     `;
-    metrics.forEach(m => {
-        let val1 = m.fmt(stats1[m.key]);
-        let val2 = m.fmt(stats2[m.key]);
-        if (m.key === 'goals_diff') {
-            val1 = m.value1;
-            val2 = m.value2;
-        }
-        let winnerClass = '';
-        if (val1 > val2) winnerClass = 'winner';
-        else if (val2 > val1) winnerClass = '';
+    stats.forEach(stat => {
+        const diff = stat.a - stat.b;
+        const diffClass = diff > 0 ? 'positive' : (diff < 0 ? 'negative' : 'equal');
         html += `
-            <tr>
-                <td>${m.label}</td>
-                <td class="${winnerClass}">${val1}</td>
-                <td>${val2}</td>
-            </tr>
+            <div class="stat-row">
+                <div class="stat-label">${escapeHtml(stat.label)}</div>
+                <div class="stat-values">
+                    <span class="stat-value first-value">${stat.a}</span>
+                    <span class="stat-diff ${diffClass}">${diff > 0 ? '+' + diff : diff}</span>
+                    <span class="stat-value second-value">${stat.b}</span>
+                </div>
+            </div>
         `;
     });
-    html += `</tbody></table>`;
-    document.getElementById('comparisonResults').innerHTML = html;
+    html += `</div>`;
+    resultsDiv.innerHTML = html;
 }
 
-function comparePlayers(id1
+// ===== GESTION DES ONGLETS =====
+function initTypeSelector() {
+    document.querySelectorAll('.type-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentCompareType = btn.getAttribute('data-type');
+            if (currentTournamentId) {
+                loadEntities();
+            } else {
+                resetSelects();
+                showEmptyState();
+            }
+        });
+    });
+}
+
+// ===== INITIALISATION =====
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadTournaments();
+    initTypeSelector();
+
+    document.getElementById('backBtn').addEventListener('click', () => {
+        window.location.href = 'accueil_hubisgst.html';
+    });
+});
