@@ -87,7 +87,7 @@ async function processPayment() {
     };
     if (method === 'mobile_money') {
         paymentData.phone_number = document.getElementById('phoneNumber').value;
-        paymentData.operator = document.getElementById('operator').value;
+        // La colonne 'operator' n'existe pas dans la table, on ne l'envoie pas
     }
     if (proofUrl) paymentData.proof_url = proofUrl;
 
