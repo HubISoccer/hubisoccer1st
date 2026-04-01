@@ -6,7 +6,7 @@ let tournamentId = null;
 let match = null;
 
 async function checkSession() {
-    const { data: { session }, error } = await supabaseGestionTournoi.auth.getSession();
+    const { data: { session }, error } = await window.supabaseAuthPrive.auth.getSession();
     if (error || !session) {
         window.location.href = '../auth/login.html';
         return null;
@@ -16,7 +16,7 @@ async function checkSession() {
 }
 
 async function loadProfile() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('profiles')
         .select('*')
         .eq('id', currentUser.id)
@@ -28,7 +28,7 @@ async function loadProfile() {
     }
     currentProfile = data;
     document.getElementById('userName').textContent = data.full_name || 'Joueur';
-    document.getElementById('userAvatar').src = data.avatar_url || '../public/img/user-default.jpg';
+    document.getElementById('userAvatar').src = data.avatar_url || '../players/img/user-default.jpg';
     return currentProfile;
 }
 
@@ -42,7 +42,7 @@ async function loadMatch() {
         return;
     }
 
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_matches')
         .select(`
             *,
@@ -92,7 +92,7 @@ function renderMatchDetails() {
 }
 
 async function loadMatchEvents() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_match_events')
         .select('*')
         .eq('match_id', matchId)
@@ -134,7 +134,7 @@ function getEventTypeLabel(type) {
 }
 
 async function loadMatchReports() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_match_reports')
         .select('*')
         .eq('match_id', matchId)
