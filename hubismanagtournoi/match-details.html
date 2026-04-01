@@ -7,12 +7,115 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="css/hubismanagtournoi.css">
+    <link rel="stylesheet" href="../players/css/feed.css">
+    <style>
+        .dashboard-main {
+            padding: 40px 5%;
+        }
+        .tournament-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        @media (max-width: 768px) {
+            .dashboard-main {
+                padding: 20px 4%;
+            }
+        }
+        .match-scoreboard {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            border-radius: 24px;
+            padding: 30px;
+            margin: 20px 0;
+            box-shadow: var(--shadow);
+        }
+        .team {
+            text-align: center;
+            flex: 1;
+        }
+        .team span:first-child {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        .score {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: block;
+            margin-top: 10px;
+        }
+        .match-status {
+            padding: 8px 16px;
+            border-radius: 30px;
+            background: var(--bg-light);
+            font-weight: 600;
+        }
+        .match-stream {
+            margin: 20px 0;
+        }
+        .match-events, .match-reports {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: var(--shadow);
+        }
+        .event-item {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--light-gray);
+            display: flex;
+            gap: 15px;
+        }
+        .event-minute {
+            font-weight: 600;
+            color: var(--primary);
+            width: 60px;
+        }
+        .report-item {
+            padding: 12px;
+            background: var(--bg-light);
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+        .report-item pre {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 8px 0;
+        }
+        .btn-small {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .match-actions {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .btn-secondary {
+            background: var(--gray);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+        }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
+    <!-- ========== NAVBAR ========== -->
     <nav class="dashboard-nav">
         <div class="nav-left">
-            <img src="../public/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <img src="../players/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
             <span class="dashboard-title">Gestionnaire de tournois</span>
         </div>
         <div class="nav-right">
@@ -47,7 +150,7 @@
                 <span class="notif-badge" id="notifBadge">0</span>
             </div>
             <div class="user-menu" id="userMenu">
-                <img src="../public/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <img src="../players/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
                 <span class="user-name" id="userName">Chargement...</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="user-dropdown" id="userDropdown">
@@ -61,6 +164,11 @@
             <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
         </div>
     </nav>
+
+    <!-- ========== OVERLAY SIDEBAR ========== -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ========== SIDEBAR GAUCHE ========== -->
     <div class="sidebar left-sidebar" id="leftSidebar">
         <div class="sidebar-header">
             <h3>Gestion des tournois</h3>
@@ -78,6 +186,8 @@
             <a href="#" id="logoutLinkSidebar" style="color: crimson;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
         </nav>
     </div>
+
+    <!-- ========== SIDEBAR DROITE (Communauté) ========== -->
     <div class="sidebar right-sidebar" id="rightSidebar">
         <div class="sidebar-header">
             <h3>Communauté</h3>
@@ -92,7 +202,8 @@
             <div class="community-section"><h4><i class="fas fa-folder"></i> Mes collections</h4><ul class="collections-list" id="collectionsList"></ul><button id="createCollectionBtn" class="btn-create-collection"><i class="fas fa-plus"></i> Créer une collection</button></div>
         </div>
     </div>
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ========== CONTENU PRINCIPAL ========== -->
     <main class="dashboard-main">
         <div class="tournament-container">
             <div id="matchDetail">
@@ -126,7 +237,8 @@
             </div>
         </div>
     </main>
-    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- ========== FOOTER ========== -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <div class="compliance-badges">
@@ -145,8 +257,69 @@
             </div>
         </div>
     </footer>
-    <script src="js/supabase-client.js"></script>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="../auth/auth.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/match-details.js"></script>
+
+    <!-- Gestion de la sidebar et du menu utilisateur -->
+    <script>
+        (async () => {
+            const { data: { session }, error } = await window.supabaseAuthPrive.auth.getSession();
+            if (error || !session) {
+                window.location.href = '../auth/login.html';
+                return;
+            }
+            const { data: profile } = await window.supabaseAuthPrive
+                .from('profiles')
+                .select('full_name, avatar_url')
+                .eq('id', session.user.id)
+                .single();
+            if (profile) {
+                document.getElementById('userName').textContent = profile.full_name || 'Utilisateur';
+                document.getElementById('userAvatar').src = profile.avatar_url || '../players/img/user-default.jpg';
+            }
+
+            const userMenu = document.getElementById('userMenu');
+            const userDropdown = document.getElementById('userDropdown');
+            if (userMenu && userDropdown) {
+                userMenu.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userDropdown.classList.toggle('show');
+                });
+                document.addEventListener('click', () => userDropdown.classList.remove('show'));
+            }
+
+            document.getElementById('logoutLink').addEventListener('click', async (e) => {
+                e.preventDefault();
+                await window.supabaseAuthPrive.auth.signOut();
+                window.location.href = '../index.html';
+            });
+
+            const menuToggle = document.getElementById('menuToggle');
+            const leftSidebar = document.getElementById('leftSidebar');
+            const closeLeftSidebar = document.getElementById('closeLeftSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (menuToggle && leftSidebar && overlay) {
+                menuToggle.addEventListener('click', () => {
+                    leftSidebar.classList.add('active');
+                    overlay.classList.add('active');
+                });
+                if (closeLeftSidebar) {
+                    closeLeftSidebar.addEventListener('click', () => {
+                        leftSidebar.classList.remove('active');
+                        overlay.classList.remove('active');
+                    });
+                }
+                overlay.addEventListener('click', () => {
+                    leftSidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                });
+            }
+        })();
+    </script>
 </body>
 </html>
