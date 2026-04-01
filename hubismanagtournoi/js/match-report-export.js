@@ -11,7 +11,7 @@ let reports = [];
 
 // ===== CHARGEMENT DES INFOS DU MATCH =====
 async function loadMatch() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_matches')
         .select(`
             *,
@@ -34,7 +34,7 @@ async function loadMatch() {
 
 // ===== CHARGEMENT DES RAPPORTS =====
 async function loadReports() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_match_reports')
         .select('*')
         .eq('match_id', matchId)
