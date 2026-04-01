@@ -8,141 +8,201 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/hubismanagtournoi.css">
     <link rel="stylesheet" href="css/manage-tournament.css">
+    <link rel="stylesheet" href="../players/css/feed.css">
+    <style>
+        .dashboard-main {
+            padding: 40px 5%;
+        }
+        .manage-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        @media (max-width: 768px) {
+            .dashboard-main {
+                padding: 20px 4%;
+            }
+        }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="manage-container">
-        <div class="page-header">
-            <button class="btn-back" id="backBtn">
-                <i class="fas fa-arrow-left"></i>
-                Retour
-            </button>
-            <h1 id="tournamentName">Gestion du tournoi</h1>
-        </div>
 
-        <!-- Onglets de navigation -->
-        <div class="tabs">
-            <button class="tab-btn active" data-tab="info">Informations</button>
-            <button class="tab-btn" data-tab="registrations">Inscriptions</button>
-            <button class="tab-btn" data-tab="teams">Équipes</button>
-            <button class="tab-btn" data-tab="matches">Matchs</button>
-            <button class="tab-btn" data-tab="reports">Rapports</button>
-            <button class="tab-btn" data-tab="prizes">Primes</button>
+    <!-- ========== NAVBAR ========== -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <img src="../players/img/logo-navbar.png" alt="HubISoccer" class="logo-nav" onclick="window.location.href='../index.html'">
+            <span class="dashboard-title">Gestionnaire de tournois</span>
         </div>
-
-        <!-- Contenu des onglets -->
-        <div id="infoTab" class="tab-content active">
-            <div class="info-card">
-                <h2>Informations générales</h2>
-                <div class="info-row"><strong>Nom :</strong> <span id="infoName">-</span></div>
-                <div class="info-row"><strong>Dates :</strong> <span id="infoDates">-</span></div>
-                <div class="info-row"><strong>Lieu :</strong> <span id="infoLocation">-</span></div>
-                <div class="info-row"><strong>Sport :</strong> <span id="infoSport">-</span></div>
-                <div class="info-row"><strong>Type :</strong> <span id="infoType">-</span></div>
-                <div class="info-row"><strong>Prime :</strong> <span id="infoPrize">-</span></div>
-                <div class="info-row"><strong>Description :</strong> <span id="infoDescription">-</span></div>
-                <div class="info-actions">
-                    <button id="editTournamentBtn" class="btn-primary"><i class="fas fa-edit"></i> Modifier</button>
+        <div class="nav-right">
+            <select class="lang-picker" id="langSelect">
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+            <div class="notif-icon" id="notifIcon">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge" id="notifBadge">0</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+                <img src="../players/img/user-default.jpg" alt="Avatar" class="user-avatar" id="userAvatar">
+                <span class="user-name" id="userName">Chargement...</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="../players/profile-edit.html"><i class="fas fa-user"></i> Mon profil</a>
+                    <a href="../feed/feed.html"><i class="fas fa-users"></i> Communauté</a>
+                    <a href="../shared/messages.html"><i class="fas fa-envelope"></i> Messages</a>
+                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                 </div>
             </div>
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
         </div>
+    </nav>
 
-        <div id="registrationsTab" class="tab-content">
-            <div class="registrations-section">
-                <h2>Demandes d'inscription</h2>
-                <div id="pendingRegistrationsList" class="registrations-list"></div>
-                <h2>Inscriptions validées</h2>
-                <div id="approvedRegistrationsList" class="registrations-list"></div>
-            </div>
-        </div>
+    <!-- ========== OVERLAY SIDEBAR ========== -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-        <div id="teamsTab" class="tab-content">
-            <div class="teams-section">
-                <div class="section-header">
-                    <h2>Équipes participantes</h2>
-                    <button id="addTeamBtn" class="btn-primary"><i class="fas fa-plus"></i> Ajouter une équipe</button>
-                </div>
-                <div id="teamsList" class="teams-grid"></div>
-            </div>
+    <!-- ========== SIDEBAR GAUCHE ========== -->
+    <div class="sidebar left-sidebar" id="leftSidebar">
+        <div class="sidebar-header">
+            <h3>Menu Tournois</h3>
+            <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
         </div>
-
-        <div id="matchesTab" class="tab-content">
-            <div class="matches-section">
-                <div class="section-header">
-                    <h2>Matchs</h2>
-                    <button id="addMatchBtn" class="btn-primary"><i class="fas fa-plus"></i> Ajouter un match</button>
-                </div>
-                <div id="matchesList" class="matches-list"></div>
-            </div>
-        </div>
-
-        <div id="reportsTab" class="tab-content">
-            <div class="reports-section">
-                <h2>Rapports de match</h2>
-                <div id="reportsList" class="reports-list"></div>
-            </div>
-        </div>
-
-        <div id="prizesTab" class="tab-content">
-            <div class="prizes-section">
-                <h2>Récompenses</h2>
-                <button id="addPrizeBtn" class="btn-primary"><i class="fas fa-plus"></i> Ajouter une prime</button>
-                <div id="prizesList" class="prizes-list"></div>
-            </div>
-        </div>
+        <nav class="sidebar-nav">
+            <a href="accueil_hubisgst.html"><i class="fas fa-home"></i> Accueil</a>
+            <a href="create-tournament.html"><i class="fas fa-plus-circle"></i> Créer un tournoi</a>
+            <a href="my-tournaments.html"><i class="fas fa-list"></i> Mes tournois</a>
+            <a href="my-registrations.html"><i class="fas fa-calendar-check"></i> Mes inscriptions</a>
+            <a href="rankings.html"><i class="fas fa-chart-line"></i> Classements</a>
+            <a href="tournament-rules.html"><i class="fas fa-gavel"></i> Règlement</a>
+            <hr>
+            <a href="help-tournament.html"><i class="fas fa-question-circle"></i> Aide</a>
+        </nav>
     </div>
 
-    <!-- Modales -->
+    <!-- ========== CONTENU PRINCIPAL ========== -->
+    <main class="dashboard-main">
+        <div class="manage-container">
+            <div class="page-header">
+                <button class="btn-back" id="backBtn">
+                    <i class="fas fa-arrow-left"></i>
+                    Retour
+                </button>
+                <h1 id="tournamentName">Gestion du tournoi</h1>
+            </div>
+
+            <!-- Onglets de navigation -->
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="info">Informations</button>
+                <button class="tab-btn" data-tab="registrations">Inscriptions</button>
+                <button class="tab-btn" data-tab="teams">Équipes</button>
+                <button class="tab-btn" data-tab="matches">Matchs</button>
+                <button class="tab-btn" data-tab="reports">Rapports</button>
+                <button class="tab-btn" data-tab="prizes">Primes</button>
+            </div>
+
+            <!-- Contenu des onglets -->
+            <div id="infoTab" class="tab-content active">
+                <div class="info-card">
+                    <h2>Informations générales</h2>
+                    <div class="info-row"><strong>Nom :</strong> <span id="infoName">-</span></div>
+                    <div class="info-row"><strong>Dates :</strong> <span id="infoDates">-</span></div>
+                    <div class="info-row"><strong>Lieu :</strong> <span id="infoLocation">-</span></div>
+                    <div class="info-row"><strong>Sport :</strong> <span id="infoSport">-</span></div>
+                    <div class="info-row"><strong>Type :</strong> <span id="infoType">-</span></div>
+                    <div class="info-row"><strong>Prime :</strong> <span id="infoPrize">-</span></div>
+                    <div class="info-row"><strong>Description :</strong> <span id="infoDescription">-</span></div>
+                    <div class="info-actions">
+                        <button id="editTournamentBtn" class="btn-primary"><i class="fas fa-edit"></i> Modifier</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="registrationsTab" class="tab-content">
+                <div class="registrations-section">
+                    <h2>Demandes d'inscription</h2>
+                    <div id="pendingRegistrationsList" class="registrations-list"></div>
+                    <h2>Inscriptions validées</h2>
+                    <div id="approvedRegistrationsList" class="registrations-list"></div>
+                </div>
+            </div>
+
+            <div id="teamsTab" class="tab-content">
+                <div class="teams-section">
+                    <div class="section-header">
+                        <h2>Équipes participantes</h2>
+                        <button id="addTeamBtn" class="btn-primary"><i class="fas fa-plus"></i> Ajouter une équipe</button>
+                    </div>
+                    <div id="teamsList" class="teams-grid"></div>
+                </div>
+            </div>
+
+            <div id="matchesTab" class="tab-content">
+                <div class="matches-section">
+                    <div class="section-header">
+                        <h2>Matchs</h2>
+                        <button id="addMatchBtn" class="btn-primary"><i class="fas fa-plus"></i> Ajouter un match</button>
+                    </div>
+                    <div id="matchesList" class="matches-list"></div>
+                </div>
+            </div>
+
+            <div id="reportsTab" class="tab-content">
+                <div class="reports-section">
+                    <h2>Rapports de match</h2>
+                    <div id="reportsList" class="reports-list"></div>
+                </div>
+            </div>
+
+            <div id="prizesTab" class="tab-content">
+                <div class="prizes-section">
+                    <h2>Récompenses</h2>
+                    <button id="addPrizeBtn" class="btn-primary"><i class="fas fa-plus"></i> Ajouter une prime</button>
+                    <div id="prizesList" class="prizes-list"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="compliance-badges">
+                <span class="badge">Conformité APDP Bénin</span>
+                <span class="badge">Règlementation FIFA</span>
+                <span class="badge">Double Projet Sport-Études</span>
+            </div>
+            <div class="contact-info">
+                <a href="tel:+2290197208188"><i class="fas fa-phone"></i> +229 01 97 20 81 88</a>
+                <a href="mailto:contact@hubisoccer.com"><i class="fas fa-envelope"></i> hubisoccer@gmail.com</a>
+            </div>
+            <div class="legal">
+                <p>HubISoccer - The Hub of Inspiration of Soccer</p>
+                <p>RCCM : RB/ABC/24 A 111814 | IFU : 0201910800236</p>
+                <p>© 2026 HubISoccer - Ozawa. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modales (inchangées) -->
     <div id="editTournamentModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Modifier le tournoi</h2>
-                <span class="close-modal">&times;</span>
+                <span class="close-modal">×</span>
             </div>
             <div class="modal-body">
                 <form id="editTournamentForm">
-                    <div class="form-group">
-                        <label>Nom</label>
-                        <input type="text" id="editName" required>
-                    </div>
+                    <div class="form-group"><label>Nom</label><input type="text" id="editName" required></div>
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>Date début</label>
-                            <input type="datetime-local" id="editStartDate" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Date fin</label>
-                            <input type="datetime-local" id="editEndDate" required>
-                        </div>
+                        <div class="form-group"><label>Date début</label><input type="datetime-local" id="editStartDate" required></div>
+                        <div class="form-group"><label>Date fin</label><input type="datetime-local" id="editEndDate" required></div>
                     </div>
-                    <div class="form-group">
-                        <label>Lieu</label>
-                        <input type="text" id="editLocation">
-                    </div>
-                    <div class="form-group">
-                        <label>Description</label>
-                        <textarea id="editDescription" rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Prime (FCFA)</label>
-                        <input type="number" id="editPrizePool" step="1000">
-                    </div>
-                    <div class="form-group">
-                        <label>Code d'inscription (public)</label>
-                        <input type="text" id="editRegistrationCode">
-                    </div>
-                    <div class="form-group">
-                        <label>URL de streaming</label>
-                        <input type="url" id="editStreamUrl">
-                    </div>
-                    <div class="form-check">
-                        <input type="checkbox" id="editIsActive">
-                        <label>Actif (visible dans les listes)</label>
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn-cancel">Annuler</button>
-                        <button type="submit" class="btn-confirm">Enregistrer</button>
-                    </div>
+                    <div class="form-group"><label>Lieu</label><input type="text" id="editLocation"></div>
+                    <div class="form-group"><label>Description</label><textarea id="editDescription" rows="3"></textarea></div>
+                    <div class="form-group"><label>Prime (FCFA)</label><input type="number" id="editPrizePool" step="1000"></div>
+                    <div class="form-group"><label>Code d'inscription (public)</label><input type="text" id="editRegistrationCode"></div>
+                    <div class="form-group"><label>URL de streaming</label><input type="url" id="editStreamUrl"></div>
+                    <div class="form-check"><input type="checkbox" id="editIsActive"><label>Actif (visible dans les listes)</label></div>
+                    <div class="modal-actions"><button type="button" class="btn-cancel">Annuler</button><button type="submit" class="btn-confirm">Enregistrer</button></div>
                 </form>
             </div>
         </div>
@@ -150,28 +210,13 @@
 
     <div id="addTeamModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Ajouter une équipe</h2>
-                <span class="close-modal">&times;</span>
-            </div>
+            <div class="modal-header"><h2>Ajouter une équipe</h2><span class="close-modal">×</span></div>
             <div class="modal-body">
                 <form id="addTeamForm">
-                    <div class="form-group">
-                        <label>Nom de l'équipe</label>
-                        <input type="text" id="teamName" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Catégorie d'âge (optionnel)</label>
-                        <input type="text" id="teamAgeCategory">
-                    </div>
-                    <div class="form-group">
-                        <label>Logo (URL)</label>
-                        <input type="url" id="teamLogo">
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn-cancel">Annuler</button>
-                        <button type="submit" class="btn-confirm">Ajouter</button>
-                    </div>
+                    <div class="form-group"><label>Nom de l'équipe</label><input type="text" id="teamName" required></div>
+                    <div class="form-group"><label>Catégorie d'âge (optionnel)</label><input type="text" id="teamAgeCategory"></div>
+                    <div class="form-group"><label>Logo (URL)</label><input type="url" id="teamLogo"></div>
+                    <div class="modal-actions"><button type="button" class="btn-cancel">Annuler</button><button type="submit" class="btn-confirm">Ajouter</button></div>
                 </form>
             </div>
         </div>
@@ -179,38 +224,17 @@
 
     <div id="addMatchModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Ajouter un match</h2>
-                <span class="close-modal">&times;</span>
-            </div>
+            <div class="modal-header"><h2>Ajouter un match</h2><span class="close-modal">×</span></div>
             <div class="modal-body">
                 <form id="addMatchForm">
-                    <div class="form-group">
-                        <label>Date et heure</label>
-                        <input type="datetime-local" id="matchDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Lieu (optionnel)</label>
-                        <input type="text" id="matchLocation">
-                    </div>
+                    <div class="form-group"><label>Date et heure</label><input type="datetime-local" id="matchDate" required></div>
+                    <div class="form-group"><label>Lieu (optionnel)</label><input type="text" id="matchLocation"></div>
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>Équipe domicile</label>
-                            <select id="matchHomeTeam" required></select>
-                        </div>
-                        <div class="form-group">
-                            <label>Équipe extérieur</label>
-                            <select id="matchAwayTeam" required></select>
-                        </div>
+                        <div class="form-group"><label>Équipe domicile</label><select id="matchHomeTeam" required></select></div>
+                        <div class="form-group"><label>Équipe extérieur</label><select id="matchAwayTeam" required></select></div>
                     </div>
-                    <div class="form-group">
-                        <label>URL de streaming (optionnel)</label>
-                        <input type="url" id="matchStreamUrl">
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn-cancel">Annuler</button>
-                        <button type="submit" class="btn-confirm">Ajouter</button>
-                    </div>
+                    <div class="form-group"><label>URL de streaming (optionnel)</label><input type="url" id="matchStreamUrl"></div>
+                    <div class="modal-actions"><button type="button" class="btn-cancel">Annuler</button><button type="submit" class="btn-confirm">Ajouter</button></div>
                 </form>
             </div>
         </div>
@@ -218,39 +242,15 @@
 
     <div id="addPrizeModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Ajouter une prime</h2>
-                <span class="close-modal">&times;</span>
-            </div>
+            <div class="modal-header"><h2>Ajouter une prime</h2><span class="close-modal">×</span></div>
             <div class="modal-body">
                 <form id="addPrizeForm">
-                    <div class="form-group">
-                        <label>Bénéficiaire</label>
-                        <select id="prizeRecipientType">
-                            <option value="team">Équipe</option>
-                            <option value="player">Joueur</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="prizeTeamGroup">
-                        <label>Équipe</label>
-                        <select id="prizeTeamId"></select>
-                    </div>
-                    <div class="form-group" id="prizePlayerGroup" style="display: none;">
-                        <label>Joueur</label>
-                        <select id="prizePlayerId"></select>
-                    </div>
-                    <div class="form-group">
-                        <label>Montant (FCFA)</label>
-                        <input type="number" id="prizeAmount" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Raison (optionnel)</label>
-                        <input type="text" id="prizeReason">
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn-cancel">Annuler</button>
-                        <button type="submit" class="btn-confirm">Ajouter</button>
-                    </div>
+                    <div class="form-group"><label>Bénéficiaire</label><select id="prizeRecipientType"><option value="team">Équipe</option><option value="player">Joueur</option></select></div>
+                    <div class="form-group" id="prizeTeamGroup"><label>Équipe</label><select id="prizeTeamId"></select></div>
+                    <div class="form-group" id="prizePlayerGroup" style="display: none;"><label>Joueur</label><select id="prizePlayerId"></select></div>
+                    <div class="form-group"><label>Montant (FCFA)</label><input type="number" id="prizeAmount" required></div>
+                    <div class="form-group"><label>Raison (optionnel)</label><input type="text" id="prizeReason"></div>
+                    <div class="modal-actions"><button type="button" class="btn-cancel">Annuler</button><button type="submit" class="btn-confirm">Ajouter</button></div>
                 </form>
             </div>
         </div>
@@ -258,9 +258,69 @@
 
     <div id="toastContainer" class="toast-container"></div>
 
-    <script src="js/supabase-client.js"></script>
-    <script src="js/tournaments.js"></script>
+    <!-- Scripts -->
+    <script src="../auth/auth.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/manage-tournament.js"></script>
+
+    <!-- Gestion de la sidebar et de l’authentification -->
+    <script>
+        (async () => {
+            const { data: { session }, error } = await window.supabaseAuthPrive.auth.getSession();
+            if (error || !session) {
+                window.location.href = '../auth/login.html';
+                return;
+            }
+            const { data: profile } = await window.supabaseAuthPrive
+                .from('profiles')
+                .select('full_name, avatar_url')
+                .eq('id', session.user.id)
+                .single();
+            if (profile) {
+                document.getElementById('userName').textContent = profile.full_name || 'Utilisateur';
+                document.getElementById('userAvatar').src = profile.avatar_url || '../players/img/user-default.jpg';
+            }
+
+            // Gestion du menu utilisateur
+            const userMenu = document.getElementById('userMenu');
+            const userDropdown = document.getElementById('userDropdown');
+            if (userMenu && userDropdown) {
+                userMenu.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userDropdown.classList.toggle('show');
+                });
+                document.addEventListener('click', () => userDropdown.classList.remove('show'));
+            }
+
+            // Déconnexion
+            document.getElementById('logoutLink').addEventListener('click', async (e) => {
+                e.preventDefault();
+                await window.supabaseAuthPrive.auth.signOut();
+                window.location.href = '../index.html';
+            });
+
+            // Sidebar gauche
+            const menuToggle = document.getElementById('menuToggle');
+            const leftSidebar = document.getElementById('leftSidebar');
+            const closeLeftSidebar = document.getElementById('closeLeftSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (menuToggle && leftSidebar && overlay) {
+                menuToggle.addEventListener('click', () => {
+                    leftSidebar.classList.add('active');
+                    overlay.classList.add('active');
+                });
+                if (closeLeftSidebar) {
+                    closeLeftSidebar.addEventListener('click', () => {
+                        leftSidebar.classList.remove('active');
+                        overlay.classList.remove('active');
+                    });
+                }
+                overlay.addEventListener('click', () => {
+                    leftSidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                });
+            }
+        })();
+    </script>
 </body>
 </html>
