@@ -8,16 +8,14 @@ let sports = [];
 
 // ===== RÉCUPÉRATION DE L'UTILISATEUR =====
 async function getCurrentUser() {
-    if (window.supabaseAuthPrive) {
-        const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
-        if (!error && user) return user;
-    }
+    const { data: { user }, error } = await window.supabaseAuthPrive.auth.getUser();
+    if (!error && user) return user;
     return null;
 }
 
 // ===== CHARGEMENT DES SPORTS =====
 async function loadSports() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_sports')
         .select('id, name')
         .order('name');
@@ -33,7 +31,7 @@ async function loadSports() {
 
 // ===== CHARGEMENT DES ÉQUIPES DE L'UTILISATEUR =====
 async function loadUserTeams() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_teams')
         .select('*')
         .eq('created_by', currentUser.id)
@@ -71,7 +69,7 @@ async function loadUserTeams() {
 
 // ===== CHARGEMENT D'UNE ÉQUIPE =====
 async function loadTeam(teamId) {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_teams')
         .select(`
             *,
@@ -108,7 +106,7 @@ function displayTeamInfo() {
 }
 
 async function loadTeamPlayers() {
-    const { data, error } = await supabaseGestionTournoi
+    const { data, error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .select(`
             *,
@@ -178,7 +176,7 @@ function renderPlayers() {
 
 async function setCaptain(playerId) {
     // Retirer le statut de capitaine à tous les joueurs de l'équipe
-    const { error: resetError } = await supabaseGestionTournoi
+    const { error: resetError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .update({ is_captain: false })
         .eq('team_id', currentTeamId);
@@ -186,7 +184,7 @@ async function setCaptain(playerId) {
         showToast('Erreur lors de la mise à jour', 'error');
         return;
     }
-    const { error } = await supabaseGestionTournoi
+    const { error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .update({ is_captain: true })
         .eq('id', playerId);
@@ -199,7 +197,7 @@ async function setCaptain(playerId) {
 }
 
 async function removePlayer(playerId) {
-    const { error } = await supabaseGestionTournoi
+    const { error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .update({ team_id: null })
         .eq('id', playerId);
@@ -253,7 +251,7 @@ async function saveTeam(e) {
         created_by: currentUser.id
     };
     if (editingTeamId) {
-        const { error } = await supabaseGestionTournoi
+        const { error } = await window.supabaseAuthPrive
             .from('gestionnairetournoi_teams')
             .update(teamData)
             .eq('id', editingTeamId);
@@ -268,7 +266,7 @@ async function saveTeam(e) {
             }
         }
     } else {
-        const { data, error } = await supabaseGestionTournoi
+        const { data, error } = await window.supabaseAuthPrive
             .from('gestionnairetournoi_teams')
             .insert(teamData)
             .select()
@@ -293,7 +291,7 @@ function searchPlayers(query) {
         document.getElementById('playerSearchResults').innerHTML = '';
         return;
     }
-    supabaseGestionTournoi
+    window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .select(`
             id,
@@ -352,7 +350,7 @@ async function addPlayer(e) {
     const isCaptain = document.getElementById('playerIsCaptain').checked;
 
     // Vérifier si le joueur est déjà dans une équipe
-    const { data: existing, error: checkError } = await supabaseGestionTournoi
+    const { data: existing, error: checkError } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .select('team_id')
         .eq('id', selectedPlayerId)
@@ -372,7 +370,7 @@ async function addPlayer(e) {
         position: position || null,
         is_captain: isCaptain
     };
-    const { error } = await supabaseGestionTournoi
+    const { error } = await window.supabaseAuthPrive
         .from('gestionnairetournoi_players')
         .update(updates)
         .eq('id', selectedPlayerId);
